@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block title %}Додај метеорит - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-file-earmark-plus me-2"></i>
+                                Додај метеорит у збирку
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                {{ collection_name }} - Евиденција метеоритских узорака
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад на збирку
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Meteorite Form -->
+    <form method="POST" id="addMeteoriteForm">
+        <div class="row">
+            <!-- Basic Information -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Основни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Catalog Number -->
+                            <div class="col-md-6">
+                                <label for="catalog_number" class="form-label">Каталошки број *</label>
+                                <input type="text" class="form-control" id="catalog_number" name="catalog_number" required
+                                       placeholder="нпр. MET-2024-001">
+                            </div>
+
+                            <!-- Accession Number -->
+                            <div class="col-md-6">
+                                <label for="accession_number" class="form-label">Инвентарни број</label>
+                                <input type="text" class="form-control" id="accession_number" name="accession_number"
+                                       placeholder="нпр. INV-001">
+                            </div>
+
+                            <!-- Meteorite Name -->
+                            <div class="col-12">
+                                <label for="meteorite_name" class="form-label">Назив метеорита *</label>
+                                <input type="text" class="form-control" id="meteorite_name" name="meteorite_name" required
+                                       placeholder="нпр. Челябинск, Сихоте-Алин, Allende">
+                                <div class="form-text">Службени назив метеорита по Meteoritical Society</div>
+                            </div>
+
+                            <!-- Classification -->
+                            <div class="col-12">
+                                <label for="classification" class="form-label">Класификација *</label>
+                                <select class="form-select" id="classification" name="classification" required>
+                                    <option value="">Изаберите класификацију</option>
+                                    <optgroup label="Стони метеорити (Stony)">
+                                        <option value="Хондрит (H)">Хондрит H (обични, високо Fe)</option>
+                                        <option value="Хондрит (L)">Хондрит L (обични, ниско Fe)</option>
+                                        <option value="Хондрит (LL)">Хондрит LL (обични, веома ниско Fe)</option>
+                                        <option value="Хондрит (E)">Хондрит E (енстатитни)</option>
+                                        <option value="Хондрит (C)">Хондрит C (карбонатни)</option>
+                                        <option value="Ахондрит">Ахондрит (без хондрула)</option>
+                                        <option value="Еукрит">Еукрит (базалтни ахондрит)</option>
+                                        <option value="Диогенит">Диогенит (плутонски ахондрит)</option>
+                                        <option value="Хавардит">Хавардит (брекчија)</option>
+                                    </optgroup>
+                                    <optgroup label="Гвоздени метеорити (Iron)">
+                                        <option value="Октаедрит">Октаедрит (са Widmanstätten структуром)</option>
+                                        <option value="Хексаедрит">Хексаедрит (висок Ni)</option>
+                                        <option value="Атаксит">Атаксит (веома висок Ni)</option>
+                                        <option value="IAB">IAB група</option>
+                                        <option value="IIE">IIE група</option>
+                                        <option value="IIAB">IIAB група</option>
+                                        <option value="IVA">IVA група</option>
+                                    </optgroup>
+                                    <optgroup label="Стоно-гвоздени (Stony-Iron)">
+                                        <option value="Палласит">Палласит (оливин у метал. матриксу)</option>
+                                        <option value="Мезосидерит">Мезосидерит (50-50 стена/метал)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <!-- Petrologic Type -->
+                            <div class="col-md-6">
+                                <label for="petrologic_type" class="form-label">Петролошки тип</label>
+                                <select class="form-select" id="petrologic_type" name="petrologic_type">
+                                    <option value="">Није примењиво</option>
+                                    <option value="Type 3">Тип 3 (непромењен)</option>
+                                    <option value="Type 4">Тип 4 (слабо метаморфозан)</option>
+                                    <option value="Type 5">Тип 5 (умерено метаморфозан)</option>
+                                    <option value="Type 6">Тип 6 (јако метаморфозан)</option>
+                                    <option value="Type 7">Тип 7 (топљен)</option>
+                                </select>
+                            </div>
+
+                            <!-- Weathering Grade -->
+                            <div class="col-md-6">
+                                <label for="weathering_grade" class="form-label">Степен трошења</label>
+                                <select class="form-select" id="weathering_grade" name="weathering_grade">
+                                    <option value="">Непознато</option>
+                                    <option value="W0">W0 (без трошења)</option>
+                                    <option value="W1">W1 (минимално)</option>
+                                    <option value="W2">W2 (умерено)</option>
+                                    <option value="W3">W3 (јако)</option>
+                                    <option value="W4">W4 (веома јако)</option>
+                                    <option value="W5">W5 (екстремно)</option>
+                                    <option value="W6">W6 (потпуно)</option>
+                                </select>
+                            </div>
+
+                            <!-- Mass -->
+                            <div class="col-md-6">
+                                <label for="mass" class="form-label">Маса *</label>
+                                <input type="text" class="form-control" id="mass" name="mass" required
+                                       placeholder="нпр. 234.5 g, 12.3 kg">
+                            </div>
+
+                            <!-- Dimensions -->
+                            <div class="col-md-6">
+                                <label for="dimensions" class="form-label">Димензије</label>
+                                <input type="text" class="form-control" id="dimensions" name="dimensions"
+                                       placeholder="нпр. 8 x 6 x 4 cm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scientific Data -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Научни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Fall Type -->
+                            <div class="col-md-6">
+                                <label for="fall_type" class="form-label">Тип пада *</label>
+                                <select class="form-select" id="fall_type" name="fall_type" required>
+                                    <option value="Fall">Пад (Fall) - виђен пад</option>
+                                    <option value="Find">Налаз (Find) - пронађен касније</option>
+                                </select>
+                            </div>
+
+                            <!-- Year of Fall/Find -->
+                            <div class="col-md-6">
+                                <label for="year_found" class="form-label">Година пада/налаза</label>
+                                <input type="number" class="form-control" id="year_found" name="year_found"
+                                       placeholder="нпр. 2013" min="1800" max="2030">
+                            </div>
+
+                            <!-- Chemical Composition -->
+                            <div class="col-12">
+                                <label for="chemical_composition" class="form-label">Хемијски састав</label>
+                                <textarea class="form-control" id="chemical_composition" name="chemical_composition" rows="2"
+                                          placeholder="нпр. Fe 91.5%, Ni 7.8%, Co 0.4%, P 0.2%, S 0.1%"></textarea>
+                            </div>
+
+                            <!-- Mineralogy -->
+                            <div class="col-12">
+                                <label for="mineralogy" class="form-label">Минералошки састав</label>
+                                <textarea class="form-control" id="mineralogy" name="mineralogy" rows="2"
+                                          placeholder="нпр. Оливин (Fo78), Пироксен (Fs20-Wo2), Плагиоклас, Троилит, Камацит, Тенит"></textarea>
+                            </div>
+
+                            <!-- Shock Stage -->
+                            <div class="col-md-6">
+                                <label for="shock_stage" class="form-label">Степен шока</label>
+                                <select class="form-select" id="shock_stage" name="shock_stage">
+                                    <option value="">Непознато</option>
+                                    <option value="S1">S1 (без шока)</option>
+                                    <option value="S2">S2 (слаб шок)</option>
+                                    <option value="S3">S3 (умерен шок)</option>
+                                    <option value="S4">S4 (јак шок)</option>
+                                    <option value="S5">S5 (веома јак шок)</option>
+                                    <option value="S6">S6 (топљење)</option>
+                                </select>
+                            </div>
+
+                            <!-- Magnetic Susceptibility -->
+                            <div class="col-md-6">
+                                <label for="magnetic_susceptibility" class="form-label">Магнетна сусцептибилност</label>
+                                <input type="text" class="form-control" id="magnetic_susceptibility" name="magnetic_susceptibility"
+                                       placeholder="нпр. log χ = 4.8">
+                            </div>
+
+                            <!-- Density -->
+                            <div class="col-md-6">
+                                <label for="density" class="form-label">Густина</label>
+                                <input type="text" class="form-control" id="density" name="density"
+                                       placeholder="нпр. 3.65 g/cm³">
+                            </div>
+
+                            <!-- Age -->
+                            <div class="col-md-6">
+                                <label for="age" class="form-label">Старост</label>
+                                <input type="text" class="form-control" id="age" name="age"
+                                       placeholder="нпр. 4.567 Ga">
+                            </div>
+
+                            <!-- Parent Body -->
+                            <div class="col-12">
+                                <label for="parent_body" class="form-label">Матично тело</label>
+                                <select class="form-select" id="parent_body" name="parent_body">
+                                    <option value="">Непознато</option>
+                                    <option value="Астероид">Астероид (појас астероида)</option>
+                                    <option value="4 Vesta">4 Веста (HED метеорити)</option>
+                                    <option value="Mars">Марс (SNC метеорити)</option>
+                                    <option value="Moon">Месец (лунарни метеорити)</option>
+                                    <option value="Комета">Комета</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Data -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-geo-alt me-2"></i>
+                            Подаци о налазишту
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Country -->
+                            <div class="col-md-6">
+                                <label for="country" class="form-label">Држава *</label>
+                                <input type="text" class="form-control" id="country" name="country" required
+                                       placeholder="нпр. Русија, САД, Србија">
+                            </div>
+
+                            <!-- Location -->
+                            <div class="col-md-6">
+                                <label for="location" class="form-label">Локација *</label>
+                                <input type="text" class="form-control" id="location" name="location" required
+                                       placeholder="нпр. Челябинск, пустиња Сахара">
+                            </div>
+
+                            <!-- Coordinates -->
+                            <div class="col-md-6">
+                                <label for="latitude" class="form-label">Географска ширина</label>
+                                <input type="text" class="form-control" id="latitude" name="latitude"
+                                       placeholder="нпр. 54.8° N">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="longitude" class="form-label">Географска дужина</label>
+                                <input type="text" class="form-control" id="longitude" name="longitude"
+                                       placeholder="нпр. 61.3° E">
+                            </div>
+
+                            <!-- Acquisition Method -->
+                            <div class="col-12">
+                                <label for="acquisition_method" class="form-label">Начин прибављања *</label>
+                                <select class="form-select" id="acquisition_method" name="acquisition_method" required>
+                                    <option value="">Изаберите</option>
+                                    <option value="Откуп">Откуп</option>
+                                    <option value="Поклон">Поклон</option>
+                                    <option value="Размена">Размена са институцијом</option>
+                                    <option value="Пренос">Пренос из друге институције</option>
+                                    <option value="Теренски">Теренски налаз</option>
+                                </select>
+                            </div>
+
+                            <!-- Collector -->
+                            <div class="col-md-6">
+                                <label for="collector" class="form-label">Прикупио</label>
+                                <input type="text" class="form-control" id="collector" name="collector"
+                                       placeholder="Име особе/институције">
+                            </div>
+
+                            <!-- Date Acquired -->
+                            <div class="col-md-6">
+                                <label for="date_acquired" class="form-label">Датум акцесије</label>
+                                <input type="date" class="form-control" id="date_acquired" name="date_acquired">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage and Research -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-archive me-2"></i>
+                            Складиштење и истраживање
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Storage Location -->
+                            <div class="col-12">
+                                <label for="storage_location" class="form-label">Локација складишта *</label>
+                                <input type="text" class="form-control" id="storage_location" name="storage_location" required
+                                       placeholder="нпр. Сеф А, полица 3">
+                            </div>
+
+                            <!-- Storage Type -->
+                            <div class="col-md-6">
+                                <label for="storage_type" class="form-label">Тип складиштења</label>
+                                <select class="form-select" id="storage_type" name="storage_type">
+                                    <option value="Сеф">Сеф</option>
+                                    <option value="Затворена витрина">Затворена витрина</option>
+                                    <option value="Специјална амбалажа">Специјална амбалажа</option>
+                                    <option value="Контролисана атмосфера">Контролисана атмосфера (N₂)</option>
+                                    <option value="Изложба">На изложби</option>
+                                </select>
+                            </div>
+
+                            <!-- Condition -->
+                            <div class="col-md-6">
+                                <label for="condition" class="form-label">Стање *</label>
+                                <select class="form-select" id="condition" name="condition" required>
+                                    <option value="Одлично">Одлично</option>
+                                    <option value="Добро">Добро</option>
+                                    <option value="Задовољавајуће">Задовољавајуће</option>
+                                    <option value="Лоше">Лоше (захтева третман)</option>
+                                </select>
+                            </div>
+
+                            <!-- Type Status -->
+                            <div class="col-12">
+                                <label for="type_status" class="form-label">Научни статус</label>
+                                <select class="form-select" id="type_status" name="type_status">
+                                    <option value="">Обичан примерак</option>
+                                    <option value="Type specimen">Типски примерак</option>
+                                    <option value="Main mass">Главна маса метеорита</option>
+                                    <option value="Fragment">Фрагмент главне масе</option>
+                                    <option value="Slice">Исечак (slice)</option>
+                                    <option value="Thin section">Танак препарат</option>
+                                </select>
+                            </div>
+
+                            <!-- Research Project -->
+                            <div class="col-12">
+                                <label for="research_project" class="form-label">Истраживачки пројекат</label>
+                                <input type="text" class="form-control" id="research_project" name="research_project"
+                                       placeholder="Назив пројекта">
+                            </div>
+
+                            <!-- Publications -->
+                            <div class="col-12">
+                                <label for="publications" class="form-label">Публикације</label>
+                                <textarea class="form-control" id="publications" name="publications" rows="2"
+                                          placeholder="Референце на публикације..."></textarea>
+                            </div>
+
+                            <!-- Meteoritical Bulletin Number -->
+                            <div class="col-md-6">
+                                <label for="mb_number" class="form-label">MB број</label>
+                                <input type="text" class="form-control" id="mb_number" name="mb_number"
+                                       placeholder="нпр. MB 110">
+                                <div class="form-text">Meteoritical Bulletin број</div>
+                            </div>
+
+                            <!-- Approved -->
+                            <div class="col-md-6">
+                                <label for="approved" class="form-label">Класификација одобрена</label>
+                                <select class="form-select" id="approved" name="approved">
+                                    <option value="Da">Да (Meteoritical Society)</option>
+                                    <option value="Ne">Не (у процесу)</option>
+                                    <option value="Pending">На чекању</option>
+                                </select>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="col-12">
+                                <label for="notes" class="form-label">Напомене</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"
+                                          placeholder="Додатне информације, историјски контекст, визуелне карактеристике..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Откажи
+                            </a>
+                            <button type="submit" class="btn btn-dark">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Додај метеорит
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Form validation
+document.getElementById('addMeteoriteForm').addEventListener('submit', function(e) {
+    const catalogNumber = document.getElementById('catalog_number').value;
+
+    if (!catalogNumber) {
+        e.preventDefault();
+        alert('Молимо унесите каталошки број!');
+        return;
+    }
+
+    // Confirmation
+    if (!confirm(`Да ли сте сигурни да желите да додате метеорит "${catalogNumber}"?`)) {
+        e.preventDefault();
+    }
+});
+</script>
+
+<style>
+.form-label {
+    font-weight: 500;
+    color: #333;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #333;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #333;
+    box-shadow: 0 0 0 0.2rem rgba(51, 51, 51, 0.25);
+}
+
+.btn-dark {
+    background-color: #333;
+    border-color: #333;
+}
+
+.btn-dark:hover {
+    background-color: #1a1a1a;
+    border-color: #1a1a1a;
+}
+</style>
+{% endblock %}
