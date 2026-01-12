@@ -33,6 +33,7 @@
 
     <!-- Add Meteorite Form -->
     <form method="POST" id="addMeteoriteForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="row">
             <!-- Basic Information -->
             <div class="col-lg-6 mb-4">

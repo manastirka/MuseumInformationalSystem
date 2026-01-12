@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Администрација - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-warning text-dark">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-gear me-2"></i>
+                                Администрациони панел
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Управљање системом и корисницима
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-people" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">Корисници</h4>
+                    <p class="text-muted mb-0">Управљај налозима</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">Радне листе</h4>
+                    <p class="text-muted mb-0">Преглед и извештаји</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-graph-up" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">Аналитика</h4>
+                    <p class="text-muted mb-0">Статистике система</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Sections -->
+    <div class="row g-4">
+        <!-- Museum Databases Admin -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-database me-2"></i>
+                        Музејске базе података
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Управљајте свим базама података музеја и колекцијама.
+                    </p>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin_statistics') }}" class="btn btn-info">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Статистика збирки
+                        </a>
+                        <a href="{{ url_for('admin_qr_generator') }}" class="btn btn-outline-success">
+                            <i class="bi bi-qr-code me-2"></i>
+                            Генериши QR кодове
+                        </a>
+                        <a href="{{ url_for('museum_databases') }}" class="btn btn-success">
+                            <i class="bi bi-view-list me-2"></i>
+                            Преглед свих база
+                        </a>
+                        {% if endpoint_exists('exhibits_database') %}
+                        <a href="{{ url_for('exhibits_database') }}" class="btn btn-outline-warning">
+                            <i class="bi bi-collection me-2"></i>
+                            База експоната
+                        </a>
+                        {% endif %}
+                        {% if endpoint_exists('exhibitions_database') %}
+                        <a href="{{ url_for('exhibitions_database') }}" class="btn btn-outline-danger">
+                            <i class="bi bi-easel me-2"></i>
+                            База изложби
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('employees_database') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-people-fill me-2"></i>
+                            База запослених
+                        </a>
+                        <a href="{{ url_for('employee_profiles_database') }}" class="btn btn-outline-info">
+                            <i class="bi bi-person-badge me-2"></i>
+                            Профили запослених
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people me-2"></i>
+                        Управљање корисницима
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Управљајте корисничким налозима и приступом модулима.
+                    </p>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('manage_user_access') }}" class="btn btn-warning">
+                            <i class="bi bi-shield-check me-2"></i>
+                            Управљај приступом модулима
+                        </a>
+                        <a href="{{ url_for('add_user') }}" class="btn btn-outline-warning">
+                            <i class="bi bi-person-plus me-2"></i>
+                            Додај корисника
+                        </a>
+                        <a href="{{ url_for('employees_database') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-list me-2"></i>
+                            Листа корисника
+                        </a>
+                        <a href="{{ url_for('system_reports') }}" class="btn btn-outline-info">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Извештаји система
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Management -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-images me-2"></i>
+                        Управљање сликама
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Групно отпремање слика за све музејске базе података са аутоматским упаривањем.
+                    </p>
+
+                    <div class="d-grid gap-2">
+                        {% if endpoint_exists('batch_image_upload') %}
+                        <a href="{{ url_for('batch_image_upload') }}" class="btn btn-danger">
+                            <i class="bi bi-cloud-upload me-2"></i>
+                            Групно отпремање слика
+                        </a>
+                        {% endif %}
+                        <a href="/api/images/stats" class="btn btn-outline-danger" target="_blank">
+                            <i class="bi bi-pie-chart me-2"></i>
+                            Статистика слика
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary" onclick="alert('Користите Групно отпремање слика за додавање слика')">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Помоћ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Tools -->
+        <div class="col-lg-6">
+            <div class="card h-100" style="border: 2px solid #667eea;">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0">
+                        <i class="bi bi-robot me-2"></i>
+                        AI Алати
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Интелигентни асистент за анализу и претрагу музејских артефаката.
+                    </p>
+                    <div class="alert alert-info" style="font-size: 0.9rem;">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Користи локални Ollama AI (llama3.2:3b) за приватну, офлајн анализу података.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('ai_assistant') }}" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <i class="bi bi-chat-dots me-2"></i>
+                            Отвори AI асистента
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="alert('AI асистент може:\n• Анализирати минерале\n• Претраживати колекције\n• Одговарати на питања о артефактима\n• Помагати у каталогизацији')">
+                            <i class="bi bi-question-circle me-2"></i>
+                            Могућности AI-а
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear me-2"></i>
+                        Системска подешавања
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Конфигуришите општа подешавања система.
+                    </p>
+
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-outline-info" onclick="alert('Ова функција је у развоју')">
+                            <i class="bi bi-sliders me-2"></i>
+                            Општа подешавања
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary" onclick="alert('Ова функција је у развоју')">
+                            <i class="bi bi-database me-2"></i>
+                            База података
+                        </a>
+                        <a href="#" class="btn btn-outline-dark" onclick="alert('Ова функција је у развоју')">
+                            <i class="bi bi-file-earmark-code me-2"></i>
+                            Системски логови
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="bi bi-lightning me-2"></i>
+                Брзе администраторске акције
+            </h3>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="#" onclick="window.open('/timesheet/', '_blank')" class="text-decoration-none">
+                        <i class="bi bi-speedometer2 d-block mb-2" style="font-size: 1.5rem; color: var(--museum-primary);"></i>
+                        <small class="fw-medium">Преглед система</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="#" onclick="alert('Креирање резервне копије...')" class="text-decoration-none">
+                        <i class="bi bi-cloud-download d-block mb-2" style="font-size: 1.5rem; color: var(--museum-success);"></i>
+                        <small class="fw-medium">Backup</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="#" onclick="alert('Рестартовање система...')" class="text-decoration-none">
+                        <i class="bi bi-arrow-clockwise d-block mb-2" style="font-size: 1.5rem; color: var(--museum-warning);"></i>
+                        <small class="fw-medium">Рестарт</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="#" onclick="window.open('/logs', '_blank')" class="text-decoration-none">
+                        <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; color: var(--museum-info);"></i>
+                        <small class="fw-medium">Логови</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="#" onclick="alert('Обнављање система...')" class="text-decoration-none">
+                        <i class="bi bi-arrow-up-circle d-block mb-2" style="font-size: 1.5rem; color: var(--museum-secondary);"></i>
+                        <small class="fw-medium">Ажурирај</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="{{ url_for('batch_image_upload') }}" class="text-decoration-none">
+                        <i class="bi bi-images d-block mb-2" style="font-size: 1.5rem; color: var(--museum-danger);"></i>
+                        <small class="fw-medium">Слике</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <a href="{{ url_for('dashboard') }}" class="text-decoration-none">
+                        <i class="bi bi-house d-block mb-2" style="font-size: 1.5rem; color: var(--museum-primary);"></i>
+                        <small class="fw-medium">Почетна</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

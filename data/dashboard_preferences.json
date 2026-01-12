@@ -1,0 +1,30 @@
+{
+  "admin": {
+    "enabled_widgets": [
+      "timesheet",
+      "museum_databases"
+    ]
+  },
+  "slavko.spasic@nhmbeo.rs": {
+    "enabled_widgets": [
+      "timesheet",
+      "museum_databases"
+    ]
+  },
+  "biljana.mitrovic@nhmbeo.rs": {
+    "enabled_widgets": [
+      "museum_databases"
+    ]
+  },
+  "verica.stojanovic@nhmbeo.rs": {
+    "enabled_widgets": [
+      "museum_databases"
+    ]
+  },
+  "vuk.popic@nhmbeo.rs": {
+    "enabled_widgets": [
+      "timesheet",
+      "bird_ringing_database"
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "museum_databases": {
+    "authorized_users": [
+      "aca.lukovic@nhmbeo.rs",
+      "admin",
+      "slavko.spasic@nhmbeo.rs",
+      "biljana.mitrovic@nhmbeo.rs",
+      "verica.stojanovic@nhmbeo.rs"
+    ]
+  },
+  "mineral_database": {
+    "authorized_users": [
+      "admin",
+      "slavko.spasic@nhmbeo.rs",
+      "biljana.mitrovic@nhmbeo.rs",
+      "verica.stojanovic@nhmbeo.rs",
+      "aca.lukovic@nhmbeo.rs"
+    ]
+  },
+  "employees_database": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "employee_profiles": {
+    "authorized_users": [
+      "admin",
+      "aca.lukovic@nhmbeo.rs"
+    ]
+  },
+  "library_database": {
+    "authorized_users": [
+      "admin",
+      "biblioteka@nhmbeo.rs"
+    ]
+  },
+  "exhibits_database": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "exhibitions_database": {
+    "authorized_users": [
+      "admin",
+      "draganav@nhmbeo.rs"
+    ]
+  },
+  "news": {
+    "restricted_users": [
+      "aca.lukovic@nhmbeo.rs"
+    ]
+  },
+  "cultural_heritage": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "curator_collections": {
+    "authorized_users": [
+      "admin",
+      "aca.lukovic@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs",
+      "biljana.mitrovic@nhmbeo.rs",
+      "verica.stojanovic@nhmbeo.rs"
+    ]
+  },
+  "user_management": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "reports_analytics": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "system_logs": {
+    "authorized_users": [
+      "admin"
+    ]
+  },
+  "bird_ringing_database": {
+    "authorized_users": [
+      "admin",
+      "vuk.popic@nhmbeo.rs"
+    ]
+  }
+}

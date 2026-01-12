@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Управљање приступом модулима - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h4 mb-0">
+                                <i class="bi bi-shield-check me-2"></i>
+                                Управљање приступом модулима
+                            </h1>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-light btn-sm">
+                                <i class="bi bi-arrow-left me-1"></i> Назад
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- User Selection -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white py-2">
+                    <h6 class="mb-0 small"><i class="bi bi-person me-2"></i>Изаберите корисника</h6>
+                </div>
+                <div class="card-body py-2">
+                    <select class="form-select form-select-sm mb-2" id="userSelect" onchange="showUserModules()">
+                        <option value="">-- Изаберите корисника --</option>
+                        {% for user in users %}
+                        <option value="{{ user.email }}"
+                                data-name="{{ user.name }}"
+                                data-department="{{ user.department }}"
+                                data-modules='{{ user.modules|map(attribute="key")|list|tojson|safe }}'>
+                            {{ user.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <div id="userInfo" class="d-none">
+                        <div class="border-top pt-3">
+                            <p class="mb-1"><strong id="selectedUserName"></strong></p>
+                            <p class="mb-2 text-muted small" id="selectedUserDept"></p>
+                            <p class="mb-0">
+                                <span class="badge bg-success" id="moduleCount">0</span> модула додељено
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card mt-2">
+                <div class="card-header py-1">
+                    <small class="mb-0"><i class="bi bi-bar-chart me-1"></i>Статистика</small>
+                </div>
+                <div class="card-body py-2 small">
+                    <div class="d-flex justify-content-between">
+                        <span>Корисника:</span>
+                        <strong>{{ users|length }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Модула:</span>
+                        <strong>{{ all_modules|length }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module Assignment -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-secondary text-white py-2">
+                    <h6 class="mb-0 small"><i class="bi bi-grid-3x3-gap me-2"></i>Модули</h6>
+                </div>
+                <div class="card-body py-2">
+                    <div id="noUserSelected" class="text-center py-3 text-muted">
+                        <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 small">Изаберите корисника са леве стране</p>
+                    </div>
+
+                    <div id="modulesList" class="d-none">
+                        <div class="row g-2">
+                            {% for module_key, module_info in all_modules.items() %}
+                            <div class="col-md-6">
+                                <div class="card module-card" id="module-{{ module_key }}">
+                                    <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            <i class="{{ module_info.icon }} me-2" style="font-size: 1.2rem;"></i>
+                                            <div>
+                                                <strong class="small">{{ module_info.name }}</strong>
+                                                {% if module_info.default_access %}
+                                                <span class="badge bg-success ms-1" style="font-size: 0.6rem;">СВИ</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button"
+                                                    class="btn btn-outline-success grant-btn"
+                                                    data-module="{{ module_key }}"
+                                                    onclick="grantAccess('{{ module_key }}')">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger revoke-btn"
+                                                    data-module="{{ module_key }}"
+                                                    onclick="revokeAccess('{{ module_key }}')">
+                                                <i class="bi bi-dash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="card mt-3">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-3 small">
+                        <span><span class="badge bg-success">Зелено</span> = Има приступ</span>
+                        <span><span class="badge bg-light text-dark border">Бело</span> = Нема приступ</span>
+                        <span><span class="badge bg-success">СВИ</span> = Сви имају приступ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Forms for Grant/Revoke -->
+<form id="grantForm" method="POST" action="{{ url_for('grant_module_access') }}" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="user_email" id="grantUserEmail">
+    <input type="hidden" name="module_key" id="grantModuleKey">
+</form>
+
+<form id="revokeForm" method="POST" action="{{ url_for('revoke_module_access') }}" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="user_email" id="revokeUserEmail">
+    <input type="hidden" name="module_key" id="revokeModuleKey">
+</form>
+
+<style>
+.module-card {
+    transition: all 0.2s;
+    border: 2px solid #dee2e6;
+}
+.module-card.has-access {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+.module-card .grant-btn { display: inline-block; }
+.module-card .revoke-btn { display: none; }
+.module-card.has-access .grant-btn { display: none; }
+.module-card.has-access .revoke-btn { display: inline-block; }
+</style>
+
+<script>
+let selectedUserEmail = '';
+let selectedUserModules = [];
+
+function showUserModules() {
+    const select = document.getElementById('userSelect');
+    const option = select.options[select.selectedIndex];
+
+    if (!option.value) {
+        document.getElementById('noUserSelected').classList.remove('d-none');
+        document.getElementById('modulesList').classList.add('d-none');
+        document.getElementById('userInfo').classList.add('d-none');
+        selectedUserEmail = '';
+        return;
+    }
+
+    selectedUserEmail = option.value;
+    try {
+        selectedUserModules = JSON.parse(option.dataset.modules || '[]');
+    } catch (e) {
+        console.error('Error parsing modules:', e, option.dataset.modules);
+        selectedUserModules = [];
+    }
+
+    // Show user info
+    document.getElementById('selectedUserName').textContent = option.dataset.name;
+    document.getElementById('selectedUserDept').textContent = option.dataset.department;
+    document.getElementById('moduleCount').textContent = selectedUserModules.length;
+    document.getElementById('userInfo').classList.remove('d-none');
+
+    // Show modules list
+    document.getElementById('noUserSelected').classList.add('d-none');
+    document.getElementById('modulesList').classList.remove('d-none');
+
+    // Update module cards
+    document.querySelectorAll('.module-card').forEach(card => {
+        const moduleKey = card.id.replace('module-', '');
+        if (selectedUserModules.includes(moduleKey)) {
+            card.classList.add('has-access');
+        } else {
+            card.classList.remove('has-access');
+        }
+    });
+}
+
+function grantAccess(moduleKey) {
+    if (!selectedUserEmail) {
+        alert('Изаберите корисника');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('user_email', selectedUserEmail);
+    formData.append('module_key', moduleKey);
+    formData.append('csrf_token', '{{ csrf_token() }}');
+
+    fetch('{{ url_for("grant_module_access") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            // Update UI immediately
+            const card = document.getElementById('module-' + moduleKey);
+            if (card) {
+                card.classList.add('has-access');
+                if (!selectedUserModules.includes(moduleKey)) {
+                    selectedUserModules.push(moduleKey);
+                }
+                document.getElementById('moduleCount').textContent = selectedUserModules.length;
+            }
+            showToast('Приступ одобрен', 'success');
+        }
+    })
+    .catch(error => {
+        showToast('Грешка: ' + error, 'error');
+    });
+}
+
+function revokeAccess(moduleKey) {
+    if (!selectedUserEmail) {
+        alert('Изаберите корисника');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('user_email', selectedUserEmail);
+    formData.append('module_key', moduleKey);
+    formData.append('csrf_token', '{{ csrf_token() }}');
+
+    fetch('{{ url_for("revoke_module_access") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            // Update UI immediately
+            const card = document.getElementById('module-' + moduleKey);
+            if (card) {
+                card.classList.remove('has-access');
+                const idx = selectedUserModules.indexOf(moduleKey);
+                if (idx > -1) {
+                    selectedUserModules.splice(idx, 1);
+                }
+                document.getElementById('moduleCount').textContent = selectedUserModules.length;
+            }
+            showToast('Приступ укинут', 'success');
+        }
+    })
+    .catch(error => {
+        showToast('Грешка: ' + error, 'error');
+    });
+}
+
+function showToast(message, type) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="toast show align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'}" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.position-fixed').remove()"></button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+}
+
+// Auto-select user on page load if provided
+document.addEventListener('DOMContentLoaded', function() {
+    {% if selected_user %}
+    const select = document.getElementById('userSelect');
+    select.value = '{{ selected_user }}';
+    if (select.value === '{{ selected_user }}') {
+        showUserModules();
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}
