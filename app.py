@@ -195,7 +195,9 @@ def get_locale():
 
 babel = Babel(app, locale_selector=get_locale)
 
-# Register image API blueprint (CSRF exempt - uses FormData uploads with session auth)
+# Register image API blueprint (auth enforced per-route in image_api.py)
+# Exempt from CSRF — image uploads use multipart FormData which can't carry CSRF tokens;
+# all routes are now protected by @login_required or @admin_required instead.
 csrf.exempt(image_api)
 app.register_blueprint(image_api)
 app.register_blueprint(archive_signature_bp)

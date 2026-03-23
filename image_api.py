@@ -6,17 +6,23 @@ Flask endpoints for image management and server backup
 
 import os
 import logging
+from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
 from image_storage_engine import get_image_storage
+from security_utils import login_required, admin_required
 
 logger = logging.getLogger(__name__)
 
 # Create Blueprint
 image_api = Blueprint('image_api', __name__, url_prefix='/api/images')
 
+# Allowed backup root — all restore paths must resolve inside this directory
+_BACKUP_ROOT = Path('./storage/backups').resolve()
+
 
 @image_api.route('/upload', methods=['POST'])
+@login_required
 def upload_image():
     """
     Upload an image.
@@ -84,6 +90,7 @@ def upload_image():
 
 
 @image_api.route('/<image_id>', methods=['GET'])
+@login_required
 def get_image(image_id):
     """
     Get an image file.
@@ -107,6 +114,7 @@ def get_image(image_id):
 
 
 @image_api.route('/<image_id>/metadata', methods=['GET'])
+@login_required
 def get_image_metadata(image_id):
     """Get image metadata."""
     try:
@@ -128,6 +136,7 @@ def get_image_metadata(image_id):
 
 
 @image_api.route('/entity/<database>/<entity_type>/<entity_id>', methods=['GET'])
+@login_required
 def get_entity_images(database, entity_type, entity_id):
     """Get all images for a specific entity."""
     try:
@@ -146,6 +155,7 @@ def get_entity_images(database, entity_type, entity_id):
 
 
 @image_api.route('/<image_id>', methods=['DELETE'])
+@login_required
 def delete_image(image_id):
     """Delete an image."""
     try:
@@ -166,6 +176,7 @@ def delete_image(image_id):
 
 
 @image_api.route('/backup/create', methods=['POST'])
+@admin_required
 def create_backup():
     """Create a local backup of all images."""
     try:
@@ -188,17 +199,32 @@ def create_backup():
         return jsonify({'error': str(e)}), 500
 
 
+def _validate_backup_path(backup_path):
+    """Validate that a backup path resolves inside the allowed backup root."""
+    try:
+        resolved = Path(backup_path).resolve()
+        if not str(resolved).startswith(str(_BACKUP_ROOT)):
+            return None
+        return resolved
+    except (ValueError, OSError):
+        return None
+
+
 @image_api.route('/backup/restore', methods=['POST'])
+@admin_required
 def restore_backup():
     """Restore images from a backup."""
     try:
         if not request.json or 'backup_path' not in request.json:
             return jsonify({'error': 'backup_path required'}), 400
 
-        backup_path = request.json['backup_path']
-        storage = get_image_storage()
+        raw_path = request.json['backup_path']
+        safe_path = _validate_backup_path(raw_path)
+        if safe_path is None:
+            return jsonify({'error': 'Invalid backup path'}), 400
 
-        success = storage.restore_from_backup(backup_path)
+        storage = get_image_storage()
+        success = storage.restore_from_backup(str(safe_path))
 
         if success:
             return jsonify({
@@ -214,6 +240,7 @@ def restore_backup():
 
 
 @image_api.route('/backup/server', methods=['POST'])
+@admin_required
 def backup_to_server():
     """Backup images to server."""
     try:
@@ -236,6 +263,7 @@ def backup_to_server():
 
 
 @image_api.route('/stats', methods=['GET'])
+@login_required
 def get_storage_stats():
     """Get storage statistics."""
     try:
@@ -254,6 +282,7 @@ def get_storage_stats():
 
 # Server-side backup receiver endpoint
 @image_api.route('/backup/receive', methods=['POST'])
+@admin_required
 def receive_backup():
     """
     Receive image backup from another instance.
