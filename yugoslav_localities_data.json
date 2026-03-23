@@ -1,0 +1,867 @@
+{
+  "major_districts": {
+    "Trepča": {
+      "total_specimens": 79,
+      "selected_specimens": [
+        {
+          "id": 432,
+          "inv_broj": null,
+          "naziv": "neidentifikovani, pirit, pirotin",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "46",
+          "nacin_nabavljanja": null,
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 821,
+          "inv_broj": 58,
+          "naziv": "galenit, ceruzit i džemsonit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "galenit",
+          "opis": "Preparat",
+          "komentar": null,
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1955-04-01 00:00:00"
+        },
+        {
+          "id": 814,
+          "inv_broj": 556,
+          "naziv": "kalcit, sfalerit, pirit, galenit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "kalcit",
+          "opis": "Raspao se skroz",
+          "komentar": "Depo",
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 813,
+          "inv_broj": 570,
+          "naziv": "druza kvarca sa pirotinom, malo pirita, sfalerit, dolomit, halkopirit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "druza kvarca, sfalerit, pirit i dolomit, halkopirit",
+          "opis": null,
+          "komentar": "Depo",
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 812,
+          "inv_broj": 589,
+          "naziv": "sfalerit sa kvarcom",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "sfalerit sa kvarcom",
+          "opis": null,
+          "komentar": "Depo",
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 811,
+          "inv_broj": 609,
+          "naziv": "pirit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "pirit",
+          "opis": "Raspao se skroz",
+          "komentar": "Depo",
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 307,
+          "inv_broj": 1560,
+          "naziv": "otkop 6",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "rodohrozit sa kalcitom",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1951-01-01 00:00:00"
+        },
+        {
+          "id": 364,
+          "inv_broj": 1561,
+          "naziv": "Rodohrozit, kalcit, pirit, sfalerit, plumozit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "rodohrozit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 376,
+          "inv_broj": 1573,
+          "naziv": "sfalerit, rodohrozit, kalcit i pirit",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "sfalerit sa rodohrozitom i piritom",
+          "opis": "Nema u exel bazi",
+          "komentar": "horizont 486",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 265,
+          "inv_broj": 1580,
+          "naziv": "pečurka od rodohrozita, horizont 486",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "rodohrozit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 1779,
+          "inv_broj": 1771,
+          "naziv": "kristalna druza karbonata",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "druza karbonata",
+          "opis": "Proveriti",
+          "komentar": null,
+          "nacin_nabavljanja": null,
+          "datum_nabavljanja": "1959-01-01 00:00:00"
+        },
+        {
+          "id": 793,
+          "inv_broj": 1773,
+          "naziv": "stalaktit od pirotina, galenita, kvarca, pirita i halkopirita",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "pirotin sa kvarcom",
+          "opis": "Provetiti broj",
+          "komentar": "98",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1959-01-01 00:00:00"
+        },
+        {
+          "id": 374,
+          "inv_broj": 1974,
+          "naziv": "Kristalna druza sfalerita, kalcita i galenita",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "sfalerit, kalcit, galenit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1951-01-01 00:00:00"
+        },
+        {
+          "id": 391,
+          "inv_broj": 2002,
+          "naziv": "druza galenita, pirita, kalcita i rodohrozita",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "galenit, pirit, kalcit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1951-01-01 00:00:00"
+        },
+        {
+          "id": 371,
+          "inv_broj": 2003,
+          "naziv": "kristalna druza galenita sa sfaleritom, piritom i kvarcom",
+          "lokalitet": "Stari Trg, Trepča, Srbija",
+          "predmet": "galenit sa sfaleritom I piritom",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1951-01-01 00:00:00"
+        }
+      ]
+    },
+    "Bor": {
+      "total_specimens": 7,
+      "selected_specimens": [
+        {
+          "id": 797,
+          "inv_broj": 1474,
+          "naziv": "gips",
+          "lokalitet": "Bor, Srbija",
+          "predmet": "gips",
+          "opis": null,
+          "komentar": "02, 061",
+          "nacin_nabavljanja": null,
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 687,
+          "inv_broj": 3390,
+          "naziv": "kovelin i bornit",
+          "lokalitet": "Bor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "12",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 605,
+          "inv_broj": 3743,
+          "naziv": "kalcit",
+          "lokalitet": "Bor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "24",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 601,
+          "inv_broj": 3747,
+          "naziv": "kovelin i halkopirit",
+          "lokalitet": "Bor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "24",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 556,
+          "inv_broj": 3792,
+          "naziv": "kovelin",
+          "lokalitet": "Bor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "44",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 507,
+          "inv_broj": 3843,
+          "naziv": "malahit",
+          "lokalitet": "Bor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "57",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 697,
+          "inv_broj": 3225,
+          "naziv": "magnezit",
+          "lokalitet": "Krnda, Zlatibor, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "012, 025",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1950-02-19 00:00:00"
+        }
+      ]
+    },
+    "Majdanpek": {
+      "total_specimens": 2,
+      "selected_specimens": [
+        {
+          "id": 508,
+          "inv_broj": 3842,
+          "naziv": "kuprit sa malahitom",
+          "lokalitet": "Majdanpek, Srbija",
+          "predmet": null,
+          "opis": "Polirani presek",
+          "komentar": "57",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 798,
+          "inv_broj": 1314,
+          "naziv": "malahit",
+          "lokalitet": "Majdanpek, horizont 505m, Srbija",
+          "predmet": "malahit",
+          "opis": null,
+          "komentar": "14",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1963-10-25 00:00:00"
+        }
+      ]
+    },
+    "Rudnik": {
+      "total_specimens": 3,
+      "selected_specimens": [
+        {
+          "id": 806,
+          "inv_broj": 698,
+          "naziv": "galenit i pirotin",
+          "lokalitet": "Rudnik, Srbija",
+          "predmet": "galenit",
+          "opis": null,
+          "komentar": "Depo",
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-01 00:00:00"
+        },
+        {
+          "id": 682,
+          "inv_broj": 3516,
+          "naziv": "druza kvarca",
+          "lokalitet": "Rudnik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "11",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 639,
+          "inv_broj": 3709,
+          "naziv": "scepter kvarc",
+          "lokalitet": "Rudnik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "13",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "2013-07-01 00:00:00"
+        }
+      ]
+    },
+    "Kopaonik": {
+      "total_specimens": 12,
+      "selected_specimens": [
+        {
+          "id": 694,
+          "inv_broj": 3321,
+          "naziv": "mizonit i hedenbergit",
+          "lokalitet": "Kopaonik, Srbija",
+          "predmet": null,
+          "opis": "Me55-Ma45, Di39-Hd61",
+          "komentar": "57",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1994-06-09 00:00:00"
+        },
+        {
+          "id": 1721,
+          "inv_broj": 2950,
+          "naziv": "sitni kristali",
+          "lokalitet": "Novo Brdo, Kopaonik, Srbija",
+          "predmet": "gips",
+          "opis": null,
+          "komentar": "u kancelariji",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-05-20 00:00:00"
+        },
+        {
+          "id": 809,
+          "inv_broj": 677,
+          "naziv": "Granat sa malahitom",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": "granat",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-02 00:00:00"
+        },
+        {
+          "id": 808,
+          "inv_broj": 678,
+          "naziv": "granat",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": "granat",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-03 00:00:00"
+        },
+        {
+          "id": 750,
+          "inv_broj": 2364,
+          "naziv": "magnetit",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "30",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1971-07-14 00:00:00"
+        },
+        {
+          "id": 749,
+          "inv_broj": 2366,
+          "naziv": "malahit i azurit u steni",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "30",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1971-07-14 00:00:00"
+        },
+        {
+          "id": 748,
+          "inv_broj": 2367,
+          "naziv": "pirit u steni, halkopirit sa magnetitom",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "30",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1971-07-14 00:00:00"
+        },
+        {
+          "id": 747,
+          "inv_broj": 2368,
+          "naziv": "granat sa piritom",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "30",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1971-07-14 00:00:00"
+        },
+        {
+          "id": 746,
+          "inv_broj": 2370,
+          "naziv": "granat sa magnetitom",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "30",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1971-07-14 00:00:00"
+        },
+        {
+          "id": 703,
+          "inv_broj": 3121,
+          "naziv": "kvarc",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "60",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1988-09-21 00:00:00"
+        },
+        {
+          "id": 799,
+          "inv_broj": 1240,
+          "naziv": "arsenopirit sa talkom",
+          "lokalitet": "Šiparčika, Zimovnik, Kopaonik, Srbija",
+          "predmet": "arsenopirit",
+          "opis": null,
+          "komentar": "60",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1963-09-22 00:00:00"
+        },
+        {
+          "id": 807,
+          "inv_broj": 680,
+          "naziv": "granat",
+          "lokalitet": "Suvo Rudište, Kopaonik, Srbija",
+          "predmet": "granat",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Kupljen",
+          "datum_nabavljanja": "1947-01-02 00:00:00"
+        }
+      ]
+    },
+    "Mežica": {
+      "total_specimens": 12,
+      "selected_specimens": [
+        {
+          "id": 1796,
+          "inv_broj": 2244,
+          "naziv": "hidrocinkit sa kalaminom",
+          "lokalitet": "Mezice,Slovenija",
+          "predmet": "hidrocinkit",
+          "opis": "Nema u exel bazi",
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1970-06-01 00:00:00"
+        },
+        {
+          "id": 1794,
+          "inv_broj": 2248,
+          "naziv": "kalamin",
+          "lokalitet": "Mezice,Slovenija",
+          "predmet": "kalamin",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1970-06-01 00:00:00"
+        },
+        {
+          "id": 1795,
+          "inv_broj": 2249,
+          "naziv": "antimonit sa valentinitom i galenitom",
+          "lokalitet": "Mezice,Slovenija",
+          "predmet": "antimonit sa valentinitom",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1970-06-01 00:00:00"
+        },
+        {
+          "id": 1793,
+          "inv_broj": 2250,
+          "naziv": "limonit sa gipsom",
+          "lokalitet": "Mezice,Slovenija",
+          "predmet": "limonit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1970-06-01 00:00:00"
+        },
+        {
+          "id": 794,
+          "inv_broj": 1554,
+          "naziv": "vulfenit",
+          "lokalitet": "Mežice, Slovenija",
+          "predmet": "vulfenit",
+          "opis": "Provetiti broj",
+          "komentar": "034, 035",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1968-08-01 00:00:00"
+        },
+        {
+          "id": 767,
+          "inv_broj": 2251,
+          "naziv": "kristali kalcita",
+          "lokalitet": "Mežice, Slovenija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "53",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1970-06-01 00:00:00"
+        },
+        {
+          "id": 482,
+          "inv_broj": 3868,
+          "naziv": "kalcit",
+          "lokalitet": "Mežice, Slovenija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "66",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 669,
+          "inv_broj": 3680,
+          "naziv": "vulfenit",
+          "lokalitet": "Mežice, Slovenija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "2",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        }
+      ]
+    },
+    "Alšar": {
+      "total_specimens": 1,
+      "selected_specimens": [
+        {
+          "id": 550,
+          "inv_broj": 3798,
+          "naziv": "realgar",
+          "lokalitet": "Alšar, Makedonija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "44",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        }
+      ]
+    },
+    "Busovača": {
+      "total_specimens": 10,
+      "selected_specimens": [
+        {
+          "id": 760,
+          "inv_broj": 2308,
+          "naziv": "hijalofan",
+          "lokalitet": "Busovača, BiH",
+          "predmet": null,
+          "opis": null,
+          "komentar": "51",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1972-03-19 00:00:00"
+        },
+        {
+          "id": 481,
+          "inv_broj": 3869,
+          "naziv": "kvarc",
+          "lokalitet": "Busovača, BiH",
+          "predmet": null,
+          "opis": null,
+          "komentar": "67",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 1190,
+          "inv_broj": 2307,
+          "naziv": "veliki kristal",
+          "lokalitet": "Busovača, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": "ormar u kancelariji",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1972-03-19 00:00:00"
+        },
+        {
+          "id": 1773,
+          "inv_broj": 2814,
+          "naziv": "druza kvarca",
+          "lokalitet": "Kapak-Polom, Cavica potok, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        },
+        {
+          "id": 1770,
+          "inv_broj": 2817,
+          "naziv": "kristali kvarca",
+          "lokalitet": "Tisovac, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        },
+        {
+          "id": 1769,
+          "inv_broj": 2818,
+          "naziv": "blizanci kvarca",
+          "lokalitet": "Tisovac, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        },
+        {
+          "id": 1768,
+          "inv_broj": 2819,
+          "naziv": "gorski kristal",
+          "lokalitet": "Tisovac, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        },
+        {
+          "id": 1767,
+          "inv_broj": 2820,
+          "naziv": "kvarc sa hijalofanom",
+          "lokalitet": "Tisovac, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        },
+        {
+          "id": 709,
+          "inv_broj": 2939,
+          "naziv": "hijalofan",
+          "lokalitet": "Busovača, BiH",
+          "predmet": null,
+          "opis": "Blizanci, 14,5x9x6",
+          "komentar": "51",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1987-04-29 00:00:00"
+        },
+        {
+          "id": 1771,
+          "inv_broj": 2816,
+          "naziv": "druza kvarca",
+          "lokalitet": "Tisovac, Busovaca, Bosna",
+          "predmet": "kvarc",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1985-06-10 00:00:00"
+        }
+      ]
+    },
+    "Zajača": {
+      "total_specimens": 4,
+      "selected_specimens": [
+        {
+          "id": 710,
+          "inv_broj": 2912,
+          "naziv": "antimonit",
+          "lokalitet": "Zajača, Srbija",
+          "predmet": null,
+          "opis": "preparat",
+          "komentar": null,
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1987-04-28 00:00:00"
+        },
+        {
+          "id": 695,
+          "inv_broj": 3311,
+          "naziv": "oksidna ruda",
+          "lokalitet": "Zajača, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "16",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1958-07-19 00:00:00"
+        },
+        {
+          "id": 558,
+          "inv_broj": 3790,
+          "naziv": "valentinit",
+          "lokalitet": "Zajača, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "44",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 509,
+          "inv_broj": 3841,
+          "naziv": "kermezit",
+          "lokalitet": "Zajača, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "57",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        }
+      ]
+    },
+    "Stolice": {
+      "total_specimens": 10,
+      "selected_specimens": [
+        {
+          "id": 627,
+          "inv_broj": 3721,
+          "naziv": "antimonit",
+          "lokalitet": "Stolice kod Krupnja, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "15",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1954-09-29 00:00:00"
+        },
+        {
+          "id": 626,
+          "inv_broj": 3722,
+          "naziv": "antimonit na kvarcu",
+          "lokalitet": "Stolice kod Krupnja, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "15",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1954-09-29 00:00:00"
+        },
+        {
+          "id": 696,
+          "inv_broj": 3294,
+          "naziv": "kalcit",
+          "lokalitet": "Stolice, Krupanj, Potkop 15a, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "3",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1958-07-19 00:00:00"
+        },
+        {
+          "id": 1789,
+          "inv_broj": 1162,
+          "naziv": "antimonit sa baritom",
+          "lokalitet": "Stolice, Krupanj, Srbija",
+          "predmet": "antimonit",
+          "opis": null,
+          "komentar": null,
+          "nacin_nabavljanja": null,
+          "datum_nabavljanja": "1955-06-01 00:00:00"
+        },
+        {
+          "id": 625,
+          "inv_broj": 3723,
+          "naziv": "antimonit",
+          "lokalitet": "Stolice kod Krupnja, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "15",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1954-09-29 00:00:00"
+        }
+      ]
+    },
+    "Lece": {
+      "total_specimens": 3,
+      "selected_specimens": [
+        {
+          "id": 662,
+          "inv_broj": 3687,
+          "naziv": "opal",
+          "lokalitet": "Lece, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "5",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 615,
+          "inv_broj": 3733,
+          "naziv": "ahat i oniks",
+          "lokalitet": "Lece, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "16",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 553,
+          "inv_broj": 3795,
+          "naziv": "ametist",
+          "lokalitet": "Lece, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "44",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": null
+        }
+      ]
+    },
+    "Avala": {
+      "total_specimens": 3,
+      "selected_specimens": [
+        {
+          "id": 409,
+          "inv_broj": null,
+          "naziv": "serpentin konglomerat sa fosilima",
+          "lokalitet": "Avala, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "93",
+          "nacin_nabavljanja": null,
+          "datum_nabavljanja": null
+        },
+        {
+          "id": 777,
+          "inv_broj": 2115,
+          "naziv": "cinabarit sa avalitom",
+          "lokalitet": "Avala, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "48",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1948-01-01 00:00:00"
+        },
+        {
+          "id": 707,
+          "inv_broj": 2962,
+          "naziv": "uvarovit",
+          "lokalitet": "Ljubičica, Leštane, Avala, Srbija",
+          "predmet": null,
+          "opis": null,
+          "komentar": "60",
+          "nacin_nabavljanja": "Poklon",
+          "datum_nabavljanja": "1949-10-20 00:00:00"
+        }
+      ]
+    }
+  }
+}
