@@ -91,12 +91,25 @@ def _get_fernet():
         if _fernet_instance is not None:
             return _fernet_instance
         if not KEY_FILE.exists():
+            # Check if there are existing saved settings that would become
+            # undecryptable if we generate a new key
+            if SETTINGS_FILE.exists():
+                logger.error(
+                    "Mail encryption key missing (%s) but saved credentials exist (%s). "
+                    "Restore the key file or delete mail_settings.json to re-enter credentials.",
+                    KEY_FILE, SETTINGS_FILE,
+                )
+                raise RuntimeError(
+                    "Mail encryption key missing — cannot decrypt saved credentials. "
+                    "Restore the key file or remove mail_settings.json."
+                )
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             KEY_FILE.write_bytes(Fernet.generate_key())
             try:
                 os.chmod(KEY_FILE, 0o600)
             except OSError:
                 pass
+            logger.info("Generated new mail encryption key at %s", KEY_FILE)
         _fernet_instance = Fernet(KEY_FILE.read_bytes().strip())
         return _fernet_instance
 
