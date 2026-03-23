@@ -1,0 +1,421 @@
+"""Shared route implementations for museum overview pages."""
+
+import logging
+import os
+from typing import Dict
+
+from flask import render_template, session
+
+logger = logging.getLogger(__name__)
+
+
+def _collection_total(collection: Dict, stats_key: str = 'total_specimens'):
+    if not collection:
+        return None
+    stats = collection.get('statistics', {})
+    value = stats.get(stats_key)
+    if value is None:
+        if 'specimens' in collection:
+            value = len(collection['specimens'])
+        elif 'records' in collection:
+            value = len(collection['records'])
+    return value
+
+
+def render_museum_databases(
+    *,
+    library_database,
+    get_employee_directory,
+    get_museum_employees,
+    get_mineral_database,
+    get_meteorite_collection_database,
+    get_cultural_heritage_database,
+    get_exhibit_statistics,
+    get_exhibition_statistics,
+    bird_ringing_database,
+    scientific_papers_database,
+    botany_collection_database,
+    ichthyology_collection_database,
+    entomology_collection_database,
+    mycology_collection_database,
+    herpetology_collection_database,
+    ornithology_collection_database,
+    paleozoology_collection_database,
+    paleobotany_collection_database,
+    petrology_collection_database,
+    conservation_biology_database,
+    visitor_records,
+    research_projects,
+    get_qr_collection_action_url,
+    get_image_upload_action_url,
+    get_image_upload_module_key,
+    user_has_module_access,
+):
+    """Render overview of all museum databases."""
+    user_email = session.get('user_email', '')
+    user_role = session.get('user_role', 'user')
+
+    try:
+        employee_directory = get_employee_directory()
+    except Exception as exc:  # pragma: no cover
+        logger.error("Employee directory unavailable: %s", exc)
+        employee_directory = []
+    employee_count = len(employee_directory)
+    profile_count = len([entry for entry in employee_directory if entry.get('description')])
+
+    if employee_count == 0:
+        employee_count = len(get_museum_employees())
+    if profile_count == 0:
+        profile_count = len([entry for entry in get_museum_employees().values() if entry.get('description')])
+
+    mineral_count = None
+    try:
+        mineral_db = get_mineral_database()
+        if mineral_db and getattr(mineral_db, 'available', False):
+            mineral_stats = mineral_db.get_statistics() or {}
+            mineral_count = mineral_stats.get('total_minerals')
+    except Exception as exc:  # pragma: no cover
+        logger.error("Mineral statistics unavailable: %s", exc)
+
+    try:
+        from inventory_reconciliation import InventoryReconciliation
+
+        reconciliation = InventoryReconciliation()
+        inventory_summary = reconciliation.get_inventory_summary()
+        inventory_total = inventory_summary.get('total_items')
+        inventory_unique = inventory_summary.get('unique_inventory_numbers')
+    except Exception as exc:  # pragma: no cover
+        logger.error("Inventory summary unavailable: %s", exc)
+        inventory_total = None
+        inventory_unique = None
+
+    try:
+        bird_stats = bird_ringing_database.get_statistics() or {}
+    except Exception as exc:  # pragma: no cover
+        logger.error("Bird ringing statistics unavailable: %s", exc)
+        bird_stats = {}
+    bird_count = bird_stats.get('total_records')
+    bird_species = bird_stats.get('unique_species')
+    bird_locations = bird_stats.get('unique_locations')
+
+    collection_counts = {
+        'botany_collection': _collection_total(botany_collection_database),
+        'ichthyology_collection': _collection_total(ichthyology_collection_database),
+        'entomology_collection': _collection_total(entomology_collection_database),
+        'mycology_collection': _collection_total(mycology_collection_database),
+        'herpetology_collection': _collection_total(herpetology_collection_database),
+        'ornithology_collection': _collection_total(ornithology_collection_database),
+        'paleozoology_collection': _collection_total(paleozoology_collection_database),
+        'paleobotany_collection': _collection_total(paleobotany_collection_database),
+        'petrology_collection': _collection_total(petrology_collection_database),
+        'meteorite_collection': _collection_total(get_meteorite_collection_database()),
+        'conservation_biology': _collection_total(conservation_biology_database, stats_key='total_records'),
+        'zoology_collection': None,
+        'geology_conservation': None,
+    }
+
+    try:
+        exhibit_stats = get_exhibit_statistics()
+    except Exception as exc:  # pragma: no cover
+        logger.error("Exhibit statistics unavailable: %s", exc)
+        exhibit_stats = {'total_artifacts': 0, 'displayed_artifacts': 0, 'storage_artifacts': 0}
+
+    try:
+        exhibition_stats = get_exhibition_statistics()
+    except Exception as exc:  # pragma: no cover
+        logger.error("Exhibition statistics unavailable: %s", exc)
+        exhibition_stats = {'total_exhibitions': 0}
+
+    databases_info = {
+        'employees': {
+            'name': 'База запослених',
+            'description': 'Информације о свим запосленима музеја',
+            'icon': 'bi-people-fill',
+            'count': employee_count or '—',
+            'status': 'active',
+            'url': '/admin/employees_database',
+            'color': 'primary',
+        },
+        'employee_profiles': {
+            'name': 'База профила запослених',
+            'description': 'Биографије и стручни профили запослених',
+            'icon': 'bi-person-badge',
+            'count': profile_count or '—',
+            'status': 'active',
+            'url': '/admin/employee_profiles_database',
+            'color': 'info',
+        },
+        'minerals': {
+            'name': 'База минерала',
+            'description': 'Колекција минерала и геолошких узорака',
+            'icon': 'bi-gem',
+            'count': mineral_count or '—',
+            'status': 'active',
+            'url': '/admin/mineral_collection',
+            'color': 'success',
+        },
+        'library': {
+            'name': 'База библиотеке',
+            'description': 'Каталог књига и научних публикација',
+            'icon': 'bi-book',
+            'count': len(library_database.get('books', [])),
+            'status': 'active',
+            'url': '/admin/library_database',
+            'color': 'info',
+        },
+        'nhm_data_portal': {
+            'name': 'NHM London Data Portal',
+            'description': 'Датасетови Природњачког музеја у Лондону - 35+ милиона записа',
+            'icon': 'bi-globe-europe-africa',
+            'count': '286',
+            'status': 'active',
+            'url': '/admin/nhm_data_portal',
+            'color': 'danger',
+            'external': True,
+        },
+        'exhibits': {
+            'name': 'База експоната',
+            'description': 'Инвентар музејских експоната, стање и локације',
+            'icon': 'bi-collection',
+            'count': exhibit_stats['total_artifacts'],
+            'status': 'active',
+            'url': '/admin/exhibits_database',
+            'color': 'warning',
+        },
+        'cultural_heritage': {
+            'name': 'База заштићених културних добара',
+            'description': 'Регистар покретних културних добара под заштитом',
+            'icon': 'bi-award',
+            'count': len(get_cultural_heritage_database()['heritage_items']),
+            'status': 'active',
+            'url': '/admin/cultural_heritage_database',
+            'color': 'warning',
+        },
+        'visitors': {
+            'name': 'База посетилаца',
+            'description': 'Статистике и информације о посетиоцима',
+            'icon': 'bi-person-check',
+            'count': len(visitor_records),
+            'status': 'active',
+            'url': '/admin/visitors_database',
+            'color': 'secondary',
+        },
+        'research': {
+            'name': 'База истраживања',
+            'description': 'Научни радови и истраживачки пројекти',
+            'icon': 'bi-search',
+            'count': len(research_projects),
+            'status': 'active',
+            'url': '/admin/research_database',
+            'color': 'dark',
+        },
+        'bird_ringing': {
+            'name': 'База прстеновања птица',
+            'description': 'Комплетна база података о прстенованим птицама - '
+            f"{bird_species or '325'} врста, {bird_locations or '979'} локација",
+            'icon': 'bi-egg',
+            'count': bird_count or '—',
+            'status': 'active',
+            'url': '/admin/bird_ringing_database',
+            'color': 'info',
+            'curator': 'vuk.popic@nhmbeo.rs',
+        },
+        'scientific_papers': {
+            'name': 'База научних радова',
+            'description': 'Научне публикације повезане са геолошким картама Србије (ОГК)',
+            'icon': 'bi-journal-text',
+            'count': scientific_papers_database.get_statistics().get('total_papers', 0)
+            if os.path.exists('data/scientific_papers.db')
+            else '—',
+            'status': 'active' if os.path.exists('data/scientific_papers.db') else 'planned',
+            'url': '/admin/scientific_papers',
+            'color': 'dark',
+        },
+        'exhibitions': {
+            'name': 'База изложби',
+            'description': 'Архива галеријских изложби и анализа посећености',
+            'icon': 'bi-easel',
+            'count': exhibition_stats['total_exhibitions'],
+            'status': 'active' if exhibition_stats['total_exhibitions'] else 'planned',
+            'url': '/admin/exhibitions_database',
+            'color': 'danger',
+        },
+        'botany_collection': {
+            'name': 'Ботаничка збирка',
+            'description': 'Хербаријум >40.000 примерака - ендемске биљке Балкана (Др М. Никетић - SANU, В. Стојановић, Др А. Савић, Др М. Несторовић)',
+            'icon': 'bi-flower1',
+            'count': collection_counts['botany_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/botany_collection',
+            'color': 'success',
+            'curators': ['mniketic@nhmbeo.rs', 'verica.stojanovic@nhmbeo.rs', 'aleksandra.savic@nhmbeo.rs', 'marko.nestorovic@nhmbeo.rs'],
+        },
+        'ichthyology_collection': {
+            'name': 'Ихтиолошка збирка',
+            'description': 'Колекција риба и водених организама - виши кустос (Д. Вучић)',
+            'icon': 'bi-water',
+            'count': collection_counts['ichthyology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/ichthyology_collection',
+            'color': 'info',
+            'curators': ['dubravka.vucic@nhmbeo.rs'],
+        },
+        'entomology_collection': {
+            'name': 'Ентомолошка збирка',
+            'description': 'Колекција инсеката - 1.710 врста приказано, збирка Odonata (М. Јовић - координатор Balkan OdoBase, А. Стојановић - конзерватор)',
+            'icon': 'bi-bug',
+            'count': collection_counts['entomology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/entomology_collection',
+            'color': 'warning',
+            'curators': ['milos.jovic@nhmbeo.rs', 'aleksandar@nhmbeo.rs'],
+        },
+        'mycology_collection': {
+            'name': 'Миколошка збирка',
+            'description': 'Колекција гљива и макромицета Балкана (Др Б. Иванчевић - 30+ година истраживања)',
+            'icon': 'bi-tree',
+            'count': collection_counts['mycology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/mycology_collection',
+            'color': 'success',
+            'curators': ['boris@nhmbeo.rs'],
+        },
+        'herpetology_collection': {
+            'name': 'Херпетолошка збирка',
+            'description': 'Колекција водоземаца и гмизаваца - 20+ година теренских истраживања (Др А. Пауновић)',
+            'icon': 'bi-slash-circle',
+            'count': collection_counts['herpetology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/herpetology_collection',
+            'color': 'danger',
+            'curators': ['ana.paunovic@nhmbeo.rs'],
+        },
+        'ornithology_collection': {
+            'name': 'Орнитолошка збирка',
+            'description': 'Колекција птица - Центар за маркирање (прстеновање) птица, програм Euring (Мср В. Попић)',
+            'icon': 'bi-stars',
+            'count': collection_counts['ornithology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/ornithology_collection',
+            'color': 'primary',
+            'curators': ['vuk.popic@nhmbeo.rs'],
+        },
+        'zoology_collection': {
+            'name': 'Општа зоолошка збирка',
+            'description': 'Зоолошка колекција - молекуларна биологија и ДНК баркодирање (З. Марковић - MSc)',
+            'icon': 'bi-heart',
+            'count': collection_counts['zoology_collection'] or '—',
+            'status': 'development',
+            'url': '#',
+            'color': 'info',
+            'curators': ['zorana.markovic@nhmbeo.rs'],
+        },
+        'conservation_biology': {
+            'name': 'Конзервација биолошких збирки',
+            'description': 'Препарација и очување биолошких експоната (Г. Петковски - конзерватор, М. Мрваљевић, Ј. Кокотовић)',
+            'icon': 'bi-shield-check',
+            'count': collection_counts['conservation_biology'] or '—',
+            'status': 'active',
+            'url': '/admin/conservation_biology',
+            'color': 'secondary',
+            'curators': ['gorana.petkovski@nhmbeo.rs', 'milos.mrvaljevic@nhmbeo.rs', 'jovan.kokotovic@nhmbeo.rs'],
+        },
+        'paleozoology_collection': {
+            'name': 'Палеозоолошка збирка',
+            'description': 'Фосили животиња - први диносауруси Србије, крупни сисари (Др Б. Митровић - начелник, Др З. Марковић, С. Алабурић, Др Д. Ђурић, Р. Пејовић, М. Миливојевић)',
+            'icon': 'bi-diagram-3',
+            'count': collection_counts['paleozoology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/paleozoology_collection',
+            'color': 'warning',
+            'curators': ['biljana.mitrovic@nhmbeo.rs', 'zoran.markovic@nhmbeo.rs', 'sanja.pavic@nhmbeo.rs', 'dragana.djuric@nhmbeo.rs', 'pejovic.ranko@nhmbeo.rs', 'milos.milivojevic@nhmbeo.rs'],
+        },
+        'paleobotany_collection': {
+            'name': 'Палеоботаничка збирка',
+            'description': 'Фосилне биљке и праисторијска вегетација - кустос од 1993, професор палеоекологије (Др Д. Ђорђевић-Милутиновић)',
+            'icon': 'bi-flower2',
+            'count': collection_counts['paleobotany_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/paleobotany_collection',
+            'color': 'success',
+            'curators': ['desadjm@nhmbeo.rs'],
+        },
+        'petrology_collection': {
+            'name': 'Петролошка збирка',
+            'description': 'Колекција стена Србије - петрографија и геохемија (Т. Милић Бабић - виши кустос)',
+            'icon': 'bi-layers',
+            'count': collection_counts['petrology_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/petrology_collection',
+            'color': 'secondary',
+            'curators': ['tatjana.milicbabic@nhmbeo.rs'],
+        },
+        'meteorite_collection': {
+            'name': 'Збирка метеорита',
+            'description': 'Колекција метеорита Србије - Сокобањски метеорит и други (Др А. Луковић - минералог)',
+            'icon': 'bi-star-fill',
+            'count': collection_counts['meteorite_collection'] or '—',
+            'status': 'active',
+            'url': '/admin/meteorite_collection',
+            'color': 'warning',
+            'curators': ['aca.lukovic@nhmbeo.rs'],
+        },
+        'geology_conservation': {
+            'name': 'Геолошка збирка и конзервација',
+            'description': 'Геолошки узорци, препарација и конзервација фосила (Б. Радуловић - кустос, Н. Младеновић - конзерватор)',
+            'icon': 'bi-geo-alt',
+            'count': collection_counts['geology_conservation'] or '—',
+            'status': 'development',
+            'url': '#',
+            'color': 'dark',
+            'curators': ['branko.radulovic@nhmbeo.rs', 'nenad.mladenovic@nhmbeo.rs'],
+        },
+    }
+
+    qr_database_map = {
+        'minerals': 'minerals',
+        'cultural_heritage': 'heritage',
+        'botany_collection': 'botany',
+        'ichthyology_collection': 'ichthyology',
+        'entomology_collection': 'entomology',
+        'mycology_collection': 'mycology',
+        'herpetology_collection': 'herpetology',
+        'ornithology_collection': 'ornithology',
+        'paleozoology_collection': 'paleozoology',
+        'paleobotany_collection': 'paleobotany',
+        'petrology_collection': 'petrology',
+        'meteorite_collection': 'meteorite',
+    }
+    for db_key, collection_type in qr_database_map.items():
+        if db_key in databases_info:
+            databases_info[db_key]['qr_url'] = get_qr_collection_action_url(collection_type)
+
+    image_upload_database_map = {
+        'minerals': 'mineral',
+        'cultural_heritage': 'cultural_heritage',
+        'botany_collection': 'botany',
+        'ichthyology_collection': 'ichthyology',
+        'entomology_collection': 'entomology',
+        'mycology_collection': 'mycology',
+        'herpetology_collection': 'herpetology',
+        'ornithology_collection': 'ornithology',
+        'paleozoology_collection': 'paleozoology',
+        'paleobotany_collection': 'paleobotany',
+        'petrology_collection': 'petrology',
+        'meteorite_collection': 'meteorite',
+    }
+    for db_key, database in image_upload_database_map.items():
+        module_key = get_image_upload_module_key(database)
+        if db_key in databases_info and module_key and user_has_module_access(user_email, user_role, module_key):
+            databases_info[db_key]['image_upload_url'] = get_image_upload_action_url(database)
+
+    if inventory_total is not None:
+        databases_info['minerals']['inventory_total'] = inventory_total
+    if inventory_unique is not None:
+        databases_info['minerals']['inventory_unique'] = inventory_unique
+
+    return render_template(
+        'admin_museum_databases.html',
+        databases=databases_info,
+        total_databases=len(databases_info),
+    )
