@@ -1,0 +1,1582 @@
+#!/usr/bin/env python3
+"""
+Timesheet System - PostgreSQL Backend
+Complete timesheet functionality integrated with main app authentication
+
+Data Flow:
+- Daily data is written to timesheet_report_days (one row per day)
+- Database trigger automatically syncs aggregated totals to timesheet_entries
+- This ensures data consistency between detailed and summary views
+"""
+
+import os
+import logging
+import calendar
+import atexit
+from dataclasses import dataclass
+from datetime import datetime, date
+from enum import Enum
+from typing import Optional, Dict, List, Tuple, Union
+from contextlib import contextmanager
+import psycopg
+from psycopg.rows import dict_row
+try:
+    from psycopg_pool import ConnectionPool
+    POOL_AVAILABLE = True
+except ImportError:
+    POOL_AVAILABLE = False
+    ConnectionPool = None
+from serbian_holidays import SerbianHolidays
+
+logger = logging.getLogger(__name__)
+
+# Database URL from environment
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system')
+
+# =============================================================================
+# CONNECTION POOL
+# =============================================================================
+
+# Global connection pool (lazy initialized)
+_connection_pool: Optional[ConnectionPool] = None
+
+
+def _get_pg_url() -> str:
+    """Convert SQLAlchemy-style URL to psycopg format"""
+    return DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
+
+
+def get_connection_pool() -> Optional[ConnectionPool]:
+    """Get or create the connection pool (lazy initialization)"""
+    global _connection_pool
+    if not POOL_AVAILABLE:
+        return None
+    if _connection_pool is None:
+        pg_url = _get_pg_url()
+        _connection_pool = ConnectionPool(
+            conninfo=pg_url,
+            min_size=2,      # Minimum connections to keep open
+            max_size=10,     # Maximum connections allowed
+            max_idle=300,    # Close idle connections after 5 minutes
+            max_lifetime=3600,  # Recycle connections after 1 hour
+            kwargs={'row_factory': dict_row}
+        )
+        logger.info("Timesheet connection pool initialized (min=2, max=10)")
+    return _connection_pool
+
+
+def close_connection_pool():
+    """Close the connection pool (call on app shutdown)"""
+    global _connection_pool
+    if _connection_pool is not None:
+        _connection_pool.close()
+        _connection_pool = None
+        logger.info("Timesheet connection pool closed")
+
+
+# Register cleanup on interpreter exit
+atexit.register(close_connection_pool)
+
+
+@contextmanager
+def get_pooled_connection():
+    """Context manager for getting a connection from the pool"""
+    pool = get_connection_pool()
+    if pool is None:
+        # Pool not available, use direct connection
+        conn = psycopg.connect(_get_pg_url(), row_factory=dict_row)
+        try:
+            yield conn
+        finally:
+            conn.close()
+    else:
+        # Use pool's connection context manager
+        with pool.connection() as conn:
+            yield conn
+
+
+# =============================================================================
+# ERROR TYPES
+# =============================================================================
+
+class TimesheetErrorType(Enum):
+    """Enumeration of possible error types for structured error handling"""
+    NOT_FOUND = "not_found"
+    VALIDATION_ERROR = "validation_error"
+    CONCURRENT_MODIFICATION = "concurrent_modification"
+    DATABASE_ERROR = "database_error"
+    LOCKED = "locked"
+    PERMISSION_DENIED = "permission_denied"
+
+
+class TimesheetStatus(Enum):
+    DRAFT = 'DRAFT'
+    SUBMITTED = 'SUBMITTED'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
+
+
+# Actionable guidance for each error type (defined early for use in TimesheetError)
+_ERROR_GUIDANCE = {
+    'not_found': {
+        'title': 'Радна листа није пронађена',
+        'icon': 'bi-search',
+        'suggestions': [
+            'Проверите да ли сте изабрали исправан месец и годину',
+            'Ако је ово ваша прва радна листа за овај период, кликните "Сачувај" да је креирате',
+            'Контактирајте администратора ако проблем и даље постоји'
+        ]
+    },
+    'validation_error': {
+        'title': 'Грешка у подацима',
+        'icon': 'bi-exclamation-triangle',
+        'suggestions': [
+            'Проверите да ли су сви унесени сати исправни (0-24)',
+            'Проверите да укупни дневни сати не прелазе разуман лимит',
+            'Исправите означене грешке и покушајте поново'
+        ]
+    },
+    'concurrent_modification': {
+        'title': 'Подаци су измењени',
+        'icon': 'bi-people',
+        'suggestions': [
+            'Неко други је управо изменио ову радну листу',
+            'Кликните "Освежи" да учитате најновије податке',
+            'Унесите своје измене поново након освежавања'
+        ]
+    },
+    'database_error': {
+        'title': 'Техничка грешка',
+        'icon': 'bi-database-x',
+        'suggestions': [
+            'Ово је привремена техничка грешка',
+            'Покушајте поново за неколико минута',
+            'Ако проблем и даље постоји, контактирајте ИТ подршку'
+        ]
+    },
+    'locked': {
+        'title': 'Радна листа је закључана',
+        'icon': 'bi-lock',
+        'suggestions': [
+            'Ова радна листа је верификована и закључана за измене',
+            'Кликните "Захтевај измену" да пошаљете захтев администратору',
+            'Наведите разлог за измену у захтеву'
+        ]
+    },
+    'permission_denied': {
+        'title': 'Немате дозволу',
+        'icon': 'bi-shield-x',
+        'suggestions': [
+            'Немате дозволу за ову акцију',
+            'Контактирајте свог руководиоца ако вам је потребан приступ',
+            'Пријавите се са одговарајућим налогом'
+        ]
+    }
+}
+
+# Specific error code guidance
+_ERROR_CODE_GUIDANCE = {
+    'ERR_RATE_LIMIT': [
+        'Достигли сте дневни лимит захтева за измене',
+        'Лимит се ресетује у поноћ',
+        'Ако имате хитну потребу, контактирајте администратора директно'
+    ],
+    'ERR_REASON_TOO_SHORT': [
+        'Образложење мора имати најмање 10 карактера',
+        'Опишите зашто је потребна измена (нпр. грешка у уносу, нови подаци)',
+        'Детаљнији разлог убрзава одобравање захтева'
+    ],
+    'ERR_PENDING_EXISTS': [
+        'Већ сте послали захтев за измену овог месеца',
+        'Сачекајте одговор на постојећи захтев',
+        'Можете контактирати администратора за статус захтева'
+    ]
+}
+
+
+def _get_guidance_for_error(error_type_value: str, error_code: str = None) -> Dict:
+    """Get guidance for an error type and optional error code."""
+    base_guidance = _ERROR_GUIDANCE.get(error_type_value, {
+        'title': 'Грешка',
+        'icon': 'bi-exclamation-circle',
+        'suggestions': ['Покушајте поново или контактирајте подршку']
+    })
+
+    specific_suggestions = _ERROR_CODE_GUIDANCE.get(error_code) if error_code else None
+
+    return {
+        **base_guidance,
+        'suggestions': specific_suggestions or base_guidance['suggestions']
+    }
+
+
+@dataclass
+class TimesheetError:
+    """Structured error response with actionable guidance"""
+    error_type: TimesheetErrorType
+    message: str
+    details: Optional[Dict] = None
+
+    def to_dict(self) -> Dict:
+        error_code = self.details.get('error_code') if self.details else None
+        guidance = _get_guidance_for_error(self.error_type.value, error_code)
+
+        result = {
+            'error_type': self.error_type.value,
+            'message': self.message,
+            'guidance': guidance
+        }
+        if self.details:
+            result['details'] = self.details
+        return result
+
+
+@dataclass
+class TimesheetResult:
+    """Result wrapper for timesheet operations"""
+    success: bool
+    data: Optional[Dict] = None
+    error: Optional[TimesheetError] = None
+
+    @classmethod
+    def ok(cls, data: Dict = None) -> 'TimesheetResult':
+        return cls(success=True, data=data or {})
+
+    @classmethod
+    def fail(cls, error_type: TimesheetErrorType, message: str, details: Dict = None) -> 'TimesheetResult':
+        return cls(success=False, error=TimesheetError(error_type, message, details))
+
+
+# =============================================================================
+# VALIDATION
+# =============================================================================
+
+# Valid work categories
+VALID_CATEGORIES = {
+    'rad_na_mestu', 'van_muzeja', 'godisnji_odmor', 'drzavni_praznik',
+    'placeno_odsustvo', 'ostalo_odsustvo', 'bolovanje_manje30', 'bolovanje_30_ili_vise'
+}
+
+# Category mapping: frontend names -> database column names
+FRONTEND_TO_DB_COLUMNS = {
+    'rad_na_mestu': 'work_in_museum',
+    'van_muzeja': 'work_outside',
+    'godisnji_odmor': 'vacation',
+    'drzavni_praznik': 'public_holiday',
+    'placeno_odsustvo': 'paid_leave',
+    'ostalo_odsustvo': 'other_leave',
+    'bolovanje_manje30': 'sick_leave_lt30',
+    'bolovanje_30_ili_vise': 'sick_leave_gte30'
+}
+
+# Reverse mapping: database column names -> frontend names
+DB_COLUMNS_TO_FRONTEND = {v: k for k, v in FRONTEND_TO_DB_COLUMNS.items()}
+
+
+def validate_hours(hours: float, field_name: str = "hours") -> Optional[str]:
+    """Validate hours value. Returns error message or None if valid."""
+    if hours < 0:
+        return f"{field_name}: негативна вредност није дозвољена ({hours})"
+    if hours > 24:
+        return f"{field_name}: вредност не може бити већа од 24 ({hours})"
+    return None
+
+
+def validate_daily_data(daily_data: Dict, month: int, year: int) -> List[str]:
+    """
+    Validate daily timesheet data.
+    Returns list of error messages (empty if valid).
+    """
+    errors = []
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    for day_str, day_values in daily_data.items():
+        try:
+            day = int(day_str)
+        except (ValueError, TypeError):
+            errors.append(f"Неважећи дан: {day_str}")
+            continue
+
+        if day < 1 or day > days_in_month:
+            errors.append(f"Дан {day} није валидан за месец {month}/{year}")
+            continue
+
+        if not isinstance(day_values, dict):
+            errors.append(f"Дан {day}: подаци морају бити речник")
+            continue
+
+        total_hours = 0
+        for category, hours in day_values.items():
+            # Skip unknown categories silently (backward compatibility)
+            if category not in VALID_CATEGORIES:
+                continue
+
+            try:
+                hours_float = float(hours)
+            except (ValueError, TypeError):
+                errors.append(f"Дан {day}, {category}: неважећа вредност сати ({hours})")
+                continue
+
+            hour_error = validate_hours(hours_float, f"Дан {day}, {category}")
+            if hour_error:
+                errors.append(hour_error)
+                continue
+
+            total_hours += hours_float
+
+        # Warn if total exceeds 24 (but allow it - could be multiple shifts)
+        if total_hours > 24:
+            logger.warning(f"Day {day}: total hours ({total_hours}) exceeds 24")
+
+    return errors
+
+
+def validate_month_year(month: int, year: int) -> Optional[str]:
+    """Validate month and year values."""
+    if not isinstance(month, int) or month < 1 or month > 12:
+        return f"Неважећи месец: {month}"
+    if not isinstance(year, int) or year < 2000 or year > 2100:
+        return f"Неважећа година: {year}"
+    return None
+
+
+def validate_loaded_data(daily_data: Dict, month: int, year: int, report_id: int) -> List[Dict]:
+    """
+    Validate data integrity of loaded timesheet data.
+    Returns list of warnings (empty if all valid).
+    Each warning has: level (warning/error), day, category, message, value.
+
+    This function does NOT prevent data from being returned - it only reports
+    issues that might indicate data corruption or need attention.
+    """
+    warnings = []
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    for day, day_values in daily_data.items():
+        if not isinstance(day_values, dict):
+            warnings.append({
+                'level': 'error',
+                'day': day,
+                'category': None,
+                'message': 'Invalid data format for day',
+                'value': str(day_values)
+            })
+            continue
+
+        total_hours = 0
+
+        for category, hours in day_values.items():
+            # Check for negative values (data corruption indicator)
+            if hours < 0:
+                warnings.append({
+                    'level': 'error',
+                    'day': day,
+                    'category': category,
+                    'message': 'Negative hours detected',
+                    'value': hours
+                })
+                # Fix in place for display (don't propagate corrupted data)
+                daily_data[day][category] = 0
+
+            # Check for excessive hours
+            elif hours > 24:
+                warnings.append({
+                    'level': 'warning',
+                    'day': day,
+                    'category': category,
+                    'message': 'Hours exceed 24',
+                    'value': hours
+                })
+
+            # Check for non-standard values (not multiples of 0.5)
+            elif hours > 0 and (hours * 2) % 1 != 0:
+                warnings.append({
+                    'level': 'info',
+                    'day': day,
+                    'category': category,
+                    'message': 'Non-standard hour value',
+                    'value': hours
+                })
+
+            total_hours += hours if hours > 0 else 0
+
+        # Check if total daily hours exceed reasonable limit
+        if total_hours > 24:
+            warnings.append({
+                'level': 'warning',
+                'day': day,
+                'category': None,
+                'message': f'Total daily hours ({total_hours:.1f}) exceed 24',
+                'value': total_hours
+            })
+
+    # Log any errors for monitoring
+    error_count = sum(1 for w in warnings if w['level'] == 'error')
+    warning_count = sum(1 for w in warnings if w['level'] == 'warning')
+
+    if error_count > 0:
+        logger.error(f"Report {report_id}: {error_count} data integrity errors detected")
+    if warning_count > 0:
+        logger.warning(f"Report {report_id}: {warning_count} data warnings detected")
+
+    return warnings
+
+
+# =============================================================================
+# DATABASE CONNECTION
+# =============================================================================
+
+def get_pg_connection():
+    """
+    Get PostgreSQL connection context manager.
+    Uses connection pooling for better performance under load.
+    Falls back to direct connection if pool is unavailable.
+
+    Usage:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(...)
+    """
+    return get_pooled_connection()
+
+
+# =============================================================================
+# CALENDAR DATA
+# =============================================================================
+
+def get_calendar_data(month: int, year: int) -> List[Dict]:
+    """Generate calendar data with weekend/holiday info"""
+    serbian_holidays = SerbianHolidays()
+    calendar_data = []
+
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    for day in range(1, days_in_month + 1):
+        day_date = date(year, month, day)
+        weekday = day_date.weekday()  # 0=Monday, 6=Sunday
+
+        holiday_name = serbian_holidays.is_holiday(day_date)
+        day_info = {
+            'day': day,
+            'weekday': weekday,
+            'is_weekend': weekday >= 5,  # Saturday=5, Sunday=6
+            'is_holiday': holiday_name is not None,
+            'holiday_name': holiday_name or '',
+            'day_name': ['Пон', 'Уто', 'Сре', 'Чет', 'Пет', 'Суб', 'Нед'][weekday]
+        }
+        calendar_data.append(day_info)
+
+    return calendar_data
+
+
+# =============================================================================
+# LOAD TIMESHEET
+# =============================================================================
+
+def load_timesheet_from_postgres(user_email: str, month: int, year: int) -> Optional[Dict]:
+    """
+    Load existing timesheet data from PostgreSQL.
+
+    Returns dict with keys:
+        - exists: True
+        - radna_lista_id: report ID
+        - ime_prezime: employee name
+        - OPosao: work description
+        - daily_data: dict of day -> category hours
+        - is_verified: verification status
+        - is_locked: lock status
+        - version: current version for optimistic locking
+
+    Returns None if not found or on error.
+    """
+    # Validate inputs
+    validation_error = validate_month_year(month, year)
+    if validation_error:
+        logger.error(f"Validation error in load_timesheet: {validation_error}")
+        return None
+
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get report header - try email first, fallback to name
+                cur.execute("""
+                    SELECT
+                        id,
+                        employee_name,
+                        employee_email,
+                        organization_unit,
+                        position,
+                        special_tasks,
+                        is_verified,
+                        is_locked,
+                        version,
+                        created_at,
+                        COALESCE(status, 'DRAFT') as status,
+                        submitted_at,
+                        rejection_note
+                    FROM timesheet_reports
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
+                      AND month = %s
+                      AND year = %s
+                """, (user_email, user_email, month, year))
+
+                report = cur.fetchone()
+
+                if not report:
+                    return None
+
+                # Get daily data from timesheet_report_days (source of truth)
+                cur.execute("""
+                    SELECT
+                        day,
+                        work_in_museum,
+                        work_outside,
+                        vacation,
+                        public_holiday,
+                        paid_leave,
+                        other_leave,
+                        sick_leave_lt30,
+                        sick_leave_gte30
+                    FROM timesheet_report_days
+                    WHERE report_id = %s
+                    ORDER BY day
+                """, (report['id'],))
+
+                day_rows = cur.fetchall()
+
+                # Initialize daily data structure
+                days_in_month = calendar.monthrange(year, month)[1]
+                daily_data = {}
+                for day in range(1, days_in_month + 1):
+                    daily_data[day] = {
+                        'rad_na_mestu': 0,
+                        'van_muzeja': 0,
+                        'godisnji_odmor': 0,
+                        'drzavni_praznik': 0,
+                        'placeno_odsustvo': 0,
+                        'ostalo_odsustvo': 0,
+                        'bolovanje_manje30': 0,
+                        'bolovanje_30_ili_vise': 0
+                    }
+
+                # Fill in actual data from database
+                for row in day_rows:
+                    day = row['day']
+                    if day in daily_data:
+                        daily_data[day]['rad_na_mestu'] = float(row['work_in_museum'] or 0)
+                        daily_data[day]['van_muzeja'] = float(row['work_outside'] or 0)
+                        daily_data[day]['godisnji_odmor'] = float(row['vacation'] or 0)
+                        daily_data[day]['drzavni_praznik'] = float(row['public_holiday'] or 0)
+                        daily_data[day]['placeno_odsustvo'] = float(row['paid_leave'] or 0)
+                        daily_data[day]['ostalo_odsustvo'] = float(row['other_leave'] or 0)
+                        daily_data[day]['bolovanje_manje30'] = float(row['sick_leave_lt30'] or 0)
+                        daily_data[day]['bolovanje_30_ili_vise'] = float(row['sick_leave_gte30'] or 0)
+
+                # Validate loaded data integrity
+                data_warnings = validate_loaded_data(daily_data, month, year, report['id'])
+
+                result = {
+                    'exists': True,
+                    'radna_lista_id': report['id'],
+                    'ime_prezime': report['employee_name'],
+                    'OPosao': report['special_tasks'] or '',
+                    'daily_data': daily_data,
+                    'is_verified': bool(report['is_verified']),
+                    'is_locked': bool(report['is_locked']),
+                    'version': report['version'] or 1,
+                    'status': report['status'] or 'DRAFT',
+                    'submitted_at': report['submitted_at'].isoformat() if report['submitted_at'] else None,
+                    'rejection_note': report['rejection_note'] or ''
+                }
+
+                # Include warnings if any issues found
+                if data_warnings:
+                    result['data_warnings'] = data_warnings
+
+                return result
+
+    except psycopg.Error as e:
+        logger.error(f"Database error loading timesheet: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error loading timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+# =============================================================================
+# SAVE TIMESHEET
+# =============================================================================
+
+def save_timesheet_to_postgres(
+    user_email: str,
+    user_name: str,
+    month: int,
+    year: int,
+    daily_data: Dict,
+    work_description: str,
+    organization_unit: str,
+    position: str,
+    expected_version: Optional[int] = None
+) -> TimesheetResult:
+    """
+    Save timesheet data to PostgreSQL.
+
+    Uses optimistic locking: if expected_version is provided, the update will
+    fail if the current version doesn't match (concurrent modification detected).
+
+    Data is written to timesheet_report_days table. A database trigger
+    automatically syncs aggregated totals to timesheet_entries.
+
+    Args:
+        user_email: Employee email
+        user_name: Employee full name
+        month: Month (1-12)
+        year: Year
+        daily_data: Dict of day -> {category: hours}
+        work_description: Special tasks description
+        organization_unit: Department/unit name
+        position: Job position
+        expected_version: If provided, used for optimistic locking
+
+    Returns:
+        TimesheetResult with success status and data or error
+    """
+    # Validate inputs
+    validation_error = validate_month_year(month, year)
+    if validation_error:
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR,
+            validation_error
+        )
+
+    data_errors = validate_daily_data(daily_data, month, year)
+    if data_errors:
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR,
+            "Грешке у валидацији података",
+            {'errors': data_errors}
+        )
+
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if report exists and get current state
+                cur.execute("""
+                    SELECT id, version, is_locked, is_verified, COALESCE(status, 'DRAFT') as status
+                    FROM timesheet_reports
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
+                      AND month = %s
+                      AND year = %s
+                    FOR UPDATE
+                """, (user_email, user_name, month, year))
+
+                existing = cur.fetchone()
+
+                if existing:
+                    report_id = existing['id']
+                    current_version = existing['version'] or 1
+
+                    # Check if locked
+                    if existing['is_locked']:
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.LOCKED,
+                            "Радна листа је закључана. Потребно је одобрење администратора за измене."
+                        )
+
+                    # Check status - SUBMITTED or APPROVED cannot be edited
+                    if existing['status'] in ('SUBMITTED', 'APPROVED'):
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.LOCKED,
+                            "Радна листа је поднета/одобрена и не може се мењати."
+                        )
+
+                    # Optimistic locking check
+                    if expected_version is not None and expected_version != current_version:
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.CONCURRENT_MODIFICATION,
+                            "Подаци су измењени од стране другог корисника. Молимо освежите страницу.",
+                            {
+                                'expected_version': expected_version,
+                                'current_version': current_version
+                            }
+                        )
+
+                    # Update existing report (version is auto-incremented by trigger)
+                    cur.execute("""
+                        UPDATE timesheet_reports
+                        SET employee_name = %s,
+                            employee_email = %s,
+                            special_tasks = %s,
+                            organization_unit = %s,
+                            position = %s
+                        WHERE id = %s
+                        RETURNING version
+                    """, (user_name, user_email, work_description, organization_unit, position, report_id))
+
+                    new_version = cur.fetchone()['version']
+
+                    # Delete old daily entries
+                    cur.execute("""
+                        DELETE FROM timesheet_report_days
+                        WHERE report_id = %s
+                    """, (report_id,))
+
+                else:
+                    # Create new report
+                    cur.execute("""
+                        INSERT INTO timesheet_reports (
+                            employee_email,
+                            employee_name,
+                            month,
+                            year,
+                            organization_unit,
+                            position,
+                            special_tasks,
+                            version
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1)
+                        RETURNING id, version
+                    """, (user_email, user_name, month, year, organization_unit, position, work_description))
+
+                    result = cur.fetchone()
+                    report_id = result['id']
+                    new_version = result['version']
+
+                # Insert daily entries into timesheet_report_days
+                # The trigger will sync aggregated totals to timesheet_entries
+                days_in_month = calendar.monthrange(year, month)[1]
+
+                for day in range(1, days_in_month + 1):
+                    day_str = str(day)
+                    day_data = daily_data.get(day_str, daily_data.get(day, {}))
+
+                    # Get hours for each category
+                    work_in_museum = float(day_data.get('rad_na_mestu', 0))
+                    work_outside = float(day_data.get('van_muzeja', 0))
+                    vacation = float(day_data.get('godisnji_odmor', 0))
+                    public_holiday = float(day_data.get('drzavni_praznik', 0))
+                    paid_leave = float(day_data.get('placeno_odsustvo', 0))
+                    other_leave = float(day_data.get('ostalo_odsustvo', 0))
+                    # Support both old and new field names for sick leave
+                    sick_lt30 = float(day_data.get('bolovanje_manje_30', day_data.get('bolovanje_manje30', 0)))
+                    sick_gte30 = float(day_data.get('bolovanje_vece_30', day_data.get('bolovanje_30_ili_vise', 0)))
+
+                    # Only insert if there's any data for this day
+                    total = work_in_museum + work_outside + vacation + public_holiday + \
+                            paid_leave + other_leave + sick_lt30 + sick_gte30
+
+                    if total > 0:
+                        cur.execute("""
+                            INSERT INTO timesheet_report_days (
+                                report_id,
+                                day,
+                                work_in_museum,
+                                work_outside,
+                                vacation,
+                                public_holiday,
+                                paid_leave,
+                                other_leave,
+                                sick_leave_lt30,
+                                sick_leave_gte30
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (report_id, day, work_in_museum, work_outside, vacation,
+                              public_holiday, paid_leave, other_leave, sick_lt30, sick_gte30))
+
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'version': new_version,
+                    'message': 'Радна листа је успешно сачувана'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error saving timesheet: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error saving timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Неочекивана грешка: {str(e)}"
+        )
+
+
+# =============================================================================
+# LEGACY WRAPPER (backward compatibility)
+# =============================================================================
+
+def save_timesheet_to_postgres_legacy(
+    user_email: str,
+    user_name: str,
+    month: int,
+    year: int,
+    daily_data: Dict,
+    work_description: str,
+    organization_unit: str,
+    position: str
+) -> Tuple[bool, Optional[str]]:
+    """
+    Legacy wrapper for save_timesheet_to_postgres.
+    Returns (success, error_message) tuple for backward compatibility.
+    """
+    result = save_timesheet_to_postgres(
+        user_email, user_name, month, year, daily_data,
+        work_description, organization_unit, position
+    )
+
+    if result.success:
+        return True, None
+    else:
+        return False, result.error.message if result.error else "Unknown error"
+
+
+# =============================================================================
+# USER INFO
+# =============================================================================
+
+def get_user_department_and_position(user_email: str) -> Tuple[str, str]:
+    """Get user's department and position from PostgreSQL users table"""
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT d.name as department, u.position
+                    FROM users u
+                    LEFT JOIN departments d ON u.department_id = d.id
+                    WHERE u.email = %s
+                """, (user_email,))
+
+                result = cur.fetchone()
+
+                if result:
+                    return (
+                        result['department'] or 'Није дефинисано',
+                        result['position'] or 'Није дефинисано'
+                    )
+
+    except Exception as e:
+        logger.error(f"Error getting user department: {e}")
+
+    return 'Није дефинисано', 'Није дефинисано'
+
+
+# =============================================================================
+# EDIT PERMISSIONS
+# =============================================================================
+
+def can_edit_timesheet(month: int, year: int) -> Tuple[bool, str, bool]:
+    """
+    Check if user can edit timesheet for given month/year.
+
+    Returns: (can_edit, restriction_message, needs_approval)
+    """
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+
+    is_current_month = (month == current_month and year == current_year)
+    is_previous_month = (year < current_year) or (year == current_year and month < current_month)
+
+    # Current month: Only 1st-7th allowed without approval
+    if is_current_month:
+        if current_date.day <= 7:
+            return True, "", False
+        else:
+            return False, "Време за унос података је истекло (1-7. у месецу). Потребно је одобрење администратора за измене.", True
+
+    # Previous months: Need approval
+    elif is_previous_month:
+        return False, "За мењање података из претходних месеци потребно је одобрење администратора.", True
+
+    # Future months: Always allowed
+    else:
+        return True, "", False
+
+
+def check_timesheet_lock_status(user_email: str, month: int, year: int) -> Tuple[bool, bool]:
+    """
+    Check if a timesheet is locked or verified.
+
+    Returns: (is_locked, is_verified)
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT is_locked, is_verified
+                    FROM timesheet_reports
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
+                      AND month = %s
+                      AND year = %s
+                """, (user_email, user_email, month, year))
+
+                result = cur.fetchone()
+                if result:
+                    return bool(result['is_locked']), bool(result['is_verified'])
+
+    except Exception as e:
+        logger.error(f"Error checking lock status: {e}")
+
+    return False, False
+
+
+# =============================================================================
+# REQUEST EDIT APPROVAL
+# =============================================================================
+
+def request_edit_approval(user_email: str, month: int, year: int, reason: str) -> TimesheetResult:
+    """
+    Create an edit approval request for a locked/verified timesheet.
+
+    Rate limited to 3 requests per user per 24 hours.
+
+    Args:
+        user_email: Requester's email
+        month: Month of the timesheet
+        year: Year of the timesheet
+        reason: Reason for requesting edit permission
+
+    Returns:
+        TimesheetResult with request_id on success
+    """
+    # Constants for rate limiting
+    MAX_REQUESTS_PER_DAY = 3
+    RATE_LIMIT_HOURS = 24
+
+    if not reason or len(reason.strip()) < 10:
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR,
+            "Молимо наведите детаљнији разлог за измену (минимум 10 карактера)",
+            {'error_code': 'ERR_REASON_TOO_SHORT', 'min_length': 10}
+        )
+
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Rate limiting check - count requests in last 24 hours
+                cur.execute("""
+                    SELECT COUNT(*) as request_count
+                    FROM timesheet_edit_requests
+                    WHERE requester_email = %s
+                      AND requested_at > NOW() - INTERVAL '%s hours'
+                """, (user_email, RATE_LIMIT_HOURS))
+
+                rate_check = cur.fetchone()
+                if rate_check and rate_check['request_count'] >= MAX_REQUESTS_PER_DAY:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Достигнут дневни лимит захтева ({MAX_REQUESTS_PER_DAY}). Покушајте поново сутра.",
+                        {
+                            'error_code': 'ERR_RATE_LIMIT',
+                            'max_requests': MAX_REQUESTS_PER_DAY,
+                            'period_hours': RATE_LIMIT_HOURS,
+                            'current_count': rate_check['request_count']
+                        }
+                    )
+
+                # Get report ID
+                cur.execute("""
+                    SELECT id FROM timesheet_reports
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
+                      AND month = %s
+                      AND year = %s
+                """, (user_email, user_email, month, year))
+
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        "Радна листа није пронађена",
+                        {'error_code': 'ERR_REPORT_NOT_FOUND', 'month': month, 'year': year}
+                    )
+
+                # Check for existing pending request for this specific report
+                cur.execute("""
+                    SELECT id FROM timesheet_edit_requests
+                    WHERE report_id = %s
+                      AND requester_email = %s
+                      AND status = 'pending'
+                """, (report['id'], user_email))
+
+                if cur.fetchone():
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        "Већ постоји захтев за измену на чекању за овај месец",
+                        {'error_code': 'ERR_PENDING_EXISTS', 'report_id': report['id']}
+                    )
+
+                # Create request
+                cur.execute("""
+                    INSERT INTO timesheet_edit_requests
+                    (report_id, requester_email, reason, status)
+                    VALUES (%s, %s, %s, 'pending')
+                    RETURNING id
+                """, (report['id'], user_email, reason.strip()))
+
+                request_id = cur.fetchone()['id']
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'request_id': request_id,
+                    'message': 'Захтев за измену је успешно послат'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error creating edit request: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}",
+            {'error_code': 'ERR_DATABASE'}
+        )
+
+
+def get_edit_request_rate_limit_status(user_email: str) -> Dict:
+    """
+    Check the rate limit status for edit requests.
+
+    Args:
+        user_email: User's email address
+
+    Returns:
+        Dict with rate limit info:
+        - requests_today: Number of requests in last 24 hours
+        - max_requests: Maximum allowed requests
+        - remaining: Requests remaining
+        - reset_at: When the oldest request expires (if at limit)
+    """
+    MAX_REQUESTS_PER_DAY = 3
+    RATE_LIMIT_HOURS = 24
+
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get count and oldest request time
+                cur.execute("""
+                    SELECT
+                        COUNT(*) as request_count,
+                        MIN(requested_at) as oldest_request
+                    FROM timesheet_edit_requests
+                    WHERE requester_email = %s
+                      AND requested_at > NOW() - INTERVAL '%s hours'
+                """, (user_email, RATE_LIMIT_HOURS))
+
+                result = cur.fetchone()
+                request_count = result['request_count'] if result else 0
+                oldest_request = result['oldest_request'] if result else None
+
+                remaining = max(0, MAX_REQUESTS_PER_DAY - request_count)
+
+                # Calculate when rate limit resets
+                reset_at = None
+                if oldest_request and request_count >= MAX_REQUESTS_PER_DAY:
+                    from datetime import timedelta
+                    reset_at = oldest_request + timedelta(hours=RATE_LIMIT_HOURS)
+
+                return {
+                    'requests_today': request_count,
+                    'max_requests': MAX_REQUESTS_PER_DAY,
+                    'remaining': remaining,
+                    'reset_at': reset_at.isoformat() if reset_at else None,
+                    'is_limited': remaining == 0
+                }
+
+    except Exception as e:
+        logger.error(f"Error checking rate limit: {e}")
+        return {
+            'requests_today': 0,
+            'max_requests': MAX_REQUESTS_PER_DAY,
+            'remaining': MAX_REQUESTS_PER_DAY,
+            'reset_at': None,
+            'is_limited': False,
+            'error': str(e)
+        }
+
+
+# =============================================================================
+# TIMESHEET STATUS WORKFLOW
+# =============================================================================
+
+def can_submit_for_review(month: int, year: int) -> Tuple[bool, str]:
+    """
+    Check if a timesheet for the given month/year can be submitted for review.
+    Submission is only allowed during days 1-7 of the month AFTER the report month.
+
+    Returns: (can_submit, message)
+    """
+    today = datetime.now()
+
+    # Calculate the expected submission month/year
+    if month == 12:
+        submit_month = 1
+        submit_year = year + 1
+    else:
+        submit_month = month + 1
+        submit_year = year
+
+    if today.year == submit_year and today.month == submit_month and 1 <= today.day <= 7:
+        return True, ""
+
+    return False, (
+        f"Подношење радне листе за {month}/{year} је могуће само "
+        f"од 1. до 7. у месецу {submit_month}/{submit_year}."
+    )
+
+
+def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bool, str]:
+    """
+    Check if a timesheet can be edited based on its status and the current date.
+
+    Returns: (can_edit, message)
+    """
+    if status in ('SUBMITTED', 'APPROVED'):
+        return False, "Радна листа је поднета/одобрена и не може се мењати."
+
+    # DRAFT or REJECTED: allow editing during the report month or days 1-7 of next month
+    today = datetime.now()
+
+    # Check if today is within the report month
+    if today.year == year and today.month == month:
+        return True, ""
+
+    # Check if today is within days 1-7 of the next month
+    if month == 12:
+        next_month = 1
+        next_year = year + 1
+    else:
+        next_month = month + 1
+        next_year = year
+
+    if today.year == next_year and today.month == next_month and 1 <= today.day <= 7:
+        return True, ""
+
+    return False, (
+        f"Време за измену радне листе за {month}/{year} је истекло. "
+        f"Измене су могуће током месеца извештаја или од 1. до 7. наредног месеца."
+    )
+
+
+def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
+    """
+    Submit a timesheet for review. Changes status from DRAFT/REJECTED to SUBMITTED.
+
+    Args:
+        report_id: ID of the timesheet report
+        user_email: Email of the submitting user
+
+    Returns:
+        TimesheetResult with success status
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get current report state
+                cur.execute("""
+                    SELECT id, month, year, COALESCE(status, 'DRAFT') as status, employee_email
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        "Радна листа није пронађена"
+                    )
+
+                # Validate status
+                if report['status'] not in ('DRAFT', 'REJECTED'):
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Радна листа не може бити поднета из статуса '{report['status']}'. "
+                        f"Само листе са статусом DRAFT или REJECTED могу бити поднете."
+                    )
+
+                # Validate submission window
+                can_submit, message = can_submit_for_review(report['month'], report['year'])
+                if not can_submit:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        message
+                    )
+
+                # Update status
+                cur.execute("""
+                    UPDATE timesheet_reports
+                    SET status = 'SUBMITTED',
+                        is_locked = TRUE,
+                        is_verified = FALSE,
+                        submitted_at = NOW()
+                    WHERE id = %s
+                """, (report_id,))
+
+                # Log to status history
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by_email, note)
+                    VALUES (%s, %s, 'SUBMITTED', %s, 'Поднето на преглед')
+                """, (report_id, report['status'], user_email))
+
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'status': 'SUBMITTED',
+                    'message': 'Радна листа је успешно поднета на преглед'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error submitting timesheet: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error submitting timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Неочекивана грешка: {str(e)}"
+        )
+
+
+def approve_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
+    """
+    Approve a submitted timesheet. Changes status from SUBMITTED to APPROVED.
+
+    Args:
+        report_id: ID of the timesheet report
+        admin_email: Email of the approving admin
+
+    Returns:
+        TimesheetResult with success status
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get current report state
+                cur.execute("""
+                    SELECT id, COALESCE(status, 'DRAFT') as status
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        "Радна листа није пронађена"
+                    )
+
+                # Validate status
+                if report['status'] != 'SUBMITTED':
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Само поднете радне листе могу бити одобрене. Тренутни статус: '{report['status']}'"
+                    )
+
+                # Update status
+                cur.execute("""
+                    UPDATE timesheet_reports
+                    SET status = 'APPROVED',
+                        is_locked = TRUE,
+                        is_verified = TRUE,
+                        reviewed_at = NOW(),
+                        reviewed_by_email = %s
+                    WHERE id = %s
+                """, (admin_email, report_id))
+
+                # Log to status history
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by_email, note)
+                    VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено')
+                """, (report_id, admin_email))
+
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'status': 'APPROVED',
+                    'message': 'Радна листа је успешно одобрена'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error approving timesheet: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error approving timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Неочекивана грешка: {str(e)}"
+        )
+
+
+def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetResult:
+    """
+    Reject a submitted timesheet. Changes status from SUBMITTED to REJECTED.
+
+    Args:
+        report_id: ID of the timesheet report
+        admin_email: Email of the rejecting admin
+        note: Reason for rejection
+
+    Returns:
+        TimesheetResult with success status
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get current report state
+                cur.execute("""
+                    SELECT id, COALESCE(status, 'DRAFT') as status
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        "Радна листа није пронађена"
+                    )
+
+                # Validate status
+                if report['status'] != 'SUBMITTED':
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Само поднете радне листе могу бити одбијене. Тренутни статус: '{report['status']}'"
+                    )
+
+                # Update status
+                cur.execute("""
+                    UPDATE timesheet_reports
+                    SET status = 'REJECTED',
+                        is_locked = FALSE,
+                        is_verified = FALSE,
+                        rejection_note = %s,
+                        reviewed_at = NOW(),
+                        reviewed_by_email = %s
+                    WHERE id = %s
+                """, (note, admin_email, report_id))
+
+                # Log to status history
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by_email, note)
+                    VALUES (%s, 'SUBMITTED', 'REJECTED', %s, %s)
+                """, (report_id, admin_email, note))
+
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'status': 'REJECTED',
+                    'message': 'Радна листа је одбијена'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error rejecting timesheet: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error rejecting timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Неочекивана грешка: {str(e)}"
+        )
+
+
+def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
+    """
+    Force a timesheet back to DRAFT status. Any status -> DRAFT.
+    Admin-only operation.
+
+    Args:
+        report_id: ID of the timesheet report
+        admin_email: Email of the admin performing the action
+
+    Returns:
+        TimesheetResult with success status
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Get current report state
+                cur.execute("""
+                    SELECT id, COALESCE(status, 'DRAFT') as status
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        "Радна листа није пронађена"
+                    )
+
+                old_status = report['status']
+
+                # Update status to DRAFT
+                cur.execute("""
+                    UPDATE timesheet_reports
+                    SET status = 'DRAFT',
+                        is_locked = FALSE,
+                        is_verified = FALSE
+                    WHERE id = %s
+                """, (report_id,))
+
+                # Log to status history
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by_email, note)
+                    VALUES (%s, %s, 'DRAFT', %s, 'Принудно враћено на измену од стране администратора')
+                """, (report_id, old_status, admin_email))
+
+                conn.commit()
+
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'status': 'DRAFT',
+                    'message': 'Радна листа је враћена на измену'
+                })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error force-editing timesheet: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Грешка базе података: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error force-editing timesheet: {e}")
+        import traceback
+        traceback.print_exc()
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR,
+            f"Неочекивана грешка: {str(e)}"
+        )
+
+
+def get_pending_review_timesheets() -> List[Dict]:
+    """
+    Get all timesheets with SUBMITTED status pending admin review.
+
+    Returns:
+        List of dicts with employee_name, employee_email, month, year,
+        organization_unit, submitted_at
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        id,
+                        employee_name,
+                        employee_email,
+                        month,
+                        year,
+                        organization_unit,
+                        submitted_at
+                    FROM timesheet_reports
+                    WHERE COALESCE(status, 'DRAFT') = 'SUBMITTED'
+                    ORDER BY submitted_at ASC
+                """)
+
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+
+    except psycopg.Error as e:
+        logger.error(f"Database error getting pending timesheets: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error getting pending timesheets: {e}")
+        return []
+
+
+def ensure_draft_exists(
+    user_email: str,
+    user_name: str,
+    month: int,
+    year: int,
+    org_unit: str,
+    position: str
+) -> Optional[int]:
+    """
+    Ensure a draft timesheet report exists for the given user/month/year.
+    If one already exists, return its id. Otherwise create a new one.
+
+    Args:
+        user_email: Employee email
+        user_name: Employee full name
+        month: Month (1-12)
+        year: Year
+        org_unit: Organization unit / department
+        position: Job position
+
+    Returns:
+        report_id (int) or None on error
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if report already exists
+                cur.execute("""
+                    SELECT id
+                    FROM timesheet_reports
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
+                      AND month = %s
+                      AND year = %s
+                """, (user_email, user_name, month, year))
+
+                existing = cur.fetchone()
+                if existing:
+                    return existing['id']
+
+                # Create new draft report
+                cur.execute("""
+                    INSERT INTO timesheet_reports (
+                        employee_email,
+                        employee_name,
+                        month,
+                        year,
+                        organization_unit,
+                        position,
+                        status,
+                        is_locked,
+                        is_verified,
+                        version
+                    ) VALUES (%s, %s, %s, %s, %s, %s, 'DRAFT', FALSE, FALSE, 1)
+                    RETURNING id
+                """, (user_email, user_name, month, year, org_unit, position))
+
+                new_id = cur.fetchone()['id']
+                conn.commit()
+
+                return new_id
+
+    except psycopg.Error as e:
+        logger.error(f"Database error ensuring draft exists: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error ensuring draft exists: {e}")
+        return None
