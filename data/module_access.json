@@ -1,8 +1,7 @@
 {
   "museum_databases": {
     "authorized_users": [
-      "aca.lukovic@nhmbeo.rs",
-      "admin",
+      "admin@nhmbeo.rs",
       "slavko.spasic@nhmbeo.rs",
       "biljana.mitrovic@nhmbeo.rs",
       "verica.stojanovic@nhmbeo.rs"
@@ -10,38 +9,38 @@
   },
   "mineral_database": {
     "authorized_users": [
-      "admin",
+      "admin@nhmbeo.rs",
       "slavko.spasic@nhmbeo.rs",
       "biljana.mitrovic@nhmbeo.rs",
       "verica.stojanovic@nhmbeo.rs",
-      "aca.lukovic@nhmbeo.rs"
+      "aca.lukovic@nhmbeo.rs",
+      "nenad.mladenovic@nhmbeo.rs"
     ]
   },
   "employees_database": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "employee_profiles": {
     "authorized_users": [
-      "admin",
-      "aca.lukovic@nhmbeo.rs"
+      "admin@nhmbeo.rs"
     ]
   },
   "library_database": {
     "authorized_users": [
-      "admin",
+      "admin@nhmbeo.rs",
       "biblioteka@nhmbeo.rs"
     ]
   },
   "exhibits_database": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "exhibitions_database": {
     "authorized_users": [
-      "admin",
+      "admin@nhmbeo.rs",
       "draganav@nhmbeo.rs"
     ]
   },
@@ -52,12 +51,12 @@
   },
   "cultural_heritage": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "curator_collections": {
     "authorized_users": [
-      "admin",
+      "admin@nhmbeo.rs",
       "aca.lukovic@nhmbeo.rs",
       "slavko.spasic@nhmbeo.rs",
       "biljana.mitrovic@nhmbeo.rs",
@@ -66,23 +65,37 @@
   },
   "user_management": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "reports_analytics": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "system_logs": {
     "authorized_users": [
-      "admin"
+      "admin@nhmbeo.rs"
     ]
   },
   "bird_ringing_database": {
     "authorized_users": [
-      "admin",
+      "admin@nhmbeo.rs",
       "vuk.popic@nhmbeo.rs"
+    ]
+  },
+  "nhm_data_portal": {
+    "authorized_users": [
+      "admin",
+      "aca.lukovic@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs",
+      "biljana.mitrovic@nhmbeo.rs"
+    ]
+  },
+  "maps_karte": {
+    "authorized_users": [
+      "admin",
+      "aca.lukovic@nhmbeo.rs"
     ]
   }
 }

@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "name": "Fiat Doblo",
+    "registration": "BG-1234-AB",
+    "type": "Комби",
+    "capacity": "5",
+    "status": "Активно",
+    "year": "2020",
+    "make_model": "Fiat Doblo 1.4",
+    "fuel_consumption": 7.0,
+    "fuel_type": "Бензин",
+    "notes": "Просечна потрошња 7.0 L/100km",
+    "image_ids": []
+  },
+  {
+    "id": 2,
+    "name": "Dacia Duster",
+    "registration": "BG-1234-AC",
+    "type": "Теренац",
+    "capacity": "5",
+    "status": "Активно",
+    "year": "2019",
+    "make_model": "Dacia Duster 1.5 dCi",
+    "fuel_consumption": 6.4,
+    "fuel_type": "Дизел",
+    "notes": "Просечна потрошња 6.4 L/100km",
+    "image_ids": []
+  },
+  {
+    "id": 3,
+    "name": "Fiat Stilo",
+    "registration": "BG-1234-AD",
+    "type": "Путнички",
+    "capacity": "5",
+    "status": "Активно",
+    "year": "2022",
+    "make_model": "Fiat Stilo 1.6 16v",
+    "fuel_consumption": 7.3,
+    "fuel_type": "Бензин",
+    "notes": "Просечна потрошња 7.3 L/100km",
+    "image_ids": []
+  },
+  {
+    "id": 4,
+    "name": "Lada Niva Siva",
+    "registration": "BG-1234-AE",
+    "type": "Теренац",
+    "capacity": "5",
+    "status": "Активно",
+    "year": "2016",
+    "make_model": "Lada Niva 1.7i 4x4",
+    "fuel_consumption": 11.0,
+    "fuel_type": "Бензин",
+    "notes": "Просечна потрошња 11.0 L/100km",
+    "image_ids": []
+  },
+  {
+    "id": 5,
+    "name": "Lada Niva Bela",
+    "registration": "BG-1234-AF",
+    "type": "Теренац",
+    "capacity": "5",
+    "status": "Активно",
+    "year": "2016",
+    "make_model": "Lada Niva 1.7i 4x4",
+    "fuel_consumption": 11.0,
+    "fuel_type": "Бензин",
+    "notes": "Просечна потрошња 11.0 L/100km",
+    "image_ids": []
+  }
+]

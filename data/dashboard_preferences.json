@@ -2,7 +2,11 @@
   "admin": {
     "enabled_widgets": [
       "timesheet",
-      "museum_databases"
+      "museum_databases",
+      "news",
+      "user_management",
+      "reports_analytics",
+      "system_logs"
     ]
   },
   "slavko.spasic@nhmbeo.rs": {
@@ -25,6 +29,17 @@
     "enabled_widgets": [
       "timesheet",
       "bird_ringing_database"
+    ]
+  },
+  "admin@nhmbeo.rs": {
+    "enabled_widgets": [
+      "timesheet",
+      "museum_databases",
+      "mineral_database",
+      "news",
+      "user_management",
+      "reports_analytics",
+      "system_logs"
     ]
   }
 }

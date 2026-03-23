@@ -1,0 +1,2453 @@
+{
+  "stari trg, trepča, srbija": {
+    "lat": 42.9167,
+    "lon": 20.8667,
+    "display_name": "Stari Trg, Trepča, Kosovo",
+    "type": "mine"
+  },
+  "bor, srbija": {
+    "lat": 44.0744,
+    "lon": 22.0961,
+    "display_name": "Bor, Serbia",
+    "type": "town"
+  },
+  "majdanpek, srbija": {
+    "lat": 44.4256,
+    "lon": 21.9428,
+    "display_name": "Majdanpek, Serbia",
+    "type": "town"
+  },
+  "majdanpek, horizont 505m, srbija": {
+    "lat": 44.4256,
+    "lon": 21.9428,
+    "display_name": "Majdanpek, Serbia",
+    "type": "mine"
+  },
+  "rudnik, srbija": {
+    "lat": 44.1392,
+    "lon": 20.5133,
+    "display_name": "Rudnik, Serbia",
+    "type": "mountain"
+  },
+  "kopaonik, srbija": {
+    "lat": 43.2833,
+    "lon": 20.8128,
+    "display_name": "Kopaonik, Serbia",
+    "type": "mountain"
+  },
+  "suvo rudište, kopaonik, srbija": {
+    "lat": 43.3044,
+    "lon": 20.8258,
+    "display_name": "Suvo Rudište, Kopaonik, Serbia",
+    "type": "mine"
+  },
+  "lece, srbija": {
+    "lat": 43.0519,
+    "lon": 21.4597,
+    "display_name": "Lece, Serbia",
+    "type": "village"
+  },
+  "zajača, srbija": {
+    "lat": 44.5175,
+    "lon": 19.3961,
+    "display_name": "Zajača, Serbia",
+    "type": "village"
+  },
+  "stolice kod krupnja, srbija": {
+    "lat": 44.3836,
+    "lon": 19.3558,
+    "display_name": "Stolice, Krupanj, Serbia",
+    "type": "village"
+  },
+  "stolice, krupanj, srbija": {
+    "lat": 44.3836,
+    "lon": 19.3558,
+    "display_name": "Stolice, Krupanj, Serbia",
+    "type": "village"
+  },
+  "stolice, krupanj, potkop 15a, srbija": {
+    "lat": 44.3836,
+    "lon": 19.3558,
+    "display_name": "Stolice, Krupanj, Serbia",
+    "type": "mine"
+  },
+  "avala, srbija": {
+    "lat": 44.6939,
+    "lon": 20.5178,
+    "display_name": "Avala, Belgrade, Serbia",
+    "type": "mountain"
+  },
+  "bukulja, srbija": {
+    "lat": 44.2886,
+    "lon": 20.5453,
+    "display_name": "Bukulja, Serbia",
+    "type": "mountain"
+  },
+  "kosmaj, srbija": {
+    "lat": 44.4667,
+    "lon": 20.5667,
+    "display_name": "Kosmaj, Serbia",
+    "type": "mountain"
+  },
+  "babe, kosmaj, srbija": {
+    "lat": 44.4667,
+    "lon": 20.5667,
+    "display_name": "Kosmaj, Serbia",
+    "type": "mountain"
+  },
+  "babica rt, bukulja, srbija": {
+    "lat": 44.2886,
+    "lon": 20.5453,
+    "display_name": "Bukulja, Serbia",
+    "type": "locality"
+  },
+  "fruška gora, srbija": {
+    "lat": 45.1553,
+    "lon": 19.7092,
+    "display_name": "Fruška Gora, Serbia",
+    "type": "mountain"
+  },
+  "zlatibor, srbija": {
+    "lat": 43.7247,
+    "lon": 19.7028,
+    "display_name": "Zlatibor, Serbia",
+    "type": "mountain"
+  },
+  "krnda, zlatibor, srbija": {
+    "lat": 43.7247,
+    "lon": 19.7028,
+    "display_name": "Zlatibor, Serbia",
+    "type": "locality"
+  },
+  "novo brdo, kopaonik, srbija": {
+    "lat": 42.6128,
+    "lon": 21.4372,
+    "display_name": "Novo Brdo, Kosovo",
+    "type": "village"
+  },
+  "mežice, slovenija": {
+    "lat": 46.5206,
+    "lon": 14.8525,
+    "display_name": "Mežica, Slovenia",
+    "type": "town"
+  },
+  "mezice,slovenija": {
+    "lat": 46.5206,
+    "lon": 14.8525,
+    "display_name": "Mežica, Slovenia",
+    "type": "town"
+  },
+  "mežice, slovenia": {
+    "lat": 46.5206,
+    "lon": 14.8525,
+    "display_name": "Mežica, Slovenia",
+    "type": "town"
+  },
+  "idrija, slovenija": {
+    "lat": 45.9778,
+    "lon": 14.0278,
+    "display_name": "Idrija, Slovenia",
+    "type": "town"
+  },
+  "alšar, makedonija": {
+    "lat": 41.2706,
+    "lon": 22.0219,
+    "display_name": "Alšar, North Macedonia",
+    "type": "mine"
+  },
+  "prilep, makedonija": {
+    "lat": 41.3464,
+    "lon": 21.555,
+    "display_name": "Prilep, North Macedonia",
+    "type": "city"
+  },
+  "alinci, prilep, makedonija": {
+    "lat": 41.3608,
+    "lon": 21.4633,
+    "display_name": "Alinci, Prilep, North Macedonia",
+    "type": "village"
+  },
+  "busovača, bih": {
+    "lat": 44.1,
+    "lon": 17.8833,
+    "display_name": "Busovača, Bosnia and Herzegovina",
+    "type": "town"
+  },
+  "busovača, bosna": {
+    "lat": 44.1,
+    "lon": 17.8833,
+    "display_name": "Busovača, Bosnia and Herzegovina",
+    "type": "town"
+  },
+  "kapak-polom, cavica potok, busovaca, bosna": {
+    "lat": 44.1,
+    "lon": 17.8833,
+    "display_name": "Busovača, Bosnia and Herzegovina",
+    "type": "locality"
+  },
+  "tisovac, busovaca, bosna": {
+    "lat": 44.1,
+    "lon": 17.8833,
+    "display_name": "Busovača, Bosnia and Herzegovina",
+    "type": "village"
+  },
+  "banja ilidža, sarajevo, bih": {
+    "lat": 43.8297,
+    "lon": 18.3094,
+    "display_name": "Ilidža, Sarajevo, Bosnia and Herzegovina",
+    "type": "town"
+  },
+  "vareš, bih": {
+    "lat": 44.1644,
+    "lon": 18.3269,
+    "display_name": "Vareš, Bosnia and Herzegovina",
+    "type": "town"
+  },
+  "bakovici, bosna": {
+    "lat": 44.1,
+    "lon": 17.55,
+    "display_name": "Bakovići, Bosnia",
+    "type": "village"
+  },
+  "arandjelovac, srbija": {
+    "lat": 44.3086,
+    "lon": 20.5569,
+    "display_name": "Aranđelovac, Serbia",
+    "type": "town"
+  },
+  "beograd, srbija": {
+    "lat": 44.8178,
+    "lon": 20.4569,
+    "display_name": "Belgrade, Serbia",
+    "type": "city"
+  },
+  "banjica, beograd, srbija": {
+    "lat": 44.7667,
+    "lon": 20.4667,
+    "display_name": "Banjica, Belgrade, Serbia",
+    "type": "neighborhood"
+  },
+  "badovac, srbija": {
+    "lat": 42.6667,
+    "lon": 21.2,
+    "display_name": "Badovac, Serbia",
+    "type": "village"
+  },
+  "baljevac na ibru, srbija": {
+    "lat": 43.3861,
+    "lon": 20.7156,
+    "display_name": "Baljevac na Ibru, Serbia",
+    "type": "town"
+  },
+  "baljevac na ibru, pobrđani potok, srbija": {
+    "lat": 43.3861,
+    "lon": 20.7156,
+    "display_name": "Baljevac na Ibru, Serbia",
+    "type": "locality"
+  },
+  "baljevac na ibru, raška, srbija": {
+    "lat": 43.3861,
+    "lon": 20.7156,
+    "display_name": "Baljevac na Ibru, Serbia",
+    "type": "locality"
+  },
+  "bare, srbija": {
+    "lat": 44.2667,
+    "lon": 20.7,
+    "display_name": "Bare, Serbia",
+    "type": "village"
+  },
+  "batočina, srbija": {
+    "lat": 44.15,
+    "lon": 21.0833,
+    "display_name": "Batočina, Serbia",
+    "type": "town"
+  },
+  "belo brdo, srbija": {
+    "lat": 43.2889,
+    "lon": 20.8667,
+    "display_name": "Belo Brdo, Kopaonik, Serbia",
+    "type": "mine"
+  },
+  "besna kobila, srbija": {
+    "lat": 42.5667,
+    "lon": 22.0833,
+    "display_name": "Besna Kobila, Serbia",
+    "type": "mountain"
+  },
+  "ljubičica, leštane, avala, srbija": {
+    "lat": 44.6939,
+    "lon": 20.5178,
+    "display_name": "Avala, Belgrade, Serbia",
+    "type": "locality"
+  },
+  "šiparčika, zimovnik, kopaonik, srbija": {
+    "lat": 43.2833,
+    "lon": 20.8128,
+    "display_name": "Kopaonik, Serbia",
+    "type": "locality"
+  },
+  "ajvalija, srbija": {
+    "lat": 44.3667,
+    "lon": 20.45,
+    "display_name": "Ajvalija, Serbia",
+    "type": "village"
+  },
+  "italija": {
+    "lat": 41.8719,
+    "lon": 12.5674,
+    "display_name": "Italy",
+    "type": "country"
+  },
+  "elba, italija": {
+    "lat": 42.7692,
+    "lon": 10.2389,
+    "display_name": "Elba, Italy",
+    "type": "island"
+  },
+  "\"alpine\" rio marine, elba, italija": {
+    "lat": 42.8125,
+    "lon": 10.4231,
+    "display_name": "Rio Marina, Elba, Italy",
+    "type": "town"
+  },
+  "agrigento, sicilija, italija": {
+    "lat": 37.3111,
+    "lon": 13.5767,
+    "display_name": "Agrigento, Sicily, Italy",
+    "type": "city"
+  },
+  "baveno, italija": {
+    "lat": 45.9086,
+    "lon": 8.5011,
+    "display_name": "Baveno, Italy",
+    "type": "town"
+  },
+  "ala, pijemont, italija": {
+    "lat": 45.7583,
+    "lon": 11.0006,
+    "display_name": "Ala, Piedmont, Italy",
+    "type": "town"
+  },
+  "alpi, italija": {
+    "lat": 46.0,
+    "lon": 10.0,
+    "display_name": "Alps, Italy",
+    "type": "mountain_range"
+  },
+  "antrona piana, domodossola, italija": {
+    "lat": 46.065,
+    "lon": 8.1108,
+    "display_name": "Antrona Piana, Italy",
+    "type": "town"
+  },
+  "antrona, italija": {
+    "lat": 46.065,
+    "lon": 8.1108,
+    "display_name": "Antrona, Italy",
+    "type": "valley"
+  },
+  "austrija": {
+    "lat": 47.5162,
+    "lon": 14.5501,
+    "display_name": "Austria",
+    "type": "country"
+  },
+  "aisen erz, austrija": {
+    "lat": 47.5333,
+    "lon": 14.8,
+    "display_name": "Eisenerz, Austria",
+    "type": "town"
+  },
+  "alm b/saalfelden, austrija": {
+    "lat": 47.4167,
+    "lon": 12.85,
+    "display_name": "Saalfelden, Austria",
+    "type": "locality"
+  },
+  "aufig, austrija": {
+    "lat": 47.25,
+    "lon": 11.3833,
+    "display_name": "Aufig, Austria",
+    "type": "locality"
+  },
+  "nemačka": {
+    "lat": 51.1657,
+    "lon": 10.4515,
+    "display_name": "Germany",
+    "type": "country"
+  },
+  "ahsenkopf, saksonija, nemačka": {
+    "lat": 50.9,
+    "lon": 13.3,
+    "display_name": "Saxony, Germany",
+    "type": "locality"
+  },
+  "ausig, sudeti, nemačka": {
+    "lat": 50.6583,
+    "lon": 14.0333,
+    "display_name": "Ústí nad Labem (former Aussig)",
+    "type": "city"
+  },
+  "bajern, nemačka": {
+    "lat": 48.7904,
+    "lon": 11.4979,
+    "display_name": "Bavaria, Germany",
+    "type": "state"
+  },
+  "libija": {
+    "lat": 26.3351,
+    "lon": 17.2283,
+    "display_name": "Libya",
+    "type": "country"
+  },
+  "70km od tripolija, libija": {
+    "lat": 32.5,
+    "lon": 13.0,
+    "display_name": "Near Tripoli, Libya",
+    "type": "locality"
+  },
+  "madagaskar": {
+    "lat": -18.7669,
+    "lon": 46.8691,
+    "display_name": "Madagascar",
+    "type": "country"
+  },
+  "ambositra, madagaskar": {
+    "lat": -20.5167,
+    "lon": 47.25,
+    "display_name": "Ambositra, Madagascar",
+    "type": "town"
+  },
+  "ampanabe-fianarantsoa, madagaskar": {
+    "lat": -21.4333,
+    "lon": 47.0833,
+    "display_name": "Fianarantsoa, Madagascar",
+    "type": "city"
+  },
+  "antisrabe, madagaskar": {
+    "lat": -19.8667,
+    "lon": 47.0333,
+    "display_name": "Antsirabe, Madagascar",
+    "type": "city"
+  },
+  "antsirabe vahinankrartra, madagaskar": {
+    "lat": -19.8667,
+    "lon": 47.0333,
+    "display_name": "Antsirabe, Madagascar",
+    "type": "city"
+  },
+  "antsirabe, madagaskar": {
+    "lat": -19.8667,
+    "lon": 47.0333,
+    "display_name": "Antsirabe, Madagascar",
+    "type": "city"
+  },
+  "angola": {
+    "lat": -11.2027,
+    "lon": 17.8739,
+    "display_name": "Angola",
+    "type": "country"
+  },
+  "norveška": {
+    "lat": 60.472,
+    "lon": 8.4689,
+    "display_name": "Norway",
+    "type": "country"
+  },
+  "arendal, norveška": {
+    "lat": 58.4617,
+    "lon": 8.7722,
+    "display_name": "Arendal, Norway",
+    "type": "city"
+  },
+  "argentina": {
+    "lat": -38.4161,
+    "lon": -63.6167,
+    "display_name": "Argentina",
+    "type": "country"
+  },
+  "usa": {
+    "lat": 37.0902,
+    "lon": -95.7129,
+    "display_name": "United States of America",
+    "type": "country"
+  },
+  "arizona, usa": {
+    "lat": 34.0489,
+    "lon": -111.0937,
+    "display_name": "Arizona, USA",
+    "type": "state"
+  },
+  "apache mine, arizona, usa": {
+    "lat": 33.2978,
+    "lon": -110.7858,
+    "display_name": "Apache Mine, Arizona, USA",
+    "type": "mine"
+  },
+  "ayo, arizona, usa": {
+    "lat": 33.4484,
+    "lon": -112.074,
+    "display_name": "Arizona, USA",
+    "type": "state"
+  },
+  "arkanzas, usa": {
+    "lat": 35.201,
+    "lon": -91.8318,
+    "display_name": "Arkansas, USA",
+    "type": "state"
+  },
+  "čile": {
+    "lat": -35.6751,
+    "lon": -71.543,
+    "display_name": "Chile",
+    "type": "country"
+  },
+  "atakama, čile": {
+    "lat": -24.5,
+    "lon": -69.25,
+    "display_name": "Atacama Desert, Chile",
+    "type": "desert"
+  },
+  "rusija": {
+    "lat": 61.524,
+    "lon": 105.3188,
+    "display_name": "Russia",
+    "type": "country"
+  },
+  "sssr": {
+    "lat": 61.524,
+    "lon": 105.3188,
+    "display_name": "Former USSR",
+    "type": "country"
+  },
+  "baženovskoe, ural, sssr": {
+    "lat": 57.05,
+    "lon": 61.2167,
+    "display_name": "Bazhenovskoye, Ural, Russia",
+    "type": "mine"
+  },
+  "aljin do, gradište, makedonija": {
+    "lat": 41.4333,
+    "lon": 22.3833,
+    "display_name": "Gradište, North Macedonia",
+    "type": "village"
+  },
+  "babuna, drenovci, makedonija": {
+    "lat": 41.5,
+    "lon": 21.65,
+    "display_name": "Babuna, North Macedonia",
+    "type": "mountain"
+  },
+  "alžir": {
+    "lat": 28.0339,
+    "lon": 1.6596,
+    "display_name": "Algeria",
+    "type": "country"
+  },
+  "brazil": {
+    "lat": -14.235,
+    "lon": -51.9253,
+    "display_name": "Brazil",
+    "type": "country"
+  },
+  "kina": {
+    "lat": 35.8617,
+    "lon": 104.1954,
+    "display_name": "China",
+    "type": "country"
+  },
+  "japan": {
+    "lat": 36.2048,
+    "lon": 138.2529,
+    "display_name": "Japan",
+    "type": "country"
+  },
+  "australija": {
+    "lat": -25.2744,
+    "lon": 133.7751,
+    "display_name": "Australia",
+    "type": "country"
+  },
+  "slisane,lebane, srbija": {
+    "lat": 42.9167,
+    "lon": 21.7333,
+    "display_name": "Slišane, Lebane, Serbia",
+    "type": "village"
+  },
+  "makedonija": {
+    "lat": 41.5122,
+    "lon": 21.7453,
+    "display_name": "North Macedonia",
+    "type": "country"
+  },
+  "gracac, goc, srbija": {
+    "lat": 43.55,
+    "lon": 20.8333,
+    "display_name": "Gračac, Goč, Serbia",
+    "type": "village"
+  },
+  "rudnik-draca, kragujevac, srbija": {
+    "lat": 44.0,
+    "lon": 20.9167,
+    "display_name": "Rudnik-Drača, Kragujevac, Serbia",
+    "type": "locality"
+  },
+  "sijarinska banja, srbija": {
+    "lat": 42.7167,
+    "lon": 21.6333,
+    "display_name": "Sijarinska Banja, Serbia",
+    "type": "spa"
+  },
+  "veliki majdan, srbija": {
+    "lat": 44.5167,
+    "lon": 19.6333,
+    "display_name": "Veliki Majdan, Serbia",
+    "type": "village"
+  },
+  "pasjača, srbija": {
+    "lat": 42.8667,
+    "lon": 22.0833,
+    "display_name": "Pasjača, Serbia",
+    "type": "village"
+  },
+  "suvo rudiste, kopaonik, srbija": {
+    "lat": 43.3044,
+    "lon": 20.8258,
+    "display_name": "Suvo Rudište, Kopaonik, Serbia",
+    "type": "mine"
+  },
+  "blagodat, besna kobila, srbija": {
+    "lat": 42.5667,
+    "lon": 22.0833,
+    "display_name": "Besna Kobila, Serbia",
+    "type": "locality"
+  },
+  "blagojev kamen, i.srbija, srbija": {
+    "lat": 44.4256,
+    "lon": 21.9428,
+    "display_name": "Blagojev Kamen, Serbia",
+    "type": "locality"
+  },
+  "blagojev kamen, majdanpek, srbija": {
+    "lat": 44.4256,
+    "lon": 21.9428,
+    "display_name": "Blagojev Kamen, Majdanpek, Serbia",
+    "type": "locality"
+  },
+  "poljska": {
+    "lat": 51.9194,
+    "lon": 19.1451,
+    "display_name": "Poland",
+    "type": "country"
+  },
+  "češka": {
+    "lat": 49.8175,
+    "lon": 15.473,
+    "display_name": "Czech Republic",
+    "type": "country"
+  },
+  "čehoslovačka": {
+    "lat": 49.8175,
+    "lon": 15.473,
+    "display_name": "Former Czechoslovakia",
+    "type": "country"
+  },
+  "dolni bory, čehoslovačka": {
+    "lat": 49.3667,
+    "lon": 16.1167,
+    "display_name": "Dolní Bory, Czech Republic",
+    "type": "village"
+  },
+  "ural, rusija": {
+    "lat": 55.0,
+    "lon": 60.0,
+    "display_name": "Ural Mountains, Russia",
+    "type": "mountain_range"
+  },
+  "erzberg, austrija": {
+    "lat": 47.5333,
+    "lon": 14.8,
+    "display_name": "Erzberg, Austria",
+    "type": "mine"
+  },
+  "blajberg, austrija": {
+    "lat": 46.6167,
+    "lon": 14.5,
+    "display_name": "Bleiberg, Austria",
+    "type": "mine"
+  },
+  "bleiberg, austrija": {
+    "lat": 46.6167,
+    "lon": 14.5,
+    "display_name": "Bleiberg, Austria",
+    "type": "mine"
+  },
+  "bleiburg, austrija": {
+    "lat": 46.5894,
+    "lon": 14.7978,
+    "display_name": "Bleiburg, Austria",
+    "type": "town"
+  },
+  "tirol, austrija": {
+    "lat": 47.2533,
+    "lon": 11.6013,
+    "display_name": "Tyrol, Austria",
+    "type": "state"
+  },
+  "ramelsberg-goslar, nemačka": {
+    "lat": 51.9,
+    "lon": 10.4333,
+    "display_name": "Rammelsberg, Goslar, Germany",
+    "type": "mine"
+  },
+  "wolsendorf, nemačka": {
+    "lat": 49.3,
+    "lon": 12.0167,
+    "display_name": "Wölsendorf, Germany",
+    "type": "village"
+  },
+  "bleierlf (gifel), nemačka": {
+    "lat": 50.7833,
+    "lon": 10.3667,
+    "display_name": "Bleierf, Germany",
+    "type": "locality"
+  },
+  "vezuv, italija": {
+    "lat": 40.821,
+    "lon": 14.4269,
+    "display_name": "Mount Vesuvius, Italy",
+    "type": "volcano"
+  },
+  "sicilija, italija": {
+    "lat": 37.5994,
+    "lon": 14.0154,
+    "display_name": "Sicily, Italy",
+    "type": "island"
+  },
+  "tisovac, busovača, bosna": {
+    "lat": 44.1,
+    "lon": 17.8833,
+    "display_name": "Tisovac, Busovača, BiH",
+    "type": "village"
+  },
+  "kostajnica, bih": {
+    "lat": 45.2167,
+    "lon": 16.55,
+    "display_name": "Kostajnica, BiH",
+    "type": "town"
+  },
+  "kreševo, bih": {
+    "lat": 43.8833,
+    "lon": 18.05,
+    "display_name": "Kreševo, BiH",
+    "type": "town"
+  },
+  "prilepac, prilep, makedonija": {
+    "lat": 41.3667,
+    "lon": 21.55,
+    "display_name": "Prilepec, Prilep, N. Macedonia",
+    "type": "village"
+  },
+  "zletovo, makedonija": {
+    "lat": 41.9833,
+    "lon": 22.2333,
+    "display_name": "Zletovo, N. Macedonia",
+    "type": "mine"
+  },
+  "debar, makedonija": {
+    "lat": 41.525,
+    "lon": 20.525,
+    "display_name": "Debar, N. Macedonia",
+    "type": "town"
+  },
+  "bitolj, makedonija": {
+    "lat": 41.0308,
+    "lon": 21.3353,
+    "display_name": "Bitola, N. Macedonia",
+    "type": "city"
+  },
+  "indija": {
+    "lat": 20.5937,
+    "lon": 78.9629,
+    "display_name": "India",
+    "type": "country"
+  },
+  "kolorado, usa": {
+    "lat": 39.5501,
+    "lon": -105.7821,
+    "display_name": "Colorado, USA",
+    "type": "state"
+  },
+  "minas gerais, brazil": {
+    "lat": -18.5122,
+    "lon": -44.555,
+    "display_name": "Minas Gerais, Brazil",
+    "type": "state"
+  },
+  "španija": {
+    "lat": 40.4637,
+    "lon": -3.7492,
+    "display_name": "Spain",
+    "type": "country"
+  },
+  "meksiko": {
+    "lat": 23.6345,
+    "lon": -102.5528,
+    "display_name": "Mexico",
+    "type": "country"
+  },
+  "boulder county, usa": {
+    "lat": 40.0918,
+    "lon": -105.3571,
+    "display_name": "Boulder County, Colorado, USA",
+    "type": "county"
+  },
+  "švajcarska": {
+    "lat": 46.8182,
+    "lon": 8.2275,
+    "display_name": "Switzerland",
+    "type": "country"
+  },
+  "biental, švajcarska": {
+    "lat": 46.3673,
+    "lon": 8.1619,
+    "display_name": "Binntal, Switzerland",
+    "type": "valley"
+  },
+  "binental, švajcarska": {
+    "lat": 46.3673,
+    "lon": 8.1619,
+    "display_name": "Binntal, Switzerland",
+    "type": "valley"
+  },
+  "binnertall, švajcarska": {
+    "lat": 46.3673,
+    "lon": 8.1619,
+    "display_name": "Binntal, Switzerland",
+    "type": "valley"
+  },
+  "turska": {
+    "lat": 38.9637,
+    "lon": 35.2433,
+    "display_name": "Turkey",
+    "type": "country"
+  },
+  "bigadi, turska": {
+    "lat": 39.4,
+    "lon": 27.2333,
+    "display_name": "Bigadiç, Turkey",
+    "type": "town"
+  },
+  "crna gora": {
+    "lat": 42.7087,
+    "lon": 19.3744,
+    "display_name": "Montenegro",
+    "type": "country"
+  },
+  "bijelo polje, crna gora": {
+    "lat": 43.0378,
+    "lon": 19.7481,
+    "display_name": "Bijelo Polje, Montenegro",
+    "type": "town"
+  },
+  "bih": {
+    "lat": 43.9159,
+    "lon": 17.6791,
+    "display_name": "Bosnia and Herzegovina",
+    "type": "country"
+  },
+  "kanada": {
+    "lat": 56.1304,
+    "lon": -106.3468,
+    "display_name": "Canada",
+    "type": "country"
+  },
+  "blind river, kanada": {
+    "lat": 46.1833,
+    "lon": -82.95,
+    "display_name": "Blind River, Ontario, Canada",
+    "type": "town"
+  },
+  "betafo, madagaskar": {
+    "lat": -19.8333,
+    "lon": 46.85,
+    "display_name": "Betafo, Madagascar",
+    "type": "town"
+  },
+  "megyaszo, mađarska": null,
+  "eupel, siegerland, nemačka": null,
+  "tunis": {
+    "lat": 36.7699586,
+    "lon": 10.1174062,
+    "display_name": "Rue Serbia, سيدي حسين, معتمدية سيدي حسين, تونس, ولاية تونس, 1059, تونس",
+    "type": "residential"
+  },
+  "marsikov u sumperka, čehoslovačka": null,
+  "srednja tenka-majdanpek, srbija": null,
+  "sa duchessa, sardinia, italija": null,
+  "mexquitic, s.l.p., meksiko": null,
+  "stribro u plzne, čehoslovačka": null,
+  "parsovići, konjic, bih, bih": {
+    "lat": 43.7687232,
+    "lon": 17.8139454,
+    "display_name": "Parsovići, Grad Konjic, Hercegovačko-neretvanska županija (kanton), Federacija Bosne i Hercegovine, 88409, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "village"
+  },
+  "larimer county, colorado, usa": null,
+  "sachsen, nemačka": null,
+  "krnja jela, gracac, srbija": {
+    "lat": 44.2077693,
+    "lon": 20.4349456,
+    "display_name": "Крња јела, Општина Горњи Милановац, Моравички управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "chamonix, francuska": null,
+  "fassas vally, italija": null,
+  "deževice kod kreševa, bosna": null,
+  "bukov u brna, čehoslovačka": null,
+  "markovice u zlebu, čehoslovačka": null,
+  "brestovac, homoljski srez, srbija": {
+    "lat": 44.0377005,
+    "lon": 22.0934064,
+    "display_name": "Брестовац, Град Бор, Борски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "vidačevica, zagradje, srbija": null,
+  "kusovraska banja,debar, makedonija": null,
+  "plana, srbija": {
+    "lat": 43.1521311,
+    "lon": 19.8162272,
+    "display_name": "Плана, Општина Сјеница, Златиборски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "val di fassa, italija": null,
+  "rausher mohle, pfalz, nemačka": null,
+  "tsumeb, s.w.afrika, namibija": null,
+  "vrška čuka, zaječar, srbija": {
+    "lat": 43.8922493,
+    "lon": 22.293327,
+    "display_name": "Вршка Чука, Вишњар, Велики Извор, Град Зајечар, Зајечарски управни округ, Централна Србија, 19000, Србија",
+    "type": "primary"
+  },
+  "dubrave kod kreseva, bosna": null,
+  "oro puerto, brazil": null,
+  "gotovuša, srbija": null,
+  "šmira, srbija": null,
+  "volujak, grebnik, kosovo, srbija": {
+    "lat": 44.4657567,
+    "lon": 20.322855,
+    "display_name": "Волујак - Раскрсница, Милића Јаковљевића-Солунца, Велики Црљени, Градска општина Лазаревац, Град Београд, Централна Србија, 11563, Србија",
+    "type": "bus_stop"
+  },
+  "motajnica, hrvatska": null,
+  "puerto de la cruz, tenereife, spain, španija": null,
+  "valencia county, new mexico, usa": null,
+  "zeilberg, maroldswisach, nemačka": null,
+  "vurlic, bavarska, nemačka": null,
+  "osttirol, austrija": null,
+  "drum krivojevici-nisici cevljanovici, bih": null,
+  "golnig, salcburg, austrija": null,
+  "kobej, srbija": null,
+  "kriva palanka, makedonija": {
+    "lat": 42.2038104,
+    "lon": 22.3336663,
+    "display_name": "Крива Паланка, Општина Крива Паланка, 1330, Северна Македонија",
+    "type": "administrative"
+  },
+  "luccomagno canton, ticino, italija": null,
+  "kadina luka, ba, srbija": {
+    "lat": 44.193063,
+    "lon": 20.2208462,
+    "display_name": "Кадина Лука, Општина Љиг, Колубарски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "spančevo, štip, makedonija": {
+    "lat": 41.9075861,
+    "lon": 22.3105434,
+    "display_name": "Спанчево, Општина Чешиново-Облешево, Северна Македонија",
+    "type": "administrative"
+  },
+  "budeč, arilje, srbija": {
+    "lat": 43.624282,
+    "lon": 20.0146112,
+    "display_name": "Будеч, Општина Ариље, Златиборски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "maden gonlos, murgal, turska": null,
+  "ural, sssr": {
+    "lat": 46.1099076,
+    "lon": 19.6338271,
+    "display_name": "Уралска, Пешчара, МЗ Пешчара, Суботица, Град Суботица, Севернобачки управни округ, Војводина, 24000, Србија",
+    "type": "residential"
+  },
+  "koruška, austrija": {
+    "lat": 45.207856,
+    "lon": 19.5727876,
+    "display_name": "Корушка, Сусек, Општина Беочин, Јужнобачки управни округ, Војводина, Србија",
+    "type": "hamlet"
+  },
+  "goles, srbija": {
+    "lat": 42.8874909,
+    "lon": 22.7079111,
+    "display_name": "Голеш, Петачинци, Општина Димитровград, Пиротски управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "repcice, čehoslovačka": null,
+  "horni slavkov, čehoslovačka": null,
+  "džep, srbija": {
+    "lat": 42.768215,
+    "lon": 22.08834,
+    "display_name": "Џеп, Општина Владичин Хан, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "tisovik,valjevo, srbija": {
+    "lat": 43.5859189,
+    "lon": 22.0497828,
+    "display_name": "Tisovik, Скробница, Општина Књажевац, Зајечарски управни округ, Централна Србија, Србија",
+    "type": "stream"
+  },
+  "biedell mine, aguache county, usa": null,
+  "šipačina-zimovnik, kopaonik, srbija": null,
+  "sa.duchessa, sardinija, italija": null,
+  "kapnik, rumunija": null,
+  "lastra, valjevo, srbija": {
+    "lat": 44.1563131,
+    "lon": 19.8864687,
+    "display_name": "Ластра, Дивчибарска, Бачевци, Град Ваљево, Колубарски управни округ, Централна Србија, Србија",
+    "type": "station"
+  },
+  "bogutovačka banja, srbija": {
+    "lat": 43.6552314,
+    "lon": 20.5370605,
+    "display_name": "Богутовачка Бања, Богутовац, Град Краљево, Рашки управни округ, Централна Србија, Србија",
+    "type": "hamlet"
+  },
+  "kenija": null,
+  "metohija, srbija": {
+    "lat": 44.8202215,
+    "lon": 20.4291157,
+    "display_name": "Канцеларија за Косово и Метохију, Булевар Николе Тесле, МЗ Дунавски кеј, Београд (Нови Београд), Београд, Град Београд, Централна Србија, 11000, Србија",
+    "type": "government"
+  },
+  "ljubija, srbija": {
+    "lat": 44.9143367,
+    "lon": 16.6075928,
+    "display_name": "Ljubija, MZ Ljubija, Grad Prijedor, Република Српска / Republika Srpska, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "village"
+  },
+  "mine de džebel hallouf, tunis": null,
+  "peak district, engleska": {
+    "lat": 43.4073517,
+    "lon": 19.9353,
+    "display_name": "Шапоњски врх, Општина Нова Варош, Златиборски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "manastir kosjerovo, srbija": null,
+  "maden goktas i maden cakmakaya, murgul, turska": null,
+  "m.monzoni, val di fassa, italija": null,
+  "ramni kamen-kukavica, srbija": null,
+  "podrinje, srbija": {
+    "lat": 44.7979913,
+    "lon": 20.4966954,
+    "display_name": "Podrinje, Милана Ракића, МЗ Славујев поток, Београд (Звездара), Градска општина Звездара, Град Београд, Централна Србија, 11050, Србија",
+    "type": "bakery"
+  },
+  "dolni bory u brna, čehoslovačka": null,
+  "kozakov hill, čehoslovačka": null,
+  "krusak, srbija": {
+    "lat": 44.1547582,
+    "lon": 19.6453391,
+    "display_name": "Крушак, Матићи, Зарожје, Општина Бајина Башта, Златиборски управни округ, Централна Србија, Србија",
+    "type": "locality"
+  },
+  "faratsiho, madagaskar": null,
+  "vučkovica, srbija": {
+    "lat": 43.9444444,
+    "lon": 20.7888889,
+    "display_name": "Вучковица, Општина Кнић, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "kiževak potok, srbija": null,
+  "trnava, užička požega, srbija": {
+    "lat": 43.857647,
+    "lon": 20.391097,
+    "display_name": "Трнава, Град Чачак, Моравички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "mine de hamman djedidi, tunis": null,
+  "veliko orasje, srbija": {
+    "lat": 44.3712415,
+    "lon": 21.0887509,
+    "display_name": "Велико Орашје, Општина Велика Плана, Подунавски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "sadser alpi": null,
+  "borisovske sopki, ural, rusija": null,
+  "kukavica, srbija": {
+    "lat": 42.7905834,
+    "lon": 21.9466158,
+    "display_name": "Кукавица, Градска општина Врање, Град Врање, Пчињски управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "kapak-polom, cavica potok, busovača, bosna": null,
+  "tzumeb, j.z. afrika, namibija": null,
+  "lučino vrelo, pljevlje, c.gora, crna gora": null,
+  "cilertal,tirol, austrija": null,
+  "jubzbachtal": null,
+  "pobrdje, baljevac, raška, srbija": {
+    "lat": 43.1403266,
+    "lon": 20.4760909,
+    "display_name": "Побрђе, Град Нови Пазар, Рашки управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "rozna morava, čehoslovačka": null,
+  "koprivnjak potok, jošanička banja, kopaonik, srbija": null,
+  "utoen": null,
+  "zapadno od manastira matejce, skopska crna gora, makedonija": null,
+  "lancaster - massacusets, usa": null,
+  "vrancice, psibram, čehoslovačka": null,
+  "christian levih, essen borbeck, nemačka": null,
+  "moldava, čehoslovačka": {
+    "lat": 47.6196039,
+    "lon": 28.987031,
+    "display_name": "Церковь Святой прп. Параскевы Сербской, Пионерская улица, Зозуляны, Попенский сельский совет, Районул Рыбница / Рыбницкий район / Рибницький район, Unitățile Administrativ-Teritoriale din Stînga Nistrului, Нистрения / Приднестровье / Придністров'я, Moldova",
+    "type": "place_of_worship"
+  },
+  "hazlov u chebu, čehoslovačka": null,
+  "hazlov u ase, čechy, čehoslovačka": null,
+  "queensland, australija": null,
+  "vasko": {
+    "lat": 44.7673278,
+    "lon": 17.188346,
+    "display_name": "Vasko, Zdravka Čelara, Bulevar, Banja Luka, Grad Banja Luka, Република Српска / Republika Srpska, 78000, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "hairdresser"
+  },
+  "dumača, šabac, srbija": {
+    "lat": 44.7357901,
+    "lon": 19.723577,
+    "display_name": "Думача, Доњи шор, Јеленча, Град Шабац, Мачвански управни округ, Централна Србија, Србија",
+    "type": "river"
+  },
+  "krupka, čehoslovačka": null,
+  "silezija, austrija": null,
+  "lago maggiore, italija": null,
+  "kozje brdo, cerova glava, beočin, fruška gora, srbija": {
+    "lat": 45.1753833,
+    "lon": 19.6937567,
+    "display_name": "Козје брдо, Општина Беочин, Јужнобачки управни округ, Војводина, 21300, Србија",
+    "type": "peak"
+  },
+  "traverssela, italija": null,
+  "pecina krusik, srbija": null,
+  "oskorusa-skola, jelici, srbija": null,
+  "suvodol-guberevac, kosmaj, srbija": null,
+  "štajerska, nemačka": {
+    "lat": 45.6867327,
+    "lon": 18.9925413,
+    "display_name": "Штајерска, Апатин, Општина Апатин, Западнобачки управни округ, Војводина, 25260, Србија",
+    "type": "track"
+  },
+  "rozni maren": null,
+  "grošnica, kragujevac, srbija": {
+    "lat": 43.9949038,
+    "lon": 20.8765475,
+    "display_name": "Грошница, Мине Караџић, Мале Пчелице, Крагујевац, Град Крагујевац, Шумадијски управни округ, Централна Србија, 34113, Србија",
+    "type": "station"
+  },
+  "zoptan": null,
+  "fassa's valley, italija": null,
+  "habahštal, austrija": null,
+  "lubietova u b.bystrice, čehoslovačka": null,
+  "crni potok (odašu negra)": null,
+  "obervald, štajerska, austrija": null,
+  "kozje stene, cerova strana, beočin. fruška gora, srbija": null,
+  "gamblatesa mine, liguria, italija": null,
+  "voltac, čehoslovačka": null,
+  "koporić, kopaonik, srbija": null,
+  "krupanj, stolice, potkop 10, cista, srbija": {
+    "lat": 44.365632,
+    "lon": 19.3628418,
+    "display_name": "Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "administrative"
+  },
+  "makarska, hrvatska": {
+    "lat": 43.2939756,
+    "lon": 17.020242,
+    "display_name": "Makarska, Grad Makarska, Splitsko-dalmatinska županija, 21300, Hrvatska",
+    "type": "administrative"
+  },
+  "schelingen, kaiserstal, baden,wurttemberg, nemačka": null,
+  "rudnik lisa, ivanjica, srbija": null,
+  "rudnik rio, elba, italija": null,
+  "goleš, kosovo, srbija": {
+    "lat": 42.8892666,
+    "lon": 21.5248167,
+    "display_name": "Голеш, Општина Медвеђа, Јабланички управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "preševo, srbija": {
+    "lat": 42.3095217,
+    "lon": 21.6490102,
+    "display_name": "Прешево, Општина Прешево, Пчињски управни округ, Централна Србија, 17523, Србија",
+    "type": "administrative"
+  },
+  "essen borbeck, nemačka": null,
+  "jarešnik, bosiljgrad, srbija": {
+    "lat": 42.4023564,
+    "lon": 22.3961521,
+    "display_name": "Јарешник, Општина Босилеград, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "pakistan": {
+    "lat": 44.7786137,
+    "lon": 20.45789,
+    "display_name": "Амбасада Пакистана, 62, Булевар кнеза Александра Карађорђевића, МЗ Четврти Јули, Београд (Савски венац), Град Београд, Централна Србија, 11040, Србија",
+    "type": "diplomatic"
+  },
+  "selo jovac, vranje, srbija": null,
+  "ruskov u kosic, čehoslovačka": null,
+  "zajača, zavojce, srbija": {
+    "lat": 44.456944,
+    "lon": 19.244444,
+    "display_name": "Зајача, Град Лозница, Мачвански управни округ, Централна Србија, 15315, Србија",
+    "type": "administrative"
+  },
+  "montevecchio, sardegna, italija": null,
+  "pisek, čehoslovačka": null,
+  "dobrotinska reka, dobrotin, prokuplje, srbija": null,
+  "crni kamen, alince, prilep, makedonija": {
+    "lat": 41.7646302,
+    "lon": 21.5278425,
+    "display_name": "Црни Камен, Дејковец, Општина Зелениково, Северна Македонија",
+    "type": "locality"
+  },
+  "collini metalliche de tunane (granexo), italija": null,
+  "joakimo, čehoslovačka": null,
+  "ogešu poinici, porečka reka, srbija": null,
+  "nucice čechy, čehoslovačka": null,
+  "pfač, austrija": null,
+  "karaula velika katka, srbija": null,
+  "horizont 485m, majdanpek, srbija": null,
+  "wyoming, usa": null,
+  "herdorf, grube wolf-siegerland, nemačka": null,
+  "išl, nemačka": null,
+  "cinvald, čehoslovačka": null,
+  "malawi, malavi": null,
+  "keptaza": null,
+  "nazarica, vučkov kozarnik, bosiljgrad, srbija": {
+    "lat": 42.4059969,
+    "lon": 22.3603145,
+    "display_name": "Назарица, Општина Босилеград, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "oresmen, bugarska": null,
+  "vapena (slezosko), čehoslovačka": null,
+  "lake county, usa": null,
+  "sa puta vladimirovo-berovo, makedonija": null,
+  "blajva, ural, rusija": null,
+  "kenigsberg, nemačka": null,
+  "karabas-ural, rusija": null,
+  "neresnica, bosiljkovac, srbija": {
+    "lat": 44.4417049,
+    "lon": 21.7291282,
+    "display_name": "Нересница, Општина Кучево, Браничевски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "golesnica, makedonija": {
+    "lat": 43.3974192,
+    "lon": 21.6866804,
+    "display_name": "Голешница, Општина Алексинац, Нишавски управни округ, Централна Србија, 18212, Србија",
+    "type": "administrative"
+  },
+  "draca, kragujevac, srbija": {
+    "lat": 44.033169,
+    "lon": 20.8118641,
+    "display_name": "Драча, Град Крагујевац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "zermatt, švajcarska": null,
+  "rosulja, kukavica, vranje, srbija": {
+    "lat": 43.4191341,
+    "lon": 22.1083866,
+    "display_name": "Росуља, Сврљиг, Општина Сврљиг, Нишавски управни округ, Централна Србија, 18360, Србија",
+    "type": "neighbourhood"
+  },
+  "verfen, austrija": null,
+  "bukova glava, kukavica, srbija": {
+    "lat": 43.8998835,
+    "lon": 19.4656124,
+    "display_name": "Букова глава, Општина Бајина Башта, Златиборски управни округ, Централна Србија, 31251, Србија",
+    "type": "peak"
+  },
+  "degurić, srbija": {
+    "lat": 44.2428517,
+    "lon": 19.8946472,
+    "display_name": "Дегурић, Град Ваљево, Колубарски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "espery, turska": null,
+  "brezovica, srbija": {
+    "lat": 43.7498622,
+    "lon": 20.4070615,
+    "display_name": "Брезовица, Град Чачак, Моравички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "goleš, srbija": {
+    "lat": 42.8892666,
+    "lon": 21.5248167,
+    "display_name": "Голеш, Општина Медвеђа, Јабланички управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "vrnjci, srbija": {
+    "lat": 43.6412399,
+    "lon": 20.9208941,
+    "display_name": "Врњци, Општина Врњачка Бања, Рашки управни округ, Централна Србија, 36217, Србија",
+    "type": "administrative"
+  },
+  "čanište, pelagonija, makedonija": {
+    "lat": 41.1649234,
+    "lon": 21.6855154,
+    "display_name": "Чаниште, Општина Прилеп, Северна Македонија",
+    "type": "administrative"
+  },
+  "rauriss kolmseigon, austrija": null,
+  "siegerland, nemačka": null,
+  "krasna iforka, slovensko, čehoslovačka": null,
+  "garaši, vagan, bukulja, srbija": {
+    "lat": 44.2899129,
+    "lon": 20.4472732,
+    "display_name": "Гараши, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "dobri potok, krupanj, srbija": {
+    "lat": 44.3664223,
+    "lon": 19.3793742,
+    "display_name": "Добри поток, Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "residential"
+  },
+  "stolica-krupanj, srbija": null,
+  "medjuvršje, kiseljak, bih": {
+    "lat": 43.9113273,
+    "lon": 20.2323317,
+    "display_name": "Међувршје, Град Чачак, Моравички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "traversella, piemont, italija": null,
+  "civiš, srbija": null,
+  "zelechov u h.kralove, čehoslovačka": null,
+  "irhlogenvald": null,
+  "krušik - \"tisovik\", srbija": null,
+  "izmedju touggurta i okargla, alžir": null,
+  "donja studena, srbija": {
+    "lat": 43.260908,
+    "lon": 22.088567,
+    "display_name": "Доња Студена, Градска општина Нишка Бања, Град Ниш, Нишавски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "ceare, brazil": null,
+  "karlsbad, nemačka": null,
+  "trnava, požega, srbija": {
+    "lat": 43.857647,
+    "lon": 20.391097,
+    "display_name": "Трнава, Град Чачак, Моравички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "maglovec, presova, čehoslovačka": null,
+  "čevljanović, bih": null,
+  "orehovo, makedonija": {
+    "lat": 40.983211,
+    "lon": 21.3112481,
+    "display_name": "Орехово, Општина Битола, Северна Македонија",
+    "type": "administrative"
+  },
+  "rudnik-cer nebojsa, kicevo, srbija": null,
+  "holer, salcburg, austrija": null,
+  "grand county, usa": null,
+  "val d'ossala, beura, italija": null,
+  "cortage": null,
+  "hamilton, illinois, usa": null,
+  "koprivnjak - žeradje, kopaonik, srbija": null,
+  "resavska pećina, srbija": {
+    "lat": 44.0726888,
+    "lon": 21.6297467,
+    "display_name": "Ресавска пећина, Јеловац, Општина Деспотовац, Поморавски управни округ, Централна Србија, Србија",
+    "type": "cave_entrance"
+  },
+  "rio grande do sul, južni brazil, brazil": null,
+  "crystal peak, teller county, colorado, usa": null,
+  "marmaros, mađarska": null,
+  "popina kod trstenika, srbija": null,
+  "rudnik kohimba, 60km od albertvila, katanga, srbija": null,
+  "džumeb, s.z. afrika, namibija": null,
+  "put za planinarski dom na vršačkim planinama, južno od k-439, srbija": null,
+  "đakovica, deva, srbija": {
+    "lat": 44.8202819,
+    "lon": 20.4678793,
+    "display_name": "Венизелосова, Скадарлија, Београд (Стари град), Градска општина Стари град, Град Београд, Централна Србија, 11121, Србија",
+    "type": "tertiary"
+  },
+  "bobološ, brza palanka, srbija": null,
+  "vargen, tirol, austrija": null,
+  "ispod povlena, srbija": null,
+  "zajača, krupanj, srbija": {
+    "lat": 44.456944,
+    "lon": 19.244444,
+    "display_name": "Зајача, Град Лозница, Мачвански управни округ, Централна Србија, 15315, Србија",
+    "type": "administrative"
+  },
+  "goleš, kim, srbija": {
+    "lat": 42.8892666,
+    "lon": 21.5248167,
+    "display_name": "Голеш, Општина Медвеђа, Јабланички управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "tetovo, makedonija": {
+    "lat": 42.0068297,
+    "lon": 20.9728556,
+    "display_name": "Тетово, Општина Тетово, 1200, Северна Македонија",
+    "type": "administrative"
+  },
+  "dudica, kožuf, makedonija": {
+    "lat": 41.1352356,
+    "lon": 22.1204385,
+    "display_name": "Дудица, Конопиште, Општина Кавадарци, Северна Македонија",
+    "type": "alpine_hut"
+  },
+  "mingllanila, španija": null,
+  "kumberland, engleska": null,
+  "piz beverin, švajcarska": null,
+  "tanzanija": null,
+  "oplatnica, pohorje, slovenija": null,
+  "kisbaka": null,
+  "val di vizzo, bolzano, italija": null,
+  "mačkatica, srbija": {
+    "lat": 42.7566667,
+    "lon": 22.1819444,
+    "display_name": "Мачкатица, Општина Сурдулица, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "šlezija, poljska": null,
+  "lubnica, zaječar, srbija": {
+    "lat": 43.8672107,
+    "lon": 22.1959151,
+    "display_name": "Лубница, Град Зајечар, Зајечарски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "oraski brijeg, mioce, srbija": null,
+  "dubrave, bih": {
+    "lat": 44.8158414,
+    "lon": 18.5709626,
+    "display_name": "Dubrave, Brčko distrikt, 76215, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "village"
+  },
+  "selečke planine, prilep, makedonija": null,
+  "zacatecas, mexico, meksiko": null,
+  "tisovac, busovača, bih": {
+    "lat": 44.0719349,
+    "lon": 17.8675732,
+    "display_name": "Tisovac, Kupres, Općina Busovača, Srednjobosanski kanton / Županija Središnja Bosna, Federacija Bosne i Hercegovine, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "hamlet"
+  },
+  "lojane, kumanovo, makedonija": {
+    "lat": 42.2333342,
+    "lon": 21.6649956,
+    "display_name": "Лојане, Општина Липково, Северна Македонија",
+    "type": "administrative"
+  },
+  "m.ramazzo, liburia, italija": null,
+  "doglacka": null,
+  "ojuela mine, , durango, mexico, meksiko": null,
+  "calafuria, livorno, italija": null,
+  "zambija, zambija": null,
+  "glavni raskop na skakavcu, jelici, mioce, srbija": null,
+  "trnava, raška, srbija": {
+    "lat": 43.2834468,
+    "lon": 20.606957,
+    "display_name": "Трнава, Мислопоље, Рашка, Општина Рашка, Рашки управни округ, Централна Србија, 36350, Србија",
+    "type": "stream"
+  },
+  "izrael": {
+    "lat": 32.0918806,
+    "lon": 34.7889405,
+    "display_name": "שגרירות סרביה, 10, ד\"ר בודנהיימר, תל־אביב–יפו, הצפון החדש, תל־אביב–יפו, נפת תל אביב, מחוז תל אביב, 6230231, ישראל",
+    "type": "diplomatic"
+  },
+  "bretagne, france, francuska": {
+    "lat": 48.0874902,
+    "lon": -1.6590409,
+    "display_name": "Place de Serbie, Torigné, Le Blosne, Quartiers Sud-Est, Rennes, Ille-et-Vilaine, Bretagne, France métropolitaine, 35200, France",
+    "type": "living_street"
+  },
+  "isola elba(toscana), italija": null,
+  "ramača, srbija": {
+    "lat": 44.0910586,
+    "lon": 20.6710661,
+    "display_name": "Рамаћа, Град Крагујевац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "drenovci severno od prilepa, makedonija": null,
+  "min. botiino serravezza, lucca, italija": null,
+  "iz min. kabineta velike škole, kostajnik, srbija": null,
+  "dobrevo, makedonija": {
+    "lat": 42.024151,
+    "lon": 22.1970554,
+    "display_name": "Добрево, Општина Пробиштип, Северна Македонија",
+    "type": "administrative"
+  },
+  "zavlaka, srbija": {
+    "lat": 44.4554446,
+    "lon": 19.4834196,
+    "display_name": "Завлака, Општина Крупањ, Мачвански управни округ, Централна Србија, 15312, Србија",
+    "type": "administrative"
+  },
+  "šuplja stena, avala, srbija": {
+    "lat": 44.6709851,
+    "lon": 20.5435248,
+    "display_name": "Шупља стена, Врчин, Градска општина Гроцка, Град Београд, Централна Србија, 11232, Србија",
+    "type": "hamlet"
+  },
+  "hittero, norveška": null,
+  "srebrenica, bosna": {
+    "lat": 44.1063188,
+    "lon": 19.2952783,
+    "display_name": "Srebrenica, Opština Srebrenica, Република Српска / Republika Srpska, 75430, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "town"
+  },
+  "csordakut, mađarska": null,
+  "chvaletice, čehoslovačka": null,
+  "s.marcel, aosta, italija": null,
+  "pirauikabo, brazilija, brazil": null,
+  "bohnija, slovenija": null,
+  "lavron, grčka": null,
+  "cima alochet, m.monzoni, val di fassa, italija": null,
+  "sil, austrija": null,
+  "crno more, kara demiz, tirebolli, turska": null,
+  "ilidža, sarajevo, bih": {
+    "lat": 43.8306182,
+    "lon": 18.3077357,
+    "display_name": "Ilidža, Općina Ilidža, Kanton Sarajevo, Federacija Bosne i Hercegovine, 71210, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "town"
+  },
+  "strumica, rudo, makedonija": {
+    "lat": 41.4390081,
+    "lon": 22.6374139,
+    "display_name": "Струмица, Општина Струмица, Северна Македонија",
+    "type": "administrative"
+  },
+  "zbraslav čechy, praha, čehoslovačka": null,
+  "rannariss, tirol, austrija": null,
+  "steinheim, nemačka": null,
+  "chibinska thundra, poolostrvo kola, rusija": null,
+  "kučajna-rudnik, srbija": null,
+  "mišau, nemačka": null,
+  "rašin majdan, ripanj, srbija": {
+    "lat": 44.6490743,
+    "lon": 20.5103235,
+    "display_name": "Рашин Мајдан, Авалска, Ерчани, Рипањ, Градска општина Вождовац, Град Београд, Централна Србија, 11040, Србија",
+    "type": "bus_stop"
+  },
+  "psibram, čehoslovačka": null,
+  "torovi-kopaonik, kremićska planina, srbija": null,
+  "jagodnja, bukova reka, čehoslovačka": {
+    "lat": 44.3430751,
+    "lon": 19.293562,
+    "display_name": "Јагодња, Општина Крупањ, Мачвански управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "maroko": {
+    "lat": 33.9817996,
+    "lon": -6.8325908,
+    "display_name": "Ambassade de Serbie, 24, Rue Ahmed Mouline, Souissi ⵙⵡⵉⵙⵉ السويسي, Arrondissement Souissi مقاطعة السويسي, Rabat ⵔⴱⴰⵟ الرباط, باشوية الرباط, Préfecture de Rabat عمالة الرباط, 10105, Maroc ⵍⵎⵖⵔⵉⴱ المغرب",
+    "type": "diplomatic"
+  },
+  "montrose county, usa": null,
+  "wiesloch, nemačka": null,
+  "severno od miljkovca, kota 401, niš, srbija": null,
+  "gr. bollenbach herdorf, siegerland, nemačka": null,
+  "krupanj, stolice, srbija": {
+    "lat": 44.365632,
+    "lon": 19.3628418,
+    "display_name": "Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "administrative"
+  },
+  "bor - rudnik, srbija": {
+    "lat": 44.0188812,
+    "lon": 22.1353115,
+    "display_name": "Аеродром Бор, Чучук Станина, Рудник „Чукару Пеки”, Слатина, Град Бор, Борски управни округ, Централна Србија, Србија",
+    "type": "aerodrome"
+  },
+  "ribaševina, u.požega, srbija": {
+    "lat": 43.9399374,
+    "lon": 19.8735065,
+    "display_name": "Рибашевина, Градска општина Ужице, Град Ужице, Златиборски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "saksonija, nemačka": null,
+  "halersbah": null,
+  "orahovac, kim, srbija": {
+    "lat": 42.6841626,
+    "lon": 18.4672246,
+    "display_name": "Горњи Ораховац, Град Требиње / Grad Trebinje, Република Српска / Republika Srpska, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "administrative"
+  },
+  "zell am see, austrija": null,
+  "ziring": null,
+  "etna, sicilija, italija": null,
+  "gavorrano, toscana, italija": null,
+  "kratovo, makedonija": {
+    "lat": 42.079261,
+    "lon": 22.1802182,
+    "display_name": "Кратово, Општина Кратово, 1360, Северна Македонија",
+    "type": "administrative"
+  },
+  "racalmunto agrigento, italija": null,
+  "zagrađe potok kod busovače, bosna": null,
+  "karlsbad, čehoslovačka": null,
+  "waldalgesheim bei bingen (amalienhohe), nemačka": null,
+  "val  di fassa (dolomiti), italija": null,
+  "val gava, liguria, italija": null,
+  "selo alince, prilep, makedonija": {
+    "lat": 42.2095898,
+    "lon": 21.9991117,
+    "display_name": "Аљинце, Општина Старо Нагоричане, Северна Македонија",
+    "type": "village"
+  },
+  "rona-kladno, čehoslovačka": null,
+  "stolebrg, aachen, nemačka": null,
+  "schnekenstein, vogtland, nemačka": null,
+  "rozna u brna, čehoslovačka": null,
+  "samarkand, uzbekistan": null,
+  "s. brajić, suvobor, srbija": null,
+  "poona, indija": null,
+  "grčka": {
+    "lat": 44.8115405,
+    "lon": 20.3648445,
+    "display_name": "Грчка, МЗ Бежанијска коса, Београд (Нови Београд), Град Београд, Централна Србија, 11078, Србија",
+    "type": "residential"
+  },
+  "tisovik, valjevo, srbija": {
+    "lat": 43.5859189,
+    "lon": 22.0497828,
+    "display_name": "Tisovik, Скробница, Општина Књажевац, Зајечарски управни округ, Централна Србија, Србија",
+    "type": "stream"
+  },
+  "bohutin-psibram, čehoslovačka": null,
+  "iglesias, sardegna, italija": null,
+  "crnjaka, srbija": null,
+  "pobrdje, baljevac, srbija": {
+    "lat": 43.1403266,
+    "lon": 20.4760909,
+    "display_name": "Побрђе, Град Нови Пазар, Рашки управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "bingem am rhein, nemačka": null,
+  "itarendrika, madagaskar": null,
+  "persija, iran": null,
+  "lipnica, gruža, kragujevac, srbija": {
+    "lat": 43.9050011,
+    "lon": 20.7899561,
+    "display_name": "Липница, Општина Кнић, Шумадијски управни округ, Централна Србија, 34230, Србија",
+    "type": "administrative"
+  },
+  "džebel azref, tunis": null,
+  "cava menegolli, val d astico, viconza, italija": null,
+  "park county, usa": null,
+  "tušanj, tuzla, bih": {
+    "lat": 44.5443761,
+    "lon": 18.6649259,
+    "display_name": "Tušanj, Tuzla, Grad Tuzla, Tuzlanski kanton, Federacija Bosne i Hercegovine, 75000, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "suburb"
+  },
+  "crkoljevo, srbija": null,
+  "st.egidien, nemačka": null,
+  "veovača, vareš, bih": null,
+  "val d ala, liguria, italija": null,
+  "eciklova": null,
+  "okolina prilepa, makedonija": null,
+  "kanjon uvca, pećina, srbija": null,
+  "herngrund, slovačka": null,
+  "velika škola, beograd, srbija": {
+    "lat": 45.2580603,
+    "lon": 19.8479473,
+    "display_name": "Гимназија „Јован Јовановић Змај”, 4, Златне греде, Алмашки крај, Стари град, МЗ Подбара, Нови Сад, Град Нови Сад, Јужнобачки управни округ, Војводина, 21000, Србија",
+    "type": "school"
+  },
+  "subachtal, austrija": null,
+  "eupel (siegerland), nieder hofels, nemačka": null,
+  "srbija": {
+    "lat": 44.0243229,
+    "lon": 21.0765743,
+    "display_name": "Србија",
+    "type": "claimed_administrative"
+  },
+  "gross glochener, austria, austrija": null,
+  "gottardo, švajcarska": null,
+  "teplice lazne, čehoslovačka": null,
+  "brembach am rheiland, nemačka": null,
+  "rakovac, fruška gora, srbija": {
+    "lat": 45.2087575,
+    "lon": 19.7676517,
+    "display_name": "Раковац, Општина Беочин, Јужнобачки управни округ, Војводина, 21299, Србија",
+    "type": "administrative"
+  },
+  "piona, como, italija": null,
+  "limoges, francuska": null,
+  "klina, metohija, srbija": {
+    "lat": 43.4003471,
+    "lon": 18.3713386,
+    "display_name": "Клиња, Opština Kalinovik, Република Српска / Republika Srpska, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "administrative"
+  },
+  "poham raidlgraben, salcburg, austrija": null,
+  "golemo brdo, kukavica, srbija": null,
+  "straznik-perimov, čehoslovačka": null,
+  "ostrvo elba, italija": null,
+  "min. s. giovanni abbandonato, zogno, bergamo, italija": null,
+  "krupanj, stolice, potkop 26a, srbija": {
+    "lat": 44.365632,
+    "lon": 19.3628418,
+    "display_name": "Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "administrative"
+  },
+  "eupel, nemačka": null,
+  "eagle county, colorado, usa": null,
+  "pećina risovača, srbija": {
+    "lat": 44.3020747,
+    "lon": 20.5823718,
+    "display_name": "Пећина Рисовача, Занатлијска, Аранђеловац, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, 34300, Србија",
+    "type": "museum"
+  },
+  "kozje stene, f.gora, srbija": null,
+  "trestijan, srbija": null,
+  "jet, oklahoma, usa": {
+    "lat": 45.2893222,
+    "lon": 19.8307339,
+    "display_name": "Jet Set, 41, Темерински пут, МЗ Слана бара, Нови Сад, Град Нови Сад, Јужнобачки управни округ, Војводина, 21000, Србија",
+    "type": "hotel"
+  },
+  "draževićo kod srednjeg, bih": null,
+  "salezel, elba, italija": null,
+  "katanga, kongo": null,
+  "cumeb, j. z. afrika, namibija": null,
+  "felsobanya, rumunija": null,
+  "goyaz, brazil": null,
+  "cer, srbija": {
+    "lat": 44.6029582,
+    "lon": 19.4928604,
+    "display_name": "Цер, Трбосиље, Град Лозница, Мачвански управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "fassas valley, italija": null,
+  "felsebana, rumunija": null,
+  "crni kamen, alinci, prilep, makedonija": {
+    "lat": 41.7646302,
+    "lon": 21.5278425,
+    "display_name": "Црни Камен, Дејковец, Општина Зелениково, Северна Македонија",
+    "type": "locality"
+  },
+  "vallee du mandrare sud, madagaskar": null,
+  "žel. stanica u prilepu, prilep, makedonija": null,
+  "island, nemačka": {
+    "lat": 44.0224086,
+    "lon": 20.4576781,
+    "display_name": "Исланд, Војводе Милана Обреновића, Горњи Милановац, Општина Горњи Милановац, Моравички управни округ, Централна Србија, 32300, Србија",
+    "type": "cafe"
+  },
+  "gute wolf, nerdorf, nemačka": null,
+  "kremici, kopaonik, srbija": {
+    "lat": 43.9323058,
+    "lon": 19.3501781,
+    "display_name": "Кремићи, Растиште, Општина Бајина Башта, Златиборски управни округ, Централна Србија, Србија",
+    "type": "hamlet"
+  },
+  "selo repovci, bradina, bih": {
+    "lat": 43.7550508,
+    "lon": 17.9690143,
+    "display_name": "Repovci, Grad Konjic, Hercegovačko-neretvanska županija (kanton), Federacija Bosne i Hercegovine, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "village"
+  },
+  "ukrajina": {
+    "lat": 50.4648833,
+    "lon": 30.5235709,
+    "display_name": "Посольство Сербії, 4, Волоська вулиця, Поділ, Подільський район, Київ, 04070, Україна",
+    "type": "diplomatic"
+  },
+  "ljubljanska, slovenija": {
+    "lat": 46.1438929,
+    "lon": 14.5990718,
+    "display_name": "Ljubljanska, Ljubljanska cesta, Podrečje, Rodica, Domžale, Upravna Enota Domžale, 1230, Slovenija",
+    "type": "bus_stop"
+  },
+  "tintik, utah, usa": null,
+  "wieliczska, poljska": null,
+  "br.kirn an der nache, nemačka": null,
+  "razanska reka, ispod ilijinog groba, srbija": {
+    "lat": 44.0828869,
+    "lon": 19.9169369,
+    "display_name": "Ражанска река, Мрчићи, Општина Косјерић, Златиборски управни округ, Централна Србија, Србија",
+    "type": "stream"
+  },
+  "habahtal, austrija": null,
+  "okolina guštanja, srbija": null,
+  "prpušane (biljanovac), jošanička banja, srbija": null,
+  "crven dol, alšar, makedonija": null,
+  "cilertal, tirol, austrija": null,
+  "gorner grat, zermatt, švajcarska": null,
+  "crvena jabuka, srbija": {
+    "lat": 44.4974431,
+    "lon": 20.0992202,
+    "display_name": "Црвена Јабука, Општина Уб, Колубарски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "lažička reka, na putu bitolj-lerin, makedonija": null,
+  "mozilos": null,
+  "farer": null,
+  "rudnik rudolf, srbija": null,
+  "wishiowka, poljska": null,
+  "štajerska, austrija": {
+    "lat": 45.6865258,
+    "lon": 18.9929505,
+    "display_name": "Штајерска, Апатин, Општина Апатин, Западнобачки управни округ, Војводина, 25260, Србија",
+    "type": "track"
+  },
+  "severno od lovačkog doma, bukulja, srbija": null,
+  "frajberg, nemačka": null,
+  "psibram, češka, čehoslovačka": null,
+  "fernsbah, keln, nemačka": null,
+  "ruplje, pirot, srbija": {
+    "lat": 42.83947,
+    "lon": 22.225479,
+    "display_name": "Рупље, Општина Црна Трава, Јабланички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "werfen, austrija": null,
+  "cer kod kileva, makedonija": null,
+  "jackson county, usa": null,
+  "mt spokane, washington, usa": null,
+  "sibir, rusija": null,
+  "matejča kod kumanova, makedonija": null,
+  "petrovac na mlavi, srbija": {
+    "lat": 44.3677095,
+    "lon": 21.4076704,
+    "display_name": "Петровац на Млави, Општина Петровац на Млави, Браничевски управни округ, Централна Србија, 12300, Србија",
+    "type": "administrative"
+  },
+  "psimbaba-psibram, čehoslovačka": null,
+  "ležište čadinje, rudno telo 1, srbija": null,
+  "rio marina, elba, italija": null,
+  "new mexico, usa": null,
+  "raibl, austrija": null,
+  "kromberg, austrija": {
+    "lat": 43.5587311,
+    "lon": 21.3346434,
+    "display_name": "Kromberg & Schubert KG, Крушевац, Град Крушевац, Расински управни округ, Централна Србија, Србија",
+    "type": "industrial"
+  },
+  "dobrotić, prokuplje, srbija": {
+    "lat": 43.1889211,
+    "lon": 21.5606464,
+    "display_name": "Добротић, Град Прокупље, Топлички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "langersauni": null,
+  "tajmiste, kilevo, makedonija": {
+    "lat": 41.6400652,
+    "lon": 20.8585378,
+    "display_name": "Тајмиште, Општина Кичево, Северна Македонија",
+    "type": "administrative"
+  },
+  "kižnica, srbija": null,
+  "kedabek, azerbejdzan, kavkaz, rusija": null,
+  "st gothard, švajcarska": null,
+  "pregraten, tirol, austrija": null,
+  "modra glava, makedonija": {
+    "lat": 42.41615,
+    "lon": 22.1003667,
+    "display_name": "Модра глава, Општина Трговиште, Пчињски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "d.ljubata, srbija": {
+    "lat": 42.5010114,
+    "lon": 22.2945137,
+    "display_name": "Горња Љубата, Општина Босилеград, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "stragari, srbija": {
+    "lat": 44.1508915,
+    "lon": 20.6624834,
+    "display_name": "Страгари, Град Крагујевац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "gornja štajerska, austrija": null,
+  "bukulja, severno od lovačkog doma, srbija": {
+    "lat": 44.2985392,
+    "lon": 20.5294697,
+    "display_name": "Букуља, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, 34300, Србија",
+    "type": "mountain_range"
+  },
+  "schauinsland, barbaragang, nemačka": null,
+  "brembach am rheinland, nemačka": null,
+  "utah, sad, usa": null,
+  "pohla, erzgebirge, nemačka": null,
+  "oskorusa (skola), mioce, srbija": null,
+  "leštarski potok, vranjski priboj, srbija": null,
+  "malič, glavica južno do kote 839m, užice, srbija": {
+    "lat": 43.6497529,
+    "lon": 20.1027469,
+    "display_name": "Малич, Општина Ариље, Златиборски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "oskorusa, mioce, srbija": {
+    "lat": 44.2227003,
+    "lon": 20.1991726,
+    "display_name": "Оскоруша, Велишевац, Општина Љиг, Колубарски управни округ, Централна Србија, 14240, Србија",
+    "type": "unclassified"
+  },
+  "weld county, colorado, usa": null,
+  "passo rombo, val passiria, bolzano, italija": null,
+  "svornost-jahimov, čehoslovačka": null,
+  "kamenska mehana, srbija": null,
+  "saslach am kaiserstuhl, baden-wurttemberg, limberg, nemačka": null,
+  "pogani nos, badanj, kopaonik, srbija": null,
+  "urugvaj": null,
+  "lisaljski rudnici, ivanjica, srbija": null,
+  "dbrevo, makedonija": null,
+  "ljubovija (veliki majdan), srbija": null,
+  "kozje stene, cerova strana beočin, fruška gora, srbija": null,
+  "clear creek county, usa": null,
+  "oršava, rumunija": null,
+  "laurion, grčka": null,
+  "campiglia marittima, toscana, italija": null,
+  "švarcvald, nemačka": null,
+  "new jersey, usa": null,
+  "tintic (burgin), utah, usa": null,
+  "san miguel county, usa": null,
+  "lozovik, srbija": {
+    "lat": 44.4677494,
+    "lon": 21.1007233,
+    "display_name": "Лозовик, Општина Велика Плана, Подунавски управни округ, Централна Србија, 11317, Србија",
+    "type": "administrative"
+  },
+  "vaske": {
+    "lat": 43.8221884,
+    "lon": 18.3605942,
+    "display_name": "Foto VASKE Istočno Sarajevo, 2, Vuka Karadžića, Lukavica (RS), Lukavica, Општина Источно Ново Сарајево / Opština Istočno Novo Sarajevo, Град Источно Сарајево / Grad Istočno Sarajevo, Република Српска / Republika Srpska, 71123, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "photographer"
+  },
+  "okoruso, namibija": null,
+  "prilepac, makedonija": {
+    "lat": 42.961415,
+    "lon": 22.04637,
+    "display_name": "Прилепац, Општина Власотинце, Јабланички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "nazarica-vučkov kozarnik, bosiljgrad, srbija": null,
+  "van pool mine, pitcher, oklahoma, usa": null,
+  "braumbah am rhein - reinland, nemačka": null,
+  "bologna, italija": null,
+  "ramelsberg, goslar, nemačka": null,
+  "vysocani čechy, praha, čehoslovačka": null,
+  "fusseberg doaden, siegerland, nemačka": null,
+  "braubah, nemačka": null,
+  "kambodža": null,
+  "christian levih, nemačka": null,
+  "roccamarfina, lazio, italija": null,
+  "pecina pod kruskom, srbija": null,
+  "čanište, makedonija": {
+    "lat": 41.1649234,
+    "lon": 21.6855154,
+    "display_name": "Чаниште, Општина Прилеп, Северна Македонија",
+    "type": "administrative"
+  },
+  "limburg, nemačka": null,
+  "ljubovija, srbija": {
+    "lat": 44.1880511,
+    "lon": 19.3761034,
+    "display_name": "Љубовија, Општина Љубовија, Мачвански управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "vlasenica, bosna": {
+    "lat": 44.1821345,
+    "lon": 18.9411618,
+    "display_name": "Vlasenica, Opština Vlasenica, Република Српска / Republika Srpska, 75440, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "town"
+  },
+  "brdo zapadno od rujnika kod niša, srbija": null,
+  "scitovo, kiseljak, bosna": {
+    "lat": 43.9742883,
+    "lon": 17.9810872,
+    "display_name": "Polje Šćitovo, Općina Fojnica, Srednjobosanski kanton / Županija Središnja Bosna, Federacija Bosne i Hercegovine, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "village"
+  },
+  "ofenbanija, erdelj, rumunija": null,
+  "lipnica,gruža, srbija": {
+    "lat": 43.9050011,
+    "lon": 20.7899561,
+    "display_name": "Липница, Општина Кнић, Шумадијски управни округ, Централна Србија, 34230, Србија",
+    "type": "administrative"
+  },
+  "elbogen, nemačka": null,
+  "ústí nad labem, sudeti, čehoslovačka": null,
+  "kinshasa, zair, kongo": {
+    "lat": -4.3057298,
+    "lon": 15.2904504,
+    "display_name": "Ambassade de Serbie, 112, Avenue des Étoiles, Lemera, Gombe, Kinshasa, République démocratique du Congo",
+    "type": "diplomatic"
+  },
+  "brazilija, brazil": {
+    "lat": 45.2106377,
+    "lon": 19.6897861,
+    "display_name": "Бразилија, Черевић, Општина Беочин, Јужнобачки управни округ, Војводина, 21300, Србија",
+    "type": "hamlet"
+  },
+  "val nalps, grison, švajcarska": null,
+  "val canarien, st.gotthard, švajcarska": null,
+  "zavojsko jezero, srbija": {
+    "lat": 43.2395881,
+    "lon": 22.6726109,
+    "display_name": "Завојско језеро, Нови Завој, Гостуша, Град Пирот, Пиротски управни округ, Централна Србија, Србија",
+    "type": "reservoir"
+  },
+  "tirol, ostmark, austrija": null,
+  "okolina priboja, srbija": null,
+  "dubrave kod kiseljaka, bih": null,
+  "monte poni, sardinija, italija": null,
+  "seljankino, ural, rusija": null,
+  "hum kod nisa, srbija": null,
+  "komari kod kreševa, bih": null,
+  "cejlon, šri lanka": null,
+  "erenfrojdorf, austrija": null,
+  "mansfeld, nemačka": null,
+  "čumavić, srebrenica, bih, bih": null,
+  "bolivija": null,
+  "pitcher,oklahoma, usa": null,
+  "gadžin han, niš, srbija": {
+    "lat": 43.2235312,
+    "lon": 22.0324274,
+    "display_name": "Гаџин Хан, Општина Гаџин Хан, Нишавски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "zair, kongo": {
+    "lat": -4.3057298,
+    "lon": 15.2904504,
+    "display_name": "Ambassade de Serbie, 112, Avenue des Étoiles, Lemera, Gombe, Kinshasa, République démocratique du Congo",
+    "type": "diplomatic"
+  },
+  "toscana, italija": {
+    "lat": 44.010712,
+    "lon": 20.9205782,
+    "display_name": "Toscana, Трг Народног фронта, Крагујевац, Град Крагујевац, Шумадијски управни округ, Централна Србија, 34114, Србија",
+    "type": "cafe"
+  },
+  "vencac, srbija": {
+    "lat": 44.2624164,
+    "lon": 20.5929676,
+    "display_name": "Венчац, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "rio marina, otrvo elba, italija": null,
+  "risovača, srbija": {
+    "lat": 44.3019654,
+    "lon": 20.5824083,
+    "display_name": "Рисовача, Занатлијска, Аранђеловац, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, 34300, Србија",
+    "type": "attraction"
+  },
+  "pasjača, prokuplje, srbija": {
+    "lat": 43.1632729,
+    "lon": 21.6224363,
+    "display_name": "Пасјача, Град Прокупље, Топлички управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "krupanj, srbija": {
+    "lat": 44.365632,
+    "lon": 19.3628418,
+    "display_name": "Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "administrative"
+  },
+  "crveni breg, avala, srbija": {
+    "lat": 45.1382457,
+    "lon": 19.7778261,
+    "display_name": "Црвени брег, Општина Ириг, Сремски управни округ, Војводина, 22408, Србија",
+    "type": "peak"
+  },
+  "rudna glava, srbija": {
+    "lat": 44.3252703,
+    "lon": 22.0870216,
+    "display_name": "Рудна Глава, Општина Мајданпек, Борски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "marsikov, v.jeselinov, čehoslovačka": null,
+  "gopsfergorn": null,
+  "bujanovac, srbija": {
+    "lat": 42.4598455,
+    "lon": 21.7671276,
+    "display_name": "Бујановац, Општина Бујановац, Пчињски управни округ, Централна Србија, 17520, Србија",
+    "type": "administrative"
+  },
+  "vechec u vranova, čehoslovačka": null,
+  "nižni toginsk, ural, rusija": null,
+  "raduša, bih": {
+    "lat": 43.9175731,
+    "lon": 17.4113323,
+    "display_name": "Raduša, Botun, Općina Kupres, Hercegbosanska županija, Federacija Bosne i Hercegovine, 80320, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "ridge"
+  },
+  "malajten(fisau), austrija": null,
+  "v.malenco, italija": null,
+  "hawai, usa": null,
+  "tarnobrzeg, poljska": null,
+  "slisane,lece, srbija": {
+    "lat": 42.9570193,
+    "lon": 21.5937352,
+    "display_name": "Слишане, Јабланички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "decani, streoci, metohija, srbija": {
+    "lat": 43.7636251,
+    "lon": 20.0951098,
+    "display_name": "Dečani, 22. августа, Ариље, Општина Ариље, Златиборски управни округ, Централна Србија, 31230, Србија",
+    "type": "fuel"
+  },
+  "nazarica, bosiljgrad, srbija": {
+    "lat": 42.4059969,
+    "lon": 22.3603145,
+    "display_name": "Назарица, Општина Босилеград, Пчињски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "hitenberg, austrija": null,
+  "el teide, tenereife, spain, španija": null,
+  "vranjski priboj, srbija": {
+    "lat": 42.6145693,
+    "lon": 22.022632,
+    "display_name": "Прибој Врањски, Римска, Прибој, Општина Владичин Хан, Пчињски управни округ, Централна Србија, Србија",
+    "type": "halt"
+  },
+  "šarbanovac, na putu boljevac zaječar, srbija": {
+    "lat": 43.7051435,
+    "lon": 21.8783244,
+    "display_name": "Шарбановац, Општина Сокобања, Зајечарски управни округ, Централна Србија, 18230, Србија",
+    "type": "administrative"
+  },
+  "jizni morava, čehoslovačka": null,
+  "tuzla, bosna i hercegovina, bih": {
+    "lat": 44.5391105,
+    "lon": 18.675193,
+    "display_name": "Tuzla, Grad Tuzla, Tuzlanski kanton, Federacija Bosne i Hercegovine, 75000, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "city"
+  },
+  "langozunafjord, norveška": null,
+  "južna afrika": {
+    "lat": -26.0400844,
+    "lon": 27.919508,
+    "display_name": "Serbia Crescent, Johannesburg Ward 100, Roodepoort, City of Johannesburg Metropolitan Municipality, Gauteng, 2162, South Africa",
+    "type": "residential"
+  },
+  "zeptai": null,
+  "ostrusa, mioce, srbija": null,
+  "mine de stesouna, tunis": null,
+  "kržava, krupanj, srbija": {
+    "lat": 44.365023,
+    "lon": 19.3604863,
+    "display_name": "Кржава, Крупањ, Општина Крупањ, Мачвански управни округ, Централна Србија, 15314, Србија",
+    "type": "stream"
+  },
+  "stere ransko, čehoslovačka": null,
+  "kod soiljanskog vrela, srez belički, srbija": null,
+  "klement-jahimov, čehoslovačka": null,
+  "jago di montostela, španija": null,
+  "val di fassa, bolzano, italija": null,
+  "lisanjski rudnik, ivanjica, srbija": null,
+  "trstenik, srbija": {
+    "lat": 43.620214,
+    "lon": 20.9984448,
+    "display_name": "Трстеник, Општина Трстеник, Расински управни округ, Централна Србија, 37240, Србија",
+    "type": "administrative"
+  },
+  "wolf herdorf, siegerland, nemačka": null,
+  "rudovac, arandjelovac, srbija": null,
+  "čanište, selečke planine, makedonija": {
+    "lat": 41.1649234,
+    "lon": 21.6855154,
+    "display_name": "Чаниште, Општина Прилеп, Северна Македонија",
+    "type": "administrative"
+  },
+  "gruzija": null,
+  "lineburg, nemačka": null,
+  "olkasz mine, poljska": null,
+  "cer, parlog, srbija": {
+    "lat": 44.6029582,
+    "lon": 19.4928604,
+    "display_name": "Цер, Трбосиље, Град Лозница, Мачвански управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "borski rudnik, srbija": null,
+  "val malenco(sondrio), s.ferlun, italija": null,
+  "malavi": null,
+  "itorendrika, madagaskar": null,
+  "monteponi, sardegna, italija": null,
+  "rabrovo-strumica, makedonija": null,
+  "laurion atika, grčka": null,
+  "monconi, italija": null,
+  "zlate hory u jesenika, čehoslovačka": null,
+  "potoj čuka, zagubica, istočna srbija": null,
+  "đerđenti, italija": null,
+  "gava valley, genova, italija": null,
+  "rakovica, beograd, srbija": {
+    "lat": 44.7466503,
+    "lon": 20.4429542,
+    "display_name": "Раковица, Рибарчева, МЗ Браћа Величковић, Београд (Раковица), Градска општина Раковица, Град Београд, Централна Србија, 11090, Србија",
+    "type": "station"
+  },
+  "mitarovski potok, miovce, makedonija": null,
+  "pinal county, arizona, usa": null,
+  "madras, oregon, usa": {
+    "lat": 44.8025284,
+    "lon": 20.452908,
+    "display_name": "Madras, 3, Вишеградска, МЗ Слободан Пенезић-Крцун, Београд (Савски венац), Београд, Град Београд, Централна Србија, 11000, Србија",
+    "type": "clothes"
+  },
+  "fichtelgebirge, nemačka": null,
+  "ostmark, tirol, austrija": null,
+  "stolica krupanj, srbija": null,
+  "m.ramazzo, genova, italija": null,
+  "kalifornija, usa": null,
+  "nežilovo, makedonija": {
+    "lat": 41.6499501,
+    "lon": 21.4538724,
+    "display_name": "Нежилово, Општина Чашка, Северна Македонија",
+    "type": "administrative"
+  },
+  "malajten (fišac), austrija": null,
+  "gornji jelici, srbija": null,
+  "dobrotinjska reka, prokuplje, srbija": null,
+  "isola d elba, italija": null,
+  "sat reka, lojane, srbija": null,
+  "siegerland herdorf, nemačka": null,
+  "garasi, vagan, bukulja, srbija": {
+    "lat": 44.2899129,
+    "lon": 20.4472732,
+    "display_name": "Гараши, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "zagradje (vidovaca), srbija": null,
+  "zajača, veliki majdan, srbija": {
+    "lat": 44.456944,
+    "lon": 19.244444,
+    "display_name": "Зајача, Град Лозница, Мачвански управни округ, Централна Србија, 15315, Србија",
+    "type": "administrative"
+  },
+  "gornja dobrava, srbija": null,
+  "braono, adamello, italija": null,
+  "imuris, sonora, meksiko": null,
+  "nazarica-kućište potok, bosiljgrad, srbija": null,
+  "s.vincent (i vrea), italija": null,
+  "peacock copper, arizona, usa": null,
+  "rudnik damjan kod rudovisa, srbija": null,
+  "namdraz, čehoslovačka": null,
+  "stolovi, srbija": {
+    "lat": 43.6094074,
+    "lon": 20.6099628,
+    "display_name": "Столови, Град Краљево, Рашки управни округ, Централна Србија, Србија",
+    "type": "mountain_range"
+  },
+  "traversella,piemonte,  italija, italija": null,
+  "lipnica, gruza, kragujevac, srbija": {
+    "lat": 43.9050011,
+    "lon": 20.7899561,
+    "display_name": "Липница, Општина Кнић, Шумадијски управни округ, Централна Србија, 34230, Србија",
+    "type": "administrative"
+  },
+  "tiringen, nemačka": null,
+  "mapimi, durango, meksiko": null,
+  "potok srebrnica, 700 m od manastira veluće, srbija": null,
+  "mađarska": {
+    "lat": 45.405091,
+    "lon": 19.8983641,
+    "display_name": "Мађарска, Темерин, Општина Темерин, Јужнобачки управни округ, Војводина, 21235, Србија",
+    "type": "residential"
+  },
+  "bon jaber, tunis": null,
+  "sardinija, italija": null,
+  "kornvol, engleska": null,
+  "vitlovac, srebrenica, bih, bih": null,
+  "valakonje, srbija": {
+    "lat": 43.8696213,
+    "lon": 21.9793547,
+    "display_name": "Валакоње, Општина Бољевац, Зајечарски управни округ, Централна Србија, 19370, Србија",
+    "type": "administrative"
+  },
+  "cinovec, čehoslovačka": null,
+  "mibladen, maroko": null,
+  "kučajna, srbija": {
+    "lat": 44.4483863,
+    "lon": 21.6523339,
+    "display_name": "Кучајна, Општина Кучево, Браничевски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "stassfurt, nemačka": null,
+  "grosseto-toskana, italija": null,
+  "s. marcol, valle d'aosta, italija": null,
+  "vrancice u milina, čechy, čehoslovačka": null,
+  "gambatesa, liguria, italija": null,
+  "silbersand, pruska, austrija": null,
+  "podsedice, čehoslovačka": null,
+  "monti monzoni, val di fassa, italija, italija": null,
+  "haute vienne, francuska": null,
+  "guerrero, meksiko": null,
+  "koprivnjak potok, jošanička banja, srbija": null,
+  "iran": {
+    "lat": 35.8047579,
+    "lon": 51.4043724,
+    "display_name": "سفارت جمهوری صربستان, استاد بلوچ (9), ولنجک, منطقه ۱ شهر تهران, تجریش, شهر تهران, بخش رودبار قصران, شهرستان شمیرانات, استان تهران, 19858-43111, ایران",
+    "type": "diplomatic"
+  },
+  "kozakov, čssr, čehoslovačka": null,
+  "đurđenti, sicilija, italija": null,
+  "dienten kolmannseck, salcburg, austrija": null,
+  "savsko jezero, beograd, srbija": {
+    "lat": 44.7827351,
+    "lon": 20.3864261,
+    "display_name": "Савско језеро, Чукарица, Градска општина Чукарица, Град Београд, Централна Србија, Србија",
+    "type": "lake"
+  },
+  "gračac, goč, srbija": {
+    "lat": 43.6444539,
+    "lon": 20.8215588,
+    "display_name": "Грачац, Општина Врњачка Бања, Рашки управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "kozako, čehoslovačka": null,
+  "visloh-hajdelberg-baden, nemačka": null,
+  "k6 kostadinovica, srbija": {
+    "lat": 43.3506312,
+    "lon": 21.8789817,
+    "display_name": "Обрада А. Костадиновића, Доњи Комрен, Градска општина Црвени Крст, Град Ниш, Нишавски управни округ, Централна Србија, 18120, Србија",
+    "type": "residential"
+  },
+  "orasji breg, mioce, srbija": null,
+  "kirn nahe, nemačka": null,
+  "hrge kod zavidovića, bih": null,
+  "selečke planine, makedonija": null,
+  "slišane, lebane, srbija": {
+    "lat": 42.9570193,
+    "lon": 21.5937352,
+    "display_name": "Слишане, Јабланички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "novi zeland": null,
+  "savsko  jezero, beograd, srbija": {
+    "lat": 44.7827351,
+    "lon": 20.3864261,
+    "display_name": "Савско језеро, Чукарица, Градска општина Чукарица, Град Београд, Централна Србија, Србија",
+    "type": "lake"
+  },
+  "tzilaizina, madagaskar": null,
+  "obodni deo vardara (između uvca i mioca), srbija": null,
+  "rozna, moravska, čehoslovačka": null,
+  "rakovac, stari kamenolom, fruška gora, srbija": {
+    "lat": 45.2087575,
+    "lon": 19.7676517,
+    "display_name": "Раковац, Општина Беочин, Јужнобачки управни округ, Војводина, 21299, Србија",
+    "type": "administrative"
+  },
+  "šemnic, slovačka": null,
+  "trenice, čechy, čehoslovačka": null,
+  "krecana, rakovica, beograd, srbija": {
+    "lat": 43.7339488,
+    "lon": 19.8430383,
+    "display_name": "Кречана, Општина Чајетина, Златиборски управни округ, Централна Србија, 31208, Србија",
+    "type": "peak"
+  },
+  "devils head, douglas county, colorado, usa": null,
+  "gvatemala": null,
+  "donja dobrava, srbija": null,
+  "black hills, south dakota, usa": null,
+  "karuten, austrija": null,
+  "dawes county, nebraska, usa": null,
+  "galicija, poljska": null,
+  "ispod koritnika, srbija": null,
+  "stolpo, pomeranija, poljska": null,
+  "dolni bory, morava, čehoslovačka": null,
+  "radin, srbija": null,
+  "fisac, austrija": null,
+  "stari potok,ljubic, čačak, srbija": {
+    "lat": 43.8919239,
+    "lon": 20.6358773,
+    "display_name": "Стари поток, Гунцати, Општина Кнић, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "residential"
+  },
+  "jovačka reka, srbija": null,
+  "pusma, ural, rusija": null,
+  "vermont, usa": null,
+  "mongolija": null,
+  "sasbach am kaiserstuhl, baden wurttemberg, limberg, nemačka": null,
+  "libeten, slovačka": null,
+  "omet - s.z padina brda, prilep, makedonija": null,
+  "kamenolom vidačevica, zagrađe, rudnik, srbija": null,
+  "budim, mađarska": {
+    "lat": 44.8129827,
+    "lon": 20.5114835,
+    "display_name": "Будим, 52a, Маријане Грегоран, Карабурма, МЗ Стеван Христић, Београд (Палилула), Градска општина Палилула, Град Београд, Централна Србија, 11060, Србија",
+    "type": "greengrocer"
+  },
+  "nahicesvarn, kavkaz, rusija": null,
+  "kamenolom kod dascare,avala, srbija": null,
+  "katanga, zair, kongo": null,
+  "venčac, bukulja, srbija": {
+    "lat": 44.2624164,
+    "lon": 20.5929676,
+    "display_name": "Венчац, Општина Аранђеловац, Шумадијски управни округ, Централна Србија, Србија",
+    "type": "peak"
+  },
+  "faiallo, liguria, italija": null,
+  "selce, prilep, makedonija": {
+    "lat": 41.3261285,
+    "lon": 21.5736378,
+    "display_name": "Селце, Општина Прилеп, Северна Македонија",
+    "type": "administrative"
+  },
+  "lipnica, gruža, srbija": {
+    "lat": 43.9050011,
+    "lon": 20.7899561,
+    "display_name": "Липница, Општина Кнић, Шумадијски управни округ, Централна Србија, 34230, Србија",
+    "type": "administrative"
+  },
+  "eva-jahimov, čehoslovačka": null,
+  "srebrenica, bih, bih": {
+    "lat": 43.1915508,
+    "lon": 17.6555575,
+    "display_name": "Srebrenica, Miletina, Grad Ljubuški, Županija zapadnohercegovačka, Federacija Bosne i Hercegovine, Bosna i Hercegovina / Босна и Херцеговина",
+    "type": "cemetery"
+  },
+  "oberpfalz, bayern, nemačka": null,
+  "cerezzola, ciano d enza, parma, italija": null,
+  "kongo": {
+    "lat": 46.0027491,
+    "lon": 19.7886257,
+    "display_name": "Kongo, Габрић, Биково, Град Суботица, Севернобачки управни округ, Војводина, Србија",
+    "type": "residential"
+  },
+  "popovica, bosiljgrad, srbija": {
+    "lat": 44.2226147,
+    "lon": 22.2807183,
+    "display_name": "Поповица, Општина Неготин, Борски управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "wolsendorf, schwarzvald, nemačka": null,
+  "moravska, čehoslovačka": {
+    "lat": 44.745928,
+    "lon": 20.5826035,
+    "display_name": "Моравска, Ново насеље, Лештане, Градска општина Гроцка, Град Београд, Централна Србија, 11130, Србија",
+    "type": "residential"
+  },
+  "friedland, nemačka": null,
+  "klinovački potok, srbija": null,
+  "trudelj, rudnički okrug, srbija": {
+    "lat": 44.202974,
+    "lon": 20.4161167,
+    "display_name": "Трудељ, Општина Горњи Милановац, Моравички управни округ, Централна Србија, Србија",
+    "type": "administrative"
+  },
+  "gunnison county, usa": null
+}

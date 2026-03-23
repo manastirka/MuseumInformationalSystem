@@ -1,0 +1,3221 @@
+[
+  {
+    "name": "Aleksinac",
+    "folder": "aleksinac",
+    "ogk_code": "K34-20",
+    "center": {
+      "lat": 43.5,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "aleksinac - karta.jpg",
+      "legenda": "aleksinac - legenda.jpg",
+      "profili": "aleksinac - profili.jpg",
+      "stub": "aleksinac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-20_TUMAC_ALEKSINAC.doc",
+      "total_pages": 57,
+      "year": 1980,
+      "map_year": 1974,
+      "institution": "GEOLOŠKI INSTITUT",
+      "geological_periods": [
+        "Prekambrijum",
+        "Rifeo-kambrijum",
+        "Kambrijum",
+        "Ordovicijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Karpato-Balkanidi (A)",
+        "Rtanjsko-Kučajska Jedinica (A1)",
+        "Gornjačko-Suvoplaninska Jedinica (A2)",
+        "Složena Bora Kurilova",
+        "Složena Bora Ozrena",
+        "Golubačko-Penkovska (Lužnička) Jedinica (A3)",
+        "Srpsko-Makedonska Masa (B)",
+        "Tektonika Neogenih Basena"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Alibunar",
+    "folder": "ali bunar",
+    "ogk_code": "L34-102",
+    "center": {
+      "lat": 45.166667,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 45.0,
+      "north": 45.333333,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "alibunar - karta.jpg",
+      "legenda": "alibunar - legenda.jpg",
+      "profili": "alibunar - profili.jpg",
+      "stub": "alibunar - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-102_Tumac_ALIBUNAR.doc",
+      "total_pages": 51,
+      "year": 1994,
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Mezozojski Strukturni Kompleks (Prebasenski Kompleks)",
+        "A. Donja Etaža Sa Razvojem Trijas - Srednja Jura",
+        "B. Srednja Etaža, Sa Razvojem Gornja Jura - Donja Kreda",
+        "C. Gornja Etaža, Sa Razvojem Gornje Krede",
+        "Neogeni Strukturni Kompleks (Basenski Kompleks)",
+        "Strukturne Zone",
+        "Zona: Orlovat - Glogonj (Da)",
+        "Zona: Boka-Samoš-Padina-Banatsko Novo Selo (Db)"
+      ]
+    }
+  },
+  {
+    "name": "Backa Palanka",
+    "folder": "backa palanka",
+    "ogk_code": "L34-99",
+    "center": {
+      "lat": 45.166667,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 45.0,
+      "north": 45.333333,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "backapal - karta.jpg",
+      "legenda": "backapal - legenda.jpg",
+      "profili": "backapal - profili.jpg",
+      "stub": "backapal - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-99_Tumac_Backa Palanka.pdf",
+      "total_pages": 46,
+      "year": 1985,
+      "geological_periods": [
+        "Trijas",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "mineral_resources": [
+        "Nemetali",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Bela Crkva",
+    "folder": "bela crkva",
+    "ogk_code": "L34-115",
+    "center": {
+      "lat": 44.833333,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 44.666667,
+      "north": 45.0,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "legenda": "bela crkva - legenda.jpg",
+      "profili": "bela crkva - profili.jpg",
+      "stub": "bela crkva - stub.jpg",
+      "karta": "bela crkva -geolkarta.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-115_Tumac_Bela Crkva.doc",
+      "total_pages": 40,
+      "year": 1980,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT",
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Prebasenski Strukturni Kompleks (A)",
+        "Pojas Ram—Zatonje",
+        "Basenski Strukturni Kompleks (B)",
+        "Strukturni Nizovi",
+        "Postbasenski Dunavski Kompleks (C)"
+      ],
+      "mineral_resources": [
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Bela Palanka",
+    "folder": "bela palanka",
+    "ogk_code": "K34-33",
+    "center": {
+      "lat": 43.166667,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "belapalanka - karta.jpg",
+      "legenda": "belapalanka - legenda.jpg",
+      "profili": "belapalanka - profil.jpg",
+      "stub": "belapalanka - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-33_Tumac_Bela Palanka.doc",
+      "total_pages": 74,
+      "year": 1980,
+      "map_year": 1971,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "TUGOMIR VUJISIĆ, MILIVOJE NAVALA, MIHAJLO KALENIĆ, MOMČILO HADŽI",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Moravska Zona",
+        "Lužnička Zona",
+        "Gornjačko-Suvoplaninska Zona",
+        "Kučajsko-Svrljiška Zona",
+        "Timočka Zona",
+        "Tupižničko-Tepoška Zona 50    Tercijarni Baseni",
+        "Mineralne Sirovine",
+        "Metali"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Belogradcik",
+    "folder": "K34-22 Belogradcik",
+    "ogk_code": "K34-22",
+    "center": {
+      "lat": 43.5,
+      "lon": 22.75
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 22.5,
+      "east": 23.0
+    },
+    "files": {
+      "karta": "Belogradcik - karta.jpg",
+      "legenda": "Belogradcik - legenda.jpg",
+      "profili": "Belogradcik - profil.jpg",
+      "stub": "Belogradcik - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Knjazevac Belogradcik.pdf",
+      "total_pages": 78,
+      "map_year": 1970,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZI ČKA ISTRAŽIVANJA",
+      "map_authors": "BRANISLAV KRSTI Ć, BOGDAN RAKI Ć, MIHAILO KALENI Ć, DUŠAN RAJ ČEVIĆ, DRAGAN DOLI Ć, VLADIMIR BANKOVI Ć I MIROSLAV VESELINOVI Ć. A",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Bora Vrške Čuke",
+        "Antiklinorijum Stare Planine",
+        "Timočki Sinklinorijum",
+        "Rtanjsko-Ku Čajska Zona",
+        "Gornja Čko-Suvoplaninska Zona",
+        "Neogeni Baseni",
+        "Pojave Prekambrijske Starosti",
+        "Pojave I Ležišta Paleozojske Starosti"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Beograd",
+    "folder": "beograd",
+    "ogk_code": "L34-113",
+    "center": {
+      "lat": 44.833333,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 44.666667,
+      "north": 45.0,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "beograd - karta.jpg",
+      "legenda": "beograd - legenda.jpg",
+      "profili": "beograd - profili.jpg",
+      "stub": "beograd - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-113_Tumac_Beograd.doc",
+      "total_pages": 53,
+      "year": 1985,
+      "map_year": 1984,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "BRANISLAV MARKOVIĆ, ZORAN OBRADINOVIĆ, MIROSLAV VESELINOVIĆ, JOVAN ANĐELKOVIĆ, PETAR STEVANOVIĆ I MILOŠ RAKIĆ A",
+      "tumac_authors": "BRANISLAV MARKOVIĆ, MIROSLAV VESELINOVIĆ, JOVAN ANĐELKOVIĆ, PETAR STEVANOVIĆ, ČEDOMIR ROGLIĆ I ZORAN OBRADINOVIĆ",
+      "geological_periods": [
+        "Karbon",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Panonska Depresija",
+        "Obodni Deo Unutrašnjih Dinarida",
+        "Mezozojski Strukturni Sprat",
+        "Neogeni Strukturni Sprat"
+      ]
+    }
+  },
+  {
+    "name": "Bijeljina",
+    "folder": "bijeljina",
+    "ogk_code": "L34-111",
+    "center": {
+      "lat": 44.833333,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 44.666667,
+      "north": 45.0,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "bijeljina - karta.jpg",
+      "legenda": "bijeljina - legenda.jpg",
+      "profili": "bijeljina - profil.jpg",
+      "stub": "bijeljina - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-111_Tumac_Bijeljina.doc",
+      "total_pages": 43,
+      "year": 1986,
+      "institution": "RO GEOLOŠKI NSTITUT",
+      "geological_periods": [
+        "Trijas",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Jedinica Posavine — Semberije (A).",
+        "Blok Ugljevika (A1)",
+        "Blok Dragaljevca (A2)",
+        "Blok Mačve (A4)",
+        "Blok Lešnice (A5)",
+        "Jedinica Srema (B)"
+      ],
+      "mineral_resources": [
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Bijelo Polje",
+    "folder": "bijelo polje",
+    "ogk_code": "K34-28",
+    "center": {
+      "lat": 43.166667,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "bijelo polje - karta.jpg",
+      "legenda": "bijelo polje - legenda.jpg",
+      "profili": "bijelo polje - profili.jpg",
+      "stub": "bijelo polje - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-28_Tumac_Bijelo Polje.pdf",
+      "total_pages": 57,
+      "year": 1984,
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Дурмиторска  Тектонска  Јединица  (А)",
+        "Ћехотинско -Бјеласичка  Јединица  (Б)",
+        "Лимска  Тектонска  Јединица",
+        "Рудне  Појаве  Везане  За Палеозојске  Стијене",
+        "Рудне  Појаве  Везане  За Тријаски  Вулканизам",
+        "Појаве  Метала  И Неметала  Везане  За Дијабаз -Рожначку  Формацију",
+        "Бакар",
+        "Манган"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Boljevac",
+    "folder": "boljevac",
+    "ogk_code": "K34-8",
+    "center": {
+      "lat": 43.833333,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Boljevac - karta.jpg",
+      "legenda": "Boljevac - legenda.jpg",
+      "profili": "Boljevac - profili.jpg",
+      "stub": "Boljevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-8_Tumac_Boljevac.doc",
+      "total_pages": 42,
+      "year": 1970,
+      "map_year": 1964,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Ordovicijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Tereni Moravske Navlake",
+        "Navlaka Crvenih Peščara I Mezozojskih Krečnjaka (Ravanička Monoklinala)",
+        "Kučajsko-Beljanička Antiklinala",
+        "Tereni Rtnja",
+        "Rgudinska Antiklinala",
+        "Tektonski Horst Rtnja",
+        "Antiklinala Garvanice",
+        "Senonski Tektonski Rov"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Bor",
+    "folder": "bor",
+    "ogk_code": "L34-141",
+    "center": {
+      "lat": 44.166667,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "bor - karta.jpg",
+      "legenda": "bor - legenda.jpg",
+      "profili": "bor - profili.jpg",
+      "stub": "bor - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Bor.pdf",
+      "total_pages": 69,
+      "map_year": 1976,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZI ČKA ISTRAŽIVANJA",
+      "map_authors": "IVAN ANTONIJEVI Ć, MIHAJLO KALENI Ć, MIODRAG ĐORĐEVIĆ, ČEDOMIR LON ČAREVIĆ, MILINKA ČIČULIĆ I TOMISLAV ŠKULETI Ć. A",
+      "geological_periods": [
+        "Prekambrijum",
+        "Rifeo-kambrijum",
+        "Kambrijum",
+        "Karbon",
+        "Perm",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Timočka Sinforma",
+        "Porečka Antiforma",
+        "Miročki Antiklinorijum",
+        "Krajinski Sinklinorijum",
+        "Metali",
+        "Rudne Pojave Vezane Za Hercinski Magmatizam",
+        "Porečko-Belore Čki Kristalasti Pojas",
+        "Delijovanski Masiv Gabra"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Breznik",
+    "folder": "breznik",
+    "ogk_code": "K34-46",
+    "center": {
+      "lat": 42.833333,
+      "lon": 22.75
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 22.5,
+      "east": 23.0
+    },
+    "files": {
+      "karta": "Breznik - karta.jpg",
+      "legenda": "Breznik - legenda.jpg",
+      "profili": "Breznik - profili.jpg",
+      "stub": "Breznik - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-46_Tumac_PIROT BREZNIK.doc",
+      "total_pages": 45,
+      "year": 1977,
+      "map_year": 1969,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Rifeo-kambrijum",
+        "Kambrijum",
+        "Ordovicijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar",
+        "Pleistocen"
+      ],
+      "tectonic_features": [
+        "Staroplaninsko Područje Sa Visočkom Zonom",
+        "Timočka Zona",
+        "Rtanjsko-Kučajska Zona",
+        "Suvoplaninska Zona",
+        "Područje Navlake Tumbe"
+      ]
+    }
+  },
+  {
+    "name": "Cacak",
+    "folder": "cacak",
+    "ogk_code": "K34-5",
+    "center": {
+      "lat": 43.833333,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Cacak - karta.jpg",
+      "legenda": "Cacak - legenda.jpg",
+      "profili": "Cacak - profili.jpg",
+      "stub": "Cacak - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-5__Tumac___Cacak.doc",
+      "total_pages": 47,
+      "year": 1978,
+      "map_year": 1970,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "TOMISLAV BRKOVIĆ, MIODRAG MALEŠEVIĆ, MIODRAG KLISIĆ, MILAN UROŠEVIĆ, SRETEN TRIFUNOVIĆ, ZLATKO RADOVANOVIĆ, MARKO BOŽANIĆ. T",
+      "geological_periods": [
+        "Karbon",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Unutrašnji Dinaridi",
+        "Struktura Karbonskih Metamorfita",
+        "Struktura Mezozojskog Pokrivača",
+        "Struktura Neogenog Pokrivača",
+        "Vardarska Zona"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Donji Milanovac",
+    "folder": "donji milanovac",
+    "ogk_code": "L34-129",
+    "center": {
+      "lat": 44.5,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "Donji milanovac - karta.jpg",
+      "legenda": "Donji milanovac - legenda.jpg",
+      "profili": "Donji milanovac - profili.jpg",
+      "stub": "Donji milanovac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-129_Tumac_Donji Milanovac Baja de Arama Orsova TURNU SEVERIN.doc",
+      "total_pages": 60,
+      "year": 1980,
+      "map_year": 1973,
+      "institution": "geološki institut",
+      "map_authors": "P. BOGDANOVIĆ, V. MARKOVIĆ, D. DRAGIĆ, D. DOLIĆ, M. RAK",
+      "tumac_authors": "P. BOGDANOVIĆ I M. RAK",
+      "geological_periods": [
+        "Perm",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Terenu Izdvaja Porečku, Miročku I Đerdapsku Navlaku, Dok  Autohtonu  Pripada",
+        "Porečko-Timočkim Rasedom. Pored Toga, J. Cvijić Je  Detaljno  Proučio  Rečne",
+        "Dr.).  Dolina  Porečke  Reke  Predisponirana  Je  Poznatom  Porečko-Timočkom"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Gornji Milanovac",
+    "folder": "gornji milanovac",
+    "ogk_code": "L34-137",
+    "center": {
+      "lat": 44.166667,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Gornji milanovac - karta.jpg",
+      "legenda": "Gornji milanovac - legenda.jpg",
+      "profili": "Gornji milanovac - profili.jpg",
+      "stub": "Gornji milanovac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-137_Tumac_Gornji Milanovac.doc",
+      "total_pages": 79,
+      "year": 1978,
+      "map_year": 1971,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "IVAN FILIPOVIĆ, ZORAN PAVLOVIĆ, BRANISLAV MARKOVIĆ, VLADIMIR RODIN, OLIVERA MARKOVIĆ, NADEŽDA GAGIĆ, BORIVOJE ATIN I MILUTIN MILIĆEVIĆ. T",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Jedinica Maljen - Takovo",
+        "Ultramafitski Kompleks Maljena I Suvobora",
+        "Kompleks Mezozojskih Sedimenata U Predelu Struganik-Ljig",
+        "Jedinica Ljig-Rudnik",
+        "Jedinica Mionica-Brajkovac",
+        "Mioničko-Kačerska Potolina",
+        "Brajkovačko-Bukuljski Horst-Antiklinorijum",
+        "Brahiantiklinala Slovca"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Ivanjica",
+    "folder": "ivanjica",
+    "ogk_code": "K34-17",
+    "center": {
+      "lat": 43.5,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Ivanjica - karta.jpg",
+      "legenda": "Ivanjica - legenda.jpg",
+      "profili": "Ivanjica - profil.jpg",
+      "stub": "Ivanjica - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-17_TUMAC_IVANJICA.doc",
+      "total_pages": 72,
+      "year": 1977,
+      "map_year": 1968,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "T. BRKOVIĆ, M. MALEŠEVIĆ, M. UROŠEVIĆ, S. TRIFUNOVIĆ I Z. RADOVANOVIĆ. A",
+      "tumac_authors": "T. BRKOVIĆ, M. MALEŠEVIĆ, M. UROŠEVIĆ, S. TRIFUNOVIĆ, Z. RADOVANOVIĆ, M. DIMITRIJEVIĆ I M. N. DIMITRIJEVIĆ",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Drinsko-Ivanjičkl Element",
+        "Struktura Paleozojskog Jezgra",
+        "Struktura Permsko-Mezozojskog Pokrivača",
+        "Vardarska Zona",
+        "Mineralne Sirovine Ultramafitskog Magmatizma",
+        "Mineralne Sirovine „Studeničke Serije\" I Permo-Trijasa",
+        "Mineralne Sirovine Tercijarnog Magmatizma",
+        "Ugalj"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Jasa Tomic",
+    "folder": "Jasa Tomic",
+    "ogk_code": "L34-102",
+    "center": {
+      "lat": 45.166667,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 45.0,
+      "north": 45.333333,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Jasa Tomic - karta.jpg",
+      "legenda": "Jasa Tomic - legenda.jpg",
+      "profili": "Jasa Tomic - profili.jpg",
+      "stub": "Jasa Tomic - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-102_Tumac_ALIBUNAR.doc",
+      "total_pages": 51,
+      "year": 1994,
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Mezozojski Strukturni Kompleks (Prebasenski Kompleks)",
+        "A. Donja Etaža Sa Razvojem Trijas - Srednja Jura",
+        "B. Srednja Etaža, Sa Razvojem Gornja Jura - Donja Kreda",
+        "C. Gornja Etaža, Sa Razvojem Gornje Krede",
+        "Neogeni Strukturni Kompleks (Basenski Kompleks)",
+        "Strukturne Zone",
+        "Zona: Orlovat - Glogonj (Da)",
+        "Zona: Boka-Samoš-Padina-Banatsko Novo Selo (Db)"
+      ]
+    }
+  },
+  {
+    "name": "Kacanik",
+    "folder": "kacanik",
+    "ogk_code": "K34-67",
+    "center": {
+      "lat": 42.166667,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 42.0,
+      "north": 42.333333,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Kacanik - karta.jpg",
+      "legenda": "Kacanik - legenda.jpg",
+      "profili": "Kacanik - profili.jpg",
+      "stub": "Kacanik - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-67_Tumac_Kacanik.doc",
+      "total_pages": 76,
+      "year": 1985,
+      "institution": "ГЕОЛОШКИ ИНСТИТУТ",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Шарска Област (А)",
+        "Вардарска Зона (Б)",
+        "Рудни Појави",
+        "Минерални Појави Во Палеозоискиот Комплекс",
+        "Минерални Појави На Мезозоискиот Комплекс",
+        "Терциерни И Квартерни Појави"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Knjazevac",
+    "folder": "knjazevac",
+    "ogk_code": "K34-21",
+    "center": {
+      "lat": 43.5,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "Knjazevac - karta.jpg",
+      "legenda": "Knjazevac - legenda.jpg",
+      "profili": "Knjazevac - profili.jpg",
+      "stub": "Knjazevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-21_Tumac Knjazevac -K34-22_Belogradcik.doc",
+      "total_pages": 83,
+      "year": 1970,
+      "map_year": 1970,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "BRANISLAV KRSTIĆ, BOGDAN RAKIĆ, MIHAILO KALENIĆ, DUŠAN RAJČEVIĆ, DRAGAN DOLIĆ, VLADIMIR BANKOVIĆ I MIROSLAV VESELINOVIĆ. A",
+      "tumac_authors": "BRANISLAV KRSTIĆ, MIHAILO KALENIĆ, MIRJANA DIVLJAN, LJUBINKA MASLAREVIĆ, MIODRAG ĐORĐEVIĆ, DRAGAN DOLIĆ, IVAN ANTONIJEVIĆ,",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Bora Vrške Čuke",
+        "Antiklinorijum Stare Planine",
+        "Timočki Sinklinorijum",
+        "Rtanjsko-Kučajska Zona",
+        "Gornjačko-Suvoplaninska Zona",
+        "Neogeni Baseni"
+      ]
+    }
+  },
+  {
+    "name": "Kosovska Mitrovica",
+    "folder": "titova mitrovica",
+    "ogk_code": "K34-42",
+    "center": {
+      "lat": 42.833333,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Mitrovica - karta.jpg",
+      "legenda": "Mitrovica - legenda.jpg",
+      "profili": "Mitrovica - profil.jpg",
+      "stub": "Mitrovica - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-42_Tumac_Titova (Kosovska) Mitrovica.doc",
+      "total_pages": 55,
+      "year": 1982,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "PETAR BOGDANOVIĆ, MILAN UROŠEVIĆ, DRAGINJA UROŠEVIĆ, MILORAD DIMITRIJEVIĆ, BRANISLAV MARKOVIĆ, ANDRIJA PAVIĆ, LJUBOMIR MENKOVIĆ I KOŠTA FOLGIĆ T",
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Vardarska Zona (A)",
+        "„Unutrašnji Dinaridi” (B)",
+        "Međuplaninske Potoline (C)",
+        "Kosovski Basen (C1)",
+        "Drenički Basen (C2)",
+        "Metohijski Basen (C3)"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Kragujevac",
+    "folder": "kragujevac",
+    "ogk_code": "L34-138",
+    "center": {
+      "lat": 44.166667,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Kragujevac - karta.jpg",
+      "legenda": "Kragujevac - legenda.jpg",
+      "profili": "Kragujevac - profili.jpg",
+      "stub": "Kragujevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-138_Tumac_Kragujevac.doc",
+      "total_pages": 93,
+      "year": 1980,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "TOMISLAV BRKOVIĆ, ZLATKO RADOVANOVIĆ, ZORAN PAVLOVIĆ, M. N. DIMITRIJEVIĆ A",
+      "tumac_authors": "TOMISLAV BRKOVIĆ, ZLATKO RADOVANOVIĆ, ZORAN PAVLOVIĆ",
+      "geological_periods": [
+        "Jura",
+        "Kreda",
+        "Pleistocen"
+      ],
+      "mineral_resources": [
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Kraljevo",
+    "folder": "kraljevo",
+    "ogk_code": "K34-6",
+    "center": {
+      "lat": 43.833333,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Kraljevo - karta.jpg",
+      "legenda": "Kraljevo - legenda.jpg",
+      "profili": "Kraljevo - profili.jpg",
+      "stub": "Kraljevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-6_Tumac_Kraljevo.pdf",
+      "total_pages": 66,
+      "map_year": 1963,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZI ČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Devon",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Severni Delovi Ibarskog Serpentinskog Masiva",
+        "Područje Gledi Ćkih Planina",
+        "Kraljeva Čka Depresija I Kotleni Čki Vulkanogeni Kompleks",
+        "Tercijarni Kaustobioliti",
+        "Lignit",
+        "Bitumija",
+        "Građevinski Materijal 55    Geohronološki  Prikaz  Evolucije  Ispitivane  Oblasti"
+      ],
+      "mineral_resources": [
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Krusevac",
+    "folder": "krusevac",
+    "ogk_code": "K34-19",
+    "center": {
+      "lat": 43.5,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Krusevac - karta.jpg",
+      "legenda": "Krusevac - legenda.jpg",
+      "profili": "Krusevac - profili.jpg",
+      "stub": "Krusevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-19_Tumac_Krusevac.doc",
+      "total_pages": 71,
+      "year": 1976,
+      "map_year": 1969,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "MILOŠ RAKIĆ, MILAN HADŽI",
+      "geological_periods": [
+        "Prekambrijum",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Srpsko-Makedonska Masa",
+        "Horst Velikog Jastrebca",
+        "Razlomne Zone",
+        "Područje Dinarida",
+        "Mezozojski Magmatiti I Dijabaz-Rožnačka Formacija",
+        "Gornjojursko-Donjokredni Fliš",
+        "Neogene Depresije",
+        "Kruševački Basen"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Kucevo",
+    "folder": "kucevo",
+    "ogk_code": "L34-128",
+    "center": {
+      "lat": 44.5,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Kucevo - karta.jpg",
+      "legenda": "Kucevo - legenda.jpg",
+      "profili": "Kucevo - profili.jpg",
+      "stub": "Kucevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-128_Tumac_Kucevo.doc",
+      "total_pages": 82,
+      "year": 1980,
+      "map_year": 1973,
+      "institution": "GEOLOŠKI INSTITUT —",
+      "map_authors": "M. KALENIĆ I M. HADŽI",
+      "tumac_authors": "M. KALENIĆ, M. HADŽI",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Ordovicijum",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "A. Moravska Strukturna Jedinica",
+        "C. Severno-Kučajsko-Homoljska Strukturna Jedinica",
+        "Tektonika Neresničkog Granitoidnog Plutona",
+        "Tektonika Brnjičkog Granitoidnog Plutona",
+        "D. Porečka Strukturna Jedinica  51     E. Timočka Strukturna Jedinica",
+        "F. Donjomilanovačka Strukturna Jedinica",
+        "Neogeni Baseni"
+      ]
+    }
+  },
+  {
+    "name": "Kumanovo",
+    "folder": "kumanovo",
+    "ogk_code": "K34-68",
+    "center": {
+      "lat": 42.166667,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 42.0,
+      "north": 42.333333,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Kumanovo - karta.jpg",
+      "legenda": "Kumanovo - legenda.jpg",
+      "profili": "Kumanovo - profili.jpg",
+      "stub": "Kumanovo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Kumanova.pdf",
+      "total_pages": 60,
+      "year": 1976,
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Pleistocen"
+      ],
+      "tectonic_features": [
+        "Та  На Овој Терен . Од Посебен  Интерес  Се Деталните",
+        "Литостратиграфски  Разчленувања  На Палеозојските  Стени , А Исто  Така И На Јурските",
+        "Седименти  Во Околината  На Куманово . Од Сите Автори  Најдобро  Ги Разчленува    10Терциерот  И Квартерот . Исто  Така Дава И Шематски  Прикази  На Тектонската  Градба  На",
+        "Овој Дел На Вардарска  Зона. М. Димитријевиќ  (1958) Го Определува  Дејство  На",
+        "Гранитските  Интрузии  На Околните  Стени  И Нивните  Измени . Ја Објаснува  Тектонската  И",
+        "Стратиграфската  Положба  Помегу  Вардарската  Зона И Српско -Македонската  Маса . Врши",
+        "Детални  Разчленувања  Во Метаморфниот  Комплекс  Врз База  На Минералниот  Состав",
+        "И Генезата . С. Карамата  (1958, 1959) Работи  На Серпентинскиот  Масив  Лојане , А"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Kursumlija",
+    "folder": "kursumlija",
+    "ogk_code": "K34-31",
+    "center": {
+      "lat": 43.166667,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Kursumlija - karta.jpg",
+      "legenda": "Kursumlija - legenda.jpg",
+      "profili": "Kursumlija - profili.jpg",
+      "stub": "Kursumlija - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-31_Tumac_Kursumlija.doc",
+      "total_pages": 61,
+      "year": 1980,
+      "map_year": 1974,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "MALEŠEVIĆ MIODRAG, VUKANOVIĆ MILOŠ, BRKOVIĆ TOMISLAV, OBRA DINOVIĆ ZORAN, KARAJIČIĆ LJUBIŠA, STANISAVLJEVIĆ RADMILA, DIMI TRIJEVIĆ MILORAD, UROŠEVIĆ MILAN",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Devon",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Srpsko-Makedonska Masa",
+        "Interna Vardarska Podzona",
+        "Senonski Kompleks",
+        "Kristalasti Škriljci Banjske Reke",
+        "Kuršumlijska Rasedna Zona",
+        "Kristalasti Škriljci Žunja",
+        "Centralna Vardarska Podzona",
+        "Kuršumlijski Kompleks Bazita"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Lapovo",
+    "folder": "lapovo",
+    "ogk_code": "L34-139",
+    "center": {
+      "lat": 44.166667,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Lapovo - karta.jpg",
+      "legenda": "Lapovo - legenda.jpg",
+      "profili": "Lapovo - profili.jpg",
+      "stub": "Lapovo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-139_Tumac_Lapovo.doc",
+      "total_pages": 64,
+      "year": 1977,
+      "map_year": 1977,
+      "institution": "GEOLOŠKI INSTITUT BEOGRAD",
+      "map_authors": "T. VUJISIĆ, M. NAVALA, Č. LONČAREVIĆ. M. KALENIĆ M. HADŽI",
+      "tumac_authors": "T. VUJISIĆ, M. KALENIĆ, M. NAVALA I Č. LONČAREVIĆ",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Kristalasto Jezgro",
+        "Lužnička Zona",
+        "Gornjačko-Suvoplaninska Zona",
+        "Pokrovna Jedinica",
+        "Neogeni Baseni"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Leskovac",
+    "folder": "leskovac",
+    "ogk_code": "K34-44",
+    "center": {
+      "lat": 42.833333,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Leskovac - karta.jpg",
+      "legenda": "Leskovac - legenda.jpg",
+      "profili": "Leskovac - profil.jpg",
+      "stub": "Leskovac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-44_Tumac_Leskovac.doc",
+      "total_pages": 53,
+      "year": 1973,
+      "map_year": 1965,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "MILORAD DIMITRIJEVIĆ, BUDIMIR PETROVIĆ, MIHAJLO ČIKIN, ANTON MOŽINA, MILOŠ VUKANOVIĆ, LJUBIŠA KARAJIČIĆ,",
+      "geological_periods": [
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Područje Zapadno Od Tupalske Dislokacije (Vardarska Zona)",
+        "Tupalska Dislokacija",
+        "Jezgro Srpsko-Makedonske Mase",
+        "Zona Vrvi Kobile",
+        "Područje Istočno Od Zone Vrvi Kobile",
+        "Tektonika Tercijarnih Tvorevina"
+      ],
+      "mineral_resources": [
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Negotin",
+    "folder": "negotin",
+    "ogk_code": "L34-142",
+    "center": {
+      "lat": 44.166667,
+      "lon": 22.75
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 22.5,
+      "east": 23.0
+    },
+    "files": {
+      "karta": "Negotin - karta.jpg",
+      "legenda": "Negotin - legenda.jpg",
+      "profili": "Negotin - profili.jpg",
+      "stub": "Negotin - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-142_Tumac_Negotin.doc",
+      "total_pages": 25,
+      "year": 1976,
+      "map_year": 1970,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "DRAGAN DOLIĆ, MILOŠ RAKIĆ,",
+      "tumac_authors": "DRAGAN DOLIĆ I MILOŠ RAKIĆ",
+      "geological_periods": [
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Predgorje",
+        "Južni Karpati",
+        "Neogeni I Kvartarni Pokrivač",
+        "Mineralne Sirovine",
+        "Geološka"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Nis",
+    "folder": "nis",
+    "ogk_code": "K34-32",
+    "center": {
+      "lat": 43.166667,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Nis - karta.jpg",
+      "legenda": "Nis - legenda.jpg",
+      "profili": "Nis - profili.jpg",
+      "stub": "Nis - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-32_Tumac_Nis.doc",
+      "total_pages": 65,
+      "year": 1973,
+      "institution": "ЗАВОД ЗА ГЕОЛОШКА И ГЕОФИЗИЧКА ИСТРАЖИВАЊА",
+      "map_authors": "МИЛОШ РАКИЋ, МИЛОРАД ДИМИТРИ",
+      "tumac_authors": "МИЛПШ РАКИЋ, МИЛОРАД ДИМИТРИ",
+      "geological_periods": [
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Западно Подручје",
+        "Антиклинала Житног Потока",
+        "Синклинала Бучинца И Злате",
+        "Антиклинала Пасјаче",
+        "Разломна Зона Коњарника",
+        "Подручје Стубле",
+        "Подручје Северно Од Реке Топлице",
+        "Источно Подручје"
+      ]
+    }
+  },
+  {
+    "name": "Novi Pazar",
+    "folder": "K34-30 Novi Pazar",
+    "ogk_code": "K34-30",
+    "center": {
+      "lat": 43.166667,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Novi Pazar - karta.jpg",
+      "legenda": "Novi Pazar - legenda.jpg",
+      "profili": "Novi Pazar - profili.jpg",
+      "stub": "Novi Pazar - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-30_TUMAC_N.Pazar.doc",
+      "total_pages": 80,
+      "year": 1973,
+      "map_year": 1966,
+      "institution": "ЗАВОД ЗА ГЕОЛОШКА И ГЕОФИЗИЧКА ИСТРАЖИВАЊА",
+      "tumac_authors": "МИЛАН УРОШЕВИЋ, ЗОРАН ПАВЛОВИЋ, МИОДРАГ КЛИСИЋ, СТЕВАН КАРАМАТА, МИОДРАГ МАЛЕШЕВИЋ, МИР",
+      "geological_periods": [
+        "Perm",
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Структурне Зоне Унутрашњих  Динарида",
+        "1. Моноклинала Језеришта",
+        "2. Новопазарски Синклиноријум",
+        "3. Вулкански Комплекс Централне Рогозне",
+        "Структуре Вардарске Зоне",
+        "I. Краљушти Централне И Северне Рогозне",
+        "2. Ултрамафитски Комплекс",
+        "3. Жељинско-Копаонички Антиклиноријум"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Novi Sad",
+    "folder": "novi sad",
+    "ogk_code": "L34-100",
+    "center": {
+      "lat": 45.166667,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 45.0,
+      "north": 45.333333,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Novi sad - karta.jpg",
+      "legenda": "Novi sad - legenda.jpg",
+      "profili": "Novi sad - profili.jpg",
+      "stub": "Novi sad - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-100_Tumac_Novi Sad.doc",
+      "total_pages": 58,
+      "year": 1971,
+      "map_year": 1971,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "MILINKA ČIČULIĆ",
+      "tumac_authors": "MILINKA ČIČULIĆ",
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Planinu  Koja  Vezuje  Slavonske  Planine  Na  Severozapadu  Sa  Šumadijskim"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali"
+      ]
+    }
+  },
+  {
+    "name": "Obrenovac",
+    "folder": "obrenovac",
+    "ogk_code": "L34-125",
+    "center": {
+      "lat": 44.5,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Obrenovac - karta.jpg",
+      "legenda": "Obrenovac - legenda.jpg",
+      "profili": "Obrenovac - profili.jpg",
+      "stub": "Obrenovac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-125_Tumac_OBRENOVAC.doc",
+      "total_pages": 77,
+      "year": 1980,
+      "map_year": 1976,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "I. FILIPOVIĆ, V. RODIN, Z. PAVLOVIĆ, B. MARKOVIĆ, M. MILIĆEVIĆ",
+      "tumac_authors": "I. FILIPOVIĆ",
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen"
+      ],
+      "tectonic_features": [
+        "Vlašićko-Bukuljski Horst Antiklinorijum (A)",
+        "Kompleks Mezozojskih Tvorevina Okoline Beograda (B)",
+        "Neogen I Kvartar Beogradske Posavine I Kolubarskog Basena (C)"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Odzaci",
+    "folder": "Odzaci",
+    "ogk_code": "L34-87",
+    "center": {
+      "lat": 45.5,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 45.333333,
+      "north": 45.666667,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "Odzaci - karta.jpg",
+      "legenda": "Odzaci - legenda.jpg",
+      "profili": "Odzaci - profil.jpg",
+      "stub": "Odzaci - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-87_Tumac_Odzaci.doc",
+      "total_pages": 55,
+      "year": 1985,
+      "map_year": 1984,
+      "institution": "GEOLOŠKI INSTITUT",
+      "geological_periods": [
+        "Trijas",
+        "Kreda",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "mineral_resources": [
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Orahovac",
+    "folder": "orahovac",
+    "ogk_code": "K34-54",
+    "center": {
+      "lat": 42.5,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 42.333333,
+      "north": 42.666667,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Orahovac - karta.jpg",
+      "legenda": "Orahovac - legenda.jpg",
+      "profili": "Orahovac - profili.jpg",
+      "stub": "Orahovac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Orahovac.pdf",
+      "total_pages": 63,
+      "year": 1980,
+      "map_year": 1971,
+      "institution": "GEOLOŠKI INSTITUT —",
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Vardarska Zona (A)",
+        "Područje Paleozoika Vardarske Zone (A 1)",
+        "Područje Mezozoika Vardarske Zone (A 2)",
+        "Unutrašnji Dinaridi (B)",
+        "Područje Paleozoika Unutrašnjih Dinarida (B 1)",
+        "Područje Mezozoika Unutrašnjih Dinarida (B 2)",
+        "Neogeni Pokriva Č (C)",
+        "Razlomne Strukture 4"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Pancevo",
+    "folder": "pancevo",
+    "ogk_code": "L34-114",
+    "center": {
+      "lat": 44.833333,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 44.666667,
+      "north": 45.0,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Pancevo - karta.jpg",
+      "legenda": "Pancevo - legenda.jpg",
+      "profili": "Pancevo - profili.jpg",
+      "stub": "Pancevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-114_Tumac_Pancevo.doc",
+      "total_pages": 51,
+      "year": 1966,
+      "map_year": 1966,
+      "map_authors": "ALEKSANDAR IVKOVIĆ, ALEKSANDAR VUKOVIĆ, JOVAN NIKOLIĆ, DRAGOLJUB KOVAČEVIĆ, LJUBIŠA PALAVESTRIĆ, VLADISLAV PETROVIĆ, LJUBOMIR JOVANOVIĆ, RADIVOJE TRIFUNOVIĆ, LJUBIŠA SIBINOVIĆ. T",
+      "geological_periods": [
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Vardarska Zona",
+        "Zona Otkrivenog Neogena",
+        "Banatska Depresija",
+        "Mineralne Sirovine",
+        "Metali",
+        "Olovo I Cink",
+        "Živa",
+        "Nemetali"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Paracin",
+    "folder": "paracin",
+    "ogk_code": "K34-7",
+    "center": {
+      "lat": 43.833333,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Paracin - karta.jpg",
+      "legenda": "paracin - legenda.jpg",
+      "profili": "paracin - profili.jpg",
+      "stub": "Paracin - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-7_Tumac_Paracin.doc",
+      "total_pages": 62,
+      "year": 1981,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "DRAGAN DOLIĆ, MIHAJLO KALENIĆ, ČEDOMIR LONČAREVIĆ I MOMČILO HADŽI",
+      "tumac_authors": "DRAGAN DOLIĆ, MIHAJLO KALENIĆ, BRATISLAV MARKOVIĆ, MARA DIMITRIJEVIĆ, RAJKA RADOIČIĆ I ČEDOMIR LONČAREVIĆ",
+      "geological_periods": [
+        "Prekambrijum",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Srpsko-Makedonska Masa",
+        "Tektonska Jedinica Juhora, Crnog Vrha Kremenca I Mojsinjsko-Poslonske",
+        "Planine",
+        "Tektonska Jedinica Paraćinske Glavice",
+        "Vardarska Zona",
+        "Levačka Tektonska Jedinica",
+        "Gledićka Tektonska Jedinica",
+        "Karpato-Balkanidi"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Pec i Kukes",
+    "folder": "pec i kukes",
+    "ogk_code": "K34-53",
+    "center": {
+      "lat": 42.5,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 42.333333,
+      "north": 42.666667,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Pec - karta.jpg",
+      "legenda": "Pec - legenda.jpg",
+      "profili": "Pec - profili.jpg",
+      "stub": "Pec - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-53_Pec i K34-65_Kukes-Tumac.doc",
+      "total_pages": 59,
+      "year": 1968,
+      "map_year": 1968,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "R. ANTONIJEVIĆ, A. PAVIĆ, J. KAROVIĆ",
+      "tumac_authors": "R. ANTONIJEVIĆ, A. PAVIĆ, J. KAROVIĆ",
+      "geological_periods": [
+        "Perm",
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Planinska Oblast Prokletija (A)",
+        "Ultramafitski Kompleks Deve (B)",
+        "Metohijska Depresija (C)",
+        "Mineralne Sirovine",
+        "Hromit",
+        "Talk",
+        "Ugalj",
+        "Mermerne Breče"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Pirot",
+    "folder": "pirot",
+    "ogk_code": "K34-34",
+    "center": {
+      "lat": 43.166667,
+      "lon": 22.75
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 22.5,
+      "east": 23.0
+    },
+    "files": {
+      "karta": "Pirot - karta.jpg",
+      "legenda": "Pirot - legenda.jpg",
+      "profili": "Pirot - profili.jpg",
+      "stub": "Pirot - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-34_Tumac_PIROT BREZNIK.doc",
+      "total_pages": 45,
+      "year": 1977,
+      "map_year": 1969,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Rifeo-kambrijum",
+        "Kambrijum",
+        "Ordovicijum",
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar",
+        "Pleistocen"
+      ],
+      "tectonic_features": [
+        "Staroplaninsko Područje Sa Visočkom Zonom",
+        "Timočka Zona",
+        "Rtanjsko-Kučajska Zona",
+        "Suvoplaninska Zona",
+        "Područje Navlake Tumbe"
+      ]
+    }
+  },
+  {
+    "name": "Pljevlja",
+    "folder": "pljevlja",
+    "ogk_code": "K34-15",
+    "center": {
+      "lat": 43.5,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "Pljevlja - karta.jpg",
+      "legenda": "Pljevlja - legenda.jpg",
+      "profili": "Pljevlja - profil.jpg",
+      "stub": "Pljevlja - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Pljevlja.pdf",
+      "total_pages": 67,
+      "year": 1980,
+      "map_year": 1972,
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Дурмиторска  Тектонска  Јединица",
+        "Централна  Офиолитска  Зона",
+        "Лежишта  И Појаве  Метала",
+        "Олово  И Цинк   49    Антимон",
+        "Гвожђе",
+        "Гвожђе  И Никал",
+        "Манган",
+        "Бакар"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Podujevo",
+    "folder": "podujevo",
+    "ogk_code": "K34-43",
+    "center": {
+      "lat": 42.833333,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Podujevo - karta.jpg",
+      "legenda": "Podujevo - legenda.jpg",
+      "profili": "Podujevo - profili.jpg",
+      "stub": "Podujevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-43_Tumac_Podujevo.doc",
+      "total_pages": 55,
+      "year": 1982,
+      "map_year": 1975,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "VUKANOVIĆ MILOŠ, DIMITRIJEVIĆ MILORAD, DIMITRIJEVIĆ MARA, KARAJIČIĆ LJUBIŠA, RAJČEVIĆ DUŠAN, NAVALA MILIVOJE, UROŠEVIĆ MILAN, MALEŠEVIĆ MIODRAG, TRIFUNOVIĆ SRETEN, SERDAR RADE, ATIN BORIVOJE. T",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Senon Centralnovardarskog Troga (K23)"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi"
+      ]
+    }
+  },
+  {
+    "name": "Pozarevac",
+    "folder": "pozarevac",
+    "ogk_code": "L34-127",
+    "center": {
+      "lat": 44.5,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Pozarevac - karta.jpg",
+      "legenda": "Pozarevac - legenda.jpg",
+      "profili": "Pozarevac - profili.jpg",
+      "stub": "Pozarevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-127_Tumac_Pozarevac.doc",
+      "total_pages": 44,
+      "year": 1980,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "MALEŠEVIĆ MIODRAG, KALENIĆ MIHAJLO, KARAJIČIĆ LJUBIŠA I SERDAR RADE. A",
+      "tumac_authors": "MALEŠEVIĆ MIODRAG, KALENIĆ MIHAJLO I KARAJIČIĆ LJUBIŠA",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Prebasenske Strukture",
+        "Moravska Strukturna Jedinica (A)",
+        "Basenske Strukture",
+        "Moravsko-Banatska Strukturna Jedinica (B)",
+        "Postbasenske Strukture",
+        "Dunavska Pokrovna Strukturna Jedinica (C)"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Prijepolje",
+    "folder": "prijepolje",
+    "ogk_code": "K34-16",
+    "center": {
+      "lat": 43.5,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Prijepolje - karta.jpg",
+      "legenda": "Prijepolje - legenda.jpg",
+      "profili": "Prijepolje - profil.jpg",
+      "stub": "Prijepolje - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Prijepolje.pdf",
+      "total_pages": 55,
+      "year": 1980,
+      "map_year": 1977,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZI ČKA ISTRAŽIVANJA",
+      "map_authors": "ALEKSANDAR M. ĆIRIĆ, ZORAN OBRADINOV",
+      "geological_periods": [
+        "Karbon",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Jedinica Seljašnice (A)",
+        "Jedinica Mu Čnja (B) 37    Zlatiborsko-Užl Čka Mezozojska Zona (C)",
+        "1. Područje Dijabaz-Rožna Čke Formacijc Sa Olistolitima I Delovima",
+        "Gravitacionih Navlaka (Kliznim Liskama) Trijaskih Kre Čnjaka",
+        "2. Ultramafitski Masiv",
+        "3. Obodni Deo Dijabaz-Rožna Čke Formacije Uz Ultramafitski Masiv",
+        "Rudne Pojave Vezane Za Trijaski Vulkanizam",
+        "Pojave Metala I Nemetala Vezane Zadijabazrožna Čkuformaciju"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Prizren",
+    "folder": "Prizren",
+    "ogk_code": "K34-66",
+    "center": {
+      "lat": 42.166667,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 42.0,
+      "north": 42.333333,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Prizren - karta.jpg",
+      "legenda": "Prizren - legenda.jpg",
+      "profili": "Prizren - profili.jpg",
+      "stub": "Prizren - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-66_Tumac_Prizren.doc",
+      "total_pages": 64,
+      "year": 1982,
+      "map_year": 1979,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "LJUBOMIR MENKOVIĆ, JOVAN KAROVIĆ",
+      "tumac_authors": "JOVAN KAROVIĆ, MILAN KOŠĆAL",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Navlaka Kučibabe (A)",
+        "Mušotište (B)",
+        "Pena (C)",
+        "Šarsko-Koritnička Tektonska Jedinica (D)",
+        "Olistostromski Melanž Kodža Balkan (E)",
+        "Paštrik (F)",
+        "Pojave Mineralnih Sirovina",
+        "Pojave Metaličnih Ruda U Bazičnim I Ultrabazičnim Stenama"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Rozaje",
+    "folder": "rozaje",
+    "ogk_code": "K34-41",
+    "center": {
+      "lat": 42.833333,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Rozaje - karta.jpg",
+      "legenda": "Rozaje - legenda.jpg",
+      "profili": "Rozaje - profili.jpg",
+      "stub": "Rozaje - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-41_Tumac_Rozaje.doc",
+      "total_pages": 34,
+      "year": 1984,
+      "institution": "GEOLOŠKI INSTITUT BEOGRAD",
+      "map_authors": "SRBOBRAN MOJSILOVIĆ",
+      "tumac_authors": "SRBOBRAN MOJSILOVIĆ",
+      "geological_periods": [
+        "Silur",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Severnoalbanske Table I Durmitorske Navlake. Kasnije Je Čitav  Niz  Naših  I",
+        "Dinarida, Retke Beleške O Pojavama Mineralnih Sirovina I  Slično.  Danas  Ti"
+      ]
+    }
+  },
+  {
+    "name": "Sabac",
+    "folder": "sabac",
+    "ogk_code": "L34-112",
+    "center": {
+      "lat": 44.833333,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 44.666667,
+      "north": 45.0,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Sabac - karta.jpg",
+      "legenda": "Sabac - legenda.jpg",
+      "profili": "Sabac - profili.jpg",
+      "stub": "Sabac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-112_TUMAC_SABAC.doc",
+      "total_pages": 40,
+      "year": 1978,
+      "map_year": 1978,
+      "institution": "GEOLOŠKI INSTITUT BEOGRAD",
+      "geological_periods": [
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Sjenica",
+    "folder": "sjenica",
+    "ogk_code": "K34-29",
+    "center": {
+      "lat": 43.166667,
+      "lon": 20.25
+    },
+    "bounds": {
+      "south": 43.0,
+      "north": 43.333333,
+      "west": 20.0,
+      "east": 20.5
+    },
+    "files": {
+      "karta": "Sjenica - karta.jpg",
+      "legenda": "Sjenica - legenda.jpg",
+      "profili": "Sjenica - profili.jpg",
+      "stub": "Sjenica - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac_Sjenica.pdf",
+      "total_pages": 43,
+      "year": 1980,
+      "map_year": 1973,
+      "institution": "ZAVOD ZA GEOLOŠKA I",
+      "map_authors": "S. MOJSILOVI Ć, I. ĐOKOVIĆ, D. BAKLAI Ć, B. RAKI Ć",
+      "geological_periods": [
+        "Karbon",
+        "Trijas",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Mineralne  Sirovine"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Smederevo",
+    "folder": "smederevo",
+    "ogk_code": "L34-126",
+    "center": {
+      "lat": 44.5,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Smederevo - karta.jpg",
+      "legenda": "Smederevo - legenda.jpg",
+      "profili": "Smederevo - profili.jpg",
+      "stub": "Smederevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-126_Tumac_Smederevo.doc",
+      "total_pages": 54,
+      "year": 1980,
+      "map_year": 1977,
+      "institution": "GEOLOŠKI INSTITUT —",
+      "map_authors": "ZORAN PAVLOVIĆ, BRANISLAV MARKOVIĆ, BORIVOJE ATIN, DRAGAN DOLIĆ, NADEŽDA GAGIĆ, OLIVERA MARKOVIĆ, MARA DIMITRIJEVIĆ I MILAN VUKOVIĆ T",
+      "geological_periods": [
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Mezozojski Strukturni Sprat",
+        "Neogenski Strukturni Sprat",
+        "Rasedi"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Sombor",
+    "folder": "Sombor",
+    "ogk_code": "L34-75",
+    "center": {
+      "lat": 45.833333,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 45.666667,
+      "north": 46.0,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "Sombor - karta.jpg",
+      "legenda": "Sombor - legenda.jpg",
+      "profili": "Sombor - profili.jpg",
+      "stub": "Sombor - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-75_Tumac_Sombor.doc",
+      "total_pages": 46,
+      "year": 1996,
+      "map_year": 1995,
+      "geological_periods": [
+        "Trijas",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Пренеогени Структурно-Тектонски Комплекс",
+        "Доња Етажа Са Развојем Творевина Прекамбрије И  Палеозоика (А)",
+        "Горња Етажа Са Развојем Седимената Тријаса (В)",
+        "Неогени Структурно-Тектонски Комплекс",
+        "Подручје Палеоморфолошких Узвишења",
+        "Бајмок - Пригревица - Мали Црвеика (Dа)",
+        "Зона Палеоморфолошких Удубљења Пачир (Db)",
+        "Зона Палеоморфолошких Удубљења Растина - Купусина (Dс)"
+      ]
+    }
+  },
+  {
+    "name": "Srbobran",
+    "folder": "Srbobran",
+    "ogk_code": "L34-88",
+    "center": {
+      "lat": 45.5,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 45.333333,
+      "north": 45.666667,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Srbobran - karta.jpg",
+      "legenda": "Srbobran - legenda.jpg",
+      "profili": "Srbobran - profili.jpg",
+      "stub": "Srbobran - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-88_Tumac_Srbobran.doc",
+      "total_pages": 43,
+      "year": 1984,
+      "map_year": 1982,
+      "institution": "GEOLOŠKI INSTITUT BEOGRAD",
+      "geological_periods": [
+        "Karbon",
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Pretortonske (Prebadenske) Strukture",
+        "Posttortonske (Postbadenske) Do Panonske Strukture"
+      ],
+      "mineral_resources": [
+        "Nemetali"
+      ]
+    }
+  },
+  {
+    "name": "Subotica",
+    "folder": "L34-64 Subotica",
+    "ogk_code": "L34-64",
+    "center": {
+      "lat": 46.166667,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 46.0,
+      "north": 46.333333,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Subotica - karta.jpg",
+      "legenda": "Subotica - legenda.jpg",
+      "profili": "Subotica - profil.jpg",
+      "stub": "Subotica - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-64_Tumac Bacalmas_Subotica_Segedin.doc",
+      "total_pages": 66,
+      "year": 1991,
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Prebasenski Strukturni Kompleks",
+        "Basenski Strukturni Kompleks",
+        "Strukturni Oblici",
+        "Depresija Riđice (A)",
+        "Morfostruktumo Uzvišenje Čikerlja (B)",
+        "Rov Subotice (C)",
+        "Struktura Kelebija (D)",
+        "Rov - Depresija Palić-Jezero (E)"
+      ],
+      "mineral_resources": [
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Trgoviste",
+    "folder": "trgoviste",
+    "ogk_code": "K34-57",
+    "center": {
+      "lat": 42.5,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 42.333333,
+      "north": 42.666667,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "Trgoviste - karta.jpg",
+      "legenda": "Trgoviste - legenda.jpg",
+      "profili": "Trgoviste - profili.jpg",
+      "stub": "Trgoviste - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-57_Tumac_Trgoviste.doc",
+      "total_pages": 59,
+      "year": 1977,
+      "map_year": 1968,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "MIOMIR BABOVIĆ I DIMITRIJE CVETKOVIĆ, SA SARADNICIMA NAVEDENIM U UVODU TUMAČA. A",
+      "tumac_authors": "MIOMIR BABOVIĆ, ČEDOMIR ROGLIĆ, VERA AVRAMOVIĆ I SVETISLAV MARIĆ. REDAKCIONI ODBOR D",
+      "geological_periods": [
+        "Ordovicijum",
+        "Devon",
+        "Perm",
+        "Trijas",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Prvi Strukturni Sprat",
+        "Drugi Strukturni Sprat",
+        "Treći Strukturni Sprat",
+        "Četvrti Strukturni Sprat",
+        "Peti Strukturni Sprat"
+      ]
+    }
+  },
+  {
+    "name": "Turnu Severin",
+    "folder": "L34-130 Turnu Severin",
+    "ogk_code": "L34-130",
+    "center": {
+      "lat": 44.5,
+      "lon": 22.75
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 22.5,
+      "east": 23.0
+    },
+    "files": {
+      "karta": "Turnu Severin - karta.jpg",
+      "legenda": "Turnu Severin - legenda.jpg",
+      "profili": "Turnu Severin - profil.jpg",
+      "stub": "Turnu Severin - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-130_Tumac_Donji Milanovac Baja de Arama Orsova TURNU SEVERIN.doc",
+      "total_pages": 60,
+      "year": 1980,
+      "map_year": 1973,
+      "institution": "geološki institut",
+      "map_authors": "P. BOGDANOVIĆ, V. MARKOVIĆ, D. DRAGIĆ, D. DOLIĆ, M. RAK",
+      "tumac_authors": "P. BOGDANOVIĆ I M. RAK",
+      "geological_periods": [
+        "Perm",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Terenu Izdvaja Porečku, Miročku I Đerdapsku Navlaku, Dok  Autohtonu  Pripada",
+        "Porečko-Timočkim Rasedom. Pored Toga, J. Cvijić Je  Detaljno  Proučio  Rečne",
+        "Dr.).  Dolina  Porečke  Reke  Predisponirana  Je  Poznatom  Porečko-Timočkom"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Urosevac",
+    "folder": "Urosevac",
+    "ogk_code": "K34-55",
+    "center": {
+      "lat": 42.5,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 42.333333,
+      "north": 42.666667,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Urosevac - karta.jpg",
+      "legenda": "Urosevac - legenda.jpg",
+      "profili": "Urosevac - profili.jpg",
+      "stub": "Urosevac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-55_Tumac_Urosevac.doc",
+      "total_pages": 54,
+      "year": 1983,
+      "map_year": 1974,
+      "institution": "GEOLOŠKI INSTITUT",
+      "map_authors": "ANDRIJA PAVIĆ, LJUBOMIR MENKOVIĆ I MILAN KOŠĆAL A",
+      "tumac_authors": "ANDRIJA PAVIĆ, LJUBOMIR MENKOVIĆ I MILAN KOŠĆAL",
+      "geological_periods": [
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "Melanž Eksterne Vardarske Subzone",
+        "Ravničarski Predeli Još Oko Gnjilana I Binačke Morave"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Uzice",
+    "folder": "uzice",
+    "ogk_code": "K34-4",
+    "center": {
+      "lat": 43.833333,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Uzice - karta.jpg",
+      "legenda": "Uzice - legenda.jpg",
+      "profili": "Uzice - profili.jpg",
+      "stub": "Uzice - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-4_Tumac_ Užice.doc",
+      "total_pages": 52,
+      "year": 1978,
+      "map_year": 1971,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Karbon",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "(Rogačica,  Pilića,  Kamišnica,  Crni  Rzav,  Jablanica)  I  Zapadne  Morave"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Valjevo",
+    "folder": "valjevo",
+    "ogk_code": "L34-136",
+    "center": {
+      "lat": 44.166667,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Valjevo - karta.jpg",
+      "legenda": "Valjevo - legenda.jpg",
+      "profili": "Valjevo - profili.jpg",
+      "stub": "Valjevo - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-136_Tumac_Valjevo.doc",
+      "total_pages": 58,
+      "year": 1975,
+      "map_year": 1965,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "SRBOBRAN MOJSILOVIĆ, IVAN FILIPOVIĆ, DOBRIVOJE BAKLAJIĆ, ILIJA ĐOKOVIĆ, MILIVOJE NAVALA. T",
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Drinski Antiklinorijum",
+        "Mezozojski Kompleks Kraljušti I Raseda Valjevsko-Podrinjskih Planina",
+        "Jadarska Oblast",
+        "Mineralne Sirovine",
+        "Antimon",
+        "Olovo I Cink",
+        "Bakar",
+        "Živa"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Visegrad",
+    "folder": "visegrad",
+    "ogk_code": "K34-3",
+    "center": {
+      "lat": 43.833333,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "Visegrad - karta.jpg",
+      "legenda": "Visegrad - legenda.jpg",
+      "profili": "Visegrad - profili.jpg",
+      "stub": "Visegrad - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-3-Tumac_Visegrad.doc",
+      "total_pages": 51,
+      "year": 1986,
+      "institution": "GEOLOŠKI INSTITUT BEOGRAD",
+      "map_authors": "JOVAN OLUJIĆ",
+      "tumac_authors": "JOVAN OLUJIĆ",
+      "geological_periods": [
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Zona Prača—Drina—Lim (A)",
+        "Jedinica Kopača (A)",
+        "Jedinica Ustiprače (B)",
+        "Jedinica Međeđe (C)",
+        "Jedinica Strmica—Orahovo (D )",
+        "Jedinica Rakitnica—Čubrići (E)",
+        "Jedinica Nezuka (F)",
+        "Zona Tara—Sjemeć (B)"
+      ]
+    }
+  },
+  {
+    "name": "Vladimirci",
+    "folder": "vladimirci",
+    "ogk_code": "L34-124",
+    "center": {
+      "lat": 44.5,
+      "lon": 19.75
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 19.5,
+      "east": 20.0
+    },
+    "files": {
+      "karta": "Vladimirci - karta.jpg",
+      "legenda": "Vladimirci - legenda.jpg",
+      "profili": "Vladimirci - profil.jpg",
+      "stub": "Vladimirci - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "Tumac za list  L34-124 VLADIMIRCI.doc",
+      "total_pages": 65,
+      "year": 1973,
+      "map_year": 1967,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar",
+        "Pleistocen"
+      ],
+      "tectonic_features": [
+        "Vlašićko-Blizanski Horst-Antiklinorijum",
+        "Područje Posavo -Tamnave I Pocerine"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Vlasotince",
+    "folder": "vlasotince",
+    "ogk_code": "K34-45",
+    "center": {
+      "lat": 42.833333,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 42.666667,
+      "north": 43.0,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "Vlasotince - karta.jpg",
+      "legenda": "Vlasotince - legenda.jpg",
+      "profili": "Vlasotince - profili.jpg",
+      "stub": "Vlasotince - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-45_Tumac_Vlasotince.doc",
+      "total_pages": 76,
+      "year": 1973,
+      "map_year": 1966,
+      "institution": "ЗАВОД ЗА ГЕОЛОШКА И ГЕОФИЗИЧКА",
+      "map_authors": "БУДИМИР ПЕТРОВИЋ, МИЛОРАД ДИМИТРИ",
+      "tumac_authors": "БУДИМИР ПЕТРОВИЋ, МИЛОРАД ДИМИТРИ",
+      "geological_periods": [
+        "Kambrijum",
+        "Ordovicijum",
+        "Devon",
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "1. Подручjе Власинског Комплекса",
+        "2. Старопалеозојски Појас",
+        "3. Сувопланинска Мезозојска Зона"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Vranje",
+    "folder": "vranje",
+    "ogk_code": "K34-56",
+    "center": {
+      "lat": 42.5,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 42.333333,
+      "north": 42.666667,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Vranje - karta.jpg",
+      "legenda": "Vranje - legenda.jpg",
+      "profili": "Vranje - profili.jpg",
+      "stub": "Vranje - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-56_Tumac_Vranje.doc",
+      "total_pages": 60,
+      "year": 1977,
+      "map_year": 1970,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "map_authors": "V. TERZIN, M. O. RAKIĆ, D. BODIĆ, M. VUKANOVIĆ, M. DIMITRIJEVIĆ, M. N. DIMITRIJEVIĆ",
+      "tumac_authors": "M. VUKANOVIĆ, M. DIMITRIJEVIĆ, M. N. DIMITRIJEVIĆ, LJ. KARAJIČIĆ",
+      "geological_periods": [
+        "Karbon",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Srpsko-Makedonska Masa",
+        "Vardarska Zona",
+        "Neogeni Rovovi I Potoline"
+      ]
+    }
+  },
+  {
+    "name": "Vrnjci",
+    "folder": "vrnjci",
+    "ogk_code": "K34-18",
+    "center": {
+      "lat": 43.5,
+      "lon": 20.75
+    },
+    "bounds": {
+      "south": 43.333333,
+      "north": 43.666667,
+      "west": 20.5,
+      "east": 21.0
+    },
+    "files": {
+      "karta": "Vrnjci - karta.jpg",
+      "legenda": "Vrnjci - legedna.jpg",
+      "profili": "Vrnjci - profili.jpg",
+      "stub": "Vrnjci -stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-18_Tumac_Vrnjci.doc",
+      "total_pages": 69,
+      "year": 1973,
+      "map_year": 1966,
+      "institution": "ЗАВОД ЗА ГЕОЛОШКА И ГЕОФИЗИЧКА ИСПИТИВАЊА",
+      "map_authors": "МИЛАН УРОШЕВИЋ, ЗОРАН ПАВЛОВИЋ, МИОДРАГ КЛИСИЋ, ТОМИСЛАВ БРКОВИЋ, МИОДРАГ МАЛЕШЕВИЋ, СРЕТЕН ТРИФУНОВИЋ, са сарадницима",
+      "tumac_authors": "МИЛАН УРОШЕВИЋ, ЗОРАН ПАВЛОВИЋ, МИОДРАГ КЛИСИЋ, МИОДРАГ МАЛЕШЕВИЋ, МИР",
+      "geological_periods": [
+        "Trijas",
+        "Kreda",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Моноклинала Радочела И Чемерна",
+        "Дислокације Моноклинале Радочела И Чемерна",
+        "Ултрамафитски Комплекс",
+        "Градачко-Баљевачки Басен",
+        "Жељинско-Копаонички Антиклиноријум",
+        "Дислокације Жељинско-Копаоничког Антиклиноријума",
+        "Расинско-Топлички Синклиноријум",
+        "Западноморавски Ров"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Vrsac",
+    "folder": "Vrsac",
+    "ogk_code": "L34-103",
+    "center": {
+      "lat": 45.166667,
+      "lon": 21.25
+    },
+    "bounds": {
+      "south": 45.0,
+      "north": 45.333333,
+      "west": 21.0,
+      "east": 21.5
+    },
+    "files": {
+      "karta": "Vrsac - karta.jpg",
+      "legenda": "Vrsac - legenda.jpg",
+      "profili": "Vrsac - profili.jpg",
+      "stub": "Vrsac - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-103_Tumac_Vrsac.doc",
+      "total_pages": 43,
+      "year": 1970,
+      "map_year": 1965,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Neogen",
+        "Kvartar",
+        "Pleistocen",
+        "Holocen"
+      ],
+      "tectonic_features": [
+        "U Centralnom Delu  Ističe  Se  Veća  Vršačko-Alibunarska  Depresija  (Veliki",
+        "Površinski Tokovi Su Reka Karaš I Moravica, Koja Je Kanalisana  Celim  Tokom"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Gradjevinski materijal"
+      ]
+    }
+  },
+  {
+    "name": "Zagubica",
+    "folder": "zagubica",
+    "ogk_code": "L34-140",
+    "center": {
+      "lat": 44.166667,
+      "lon": 21.75
+    },
+    "bounds": {
+      "south": 44.0,
+      "north": 44.333333,
+      "west": 21.5,
+      "east": 22.0
+    },
+    "files": {
+      "karta": "Zagubica-karta.jpg",
+      "legenda": "Zagubica-legenda.jpg",
+      "profili": "Zagubica-profili.jpg",
+      "stub": "Zagubica-stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-140_Tumac_Zagubica.doc",
+      "total_pages": 66,
+      "year": 1970,
+      "map_year": 1963,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZIČKA ISTRAŽIVANJA",
+      "geological_periods": [
+        "Ordovicijum",
+        "Silur",
+        "Devon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Homoljsko-Kučajski (Beljanički) Autohton",
+        "Homoljska (Osanička) Antiklinala",
+        "Homoljska Sinklinala",
+        "Laznička Antiklinala",
+        "Kučajsko-Beljanička Periklinala",
+        "Antiklinala Beljanice",
+        "Resavski Rased",
+        "Beljanički Rased"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Ugljevi",
+        "Gradjevinski materijal",
+        "Rude"
+      ]
+    }
+  },
+  {
+    "name": "Zajecar",
+    "folder": "zajecar",
+    "ogk_code": "K34-9",
+    "center": {
+      "lat": 43.833333,
+      "lon": 22.25
+    },
+    "bounds": {
+      "south": 43.666667,
+      "north": 44.0,
+      "west": 22.0,
+      "east": 22.5
+    },
+    "files": {
+      "karta": "Zajecar - karta.jpg",
+      "legenda": "Zajecar - legenda.jpg",
+      "profili": "Zajecar - profili.jpg",
+      "stub": "Zajecar - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "K34-9_Tumac_Zajecar.doc",
+      "total_pages": 75,
+      "year": 1975,
+      "map_year": 1967,
+      "institution": "zavod za geološka i geofizička istraživanja",
+      "map_authors": "MIROSLAV VESELINOVIĆ, IVAN ANTONIJEVIĆ, ČEDOMIR LONČAREVIĆ, MIHAJLO KALENIĆ, DUŠAN RAJČEVIĆ, BRANISLAV KRSTIĆ, VLADIMIR BANKOVIĆ, BOGDAN RAKIĆ,",
+      "geological_periods": [
+        "Prekambrijum",
+        "Kambrijum",
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Jura",
+        "Kreda",
+        "Paleogen",
+        "Neogen",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Antiklinorijum Vrške Čuke",
+        "Antiklinorijum Stare Planine",
+        "Krajinski Sinklinorijum",
+        "Timočki Sinklinorijum",
+        "Tupižničko-Knjaževačka Sinklinala",
+        "Timočka Rov-Sinklinala",
+        "Rtanjsko-Kučajska Tektonska Zona",
+        "Neogeni Baseni"
+      ],
+      "mineral_resources": [
+        "Metali"
+      ]
+    }
+  },
+  {
+    "name": "Zvornik",
+    "folder": "zvornik",
+    "ogk_code": "L34-123",
+    "center": {
+      "lat": 44.5,
+      "lon": 19.25
+    },
+    "bounds": {
+      "south": 44.333333,
+      "north": 44.666667,
+      "west": 19.0,
+      "east": 19.5
+    },
+    "files": {
+      "karta": "Zvornik - karta.jpg",
+      "legenda": "Zvornik - legenda.jpg",
+      "profili": "Zvornik - profili.jpg",
+      "stub": "Zvornik - stub.jpg"
+    },
+    "tumac": {
+      "tumac_file": "L34-123_Tumac_Zvornik.pdf",
+      "total_pages": 48,
+      "year": 1977,
+      "institution": "ZAVOD ZA GEOLOŠKA I GEOFIZI ČKA ISTRAŽIVANJA",
+      "map_authors": "S. MOJSILOVI Ć, I. FILIPOVI Ć, V. RODIN, M. NAVALA, D. BAKLAI Ć, I.ĐOKOVIĆ, Č. JOVANOV",
+      "geological_periods": [
+        "Devon",
+        "Karbon",
+        "Perm",
+        "Trijas",
+        "Jura",
+        "Kreda",
+        "Kvartar"
+      ],
+      "tectonic_features": [
+        "Drinska Oblast",
+        "Jadarska Oblast",
+        "Metalogenija Granitoidnog Masiva Cera",
+        "Tercijarna Metalogenija Granodioritskog Masiva Boranje",
+        "Sedimentna Ležišta"
+      ],
+      "mineral_resources": [
+        "Metali",
+        "Nemetali",
+        "Ugljevi",
+        "Gradjevinski materijal"
+      ]
+    }
+  }
+]

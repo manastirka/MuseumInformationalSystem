@@ -1,0 +1,1105 @@
+{
+  "metadata": {
+    "title": "Mining Companies and Operations in Serbia",
+    "description": "Comprehensive database of mining companies, active mines, exploration projects, and concession areas on Serbian territory",
+    "last_updated": "2026-02-24",
+    "data_sources": [
+      "Ministry of Mining and Energy of Serbia",
+      "Mindat.org",
+      "Global Energy Monitor",
+      "Company official websites",
+      "USGS Mineral Resources Data System",
+      "Mining Technology",
+      "Junior Mining Network"
+    ]
+  },
+  "companies": [
+    {
+      "id": "COMP-001",
+      "name": "Serbia Zijin Copper DOO Bor",
+      "name_sr": "Србија Зијин Копер ДОО Бор",
+      "parent_company": "Zijin Mining Group Co., Ltd.",
+      "parent_country": "China",
+      "headquarters": "Bor, Serbia",
+      "revenue_usd": 508100000,
+      "ownership_percent": 63,
+      "description": "Formerly RTB Bor. Zijin Mining acquired 63% stake in 2018 for $1.26 billion. Total investment exceeded $3.267 billion by April 2025. Operates four copper mines, a limestone quarry, and a smelter plant. Created 3,300+ new jobs in Bor and Majdanpek.",
+      "website": "https://zijinbor.com/"
+    },
+    {
+      "id": "COMP-002",
+      "name": "Rio Tinto (Serbia)",
+      "name_sr": "Рио Тинто (Србија)",
+      "parent_company": "Rio Tinto plc",
+      "parent_country": "United Kingdom / Australia",
+      "headquarters": "Belgrade, Serbia",
+      "description": "Discovered the Jadar lithium-boron deposit in 2004. Project suspended in late 2025 due to lack of permitting progress. Currently on care and maintenance regime.",
+      "website": "https://riotintoserbia.com/"
+    },
+    {
+      "id": "COMP-003",
+      "name": "DPM Metals (formerly Dundee Precious Metals)",
+      "name_sr": "ДПМ Метали",
+      "parent_company": "Dundee Precious Metals Inc.",
+      "parent_country": "Canada",
+      "headquarters": "Toronto, Canada",
+      "description": "Operating gold and copper exploration/development in eastern Serbia. Holds three major licenses: Coka Rakita, Potaj Cuka, and Pester Jug. Pre-feasibility study for Coka Rakita showed $735M NPV. Feasibility study expected late 2025, first production targeted for 2028.",
+      "website": "https://dpmmetals.com/"
+    },
+    {
+      "id": "COMP-004",
+      "name": "Mineco Limited",
+      "name_sr": "Минеко",
+      "parent_company": "Mineco Group",
+      "parent_country": "United Kingdom",
+      "headquarters": "London, UK",
+      "description": "Operates base metal mines in Southeast Europe. In Serbia, operates Rudnik (acquired 2004), Veliki Majdan (acquired 2007), and Bosilegrad mines. Focuses on lead, zinc, copper, and silver.",
+      "website": "https://www.minecogroup.com/"
+    },
+    {
+      "id": "COMP-005",
+      "name": "EPS - Elektroprivreda Srbije",
+      "name_sr": "ЕПС - Електропривреда Србије",
+      "parent_company": null,
+      "parent_country": "Serbia",
+      "headquarters": "Belgrade, Serbia",
+      "revenue_usd": 435300000,
+      "description": "State-owned electric utility company. Operates two major coal basins: Kolubara (producing ~75% of Serbia's lignite) and Kostolac (~25%). Annual lignite production approximately 30 million tonnes.",
+      "website": "https://www.eps.rs/"
+    },
+    {
+      "id": "COMP-006",
+      "name": "Strickland Metals Ltd.",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Australia",
+      "headquarters": "Perth, Australia",
+      "description": "Acquired the Rogozna Project in Serbia in 2024. Holds 184 km2 of exploration licenses covering four licence areas. JORC Inferred Mineral Resource of 8.6 Moz AuEq. Planning 70,000m drill campaign.",
+      "website": "https://stricklandmetals.com.au/"
+    },
+    {
+      "id": "COMP-007",
+      "name": "Bindi Metals Limited",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Australia",
+      "headquarters": "Australia",
+      "description": "Exploring gold, antimony, and copper projects in Serbia. Holds the Ravni gold project in the Ibar Valley, the Lisa antimony-gold project in Western Serbia, and the Mutnica antimony-copper project near Paracin.",
+      "website": null
+    },
+    {
+      "id": "COMP-008",
+      "name": "Erin Ventures Inc. / Temas Resources Corp.",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Canada",
+      "headquarters": "Canada",
+      "description": "Developing the Piskanja boron project near Raska. Temas Resources signed JV agreement with Erin Ventures in June 2021 for joint development. Pursuing exploitation licensing.",
+      "website": "http://www.erinventures.com/"
+    },
+    {
+      "id": "COMP-009",
+      "name": "Medgold Resources Corp. / Electrum Discovery Corp.",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Canada",
+      "headquarters": "Canada",
+      "description": "Explored the Tlamino gold-silver project in southern Serbia in partnership with Fortuna Silver Mines. Project covers 192 km2. Discovery of the 680,000 oz Au-eq Tlamino deposit.",
+      "website": "https://medgoldresources.com/"
+    },
+    {
+      "id": "COMP-010",
+      "name": "Terra Balcanica Resources Corp.",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Canada",
+      "headquarters": "Canada",
+      "description": "Holds the 50 km2 Kaludra Pb-Zn-Ag project and the Ceovishte gold property in Serbia. Founded by former Rio Tinto R&D director.",
+      "website": null
+    },
+    {
+      "id": "COMP-011",
+      "name": "Avala Resources Ltd.",
+      "name_sr": null,
+      "parent_company": null,
+      "parent_country": "Canada",
+      "headquarters": "Canada",
+      "description": "Present in Serbia since 2005. Invested approximately $160 million in exploration of gold and copper at multiple locations including Bigar, Korkan, and Kraka Pester.",
+      "website": null
+    },
+    {
+      "id": "COMP-012",
+      "name": "Rudnik Olova I Cinka Grot D.O.O. Vranje",
+      "name_sr": "Рудник олова и цинка Грот Д.О.О. Врање",
+      "parent_company": null,
+      "parent_country": "Serbia",
+      "headquarters": "Vranje, Serbia",
+      "description": "Operates the Grot lead-zinc mine near Vranje. One of Serbia's active lead-zinc producers.",
+      "website": null
+    },
+    {
+      "id": "COMP-013",
+      "name": "Contango d.o.o. / Rudnik",
+      "name_sr": "Контанго Д.О.О. Рудник",
+      "parent_company": "Mineco Group",
+      "parent_country": "United Kingdom",
+      "headquarters": "Gornji Milanovac, Serbia",
+      "description": "Subsidiary operating the Rudnik mine. Mining lead, zinc, copper, gold, and silver from over 90 separate ore bodies.",
+      "website": "https://www.contangorudnik.co.rs/"
+    },
+    {
+      "id": "COMP-014",
+      "name": "Farmakom MB / Zajaca Operations",
+      "name_sr": "Фармаком МБ",
+      "parent_company": null,
+      "parent_country": "Serbia",
+      "headquarters": "Sabac, Serbia",
+      "description": "Privatized the Zajaca antimony mine and smelting factory in 2006. Company went through bankruptcy proceedings in 2017. Mine slated to reopen under new ownership.",
+      "website": null
+    }
+  ],
+  "mining_operations": [
+    {
+      "id": "MINE-001",
+      "name": "Veliki Krivelj Copper Mine",
+      "name_sr": "Рудник бакра Велики Кривељ",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.12335,
+      "longitude": 22.11463,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": {
+        "ore_tonnes": 560500000,
+        "cu_grade_percent": 0.33
+      },
+      "description": "One of the largest copper reserves in Serbia and the world. Part of the Bor Copper Complex operated by Zijin Mining.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-002",
+      "name": "Jama Underground Mine (Bor)",
+      "name_sr": "Рудник Јама (Бор)",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.07419,
+      "longitude": 22.10731,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Underground mine operating continuously since 1902. Transitioning from cut-and-fill to block caving method. Contains the undeveloped Borska Reka deposit (319 Mt ore, 0.5% Cu, 0.204 g/t Au).",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": 1902
+    },
+    {
+      "id": "MINE-003",
+      "name": "Borska Reka Deposit",
+      "name_sr": "Борска Река",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "underground",
+      "status": "development",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.074,
+      "longitude": 22.107,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false},
+        {"name": "Molybdenum", "symbol": "Mo", "primary": false}
+      ],
+      "reserves": {
+        "ore_tonnes": 319000000,
+        "cu_grade_percent": 0.5,
+        "au_grade_gpt": 0.204,
+        "mo_grade_gpt": 35.89
+      },
+      "description": "Significant undeveloped underground deposit within the Jama mine complex. Located at depth beneath existing Jama operations.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-004",
+      "name": "Novo Cerovo Open Pit Mine",
+      "name_sr": "Рудник Ново Церово",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.10,
+      "longitude": 22.08,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Open-pit copper mine opened in 1993. Target processing capacity of 10,000 tonnes of ore daily. Part of the Bor Copper Complex.",
+      "annual_processing_capacity_tonnes": 3650000,
+      "start_year": 1993
+    },
+    {
+      "id": "MINE-005",
+      "name": "Majdanpek Copper Mine",
+      "name_sr": "Рудник бакра Мајданпек",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Majdanpek",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.38333,
+      "longitude": 21.95000,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": {
+        "ore_tonnes": 619500000,
+        "cu_grade_percent": 0.33,
+        "au_reserves_moz": 7.68,
+        "ag_reserves_moz": 56.0
+      },
+      "description": "One of the largest porphyry copper deposits in Serbia. Includes North Pit, South Pit, and Majdanpek Flotation Plant. Major expansion planned by Zijin. New ore processing facility under construction.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-006",
+      "name": "Cukaru Peki Copper-Gold Mine (Upper Zone)",
+      "name_sr": "Рудник бакра и злата Чукару Пеки",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.01927,
+      "longitude": 22.12671,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": true}
+      ],
+      "reserves": {
+        "cu_metal_tonnes": 1280000,
+        "cu_grade_percent": 3.0,
+        "au_metal_tonnes": 81,
+        "au_grade_gpt": 1.91
+      },
+      "description": "World-class high-grade copper-gold deposit discovered in 2012. Upper zone began trial production in 2021. Processing capacity of 3.3 million tonnes of ore per annum. Combined 2024 output (with Bor Complex): 292,900 tonnes Cu and 8 tonnes Au.",
+      "annual_processing_capacity_tonnes": 3300000,
+      "start_year": 2021
+    },
+    {
+      "id": "MINE-007",
+      "name": "Cukaru Peki Lower Zone",
+      "name_sr": "Чукару Пеки - Доња зона",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "underground",
+      "status": "development",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.019,
+      "longitude": 22.127,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false}
+      ],
+      "reserves": {
+        "cu_metal_tonnes": 14300000,
+        "cu_grade_percent": 0.86,
+        "au_metal_tonnes": 299,
+        "au_grade_gpt": 0.18
+      },
+      "description": "Massive lower zone of the Cukaru Peki deposit. Part of the planned expansion targeting 450,000 tpa total copper output, which would make Zijin the largest copper producer in Europe.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-008",
+      "name": "Bor Smelter Plant",
+      "name_sr": "Топионица Бор",
+      "company_id": "COMP-001",
+      "operator": "Serbia Zijin Copper DOO Bor",
+      "type": "smelter",
+      "status": "active",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.075,
+      "longitude": 22.098,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Copper smelting and refining facility. Part of the integrated Bor Copper Complex.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-009",
+      "name": "Jadar Lithium-Boron Project",
+      "name_sr": "Пројекат Јадар (литијум-бор)",
+      "company_id": "COMP-002",
+      "operator": "Rio Tinto",
+      "type": "underground",
+      "status": "suspended",
+      "municipality": "Loznica",
+      "district": "Macva District",
+      "region": "Western Serbia",
+      "latitude": 44.533,
+      "longitude": 19.300,
+      "minerals": [
+        {"name": "Lithium", "symbol": "Li", "primary": true},
+        {"name": "Boron", "symbol": "B", "primary": true}
+      ],
+      "reserves": {
+        "lithium_carbonate_annual_tonnes": 58000,
+        "note": "One of the largest lithium deposits in the world. Contains jadarite - unique mineral found only here."
+      },
+      "description": "Proposed underground mine for lithium and boron. Discovered in 2004. Capable of producing approximately 58,000 tonnes of refined battery-grade lithium carbonate annually. Project suspended in late 2025 due to permitting delays. Currently on care and maintenance. Opening no sooner than 2028 if resumed.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 7.5
+    },
+    {
+      "id": "MINE-010",
+      "name": "Coka Rakita Gold Project",
+      "name_sr": "Пројекат злата Чока Ракита",
+      "company_id": "COMP-003",
+      "operator": "DPM Metals (Dundee Precious Metals)",
+      "type": "underground",
+      "status": "development",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.2108,
+      "longitude": 21.9167,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false}
+      ],
+      "reserves": null,
+      "description": "High-grade gold deposit discovered in 2023. Located ~35 km NW of Bor. Drill intercepts include 40m at 63.6 g/t Au. Pre-feasibility study shows $735M NPV at 5% and 41% IRR. Feasibility study expected late 2025. First concentrate production targeted for 2028. Exploration license covers 13.81 km2.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 13.81
+    },
+    {
+      "id": "MINE-011",
+      "name": "Dumitru Potok - Rakita Camp",
+      "name_sr": "Думитру Поток - Камп Ракита",
+      "company_id": "COMP-003",
+      "operator": "DPM Metals (Dundee Precious Metals)",
+      "type": "underground",
+      "status": "exploration",
+      "municipality": "Bor",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.21,
+      "longitude": 21.92,
+      "minerals": [
+        {"name": "Copper", "symbol": "Cu", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": {
+        "ore_tonnes": 84400000,
+        "au_grade_gpt": 0.97,
+        "cu_grade_percent": 1.02,
+        "au_total_moz": 2.6,
+        "cu_total_blbs": 1.9,
+        "note": "Inferred resource across Dumitru Potok, Rakita North, and Frasen prospects"
+      },
+      "description": "Major copper-gold discovery within 1-2 km of planned Coka Rakita infrastructure. Dumitru Potok is the higher-grade core: 64.1 Mt at 1.07 g/t Au and 1.09% Cu. Drill intercepts include 131.6m at 3.93% CuEq.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-012",
+      "name": "Rudnik Mine (Gornji Milanovac)",
+      "name_sr": "Рудник (Горњи Милановац)",
+      "company_id": "COMP-004",
+      "operator": "Mineco Limited / Contango d.o.o.",
+      "type": "underground_and_open_pit",
+      "status": "active",
+      "municipality": "Gornji Milanovac",
+      "district": "Moravica District",
+      "region": "Central Serbia",
+      "latitude": 44.13139,
+      "longitude": 20.54028,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false},
+        {"name": "Gold", "symbol": "Au", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Historic mine on Mount Rudnik, mining silver since Roman times. Acquired by Mineco in 2004. Underground operations for lead-zinc, open pit for copper. Over 90 separate ore bodies within 4.4 km2 exploitation license. Revenue approximately $70.6M.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 4.4
+    },
+    {
+      "id": "MINE-013",
+      "name": "Veliki Majdan Lead-Zinc Mine",
+      "name_sr": "Рудник олова и цинка Велики Мајдан",
+      "company_id": "COMP-004",
+      "operator": "Mineco Limited",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Ljubovija",
+      "district": "Macva District",
+      "region": "Western Serbia",
+      "latitude": 44.29317,
+      "longitude": 19.31147,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Mining since the 14th century. Acquired by Mineco in 2007. Processes 50,000 tpa of lead and zinc sulphide ore. Employs 288 people. Very high silver grades. Located in the Boranja orefield, elevation 526m.",
+      "annual_processing_capacity_tonnes": 50000,
+      "start_year": null
+    },
+    {
+      "id": "MINE-014",
+      "name": "Bosilegrad Lead-Zinc Mine",
+      "name_sr": "Рудник олова и цинка Босилеград",
+      "company_id": "COMP-004",
+      "operator": "Mineco Limited",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Bosilegrad",
+      "district": "Pcinja District",
+      "region": "Southeastern Serbia",
+      "latitude": 42.50,
+      "longitude": 22.47,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Located 30 km SE of Bosilegrad, 400 km from Belgrade, near Bulgarian and Macedonian borders. Poly-metallic target with two ore bodies: Podvirovi and Popovica.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-015",
+      "name": "Kolubara Mining Basin - Field D",
+      "name_sr": "Колубарски басен - Поље Д",
+      "company_id": "COMP-005",
+      "operator": "EPS / RB Kolubara",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Lazarevac",
+      "district": "Belgrade District (Kolubara area)",
+      "region": "Central-Western Serbia",
+      "latitude": 44.385,
+      "longitude": 20.274,
+      "minerals": [
+        {"name": "Lignite (Brown Coal)", "symbol": "Coal", "primary": true}
+      ],
+      "reserves": {
+        "total_basin_reserves_tonnes": 2200000000,
+        "note": "Basin total. One of the largest lignite reserves in Europe."
+      },
+      "description": "Part of the Kolubara Mine Complex. Located near Barosevac in the eastern part of the Kolubara basin. Produces approximately 75% of Serbia's total lignite. Annual production ~30 million tonnes across all Kolubara fields.",
+      "annual_processing_capacity_tonnes": 30000000,
+      "start_year": null
+    },
+    {
+      "id": "MINE-016",
+      "name": "Kolubara Mining Basin - Field G",
+      "name_sr": "Колубарски басен - Поље Г",
+      "company_id": "COMP-005",
+      "operator": "EPS / RB Kolubara",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Lazarevac",
+      "district": "Belgrade District (Kolubara area)",
+      "region": "Central-Western Serbia",
+      "latitude": 44.39,
+      "longitude": 20.26,
+      "minerals": [
+        {"name": "Lignite (Brown Coal)", "symbol": "Coal", "primary": true}
+      ],
+      "reserves": null,
+      "description": "One of the active fields in the Kolubara Mine Complex. Part of the 600 km2 Kolubara basin spanning Lazarevac, Lajkovac, Ub, Obrenovac, and Arandjelovac municipalities.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-017",
+      "name": "Kolubara Mining Basin - Tamnava West",
+      "name_sr": "Колубарски басен - Тамнава Запад",
+      "company_id": "COMP-005",
+      "operator": "EPS / RB Kolubara",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Ub",
+      "district": "Kolubara District",
+      "region": "Central-Western Serbia",
+      "latitude": 44.41,
+      "longitude": 20.05,
+      "nearby_town": "Mali Borak",
+      "minerals": [
+        {"name": "Lignite (Brown Coal)", "symbol": "Coal", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Active open-pit mine in the western part of the Kolubara basin near Mali Borak.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-018",
+      "name": "Kolubara Mining Basin - Field B",
+      "name_sr": "Колубарски басен - Поље Б",
+      "company_id": "COMP-005",
+      "operator": "EPS / RB Kolubara",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Lazarevac",
+      "district": "Belgrade District (Kolubara area)",
+      "region": "Central-Western Serbia",
+      "latitude": 44.38,
+      "longitude": 20.28,
+      "minerals": [
+        {"name": "Lignite (Brown Coal)", "symbol": "Coal", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Active coal field in the Kolubara basin.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-019",
+      "name": "Kostolac Coal Mine - Drmno",
+      "name_sr": "Рудник угља Костолац - Дрмно",
+      "company_id": "COMP-005",
+      "operator": "EPS / TE-KO Kostolac",
+      "type": "open_pit",
+      "status": "active",
+      "municipality": "Kostolac",
+      "district": "Branicevo District",
+      "region": "Eastern Serbia",
+      "latitude": 44.71444,
+      "longitude": 21.24250,
+      "minerals": [
+        {"name": "Lignite (Brown Coal)", "symbol": "Coal", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Main active deposit in the Kostolac coal basin. Located east of the River Mlava, covering ~50 km2. Produces approximately 25% of Serbia's lignite. Supplies the Kostolac thermal power plant. The Kostolac basin total area is approximately 145 km2.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 50
+    },
+    {
+      "id": "MINE-020",
+      "name": "Lece Mine",
+      "name_sr": "Рудник Лече",
+      "company_id": null,
+      "operator": "Various (ownership disputed - see description)",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Medvedja",
+      "district": "Jablanica District",
+      "region": "Southern Serbia",
+      "latitude": 42.92800,
+      "longitude": 21.53500,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Underground mine in the Lece volcanic complex. Production started in 1938. Low-sulphidation epithermal deposit type. Gold predominates in upper parts, base metals increase at depth. Reports indicate ownership by a company registered in Dubai (ownership transparency concerns).",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": 1938,
+      "deposit_type": "Low-sulphidation (adularia-sericite) epithermal"
+    },
+    {
+      "id": "MINE-021",
+      "name": "Grot Mine (Blagodat Mine)",
+      "name_sr": "Рудник Грот (Благодат)",
+      "company_id": "COMP-012",
+      "operator": "Rudnik Olova I Cinka Grot D.O.O. Vranje",
+      "type": "underground",
+      "status": "active",
+      "municipality": "Vranje",
+      "district": "Pcinja District",
+      "region": "Southeastern Serbia",
+      "latitude": 42.48,
+      "longitude": 22.18,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Lead-zinc mine on the SE side of Besna Kobila mountain. Includes multiple deposits: Blagodat, Djavolja Vodenica, Vuckovo, Djavolja Vodenica II, and Kula. Tailings dump contains >5.5 million tonnes of floated material - highest altitude dump in Serbia.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-022",
+      "name": "Rogozna Gold Project",
+      "name_sr": "Пројекат злата Рогозна",
+      "company_id": "COMP-006",
+      "operator": "Strickland Metals Ltd.",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Novi Pazar",
+      "district": "Raska District",
+      "region": "Southwestern Serbia",
+      "latitude": 43.0141,
+      "longitude": 20.5738,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false},
+        {"name": "Silver", "symbol": "Ag", "primary": false},
+        {"name": "Lead", "symbol": "Pb", "primary": false},
+        {"name": "Zinc", "symbol": "Zn", "primary": false}
+      ],
+      "reserves": {
+        "resource_auEq_moz": 8.6,
+        "resource_class": "JORC Inferred"
+      },
+      "description": "Large gold exploration project on Rogozna mountain, 10-12 km SE of Novi Pazar. Within the Tethyan Metallogenic Belt. Four exploration licenses covering 184 km2. 70,000m drill campaign planned. Previously explored by Zijin Mining ($5M investment).",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 184
+    },
+    {
+      "id": "MINE-023",
+      "name": "Ravni Gold Project",
+      "name_sr": "Пројекат злата Равни",
+      "company_id": "COMP-007",
+      "operator": "Bindi Metals Limited",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Raska",
+      "district": "Raska District",
+      "region": "Southern Serbia (Ibar Valley)",
+      "latitude": 43.35,
+      "longitude": 20.60,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Gold exploration project in the Raska mining district, Ibar Valley. License covers ~30 km2 in the Western Tethyan Magmatic Belt. Bindi Metals can earn up to 80% interest. Maiden drill programme approved. Surface exploration returned high-grade gold and silver results.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 30
+    },
+    {
+      "id": "MINE-024",
+      "name": "Lisa Antimony-Gold Project",
+      "name_sr": "Пројекат антимона и злата Лиса",
+      "company_id": "COMP-007",
+      "operator": "Bindi Metals Limited",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Krupanj area",
+      "district": "Macva District",
+      "region": "Western Serbia",
+      "latitude": 44.35,
+      "longitude": 19.36,
+      "minerals": [
+        {"name": "Antimony", "symbol": "Sb", "primary": true},
+        {"name": "Gold", "symbol": "Au", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Former Lisanski mines area. Covers ~30 km2 in Western Serbia. Historical high-grade mines produced ~60,000 tonnes of ore grading up to 20% Sb from shallow pits between 1932 and 1951. Acquired in 2024.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 30
+    },
+    {
+      "id": "MINE-025",
+      "name": "Mutnica Antimony-Copper Project",
+      "name_sr": "Пројекат антимона и бакра Мутница",
+      "company_id": "COMP-007",
+      "operator": "Bindi Metals Limited",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Paracin",
+      "district": "Pomoravlje District",
+      "region": "Central Serbia",
+      "latitude": 43.86,
+      "longitude": 21.40,
+      "minerals": [
+        {"name": "Antimony", "symbol": "Sb", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Antimony and copper exploration project near Paracin. Acquired by Bindi Metals in 2024.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-026",
+      "name": "Piskanja Boron Project",
+      "name_sr": "Пројекат бора Пискања",
+      "company_id": "COMP-008",
+      "operator": "Erin Ventures / Temas Resources",
+      "type": "open_pit",
+      "status": "development",
+      "municipality": "Raska",
+      "district": "Raska District",
+      "region": "Southern Serbia",
+      "latitude": 43.33,
+      "longitude": 20.67,
+      "minerals": [
+        {"name": "Boron", "symbol": "B", "primary": true}
+      ],
+      "reserves": {
+        "estimated_value_usd": 2000000000,
+        "note": "Canadian company discovered boron reserves worth over $2 billion"
+      },
+      "description": "Located in the eastern part of the Jarandol Basin, 160 km south of Belgrade. Nearby towns: Kraljevo (40 km N), Novi Pazar (28 km S), Raska (11 km S). Covers 305.7 ha. Historical mining region. Erin Ventures pursuing exploitation license. Could change the global borate market.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_ha": 305.7
+    },
+    {
+      "id": "MINE-027",
+      "name": "Tlamino Gold-Silver Project",
+      "name_sr": "Пројекат злата и сребра Тламино",
+      "company_id": "COMP-009",
+      "operator": "Medgold Resources / Electrum Discovery",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Vranje area",
+      "district": "Pcinja District",
+      "region": "Southern Serbia",
+      "latitude": 42.30,
+      "longitude": 22.15,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Silver", "symbol": "Ag", "primary": true},
+        {"name": "Lead", "symbol": "Pb", "primary": false},
+        {"name": "Zinc", "symbol": "Zn", "primary": false}
+      ],
+      "reserves": {
+        "au_eq_oz": 680000,
+        "note": "680,000 oz Au-eq Tlamino deposit"
+      },
+      "description": "Two contiguous licenses: Donje Tlamino and Surlica-Dukat, totalling 192 km2. Located in southern Serbia near Bulgarian and Macedonian borders, ~5 hours south of Belgrade. Drill results include 26.1m at 2.4 g/t Au and 219 g/t Ag, and 34.6m at 3.11 g/t Au.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 192
+    },
+    {
+      "id": "MINE-028",
+      "name": "Kaludra Lead-Zinc-Silver Project",
+      "name_sr": "Пројекат олова, цинка и сребра Калудра",
+      "company_id": "COMP-010",
+      "operator": "Terra Balcanica Resources Corp.",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": null,
+      "district": null,
+      "region": "Serbia",
+      "latitude": null,
+      "longitude": null,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true},
+        {"name": "Silver", "symbol": "Ag", "primary": false}
+      ],
+      "reserves": null,
+      "description": "50 km2 polymetallic exploration project in Serbia.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null,
+      "concession_area_km2": 50
+    },
+    {
+      "id": "MINE-029",
+      "name": "Ceovishte Gold Project",
+      "name_sr": "Пројекат злата Чеовиште",
+      "company_id": "COMP-010",
+      "operator": "Terra Balcanica Resources Corp.",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": null,
+      "district": null,
+      "region": "Serbia",
+      "latitude": null,
+      "longitude": null,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Gold exploration property in Serbia held by Terra Balcanica Resources.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-030",
+      "name": "Zajaca Antimony Mine",
+      "name_sr": "Рудник антимона Зајача",
+      "company_id": "COMP-014",
+      "operator": "Farmakom MB (under new ownership post-bankruptcy)",
+      "type": "underground",
+      "status": "inactive",
+      "municipality": "Loznica",
+      "district": "Macva District",
+      "region": "Western Serbia",
+      "latitude": 44.55,
+      "longitude": 19.35,
+      "minerals": [
+        {"name": "Antimony", "symbol": "Sb", "primary": true},
+        {"name": "Lead", "symbol": "Pb", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Historic antimony mine started in 1890. Privatized in 2006 by Farmakom MB. Went through bankruptcy in 2017. Slated to reopen under new ownership. Includes smelting factory for lead recycling and refining.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": 1890
+    },
+    {
+      "id": "MINE-031",
+      "name": "Stolice Antimony Mine",
+      "name_sr": "Рудник антимона Столице",
+      "company_id": null,
+      "operator": null,
+      "type": "underground",
+      "status": "inactive",
+      "municipality": "Krupanj",
+      "district": "Macva District",
+      "region": "Western Serbia",
+      "latitude": 44.38,
+      "longitude": 19.30,
+      "minerals": [
+        {"name": "Antimony", "symbol": "Sb", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Former antimony mine that peaked at 80,000 tonnes per year in the 1980s. Shut down in 1990 for financial reasons. EU-funded rehabilitation of the tailings pond ongoing. Not currently in production.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-032",
+      "name": "Kizevak Deposit (Raska)",
+      "name_sr": "Лежиште Кижевак (Рашка)",
+      "company_id": "COMP-004",
+      "operator": "Mineco Limited",
+      "type": "underground",
+      "status": "development",
+      "municipality": "Raska",
+      "district": "Raska District",
+      "region": "Southern Serbia",
+      "latitude": 43.28,
+      "longitude": 20.62,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Lead-zinc deposit in the Raska municipality. Mineco Group planned to open a new lead-zinc mine here, which would be their fourth mine in Serbia.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-033",
+      "name": "Sastavci Deposit (Raska)",
+      "name_sr": "Лежиште Саставци (Рашка)",
+      "company_id": null,
+      "operator": null,
+      "type": "deposit",
+      "status": "inactive",
+      "municipality": "Raska",
+      "district": "Raska District",
+      "region": "Southern Serbia",
+      "latitude": 43.28,
+      "longitude": 20.63,
+      "minerals": [
+        {"name": "Lead", "symbol": "Pb", "primary": true},
+        {"name": "Zinc", "symbol": "Zn", "primary": true}
+      ],
+      "reserves": null,
+      "description": "Lead-zinc deposit in the Raska municipality. Part of the Ibar mining region.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-034",
+      "name": "Avala Mines (Historical)",
+      "name_sr": "Рудници Авале",
+      "company_id": null,
+      "operator": null,
+      "type": "underground",
+      "status": "inactive",
+      "municipality": "Belgrade (Vozdovac)",
+      "district": "Belgrade",
+      "region": "Central Serbia",
+      "latitude": 44.6903,
+      "longitude": 20.5142,
+      "minerals": [
+        {"name": "Mercury", "symbol": "Hg", "primary": true},
+        {"name": "Lead", "symbol": "Pb", "primary": false},
+        {"name": "Zinc", "symbol": "Zn", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Historical mercury mines on Mount Avala, 16 km SE of Belgrade. German company mined ~100,000 tonnes of ore before 1940. Mining ceased in the 1960s. Deposits of cinnabar (mercury ore).",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    },
+    {
+      "id": "MINE-035",
+      "name": "Bigar-Korkan-Kraka Pester Exploration",
+      "name_sr": "Истраживање Бигар-Коркан-Крака Пештер",
+      "company_id": "COMP-011",
+      "operator": "Avala Resources Ltd.",
+      "type": "exploration",
+      "status": "exploration",
+      "municipality": "Various (Eastern Serbia)",
+      "district": "Bor District",
+      "region": "Eastern Serbia",
+      "latitude": 44.05,
+      "longitude": 22.05,
+      "minerals": [
+        {"name": "Gold", "symbol": "Au", "primary": true},
+        {"name": "Copper", "symbol": "Cu", "primary": false}
+      ],
+      "reserves": null,
+      "description": "Gold and copper exploration project. Avala Resources has been present in Serbia since 2005, investing ~$160 million in exploration at multiple locations including Bigar, Korkan, and Kraka Pester.",
+      "annual_processing_capacity_tonnes": null,
+      "start_year": null
+    }
+  ],
+  "mining_districts": [
+    {
+      "id": "DIST-001",
+      "name": "Bor Mining District",
+      "name_sr": "Борски рударски округ",
+      "description": "Eastern Serbia's premier mining district. Home to Zijin Mining's massive copper-gold operations. Includes Bor, Majdanpek, and Cukaru Peki. Part of the Timok Magmatic Complex within the Tethyan Metallogenic Belt.",
+      "municipalities": ["Bor", "Majdanpek"],
+      "primary_minerals": ["Cu", "Au", "Ag", "Mo"],
+      "latitude": 44.07,
+      "longitude": 22.10,
+      "active_companies": ["Serbia Zijin Copper", "DPM Metals", "Avala Resources"]
+    },
+    {
+      "id": "DIST-002",
+      "name": "Kolubara Coal Basin",
+      "name_sr": "Колубарски угљени басен",
+      "description": "Largest coal-producing region in Serbia, accounting for ~75% of lignite production. 600 km2 basin in western Sumadija. Contains 2.2 billion tonnes of lignite reserves.",
+      "municipalities": ["Lazarevac", "Ub", "Lajkovac", "Obrenovac", "Arandjelovac"],
+      "primary_minerals": ["Coal"],
+      "latitude": 44.39,
+      "longitude": 20.27,
+      "active_companies": ["EPS / RB Kolubara"]
+    },
+    {
+      "id": "DIST-003",
+      "name": "Kostolac Coal Basin",
+      "name_sr": "Костолачки угљени басен",
+      "description": "Second largest coal basin in Serbia, producing ~25% of lignite. Located in the Branicevo District. Covers approximately 145 km2.",
+      "municipalities": ["Kostolac", "Pozarevac"],
+      "primary_minerals": ["Coal"],
+      "latitude": 44.74,
+      "longitude": 21.25,
+      "active_companies": ["EPS / TE-KO Kostolac"]
+    },
+    {
+      "id": "DIST-004",
+      "name": "Raska Mining District",
+      "name_sr": "Рашки рударски округ",
+      "description": "Historical mining region in southern Serbia along the Ibar River valley. Rich in lead, zinc, gold, silver, and boron. Includes Kopaonik and Rogozna mountains. Deposits of iron ore, nickel, asbestos, and magnesite.",
+      "municipalities": ["Raska", "Novi Pazar", "Kraljevo"],
+      "primary_minerals": ["Pb", "Zn", "Au", "Ag", "B", "Fe", "Ni"],
+      "latitude": 43.28,
+      "longitude": 20.62,
+      "active_companies": ["Strickland Metals", "Bindi Metals", "Erin Ventures", "Mineco"]
+    },
+    {
+      "id": "DIST-005",
+      "name": "Western Serbia Antimony Belt",
+      "name_sr": "Антимонски појас западне Србије",
+      "description": "Historic antimony mining region in western Serbia. Includes the Zajaca, Stolice, and Lisanski mines in the Macva District near Krupanj and Loznica. Also the location of the Jadar lithium deposit.",
+      "municipalities": ["Krupanj", "Loznica", "Ljubovija"],
+      "primary_minerals": ["Sb", "Li", "B", "Pb", "Zn"],
+      "latitude": 44.45,
+      "longitude": 19.35,
+      "active_companies": ["Rio Tinto", "Bindi Metals", "Mineco"]
+    },
+    {
+      "id": "DIST-006",
+      "name": "Southern Serbia Mining Zone",
+      "name_sr": "Рударска зона јужне Србије",
+      "description": "Mining zone spanning from Vranje to Medvedja. Includes the Lece volcanic complex and the Besna Kobila area. Rich in lead-zinc with associated gold and silver.",
+      "municipalities": ["Vranje", "Medvedja", "Bosilegrad"],
+      "primary_minerals": ["Pb", "Zn", "Au", "Ag"],
+      "latitude": 42.70,
+      "longitude": 21.85,
+      "active_companies": ["Grot D.O.O.", "Mineco", "Medgold Resources"]
+    },
+    {
+      "id": "DIST-007",
+      "name": "Rudnik-Sumadija Mining Zone",
+      "name_sr": "Рударска зона Рудник-Шумадија",
+      "description": "Historic mining area centered on Mount Rudnik in the Moravica District. Mining since Roman times. Multi-metal district with lead, zinc, copper, and precious metals.",
+      "municipalities": ["Gornji Milanovac"],
+      "primary_minerals": ["Pb", "Zn", "Cu", "Ag", "Au"],
+      "latitude": 44.13,
+      "longitude": 20.54,
+      "active_companies": ["Mineco / Contango"]
+    }
+  ],
+  "production_summary_2024": {
+    "copper": {
+      "total_tonnes": 292900,
+      "primary_producer": "Serbia Zijin Copper (Bor + Cukaru Peki)",
+      "note": "Combined 2024 output. 2025 guidance: 290,000 tonnes. Expansion target: 450,000 tonnes."
+    },
+    "gold": {
+      "total_tonnes": 8,
+      "primary_producer": "Serbia Zijin Copper (Bor + Cukaru Peki)",
+      "note": "Combined 2024 output. 2025 guidance: 7 tonnes."
+    },
+    "lignite_coal": {
+      "total_tonnes": 38000000,
+      "primary_producer": "EPS (Kolubara ~30Mt + Kostolac ~8Mt)",
+      "note": "Approximate total. Kolubara accounts for ~75%, Kostolac ~25%."
+    },
+    "lead_zinc": {
+      "note": "Active producers include Rudnik, Veliki Majdan, Bosilegrad, Grot, and Lece mines. Detailed tonnage data not publicly available."
+    }
+  },
+  "sector_statistics": {
+    "total_exploitation_fields": 220,
+    "total_exploration_fields": 130,
+    "new_mines_expected": "5-7 in near future (including coal, lead, zinc)",
+    "note": "Serbia has over 220 exploitation fields and about 130 exploration fields as of 2025."
+  }
+}

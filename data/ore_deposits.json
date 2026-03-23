@@ -1,0 +1,4220 @@
+[
+  {
+    "identifier": "YUG-00088",
+    "name": "Ajducko Brdo",
+    "latitude": 43.539,
+    "longitude": 20.337,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00178",
+    "name": "Ajvalija",
+    "latitude": 42.622,
+    "longitude": 21.201,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 215000,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 358000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 242,
+        "class": "D"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00138",
+    "name": "Aleksinac",
+    "latitude": 43.577,
+    "longitude": 21.683,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Nisavski",
+    "company": "Rudarsko Industrijski Kombinat Aleksinacki Rudnik",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Room and pillar mining, room and pillar working (flat, inclined,"
+  },
+  {
+    "identifier": "YUG-00072",
+    "name": "Alin Do",
+    "latitude": 43.524,
+    "longitude": 22.472,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Bi",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zajecarski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00048",
+    "name": "Avala",
+    "latitude": 44.659,
+    "longitude": 20.516,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 9000,
+        "class": "D"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 5000,
+        "class": "D"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 22,
+        "class": "E"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 300,
+        "class": "E"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Beograd",
+    "company": "",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00183",
+    "name": "Ba",
+    "latitude": 44.163,
+    "longitude": 20.204,
+    "commodities": [
+      {
+        "symbol": "Ni",
+        "tonnage": 38750,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kolubarski",
+    "company": "",
+    "deposit_type": "Residually enriched ore deposits: Fe, Mn, Ni-Co, Au, Pt, P, U, corundum, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00188",
+    "name": "Badovac",
+    "latitude": 42.597,
+    "longitude": 21.23,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 192000,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 134000,
+        "class": "C"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 267,
+        "class": "D"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00079",
+    "name": "Bancarevo",
+    "latitude": 43.246,
+    "longitude": 22.102,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Red Bed (sandstone) hosted base metal deposits: Cu, Pb-Zn-Ag, F-Ba",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00155",
+    "name": "Bare",
+    "latitude": 44.325,
+    "longitude": 20.5,
+    "commodities": [
+      {
+        "symbol": "Kln",
+        "tonnage": 23000000,
+        "class": "B"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Supergene industrial rock and mineral deposits: clays, kaolin, silica sand, etc.",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00155",
+    "name": "Barosevac",
+    "latitude": 44.405,
+    "longitude": 20.377,
+    "commodities": [
+      {
+        "symbol": "Dtm",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Unexploited deposit",
+    "district": "City of Beograd",
+    "company": "Rudnici lignita BASEN KOLUBARA - EPS",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00073",
+    "name": "Bela Stena",
+    "latitude": 43.374,
+    "longitude": 20.624,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 4000000,
+        "class": "C"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Raski",
+    "company": "Magnohrom - Fabrika Magnezijuma Bela Stena",
+    "deposit_type": "Lacustrine deposits (sebkha, salar, alkaline lake): Li, B, (Na, Mg, Ca, nitrates, sulphates, etc.)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00035",
+    "name": "Belacevac",
+    "latitude": 42.631,
+    "longitude": 21.034,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 6000000000,
+        "class": "B"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Kosovo",
+    "company": "Elektroprivreda Kosova",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Open cast (open pit) mining"
+  },
+  {
+    "identifier": "YUG-00037",
+    "name": "Beli Kamen",
+    "latitude": 42.595,
+    "longitude": 21.585,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Tlc",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "Rudnik i Industrija Magnezita Strezovce - Kosovska",
+    "deposit_type": "Evaporite-related industrial rocks and minerals: attapulgite, gypsum, anhydrite, magnesite, sulphur",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00062",
+    "name": "Beljanica",
+    "latitude": 44.05,
+    "longitude": 21.783,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pomoravski",
+    "company": "",
+    "deposit_type": "Fe and Mn sedimentary deposits: Fe, Mn",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00075",
+    "name": "Belo Brdo",
+    "latitude": 43.23,
+    "longitude": 20.843,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 254000,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 208000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 387,
+        "class": "D"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00075",
+    "name": "Beocin",
+    "latitude": 45.187,
+    "longitude": 19.725,
+    "commodities": [
+      {
+        "symbol": "LstC",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Juzno-backi",
+    "company": "Beocinska fabrika cementa a.d.",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00094",
+    "name": "Blagodat",
+    "latitude": 42.524,
+    "longitude": 22.252,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 138000,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 118000,
+        "class": "C"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 8800,
+        "class": "E"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Pcinjski",
+    "company": "Rudnik i Flotacija Olova i Cinka Blagodat",
+    "deposit_type": "Atypical volcano-sedimentary and sedimentary-exhalative ore deposits: metamorphosed VMS or Sedex",
+    "exploitation_type": "Room and pillar mining, room and pillar working (flat, inclined,"
+  },
+  {
+    "identifier": "YUG-00056",
+    "name": "Blagojev Kamen",
+    "latitude": 44.457,
+    "longitude": 21.818,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "W",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Granitic and peri-granitic veins and stockworks (greisen): Sn-W, (Cu, Bi, Sb, base metals)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00151",
+    "name": "Bobija",
+    "latitude": 44.192,
+    "longitude": 19.533,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 200000,
+        "class": "B"
+      },
+      {
+        "symbol": "Brt",
+        "tonnage": 300000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Carbonate-hosted stratabound and vein Ba or F deposits (MVT): Ba, F, (Pb, Zn)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00227",
+    "name": "Bogovina",
+    "latitude": 43.892,
+    "longitude": 21.956,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Zajecarski",
+    "company": "Rudnik mrkog uglja BOGOVINA - EPS",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00061",
+    "name": "Bor",
+    "latitude": 44.095,
+    "longitude": 22.094,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 160,
+        "class": "B"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 3000000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 600,
+        "class": "C"
+      },
+      {
+        "symbol": "Pltd",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "High-sulphidation epithermal massive-enargite (gold) sulphide deposits: Cu, (As, Au)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00098",
+    "name": "Boranja",
+    "latitude": 44.39,
+    "longitude": 19.201,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00134",
+    "name": "Borska Reka",
+    "latitude": 44.082,
+    "longitude": 22.088,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 139,
+        "class": "B"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 3665000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 1136,
+        "class": "C"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Porphyry Cu-Au deposits: Cu, Au, (Ag, Bi, Te)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00171",
+    "name": "Braneshci",
+    "latitude": 43.779,
+    "longitude": 19.707,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Lacustrine deposits (sebkha, salar, alkaline lake): Li, B, (Na, Mg, Ca, nitrates, sulphates, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00157",
+    "name": "Brasina",
+    "latitude": 44.491,
+    "longitude": 19.195,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00054",
+    "name": "Brdjani",
+    "latitude": 44.0,
+    "longitude": 20.225,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Moravicki",
+    "company": "Rudnici Magnezita Sumadija - Cacak",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00046",
+    "name": "Brezak",
+    "latitude": 44.14,
+    "longitude": 20.1,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kolubarski",
+    "company": "Rudnici Magnezita Sumadija Cacak",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00046",
+    "name": "Brezna",
+    "latitude": 43.583,
+    "longitude": 19.583,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Ophiolite-hosted ore deposits: Cr, (PGE)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00090",
+    "name": "Brezovica",
+    "latitude": 42.244,
+    "longitude": 21.012,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 350000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Ophiolite-hosted ore deposits: Cr, (PGE)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00092",
+    "name": "Bujanovac",
+    "latitude": 42.477,
+    "longitude": 21.744,
+    "commodities": [
+      {
+        "symbol": "Kln",
+        "tonnage": 5625000,
+        "class": "C"
+      },
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Vein and disseminated Sb deposits: Sb, Hg, As, (Au, Tl)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00050",
+    "name": "Bukulja",
+    "latitude": 44.298,
+    "longitude": 20.535,
+    "commodities": [
+      {
+        "symbol": "U",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kolubarski",
+    "company": "",
+    "deposit_type": "Sedimentary uranium deposits: U, (V, Mo, Ni, Cu, Zn, Pb, As)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00086",
+    "name": "Car Sedlar",
+    "latitude": 42.604,
+    "longitude": 21.744,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 190000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Banded iron formations (BIF \"Superior Fe\"): Fe",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00124",
+    "name": "Cerovo",
+    "latitude": 44.178,
+    "longitude": 22.038,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 1010000,
+        "class": "B"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 32,
+        "class": "C"
+      }
+    ],
+    "status": "Industrial project under development",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Porphyry Cu-Au deposits: Cu, Au, (Ag, Bi, Te)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00220",
+    "name": "Cigankulja",
+    "latitude": 44.299,
+    "longitude": 20.414,
+    "commodities": [
+      {
+        "symbol": "Sn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kolubarski",
+    "company": "",
+    "deposit_type": "Alluvial-eluvial placers: Au, Pt, Sn,Ti, REE, diamond, gemstones, (Zr, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00027",
+    "name": "Cikatovo",
+    "latitude": 42.656,
+    "longitude": 20.903,
+    "commodities": [
+      {
+        "symbol": "Ni",
+        "tonnage": 287800,
+        "class": "B"
+      },
+      {
+        "symbol": "Co",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "Ferronikeli",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00200",
+    "name": "Coka Kuruga",
+    "latitude": 44.23,
+    "longitude": 21.981,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 2,
+        "class": "D"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 13000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "High-sulphidation epithermal massive-enargite (gold) sulphide deposits: Cu, (As, Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00135",
+    "name": "Coka Marin",
+    "latitude": 44.284,
+    "longitude": 22.013,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 10,
+        "class": "C"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 33000,
+        "class": "C"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 25000,
+        "class": "D"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 96,
+        "class": "E"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Volcanogenic massive sulphides (VMS) deposits: Cu, Pb, Zn +/- Au-Ag, (Sn, S, As, Cd, Bi, etc.)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00107",
+    "name": "Crna Trava",
+    "latitude": 42.74,
+    "longitude": 22.328,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 20125000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Unspecified volcano-sedimentary and sedimentary-exhalative deposits",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00112",
+    "name": "Crnac",
+    "latitude": 43.083,
+    "longitude": 20.693,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 204000,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 89000,
+        "class": "C"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 279,
+        "class": "D"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Sublevel stoping"
+  },
+  {
+    "identifier": "YUG-00064",
+    "name": "Crni Vrh",
+    "latitude": 44.009,
+    "longitude": 21.094,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pomoravski",
+    "company": "",
+    "deposit_type": "Vein and disseminated Sb deposits: Sb, Hg, As, (Au, Tl)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00175",
+    "name": "Deli Jovan",
+    "latitude": 44.124,
+    "longitude": 22.281,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old mine workings",
+    "district": "Zajecarski",
+    "company": "",
+    "deposit_type": "Fault-related syn- to late-orogenic ore deposits : Au, Zn, As, Sb, Cu, Ni, Co",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00029",
+    "name": "Deva",
+    "latitude": 42.33,
+    "longitude": 20.335,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 132000,
+        "class": "E"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Kosovo",
+    "company": "Deva - Ro Rudnik Hroma",
+    "deposit_type": "Chromitite deposits in layered basic-ultrabasic complexes: Cr",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00118",
+    "name": "Djavolja Varos",
+    "latitude": 43.034,
+    "longitude": 21.425,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Topolicki",
+    "company": "",
+    "deposit_type": "Low-sulphidation (adularia - sericite) epithermal deposits: Au, Ag, Pb, Zn, Cu, Sb, (Hg, As, Mn, Tl)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00034",
+    "name": "Dobro Selo",
+    "latitude": 42.676,
+    "longitude": 21.061,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 6000000000,
+        "class": "B"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Kosovo",
+    "company": "Elektroprivreda Kosova",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Open cast (open pit) mining"
+  },
+  {
+    "identifier": "YUG-00196",
+    "name": "Donja Ljubata",
+    "latitude": 42.465,
+    "longitude": 22.409,
+    "commodities": [
+      {
+        "symbol": "Gr",
+        "tonnage": 200000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to metamorphic rocks: andalusite group, wollastonite, graphite, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00038",
+    "name": "Donje Karacevo",
+    "latitude": 42.567,
+    "longitude": 21.717,
+    "commodities": [
+      {
+        "symbol": "Bnt",
+        "tonnage": 1380000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00084",
+    "name": "Donje Nevlje",
+    "latitude": 42.957,
+    "longitude": 22.752,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00170",
+    "name": "Draglica",
+    "latitude": 43.585,
+    "longitude": 19.721,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00190",
+    "name": "Draznja",
+    "latitude": 42.845,
+    "longitude": 21.317,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 115730,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 203476,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 213,
+        "class": "D"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00040",
+    "name": "Drenovac",
+    "latitude": 42.438,
+    "longitude": 20.659,
+    "commodities": [
+      {
+        "symbol": "Gran",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Slates, marble and ornamental-stone deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00085",
+    "name": "Dubovac",
+    "latitude": 42.786,
+    "longitude": 20.883,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00123",
+    "name": "Dumitru Potok",
+    "latitude": 44.201,
+    "longitude": 21.931,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 1580000,
+        "class": "B"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Branicevski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Porphyry copper deposits: Cu, (Mo, Se, Au, Ag)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00123",
+    "name": "Karamata S., Knezevic V., Pecskay Z. and Djordjevic M. - (1997) - Magmatism and metallogeny of the Ridanj-Krepoljin belt",
+    "latitude": 45.422,
+    "longitude": 20.279,
+    "commodities": [],
+    "status": "Producing deposit",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Oil deposits: oil, (S)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00042",
+    "name": "Fruska Gora",
+    "latitude": 45.2,
+    "longitude": 19.783,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Vojvodina",
+    "company": "",
+    "deposit_type": "Unspecified ore deposit type",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00108",
+    "name": "Gamzigrad",
+    "latitude": 43.9,
+    "longitude": 22.167,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 2000000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Zajecarski",
+    "company": "",
+    "deposit_type": "Oolitic iron ore deposits (Clinton, Minette): Fe",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00213",
+    "name": "Glama",
+    "latitude": 42.49,
+    "longitude": 21.457,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00026",
+    "name": "Glavica",
+    "latitude": 42.556,
+    "longitude": 20.982,
+    "commodities": [
+      {
+        "symbol": "Ni",
+        "tonnage": 99750,
+        "class": "C"
+      },
+      {
+        "symbol": "Co",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Kosovo",
+    "company": "Ferronikeli",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00179",
+    "name": "Golija",
+    "latitude": 43.29,
+    "longitude": 20.322,
+    "commodities": [
+      {
+        "symbol": "W",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Unspecified syn- to late orogenic ore deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00033",
+    "name": "Gorance",
+    "latitude": 42.12,
+    "longitude": 21.239,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Podiform chromite deposits: Cr",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00033",
+    "name": "Goveda Glava",
+    "latitude": 44.126,
+    "longitude": 19.771,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00028",
+    "name": "Grebnik",
+    "latitude": 42.557,
+    "longitude": 20.601,
+    "commodities": [
+      {
+        "symbol": "Al",
+        "tonnage": 2000000,
+        "class": "D"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Kosovo",
+    "company": "Ro Rudnik Boksita Kosovo - Klina",
+    "deposit_type": "Bauxite and Al-rich rocks deposits (karst, laterite and Tikhvinsk types): Al, (Fe, Ga)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00099",
+    "name": "Guberevac",
+    "latitude": 43.835,
+    "longitude": 20.766,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 250000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00139",
+    "name": "Ibarski Rudnici",
+    "latitude": 43.396,
+    "longitude": 20.635,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Raski",
+    "company": "Rudnik kamenog uglja IBARSKI RUDNICI - EPS",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00043",
+    "name": "Iverak",
+    "latitude": 44.586,
+    "longitude": 19.456,
+    "commodities": [
+      {
+        "symbol": "U",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Alluvial-eluvial placers: Au, Pt, Sn,Ti, REE, diamond, gemstones, (Zr, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00156",
+    "name": "Jaram",
+    "latitude": 43.282,
+    "longitude": 20.83,
+    "commodities": [
+      {
+        "symbol": "Wol",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Rasinski",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to metamorphic rocks: andalusite group, wollastonite, graphite, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00156",
+    "name": "Economic references",
+    "latitude": 43.4,
+    "longitude": 21.433,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Topolicki",
+    "company": "",
+    "deposit_type": "Unspecified syn- to late orogenic ore deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00065",
+    "name": "Jovac 1",
+    "latitude": 43.892,
+    "longitude": 21.311,
+    "commodities": [
+      {
+        "symbol": "Mica",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pomoravski",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to sedimentary or metamorphic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00066",
+    "name": "Jovac 2",
+    "latitude": 43.75,
+    "longitude": 21.683,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Unspecified ore deposit type",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00096",
+    "name": "Kalna",
+    "latitude": 43.424,
+    "longitude": 22.526,
+    "commodities": [
+      {
+        "symbol": "U",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Zajecarski",
+    "company": "",
+    "deposit_type": "Shear-zone related mesothermal  uranium deposits: U, (Fe, Cu, Pb, Zn, Se)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00185",
+    "name": "Kaltrina",
+    "latitude": 42.608,
+    "longitude": 21.442,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 57376,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 63000,
+        "class": "C"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 181,
+        "class": "D"
+      }
+    ],
+    "status": "Unexploited deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00189",
+    "name": "Kaludjer",
+    "latitude": 43.09,
+    "longitude": 20.699,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 5760,
+        "class": "D"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 11200,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00036",
+    "name": "Karacevo",
+    "latitude": 42.565,
+    "longitude": 21.732,
+    "commodities": [
+      {
+        "symbol": "Kln",
+        "tonnage": 3450000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "Rudnik Kaolina Karacevo",
+    "deposit_type": "Supergene industrial rock and mineral deposits: clays, kaolin, silica sand, etc.",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00215",
+    "name": "Karadak",
+    "latitude": 43.248,
+    "longitude": 20.691,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00202",
+    "name": "Karamanica",
+    "latitude": 42.377,
+    "longitude": 22.348,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 42900,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 57350,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00202",
+    "name": "Other references",
+    "latitude": 42.562,
+    "longitude": 22.009,
+    "commodities": [
+      {
+        "symbol": "Silc",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Volcanic-hosted industrial rock and mineral deposits: bentonite, diatomite, kaolinite, pumice, opal, chalcedony,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00186",
+    "name": "Kiseli  Potok",
+    "latitude": 42.608,
+    "longitude": 21.427,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 60000,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 50000,
+        "class": "C"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 160,
+        "class": "D"
+      }
+    ],
+    "status": "Unexploited deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00025",
+    "name": "Kisnica",
+    "latitude": 42.598,
+    "longitude": 21.237,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 396000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 532,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 122000,
+        "class": "C"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00212",
+    "name": "Kizevak",
+    "latitude": 43.291,
+    "longitude": 20.701,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 48000,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 106800,
+        "class": "C"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00141",
+    "name": "Kolubara",
+    "latitude": 44.461,
+    "longitude": 20.303,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 2815947000,
+        "class": "B"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "City of Beograd",
+    "company": "Rudnici lignita BASEN KOLUBARA - EPS",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Open cast (open pit) mining"
+  },
+  {
+    "identifier": "YUG-00077",
+    "name": "Koporic",
+    "latitude": 43.144,
+    "longitude": 20.858,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 50000,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 19000,
+        "class": "D"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 58,
+        "class": "E"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00116",
+    "name": "Korlace",
+    "latitude": 43.365,
+    "longitude": 20.694,
+    "commodities": [
+      {
+        "symbol": "Asb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Raski",
+    "company": "Jugoazbest Korlace",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00116",
+    "name": "Other references",
+    "latitude": 43.991,
+    "longitude": 19.938,
+    "commodities": [
+      {
+        "symbol": "LstC",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Zlatiborski",
+    "company": "D.P. Fabrika Cementa KOSJERIC",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00049",
+    "name": "Kosmaj Babe",
+    "latitude": 44.469,
+    "longitude": 20.576,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 269618,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 136500,
+        "class": "C"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 19500,
+        "class": "D"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Beograd",
+    "company": "",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00142",
+    "name": "Kostolac",
+    "latitude": 44.721,
+    "longitude": 21.203,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 809091000,
+        "class": "C"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Branicevski",
+    "company": "Rudnici lignita BASEN KOSTOLAC - EPS",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Open cast (open pit) mining"
+  },
+  {
+    "identifier": "YUG-00162",
+    "name": "Kotlenic",
+    "latitude": 43.783,
+    "longitude": 20.773,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00211",
+    "name": "Kozje Brdo",
+    "latitude": 45.149,
+    "longitude": 19.752,
+    "commodities": [
+      {
+        "symbol": "Agt",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Sremski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00173",
+    "name": "Kram",
+    "latitude": 44.311,
+    "longitude": 19.302,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Cu skarns: Cu, (Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00172",
+    "name": "Kremna",
+    "latitude": 43.84,
+    "longitude": 19.578,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Lacustrine deposits (sebkha, salar, alkaline lake): Li, B, (Na, Mg, Ca, nitrates, sulphates, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00153",
+    "name": "Krupanj",
+    "latitude": 44.373,
+    "longitude": 19.377,
+    "commodities": [
+      {
+        "symbol": "Fl",
+        "tonnage": 66250,
+        "class": "D"
+      },
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00057",
+    "name": "Kucajna",
+    "latitude": 44.436,
+    "longitude": 21.667,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00100",
+    "name": "Kutlovo",
+    "latitude": 44.045,
+    "longitude": 20.752,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Mn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00127",
+    "name": "Lajkovaca",
+    "latitude": 44.135,
+    "longitude": 19.849,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 24600,
+        "class": "D"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kolubarski",
+    "company": "",
+    "deposit_type": "Volcanogenic massive and disseminated Cu-Au sulphide deposits: Cu, Au, (Zn, Co, Mo, Bi)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00167",
+    "name": "Lebare",
+    "latitude": 43.237,
+    "longitude": 20.769,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00083",
+    "name": "Lece",
+    "latitude": 42.928,
+    "longitude": 21.535,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 39000,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 58000,
+        "class": "C"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 10,
+        "class": "D"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 39,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Jablanicki",
+    "company": "",
+    "deposit_type": "Low-sulphidation (adularia - sericite) epithermal deposits: Au, Ag, Pb, Zn, Cu, Sb, (Hg, As, Mn, Tl)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00083",
+    "name": "Other references",
+    "latitude": 43.0,
+    "longitude": 20.714,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Atypical or unspecified ore deposits associated with acid and alkaline plutonic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00122",
+    "name": "Lipa",
+    "latitude": 44.19,
+    "longitude": 21.962,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 11000,
+        "class": "D"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "High-sulphidation epithermal massive-enargite (gold) sulphide deposits: Cu, (As, Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00122",
+    "name": "Other references",
+    "latitude": 42.521,
+    "longitude": 21.128,
+    "commodities": [
+      {
+        "symbol": "LstL",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00154",
+    "name": "Lipnica",
+    "latitude": 43.905,
+    "longitude": 20.825,
+    "commodities": [
+      {
+        "symbol": "Gp",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Sumadijski",
+    "company": "Fabrica cementa NOVI POPOVAC",
+    "deposit_type": "Evaporite-related industrial rocks and minerals: attapulgite, gypsum, anhydrite, magnesite, sulphur",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00051",
+    "name": "Lipovac",
+    "latitude": 44.257,
+    "longitude": 20.621,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Ni",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Gabbro-norite hosted deposits of disseminated titano-magnetite: Fe, Ti, (V, P)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00070",
+    "name": "Lisa",
+    "latitude": 43.65,
+    "longitude": 20.259,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00097",
+    "name": "Lisina",
+    "latitude": 42.527,
+    "longitude": 22.451,
+    "commodities": [
+      {
+        "symbol": "Phos",
+        "tonnage": 4600000,
+        "class": "D"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Sedimentary phosphate  deposits: P, (U)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00063",
+    "name": "Liska",
+    "latitude": 43.694,
+    "longitude": 19.634,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 740000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Zlatiborski",
+    "company": "Radna Organizacija Rudnik Magnezita Magnezit",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00228",
+    "name": "Lubnica",
+    "latitude": 43.862,
+    "longitude": 22.188,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Zajecarski",
+    "company": "Rudnik lignita LUBNICA",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00087",
+    "name": "Mackatica",
+    "latitude": 42.747,
+    "longitude": 22.217,
+    "commodities": [
+      {
+        "symbol": "Mo",
+        "tonnage": 100000,
+        "class": "B"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Porphyry Cu-Mo and Mo deposits: Cu, Mo, (W, U, Re)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00071",
+    "name": "Maglic",
+    "latitude": 43.603,
+    "longitude": 20.544,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposit type",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00024",
+    "name": "Magura",
+    "latitude": 42.537,
+    "longitude": 21.009,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 2500000,
+        "class": "C"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00058",
+    "name": "Majdanpek",
+    "latitude": 44.376,
+    "longitude": 21.95,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 240,
+        "class": "B"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 3750000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 1750,
+        "class": "C"
+      },
+      {
+        "symbol": "Mo",
+        "tonnage": 30000,
+        "class": "C"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 83000,
+        "class": "C"
+      },
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Porphyry Cu-Au deposits: Cu, Au, (Ag, Bi, Te)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00216",
+    "name": "Mandre",
+    "latitude": 44.086,
+    "longitude": 20.316,
+    "commodities": [
+      {
+        "symbol": "U",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Uraniferous vein, breccia and stratabound disseminated deposits: U, (Mo, Cu, Se, F, Th, REE, Pb, Zn)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00216",
+    "name": "Other references",
+    "latitude": 43.786,
+    "longitude": 22.09,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old workings",
+    "district": "Zajecarski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposit type",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00119",
+    "name": "Mazic",
+    "latitude": 42.928,
+    "longitude": 20.969,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00120",
+    "name": "Meljenica",
+    "latitude": 42.948,
+    "longitude": 20.923,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00194",
+    "name": "Mokra Gora",
+    "latitude": 43.801,
+    "longitude": 19.5,
+    "commodities": [
+      {
+        "symbol": "Ni",
+        "tonnage": 3500000,
+        "class": "A"
+      },
+      {
+        "symbol": "Cr",
+        "tonnage": 5800000,
+        "class": "B"
+      },
+      {
+        "symbol": "Fe",
+        "tonnage": 10000000,
+        "class": "C"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Residually enriched ore deposits: Fe, Mn, Ni-Co, Au, Pt, P, U, corundum, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00143",
+    "name": "Morava",
+    "latitude": 44.075,
+    "longitude": 21.453,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Pomoravski",
+    "company": "Rudnik mrkog uglja i lignita JASENOVAC",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00169",
+    "name": "Mramor",
+    "latitude": 44.054,
+    "longitude": 20.0,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00159",
+    "name": "Nevade",
+    "latitude": 44.047,
+    "longitude": 20.495,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Lacustrine deposits (sebkha, salar, alkaline lake): Li, B, (Na, Mg, Ca, nitrates, sulphates, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00159",
+    "name": "Novakovaca",
+    "latitude": 44.169,
+    "longitude": 19.689,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Volcanogenic massive sulphides (VMS) deposits: Cu, Pb, Zn +/- Au-Ag, (Sn, S, As, Cd, Bi, etc.)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00184",
+    "name": "Novo Brdo Mn",
+    "latitude": 42.62,
+    "longitude": 21.428,
+    "commodities": [
+      {
+        "symbol": "Mn",
+        "tonnage": 1421440,
+        "class": "C"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 58660,
+        "class": "C"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 59,
+        "class": "E"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Atypical or unspecified high- or low-sulphidation ore deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00031",
+    "name": "Novo Brdo PbZn",
+    "latitude": 42.616,
+    "longitude": 21.42,
+    "commodities": [
+      {
+        "symbol": "ClyR",
+        "tonnage": 3000000,
+        "class": "B"
+      },
+      {
+        "symbol": "Pb",
+        "tonnage": 257130,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 258100,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 973,
+        "class": "C"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 7,
+        "class": "D"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00150",
+    "name": "Novo Okno",
+    "latitude": 44.086,
+    "longitude": 22.106,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00150",
+    "name": "Other references",
+    "latitude": 43.15,
+    "longitude": 22.9,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Oolitic iron ore deposits (Clinton, Minette): Fe",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00199",
+    "name": "Osanica",
+    "latitude": 44.298,
+    "longitude": 21.66,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "W",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Granitic and peri-granitic veins and stockworks (greisen): Sn-W, (Cu, Bi, Sb, base metals)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00091",
+    "name": "Ostrovica Lojane",
+    "latitude": 42.368,
+    "longitude": 21.5,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Ophiolite-hosted ore deposits: Cr, (PGE)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00078",
+    "name": "Pasjaca",
+    "latitude": 43.158,
+    "longitude": 21.583,
+    "commodities": [
+      {
+        "symbol": "Gr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old prospect",
+    "district": "Topolicki",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to metamorphic rocks: andalusite group, wollastonite, graphite, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00176",
+    "name": "Pek",
+    "latitude": 44.473,
+    "longitude": 21.761,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 4,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit under development - project",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Alluvial-eluvial placers: Au, Pt, Sn,Ti, REE, diamond, gemstones, (Zr, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00126",
+    "name": "Petkovic",
+    "latitude": 42.422,
+    "longitude": 20.659,
+    "commodities": [
+      {
+        "symbol": "Co",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Ni",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00117",
+    "name": "Picelj",
+    "latitude": 42.975,
+    "longitude": 20.985,
+    "commodities": [
+      {
+        "symbol": "Asb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00137",
+    "name": "Piskanja",
+    "latitude": 43.375,
+    "longitude": 20.663,
+    "commodities": [
+      {
+        "symbol": "Bor",
+        "tonnage": 2600000,
+        "class": "C"
+      }
+    ],
+    "status": "Deposit under development - project",
+    "district": "Raski",
+    "company": "Ras-Borati Ltd",
+    "deposit_type": "Lacustrine deposits (sebkha, salar, alkaline lake): Li, B, (Na, Mg, Ca, nitrates, sulphates, etc.)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00137",
+    "name": "Other references",
+    "latitude": 43.603,
+    "longitude": 20.947,
+    "commodities": [
+      {
+        "symbol": "Agt",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Rasinski",
+    "company": "",
+    "deposit_type": "Atypical supergene deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00223",
+    "name": "Popovac",
+    "latitude": 43.923,
+    "longitude": 21.509,
+    "commodities": [
+      {
+        "symbol": "LstC",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Pomoravski",
+    "company": "Fabrica cementa NOVI POPOVAC",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00164",
+    "name": "Postojka Coka",
+    "latitude": 44.387,
+    "longitude": 21.843,
+    "commodities": [
+      {
+        "symbol": "Qtz",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Borski",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to plutonic rocks: ornamental stones, feldspar, nepheline, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00068",
+    "name": "Pozega",
+    "latitude": 43.846,
+    "longitude": 20.038,
+    "commodities": [
+      {
+        "symbol": "Mn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposit type",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00106",
+    "name": "Radejna",
+    "latitude": 43.032,
+    "longitude": 22.833,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 1050000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Oolitic iron ore deposits (Clinton, Minette): Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00109",
+    "name": "Radocelo",
+    "latitude": 43.469,
+    "longitude": 20.442,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Ni",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00110",
+    "name": "Rajiceva Gora",
+    "latitude": 43.156,
+    "longitude": 20.929,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 33600,
+        "class": "B"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 15000,
+        "class": "D"
+      },
+      {
+        "symbol": "As",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Rasinski",
+    "company": "Zajaca - Rudarsko - Topionicarski Basen",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00207",
+    "name": "Ramaca",
+    "latitude": 44.111,
+    "longitude": 20.681,
+    "commodities": [
+      {
+        "symbol": "Agt",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Atypical supergene deposits",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00193",
+    "name": "Rastiste",
+    "latitude": 43.935,
+    "longitude": 19.363,
+    "commodities": [
+      {
+        "symbol": "Ti",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Gabbro-norite hosted deposits of disseminated titano-magnetite: Fe, Ti, (V, P)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00168",
+    "name": "Razhana",
+    "latitude": 44.081,
+    "longitude": 19.944,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00168",
+    "name": "Rembas",
+    "latitude": 44.016,
+    "longitude": 21.6,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Pomoravski",
+    "company": "Rudnik mrkog uglja REMBAS - EPS",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00060",
+    "name": "Reskovica",
+    "latitude": 44.253,
+    "longitude": 21.624,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00148",
+    "name": "Rgotina",
+    "latitude": 44.007,
+    "longitude": 22.262,
+    "commodities": [
+      {
+        "symbol": "Silc",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Zajecarski",
+    "company": "Radna Organizacija R. Kvarnog Peska Kvarc-Rgotina",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00055",
+    "name": "Ridanj",
+    "latitude": 44.632,
+    "longitude": 21.685,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Branicevski",
+    "company": "",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00160",
+    "name": "Rogozna",
+    "latitude": 43.034,
+    "longitude": 20.634,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Atypical or unspecified ore deposits associated with acid and alkaline plutonic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00182",
+    "name": "Rudjinci",
+    "latitude": 43.598,
+    "longitude": 20.888,
+    "commodities": [
+      {
+        "symbol": "Co",
+        "tonnage": 7000,
+        "class": "C"
+      },
+      {
+        "symbol": "Ni",
+        "tonnage": 161000,
+        "class": "C"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00101",
+    "name": "Rudna Glava",
+    "latitude": 44.333,
+    "longitude": 22.094,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 870000,
+        "class": "E"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Borski",
+    "company": "",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00052",
+    "name": "Rudnik",
+    "latitude": 44.14,
+    "longitude": 20.512,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 133000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 525,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 126000,
+        "class": "C"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 21000,
+        "class": "D"
+      },
+      {
+        "symbol": "Bi",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Sumadijski",
+    "company": "DP Rudnik i Flotacija Rudnik",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Sublevel stoping"
+  },
+  {
+    "identifier": "YUG-00149",
+    "name": "Rudovci",
+    "latitude": 44.354,
+    "longitude": 20.461,
+    "commodities": [
+      {
+        "symbol": "ClyR",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Kln",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Sumadijski",
+    "company": "Ro Samot Rudnici Vatrostalnih Glina",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00111",
+    "name": "Rujevac",
+    "latitude": 44.342,
+    "longitude": 19.314,
+    "commodities": [
+      {
+        "symbol": "As",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "Zajaca - Rudarsko - Topionicarski Basen",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Sublevel stoping"
+  },
+  {
+    "identifier": "YUG-00039",
+    "name": "Rujiste",
+    "latitude": 42.926,
+    "longitude": 20.767,
+    "commodities": [
+      {
+        "symbol": "Asb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00201",
+    "name": "Ruplje",
+    "latitude": 42.849,
+    "longitude": 22.227,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Jablanicki",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00232",
+    "name": "Rusanda",
+    "latitude": 45.538,
+    "longitude": 20.239,
+    "commodities": [],
+    "status": "Producing deposit",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Oil deposits: oil, (S)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00225",
+    "name": "Sar",
+    "latitude": 42.14,
+    "longitude": 21.276,
+    "commodities": [
+      {
+        "symbol": "LstC",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Sedimentary-related industrial rocks and minerals: Clays, limestones, dolomite, calcite, siliceous sand,",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00214",
+    "name": "Sastavci",
+    "latitude": 43.312,
+    "longitude": 20.703,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00203",
+    "name": "Sijarinska Banja",
+    "latitude": 42.776,
+    "longitude": 21.623,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Jablanicki",
+    "company": "",
+    "deposit_type": "Fault and shear-zone controlled low sulphidation epithermal veins: Au, Ag, (Mn)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00089",
+    "name": "Sip",
+    "latitude": 42.463,
+    "longitude": 20.652,
+    "commodities": [
+      {
+        "symbol": "Cr",
+        "tonnage": 40000,
+        "class": "E"
+      }
+    ],
+    "status": "Old small-scale mine, exhausted deposit",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Ophiolite-hosted ore deposits: Cr, (PGE)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00145",
+    "name": "Soko",
+    "latitude": 43.626,
+    "longitude": 22.04,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Zajecarski",
+    "company": "Rudnik mrkog uglja SOKO - EPS",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00133",
+    "name": "Stancha",
+    "latitude": 43.722,
+    "longitude": 20.43,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 5000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00133",
+    "name": "Stara Planina",
+    "latitude": 43.217,
+    "longitude": 22.683,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Oolitic iron ore deposits (Clinton, Minette): Fe",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00093",
+    "name": "Stari Glog",
+    "latitude": 42.553,
+    "longitude": 21.906,
+    "commodities": [
+      {
+        "symbol": "Mo",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Pcinjski",
+    "company": "",
+    "deposit_type": "Granitic and peri-granitic veins and stockworks (greisen): Sn-W, (Cu, Bi, Sb, base metals)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00023",
+    "name": "Stari Trg",
+    "latitude": 42.938,
+    "longitude": 20.917,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 2281000,
+        "class": "A"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 3064,
+        "class": "B"
+      },
+      {
+        "symbol": "Bi",
+        "tonnage": 4115,
+        "class": "B"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 1483000,
+        "class": "B"
+      },
+      {
+        "symbol": "Cd",
+        "tonnage": 1655,
+        "class": "C"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00146",
+    "name": "Stavalj",
+    "latitude": 43.278,
+    "longitude": 19.991,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Zlatiborski",
+    "company": "Rudnik lignita STAVALJ - EPS",
+    "deposit_type": "Lignite deposits",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00102",
+    "name": "Stimlje",
+    "latitude": 42.467,
+    "longitude": 21.05,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 400000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00158",
+    "name": "Stolice",
+    "latitude": 44.401,
+    "longitude": 19.302,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00053",
+    "name": "Stragari",
+    "latitude": 44.163,
+    "longitude": 20.674,
+    "commodities": [
+      {
+        "symbol": "Asb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00047",
+    "name": "Suplja Stena",
+    "latitude": 44.632,
+    "longitude": 20.544,
+    "commodities": [
+      {
+        "symbol": "Hg",
+        "tonnage": 309,
+        "class": "D"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Beograd",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00103",
+    "name": "Suva Ruda",
+    "latitude": 43.304,
+    "longitude": 20.735,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 1000000,
+        "class": "D"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "Rudnik Magnetita Suva Ruda - Raska",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00104",
+    "name": "Suvo Rudiste",
+    "latitude": 43.291,
+    "longitude": 20.79,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 200000,
+        "class": "E"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Mn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, exhausted deposit",
+    "district": "Rasinski",
+    "company": "Rudnik Magnetita Suva Ruda - Raska",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00115",
+    "name": "Takovo",
+    "latitude": 44.056,
+    "longitude": 20.397,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00198",
+    "name": "Tanda",
+    "latitude": 44.233,
+    "longitude": 22.157,
+    "commodities": [
+      {
+        "symbol": "W",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Borski",
+    "company": "",
+    "deposit_type": "Granitic and peri-granitic veins and stockworks (greisen): Sn-W, (Cu, Bi, Sb, base metals)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00209",
+    "name": "Teocin",
+    "latitude": 44.088,
+    "longitude": 20.279,
+    "commodities": [
+      {
+        "symbol": "Qtz",
+        "tonnage": 71550,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00114",
+    "name": "Tisovik",
+    "latitude": 44.264,
+    "longitude": 19.563,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old small-scale mine, exhausted deposit",
+    "district": "Kolubarski",
+    "company": "",
+    "deposit_type": "Carbonate-hosted base metals deposits: Pb-Zn-Ag, Ba, F",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00132",
+    "name": "Tolishnitsa",
+    "latitude": 43.612,
+    "longitude": 20.46,
+    "commodities": [
+      {
+        "symbol": "Cu",
+        "tonnage": 15000,
+        "class": "D"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00105",
+    "name": "Topola",
+    "latitude": 44.253,
+    "longitude": 20.683,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 130000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00163",
+    "name": "Trbusnica",
+    "latitude": 44.352,
+    "longitude": 20.363,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "City of Beograd",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00163",
+    "name": "Trijeska",
+    "latitude": 44.011,
+    "longitude": 20.522,
+    "commodities": [
+      {
+        "symbol": "U",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Primary occurrence of unknown status",
+    "district": "Moravicki",
+    "company": "",
+    "deposit_type": "Uraniferous vein, breccia and stratabound disseminated deposits: U, (Mo, Cu, Se, F, Th, REE, Pb, Zn)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00074",
+    "name": "Trnava",
+    "latitude": 43.124,
+    "longitude": 20.586,
+    "commodities": [
+      {
+        "symbol": "Mg",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Asbestos, talc or magnesite deposits hosted by basic and ultrabasic rocks",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00030",
+    "name": "Trstenik",
+    "latitude": 42.667,
+    "longitude": 20.848,
+    "commodities": [
+      {
+        "symbol": "Ni",
+        "tonnage": 30000,
+        "class": "C"
+      },
+      {
+        "symbol": "Fe",
+        "tonnage": 1200000,
+        "class": "D"
+      },
+      {
+        "symbol": "Cr",
+        "tonnage": 105000,
+        "class": "E"
+      },
+      {
+        "symbol": "Co",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "",
+    "deposit_type": "Residually enriched ore deposits: Fe, Mn, Ni-Co, Au, Pt, P, U, corundum, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00136",
+    "name": "Tulare",
+    "latitude": 42.795,
+    "longitude": 21.443,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Jablanicki",
+    "company": "",
+    "deposit_type": "Low-sulphidation (adularia - sericite) epithermal deposits: Au, Ag, Pb, Zn, Cu, Sb, (Hg, As, Mn, Tl)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00140",
+    "name": "Usce",
+    "latitude": 43.473,
+    "longitude": 20.604,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Raski",
+    "company": "Rudnik kamenog uglja IBARSKI RUDNICI - EPS",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00059",
+    "name": "Valja Saka",
+    "latitude": 44.224,
+    "longitude": 21.909,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Branicevski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00231",
+    "name": "Velebit",
+    "latitude": 45.977,
+    "longitude": 19.942,
+    "commodities": [],
+    "status": "Producing deposit",
+    "district": "Geology",
+    "company": "",
+    "deposit_type": "Oil deposits: oil, (S)",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00076",
+    "name": "Veliki Krivelj",
+    "latitude": 44.131,
+    "longitude": 22.097,
+    "commodities": [
+      {
+        "symbol": "Au",
+        "tonnage": 50,
+        "class": "B"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 2385000,
+        "class": "B"
+      },
+      {
+        "symbol": "Mo",
+        "tonnage": 120000,
+        "class": "B"
+      },
+      {
+        "symbol": "Ag",
+        "tonnage": 280,
+        "class": "D"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Porphyry Cu-Au deposits: Cu, Au, (Ag, Bi, Te)",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00045",
+    "name": "Veliki Majdan",
+    "latitude": 44.306,
+    "longitude": 19.34,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cd",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Cu",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing industrial mine",
+    "district": "Macvanski",
+    "company": "Hemijska Industrija Zorka Sabac, Veliki Majdan",
+    "deposit_type": "Pb-Zn-Ag skarns and stratiform mantos: Pb, Zn, Ag, (Au)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00095",
+    "name": "Veluce",
+    "latitude": 43.544,
+    "longitude": 21.084,
+    "commodities": [
+      {
+        "symbol": "Co",
+        "tonnage": 2400,
+        "class": "C"
+      },
+      {
+        "symbol": "Ni",
+        "tonnage": 36900,
+        "class": "C"
+      },
+      {
+        "symbol": "Pltd",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Rasinski",
+    "company": "",
+    "deposit_type": "Laterite-related ore deposits: Fe, Mn, Ni-Co, Au, Pt, corundum, P, REE, Nb, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00197",
+    "name": "Veta",
+    "latitude": 43.201,
+    "longitude": 22.173,
+    "commodities": [
+      {
+        "symbol": "Gr",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Pirotski",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to metamorphic rocks: andalusite group, wollastonite, graphite, etc.",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00218",
+    "name": "Vidovacki Krs",
+    "latitude": 43.167,
+    "longitude": 21.543,
+    "commodities": [
+      {
+        "symbol": "Feld",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Mica",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Qtz",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Toplicki",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to plutonic rocks: ornamental stones, feldspar, nepheline, etc.",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00219",
+    "name": "Vlajna",
+    "latitude": 42.795,
+    "longitude": 21.887,
+    "commodities": [
+      {
+        "symbol": "Feld",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Jablanicki",
+    "company": "",
+    "deposit_type": "Industrial rocks and minerals related to plutonic rocks: ornamental stones, feldspar, nepheline, etc.",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00174",
+    "name": "Vranovac",
+    "latitude": 44.329,
+    "longitude": 19.252,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Bi",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Fe (magnetite) skarns: Fe, (Co)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00229",
+    "name": "Vrelo",
+    "latitude": 43.057,
+    "longitude": 21.25,
+    "commodities": [
+      {
+        "symbol": "Asb",
+        "tonnage": 15000000,
+        "class": "A"
+      }
+    ],
+    "status": "Industrial project under development",
+    "district": "Geology",
+    "company": "Drvna industrija KOPAONIK - Kursumlija",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Surface mining"
+  },
+  {
+    "identifier": "YUG-00147",
+    "name": "Vrska Cuka",
+    "latitude": 43.824,
+    "longitude": 22.336,
+    "commodities": [
+      {
+        "symbol": "Coal",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Producing small-scale mine",
+    "district": "Zajecarski",
+    "company": "Rudnik antracita VRSKA CUKA - EPS",
+    "deposit_type": "Coal deposits",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00208",
+    "name": "Vuckovica",
+    "latitude": 43.948,
+    "longitude": 20.794,
+    "commodities": [
+      {
+        "symbol": "Agt",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Dormant deposit",
+    "district": "Sumadijski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to basic-ultrabasic magmatic rocks",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00044",
+    "name": "Zajaca",
+    "latitude": 44.464,
+    "longitude": 19.248,
+    "commodities": [
+      {
+        "symbol": "Sb",
+        "tonnage": 90000,
+        "class": "A"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Macvanski",
+    "company": "Zajaca - Rudarsko - Topionicarski Basen",
+    "deposit_type": "Vein and disseminated Sb deposits: Sb, Hg, As, (Au, Tl)",
+    "exploitation_type": "Sublevel stoping"
+  },
+  {
+    "identifier": "YUG-00192",
+    "name": "Zaovine",
+    "latitude": 43.871,
+    "longitude": 19.406,
+    "commodities": [
+      {
+        "symbol": "Ti",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Zlatiborski",
+    "company": "",
+    "deposit_type": "Gabbro-norite hosted deposits of disseminated titano-magnetite: Fe, Ti, (V, P)",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00191",
+    "name": "Zavlaka",
+    "latitude": 44.464,
+    "longitude": 19.5,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Macvanski",
+    "company": "",
+    "deposit_type": "Carbonate-hosted base metals deposits: Pb-Zn-Ag, Ba, F",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00177",
+    "name": "Zeljin",
+    "latitude": 43.429,
+    "longitude": 20.793,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Rasinski",
+    "company": "",
+    "deposit_type": "Unspecified syn- to late orogenic ore deposits",
+    "exploitation_type": "Mining method unkown"
+  },
+  {
+    "identifier": "YUG-00121",
+    "name": "Zijaca",
+    "latitude": 42.964,
+    "longitude": 20.914,
+    "commodities": [],
+    "status": "Deposit or prospect of unknown status",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Replacement deposits (skarns, mantos): Au, Cu, Pb, Zn, Ag, W, Mo, Sn, Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00166",
+    "name": "Zimovnik",
+    "latitude": 43.257,
+    "longitude": 20.744,
+    "commodities": [
+      {
+        "symbol": "PbZn",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Group of  mineral occcurrences",
+    "district": "Raski",
+    "company": "",
+    "deposit_type": "Unspecified ore deposits related to volcanic systems and shallow intrusives",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00082",
+    "name": "Zitni Potok",
+    "latitude": 43.09,
+    "longitude": 21.594,
+    "commodities": [
+      {
+        "symbol": "Fe",
+        "tonnage": 100000,
+        "class": "E"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Topolicki",
+    "company": "",
+    "deposit_type": "Banded iron formations (BIF \"Superior Fe\"): Fe",
+    "exploitation_type": "Unworked"
+  },
+  {
+    "identifier": "YUG-00125",
+    "name": "Zlace",
+    "latitude": 44.066,
+    "longitude": 22.022,
+    "commodities": [
+      {
+        "symbol": "Ag",
+        "tonnage": 0,
+        "class": "N/A"
+      },
+      {
+        "symbol": "Au",
+        "tonnage": 0,
+        "class": "N/A"
+      }
+    ],
+    "status": "Old industrial mine, abandoned deposit",
+    "district": "Borski",
+    "company": "Rudarsko Topionicarski Basen BOR",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Underground mining"
+  },
+  {
+    "identifier": "YUG-00113",
+    "name": "Zuta Prlina",
+    "latitude": 43.151,
+    "longitude": 20.889,
+    "commodities": [
+      {
+        "symbol": "Pb",
+        "tonnage": 19000,
+        "class": "C"
+      },
+      {
+        "symbol": "Zn",
+        "tonnage": 18000,
+        "class": "D"
+      }
+    ],
+    "status": "Deposit of unknown status",
+    "district": "Kosovo",
+    "company": "TREPCA Mining and Metallurgical Complex",
+    "deposit_type": "Low-sulphidation epi- to mesothermal polymetallic-Ag veins: Pb, Zn, Ag, Mn, Cu, (As, Sb)",
+    "exploitation_type": "Underground mining"
+  }
+]

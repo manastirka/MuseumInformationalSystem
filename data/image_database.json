@@ -1,0 +1,1006 @@
+{
+  "version": "1.0.0",
+  "created": "2026-03-09T14:25:04.198119",
+  "databases": {
+    "mineral": {
+      "items": {
+        "2307": {
+          "image_ids": [
+            "mineral_collection_item_2307_20260309_140705_b601c94a"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2307_20260309_140705_b601c94a": "2026-03-09T14:25:04.198130"
+          },
+          "metadata": {
+            "mineral_collection_item_2307_20260309_140705_b601c94a": {
+              "original_filename": "2307, Veliki kristal kvarca, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "2814": {
+          "image_ids": [
+            "mineral_collection_item_2814_20260309_140706_fb7845a0"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2814_20260309_140706_fb7845a0": "2026-03-09T14:25:04.198227"
+          },
+          "metadata": {
+            "mineral_collection_item_2814_20260309_140706_fb7845a0": {
+              "original_filename": "2814, Druza kvarca, Kapak-Polom, Cavica potok, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "3733": {
+          "image_ids": [
+            "mineral_collection_item_3733_20260309_140706_6a2aaf0d"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3733_20260309_140706_6a2aaf0d": "2026-03-09T14:25:04.198300"
+          },
+          "metadata": {
+            "mineral_collection_item_3733_20260309_140706_6a2aaf0d": {
+              "original_filename": "3733, Ahat i oniks, Lece, Srbija.jpg"
+            }
+          }
+        },
+        "3721": {
+          "image_ids": [
+            "mineral_collection_item_3721_20260309_140706_e62c9979"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3721_20260309_140706_e62c9979": "2026-03-09T14:25:04.198404"
+          },
+          "metadata": {
+            "mineral_collection_item_3721_20260309_140706_e62c9979": {
+              "original_filename": "3721, Antimonit, Stolice kod Krupnja, Srbija.jpg"
+            }
+          }
+        },
+        "3722": {
+          "image_ids": [
+            "mineral_collection_item_3722_20260309_140706_61480841"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3722_20260309_140706_61480841": "2026-03-09T14:25:04.198509"
+          },
+          "metadata": {
+            "mineral_collection_item_3722_20260309_140706_61480841": {
+              "original_filename": "3722, Antimonit na kvarcu, Stolice kod Krupnja, Srbija.jpg"
+            }
+          }
+        },
+        "3723": {
+          "image_ids": [
+            "mineral_collection_item_3723_20260309_140706_70023f6e"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3723_20260309_140706_70023f6e": "2026-03-09T14:25:04.198610"
+          },
+          "metadata": {
+            "mineral_collection_item_3723_20260309_140706_70023f6e": {
+              "original_filename": "3723, Antimonit, Stolice kod Krupnja, Srbija.jpg"
+            }
+          }
+        },
+        "2818": {
+          "image_ids": [
+            "mineral_collection_item_2818_20260309_140707_bb5e9a84"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2818_20260309_140707_bb5e9a84": "2026-03-09T14:25:04.198718"
+          },
+          "metadata": {
+            "mineral_collection_item_2818_20260309_140707_bb5e9a84": {
+              "original_filename": "2818, Blizanci kvarca, Tisovac, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "2819": {
+          "image_ids": [
+            "mineral_collection_item_2819_20260309_140707_3d29ff88"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2819_20260309_140707_3d29ff88": "2026-03-09T14:25:04.198829"
+          },
+          "metadata": {
+            "mineral_collection_item_2819_20260309_140707_3d29ff88": {
+              "original_filename": "2819, Kvarc - gorski kristal, Tisovac, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "1474": {
+          "image_ids": [
+            "mineral_collection_item_1474_20260309_140707_f41ee337"
+          ],
+          "added_dates": {
+            "mineral_collection_item_1474_20260309_140707_f41ee337": "2026-03-09T14:25:04.198984"
+          },
+          "metadata": {
+            "mineral_collection_item_1474_20260309_140707_f41ee337": {
+              "original_filename": "1474, Gips, Bor, Srbija.jpg"
+            }
+          }
+        },
+        "3390": {
+          "image_ids": [
+            "mineral_collection_item_3390_20260309_140707_157b160b"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3390_20260309_140707_157b160b": "2026-03-09T14:25:04.235472"
+          },
+          "metadata": {
+            "mineral_collection_item_3390_20260309_140707_157b160b": {
+              "original_filename": "3390, Kovelin i bornit, Bor, Srbija.jpg"
+            }
+          }
+        },
+        "3743": {
+          "image_ids": [
+            "mineral_collection_item_3743_20260309_140707_d27388f3"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3743_20260309_140707_d27388f3": "2026-03-09T14:25:04.235757"
+          },
+          "metadata": {
+            "mineral_collection_item_3743_20260309_140707_d27388f3": {
+              "original_filename": "3743, Kalcit, Bor, Srbija.jpg"
+            }
+          }
+        },
+        "3792": {
+          "image_ids": [
+            "mineral_collection_item_3792_20260309_140708_69581f98"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3792_20260309_140708_69581f98": "2026-03-09T14:25:04.236020"
+          },
+          "metadata": {
+            "mineral_collection_item_3792_20260309_140708_69581f98": {
+              "original_filename": "3792, Kovelin, Bor, Srbija.jpg"
+            }
+          }
+        },
+        "3869": {
+          "image_ids": [
+            "mineral_collection_item_3869_20260309_140708_259e4a50"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3869_20260309_140708_259e4a50": "2026-03-09T14:25:04.236241"
+          },
+          "metadata": {
+            "mineral_collection_item_3869_20260309_140708_259e4a50": {
+              "original_filename": "3869, Kvarc, Busovača, BiH.jpg"
+            }
+          }
+        },
+        "3225": {
+          "image_ids": [
+            "mineral_collection_item_3225_20260309_140708_c34fe7d6"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3225_20260309_140708_c34fe7d6": "2026-03-09T14:25:04.236466"
+          },
+          "metadata": {
+            "mineral_collection_item_3225_20260309_140708_c34fe7d6": {
+              "original_filename": "3225, Magnezit, Krnda, Zlatibor, Srbija.jpg"
+            }
+          }
+        },
+        "2962": {
+          "image_ids": [
+            "mineral_collection_item_2962_20260309_140708_fb50a8b7"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2962_20260309_140708_fb50a8b7": "2026-03-09T14:25:04.236679"
+          },
+          "metadata": {
+            "mineral_collection_item_2962_20260309_140708_fb50a8b7": {
+              "original_filename": "2962, Uvarovit, Ljubičica, Leštane, Avala, Srbija.jpg"
+            }
+          }
+        },
+        "2248": {
+          "image_ids": [
+            "mineral_collection_item_2248_20260309_140709_b1cc0f7b"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2248_20260309_140709_b1cc0f7b": "2026-03-09T14:25:04.236907"
+          },
+          "metadata": {
+            "mineral_collection_item_2248_20260309_140709_b1cc0f7b": {
+              "original_filename": "2248, Kalamin, Mežice, Slovenija.jpg"
+            }
+          }
+        },
+        "2250": {
+          "image_ids": [
+            "mineral_collection_item_2250_20260309_140709_f3c7109f",
+            "mineral_collection_item_2250_20260309_140709_7e076294"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2250_20260309_140709_f3c7109f": "2026-03-09T14:25:04.237130",
+            "mineral_collection_item_2250_20260309_140709_7e076294": "2026-03-09T14:25:04.237352"
+          },
+          "metadata": {
+            "mineral_collection_item_2250_20260309_140709_f3c7109f": {
+              "original_filename": "2250 1, Limonit sa gipsom, Mežice, Slovenija.jpg"
+            },
+            "mineral_collection_item_2250_20260309_140709_7e076294": {
+              "original_filename": "2250, Limonit sa gipsom, Mežice, Slovenija.jpg"
+            }
+          }
+        },
+        "3868": {
+          "image_ids": [
+            "mineral_collection_item_3868_20260309_140709_eba8a9d0"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3868_20260309_140709_eba8a9d0": "2026-03-09T14:25:04.237583"
+          },
+          "metadata": {
+            "mineral_collection_item_3868_20260309_140709_eba8a9d0": {
+              "original_filename": "3868, Kalcit, Mežice, Slovenija.jpg"
+            }
+          }
+        },
+        "2950": {
+          "image_ids": [
+            "mineral_collection_item_2950_20260309_140709_609bf3a3"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2950_20260309_140709_609bf3a3": "2026-03-09T14:25:04.237830"
+          },
+          "metadata": {
+            "mineral_collection_item_2950_20260309_140709_609bf3a3": {
+              "original_filename": "2950, Gips, Novo Brdo, Kopaonik, Srbija.jpg"
+            }
+          }
+        },
+        "3840": {
+          "image_ids": [
+            "mineral_collection_item_3840_20260309_140710_1e2fe58c"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3840_20260309_140710_1e2fe58c": "2026-03-09T14:25:04.238080"
+          },
+          "metadata": {
+            "mineral_collection_item_3840_20260309_140710_1e2fe58c": {
+              "original_filename": "3840, Leopard hromit, Preševo, Srbija.jpg"
+            }
+          }
+        },
+        "3516": {
+          "image_ids": [
+            "mineral_collection_item_3516_20260309_140710_e6ebef7d"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3516_20260309_140710_e6ebef7d": "2026-03-09T14:25:04.238334"
+          },
+          "metadata": {
+            "mineral_collection_item_3516_20260309_140710_e6ebef7d": {
+              "original_filename": "3516, Druza kvarca, Rudnik, Srbija.jpg"
+            }
+          }
+        },
+        "698": {
+          "image_ids": [
+            "mineral_collection_item_698_20260309_140710_a75bb71d"
+          ],
+          "added_dates": {
+            "mineral_collection_item_698_20260309_140710_a75bb71d": "2026-03-09T14:25:04.238587"
+          },
+          "metadata": {
+            "mineral_collection_item_698_20260309_140710_a75bb71d": {
+              "original_filename": "698, Galenit i pirotin, Rudnik, Srbija.jpg"
+            }
+          }
+        },
+        "1162": {
+          "image_ids": [
+            "mineral_collection_item_1162_20260309_140710_b5b0fd96"
+          ],
+          "added_dates": {
+            "mineral_collection_item_1162_20260309_140710_b5b0fd96": "2026-03-09T14:25:04.238837"
+          },
+          "metadata": {
+            "mineral_collection_item_1162_20260309_140710_b5b0fd96": {
+              "original_filename": "1162, Antimonit sa baritom, Stolice, Krupanj, Srbija.jpg"
+            }
+          }
+        },
+        "1164": {
+          "image_ids": [
+            "mineral_collection_item_1164_20260309_140710_3bec72eb"
+          ],
+          "added_dates": {
+            "mineral_collection_item_1164_20260309_140710_3bec72eb": "2026-03-09T14:25:04.239099"
+          },
+          "metadata": {
+            "mineral_collection_item_1164_20260309_140710_3bec72eb": {
+              "original_filename": "1164, Antimonit, Stolica Krupanj, Srbija.jpg"
+            }
+          }
+        },
+        "3294": {
+          "image_ids": [
+            "mineral_collection_item_3294_20260309_140711_905ada17"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3294_20260309_140711_905ada17": "2026-03-09T14:25:04.239381"
+          },
+          "metadata": {
+            "mineral_collection_item_3294_20260309_140711_905ada17": {
+              "original_filename": "3294, Druza kalcita, Stolice, Krupanj, Potkop 15a, Srbija.jpg"
+            }
+          }
+        },
+        "3121": {
+          "image_ids": [
+            "mineral_collection_item_3121_20260309_140711_0a078667"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3121_20260309_140711_0a078667": "2026-03-09T14:25:04.239673"
+          },
+          "metadata": {
+            "mineral_collection_item_3121_20260309_140711_0a078667": {
+              "original_filename": "3121, Kvarc, Suvo Rudište, Kopaonik, Srbija.jpg"
+            }
+          }
+        },
+        "677": {
+          "image_ids": [
+            "mineral_collection_item_677_20260309_140711_df67db84"
+          ],
+          "added_dates": {
+            "mineral_collection_item_677_20260309_140711_df67db84": "2026-03-09T14:25:04.239952"
+          },
+          "metadata": {
+            "mineral_collection_item_677_20260309_140711_df67db84": {
+              "original_filename": "677-680, Granat sa malahitom - Granat, Suvo Rudište, Kopaonik, Srbija.jpg"
+            }
+          }
+        },
+        "2817": {
+          "image_ids": [
+            "mineral_collection_item_2817_20260309_140711_b0a7cf01"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2817_20260309_140711_b0a7cf01": "2026-03-09T14:25:04.240249"
+          },
+          "metadata": {
+            "mineral_collection_item_2817_20260309_140711_b0a7cf01": {
+              "original_filename": "2817, Kristali kvarca, Tisovac, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "2820": {
+          "image_ids": [
+            "mineral_collection_item_2820_20260309_140711_f18cdf5b"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2820_20260309_140711_f18cdf5b": "2026-03-09T14:25:04.240571"
+          },
+          "metadata": {
+            "mineral_collection_item_2820_20260309_140711_f18cdf5b": {
+              "original_filename": "2820, Kvarc sa hijalofanom, Tisovac, Busovača, Bosna.jpg"
+            }
+          }
+        },
+        "2231": {
+          "image_ids": [
+            "mineral_collection_item_2231_20260309_140712_60f0a74a"
+          ],
+          "added_dates": {
+            "mineral_collection_item_2231_20260309_140712_60f0a74a": "2026-03-09T14:25:04.240885"
+          },
+          "metadata": {
+            "mineral_collection_item_2231_20260309_140712_60f0a74a": {
+              "original_filename": "2231, Siderit, Traversella, Piemonte, Italija.jpg"
+            }
+          }
+        },
+        "1240": {
+          "image_ids": [
+            "mineral_collection_item_1240_20260309_140712_f31bc644"
+          ],
+          "added_dates": {
+            "mineral_collection_item_1240_20260309_140712_f31bc644": "2026-03-09T14:25:04.241180"
+          },
+          "metadata": {
+            "mineral_collection_item_1240_20260309_140712_f31bc644": {
+              "original_filename": "1240, Arsenopirit sa talkom, Šiparčika, Zimovnik, Kopaonik, Srbija.jpg"
+            }
+          }
+        },
+        "4133": {
+          "image_ids": [
+            "mineral_collection_item_4133_20260309_141138_c1b4886b"
+          ],
+          "added_dates": {
+            "mineral_collection_item_4133_20260309_141138_c1b4886b": "2026-03-09T14:25:04.241523"
+          },
+          "metadata": {
+            "mineral_collection_item_4133_20260309_141138_c1b4886b": {
+              "original_filename": "Druza sfalerita i kvarca_Trepča.JPG"
+            }
+          }
+        },
+        "4118": {
+          "image_ids": [
+            "mineral_collection_item_4118_20260309_141139_bbc3de20"
+          ],
+          "added_dates": {
+            "mineral_collection_item_4118_20260309_141139_bbc3de20": "2026-03-09T14:25:04.241989"
+          },
+          "metadata": {
+            "mineral_collection_item_4118_20260309_141139_bbc3de20": {
+              "original_filename": "Pirotin_Trepča.JPG"
+            }
+          }
+        },
+        "3368": {
+          "image_ids": [
+            "mineral_collection_item_3368_20260309_141932_27b87cae"
+          ],
+          "added_dates": {
+            "mineral_collection_item_3368_20260309_141932_27b87cae": "2026-03-09T14:25:04.242370"
+          },
+          "metadata": {
+            "mineral_collection_item_3368_20260309_141932_27b87cae": {
+              "original_filename": "kristal kvarca, Stari Trg, Trepča, Srbija.jpg"
+            }
+          }
+        },
+        "1640": {
+          "image_ids": [
+            "mineral_collection_item_1640_20260309_141932_16400c46"
+          ],
+          "added_dates": {
+            "mineral_collection_item_1640_20260309_141932_16400c46": "2026-03-09T14:25:04.242788"
+          },
+          "metadata": {
+            "mineral_collection_item_1640_20260309_141932_16400c46": {
+              "original_filename": "kvarc sa kalcitom, Stari Trg, Trepča, Srbija.jpg"
+            }
+          }
+        },
+        "4054": {
+          "image_ids": [
+            "mineral_collection_item_4054_20260309_141932_ddd5e45c"
+          ],
+          "added_dates": {
+            "mineral_collection_item_4054_20260309_141932_ddd5e45c": "2026-03-09T14:25:04.243147"
+          },
+          "metadata": {
+            "mineral_collection_item_4054_20260309_141932_ddd5e45c": {
+              "original_filename": "pseudomorfoza pirita po pirotinu, Stari Trg, Trepča, Srbija.jpg"
+            }
+          }
+        }
+      },
+      "entity_type": "collection_item"
+    },
+    "minerals": {
+      "items": {
+        "1201": {
+          "image_ids": [
+            "minerals_mineral_1201_20260309_142803_b601c94a"
+          ],
+          "added_dates": {
+            "minerals_mineral_1201_20260309_142803_b601c94a": "2026-03-09T14:28:03.338394"
+          },
+          "metadata": {}
+        },
+        "1785": {
+          "image_ids": [
+            "minerals_mineral_1785_20260309_142803_fb7845a0"
+          ],
+          "added_dates": {
+            "minerals_mineral_1785_20260309_142803_fb7845a0": "2026-03-09T14:28:03.522498"
+          },
+          "metadata": {}
+        },
+        "625": {
+          "image_ids": [
+            "minerals_mineral_625_20260309_142803_6a2aaf0d"
+          ],
+          "added_dates": {
+            "minerals_mineral_625_20260309_142803_6a2aaf0d": "2026-03-09T14:28:03.703370"
+          },
+          "metadata": {}
+        },
+        "637": {
+          "image_ids": [
+            "minerals_mineral_637_20260309_142803_e62c9979"
+          ],
+          "added_dates": {
+            "minerals_mineral_637_20260309_142803_e62c9979": "2026-03-09T14:28:03.886446"
+          },
+          "metadata": {}
+        },
+        "636": {
+          "image_ids": [
+            "minerals_mineral_636_20260309_142803_61480841"
+          ],
+          "added_dates": {
+            "minerals_mineral_636_20260309_142803_61480841": "2026-03-09T14:28:04.056713"
+          },
+          "metadata": {}
+        },
+        "635": {
+          "image_ids": [
+            "minerals_mineral_635_20260309_142804_70023f6e"
+          ],
+          "added_dates": {
+            "minerals_mineral_635_20260309_142804_70023f6e": "2026-03-09T14:28:04.233176"
+          },
+          "metadata": {}
+        },
+        "1780": {
+          "image_ids": [
+            "minerals_mineral_1780_20260309_142804_bb5e9a84"
+          ],
+          "added_dates": {
+            "minerals_mineral_1780_20260309_142804_bb5e9a84": "2026-03-09T14:28:04.421621"
+          },
+          "metadata": {}
+        },
+        "1779": {
+          "image_ids": [
+            "minerals_mineral_1779_20260309_142804_3d29ff88"
+          ],
+          "added_dates": {
+            "minerals_mineral_1779_20260309_142804_3d29ff88": "2026-03-09T14:28:04.600334"
+          },
+          "metadata": {}
+        },
+        "807": {
+          "image_ids": [
+            "minerals_mineral_807_20260309_142804_f41ee337"
+          ],
+          "added_dates": {
+            "minerals_mineral_807_20260309_142804_f41ee337": "2026-03-09T14:28:04.785225"
+          },
+          "metadata": {}
+        },
+        "697": {
+          "image_ids": [
+            "minerals_mineral_697_20260309_142804_157b160b"
+          ],
+          "added_dates": {
+            "minerals_mineral_697_20260309_142804_157b160b": "2026-03-09T14:28:04.981854"
+          },
+          "metadata": {}
+        },
+        "615": {
+          "image_ids": [
+            "minerals_mineral_615_20260309_142804_d27388f3"
+          ],
+          "added_dates": {
+            "minerals_mineral_615_20260309_142804_d27388f3": "2026-03-09T14:28:05.171782"
+          },
+          "metadata": {}
+        },
+        "566": {
+          "image_ids": [
+            "minerals_mineral_566_20260309_142805_69581f98"
+          ],
+          "added_dates": {
+            "minerals_mineral_566_20260309_142805_69581f98": "2026-03-09T14:28:05.347650"
+          },
+          "metadata": {}
+        },
+        "491": {
+          "image_ids": [
+            "minerals_mineral_491_20260309_142805_259e4a50"
+          ],
+          "added_dates": {
+            "minerals_mineral_491_20260309_142805_259e4a50": "2026-03-09T14:28:05.530854"
+          },
+          "metadata": {}
+        },
+        "707": {
+          "image_ids": [
+            "minerals_mineral_707_20260309_142805_c34fe7d6"
+          ],
+          "added_dates": {
+            "minerals_mineral_707_20260309_142805_c34fe7d6": "2026-03-09T14:28:05.712861"
+          },
+          "metadata": {}
+        },
+        "717": {
+          "image_ids": [
+            "minerals_mineral_717_20260309_142805_fb50a8b7"
+          ],
+          "added_dates": {
+            "minerals_mineral_717_20260309_142805_fb50a8b7": "2026-03-09T14:28:05.902702"
+          },
+          "metadata": {}
+        },
+        "1806": {
+          "image_ids": [
+            "minerals_mineral_1806_20260309_142805_b1cc0f7b"
+          ],
+          "added_dates": {
+            "minerals_mineral_1806_20260309_142805_b1cc0f7b": "2026-03-09T14:28:06.084856"
+          },
+          "metadata": {}
+        },
+        "1805": {
+          "image_ids": [
+            "minerals_mineral_1805_20260309_142806_f3c7109f",
+            "minerals_mineral_1805_20260309_142806_7e076294"
+          ],
+          "added_dates": {
+            "minerals_mineral_1805_20260309_142806_f3c7109f": "2026-03-09T14:28:06.281924",
+            "minerals_mineral_1805_20260309_142806_7e076294": "2026-03-09T14:28:06.485367"
+          },
+          "metadata": {}
+        },
+        "492": {
+          "image_ids": [
+            "minerals_mineral_492_20260309_142806_eba8a9d0"
+          ],
+          "added_dates": {
+            "minerals_mineral_492_20260309_142806_eba8a9d0": "2026-03-09T14:28:06.676079"
+          },
+          "metadata": {}
+        },
+        "1732": {
+          "image_ids": [
+            "minerals_mineral_1732_20260309_142806_609bf3a3"
+          ],
+          "added_dates": {
+            "minerals_mineral_1732_20260309_142806_609bf3a3": "2026-03-09T14:28:06.849216"
+          },
+          "metadata": {}
+        },
+        "520": {
+          "image_ids": [
+            "minerals_mineral_520_20260309_142806_1e2fe58c"
+          ],
+          "added_dates": {
+            "minerals_mineral_520_20260309_142806_1e2fe58c": "2026-03-09T14:28:07.049182"
+          },
+          "metadata": {}
+        },
+        "692": {
+          "image_ids": [
+            "minerals_mineral_692_20260309_142807_e6ebef7d"
+          ],
+          "added_dates": {
+            "minerals_mineral_692_20260309_142807_e6ebef7d": "2026-03-09T14:28:07.241429"
+          },
+          "metadata": {}
+        },
+        "816": {
+          "image_ids": [
+            "minerals_mineral_816_20260309_142807_a75bb71d"
+          ],
+          "added_dates": {
+            "minerals_mineral_816_20260309_142807_a75bb71d": "2026-03-09T14:28:07.433939"
+          },
+          "metadata": {}
+        },
+        "1801": {
+          "image_ids": [
+            "minerals_mineral_1801_20260309_142807_b5b0fd96"
+          ],
+          "added_dates": {
+            "minerals_mineral_1801_20260309_142807_b5b0fd96": "2026-03-09T14:28:07.606230"
+          },
+          "metadata": {}
+        },
+        "2580": {
+          "image_ids": [
+            "minerals_mineral_2580_20260309_142807_3bec72eb"
+          ],
+          "added_dates": {
+            "minerals_mineral_2580_20260309_142807_3bec72eb": "2026-03-09T14:28:07.800144"
+          },
+          "metadata": {}
+        },
+        "706": {
+          "image_ids": [
+            "minerals_mineral_706_20260309_142807_905ada17"
+          ],
+          "added_dates": {
+            "minerals_mineral_706_20260309_142807_905ada17": "2026-03-09T14:28:07.992172"
+          },
+          "metadata": {}
+        },
+        "713": {
+          "image_ids": [
+            "minerals_mineral_713_20260309_142807_0a078667"
+          ],
+          "added_dates": {
+            "minerals_mineral_713_20260309_142807_0a078667": "2026-03-09T14:28:08.190295"
+          },
+          "metadata": {}
+        },
+        "819": {
+          "image_ids": [
+            "minerals_mineral_819_20260309_142808_df67db84"
+          ],
+          "added_dates": {
+            "minerals_mineral_819_20260309_142808_df67db84": "2026-03-09T14:28:08.368738"
+          },
+          "metadata": {}
+        },
+        "1781": {
+          "image_ids": [
+            "minerals_mineral_1781_20260309_142808_b0a7cf01"
+          ],
+          "added_dates": {
+            "minerals_mineral_1781_20260309_142808_b0a7cf01": "2026-03-09T14:28:08.555186"
+          },
+          "metadata": {}
+        },
+        "1778": {
+          "image_ids": [
+            "minerals_mineral_1778_20260309_142808_f18cdf5b"
+          ],
+          "added_dates": {
+            "minerals_mineral_1778_20260309_142808_f18cdf5b": "2026-03-09T14:28:08.745323"
+          },
+          "metadata": {}
+        },
+        "1910": {
+          "image_ids": [
+            "minerals_mineral_1910_20260309_142808_60f0a74a"
+          ],
+          "added_dates": {
+            "minerals_mineral_1910_20260309_142808_60f0a74a": "2026-03-09T14:28:08.921388"
+          },
+          "metadata": {}
+        },
+        "809": {
+          "image_ids": [
+            "minerals_mineral_809_20260309_142808_f31bc644"
+          ],
+          "added_dates": {
+            "minerals_mineral_809_20260309_142808_f31bc644": "2026-03-09T14:28:09.126394"
+          },
+          "metadata": {}
+        },
+        "219": {
+          "image_ids": [
+            "minerals_mineral_219_20260309_142809_c1b4886b"
+          ],
+          "added_dates": {
+            "minerals_mineral_219_20260309_142809_c1b4886b": "2026-03-09T14:28:09.240650"
+          },
+          "metadata": {}
+        },
+        "234": {
+          "image_ids": [
+            "minerals_mineral_234_20260309_142809_bbc3de20"
+          ],
+          "added_dates": {
+            "minerals_mineral_234_20260309_142809_bbc3de20": "2026-03-09T14:28:09.355600"
+          },
+          "metadata": {}
+        },
+        "698": {
+          "image_ids": [
+            "minerals_mineral_698_20260309_142809_27b87cae"
+          ],
+          "added_dates": {
+            "minerals_mineral_698_20260309_142809_27b87cae": "2026-03-09T14:28:09.522475"
+          },
+          "metadata": {}
+        },
+        "1065": {
+          "image_ids": [
+            "minerals_mineral_1065_20260309_142809_16400c46"
+          ],
+          "added_dates": {
+            "minerals_mineral_1065_20260309_142809_16400c46": "2026-03-09T14:28:09.716766"
+          },
+          "metadata": {}
+        },
+        "314": {
+          "image_ids": [
+            "minerals_mineral_314_20260309_142809_ddd5e45c"
+          ],
+          "added_dates": {
+            "minerals_mineral_314_20260309_142809_ddd5e45c": "2026-03-09T14:28:09.936751"
+          },
+          "metadata": {}
+        },
+        "808": {
+          "image_ids": [
+            "minerals_mineral_808_20260310_130916_551bf2d7"
+          ],
+          "added_dates": {
+            "minerals_mineral_808_20260310_130916_551bf2d7": "2026-03-10T13:09:17.104118"
+          },
+          "metadata": {
+            "minerals_mineral_808_20260310_130916_551bf2d7": {
+              "inventory_number": 1314,
+              "mineral_name": "malahit",
+              "locality": "Majdanpek, horizont 505m, Srbija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "804": {
+          "image_ids": [
+            "minerals_mineral_804_20260310_130917_14282e11"
+          ],
+          "added_dates": {
+            "minerals_mineral_804_20260310_130917_14282e11": "2026-03-10T13:09:17.250424"
+          },
+          "metadata": {
+            "minerals_mineral_804_20260310_130917_14282e11": {
+              "inventory_number": 1554,
+              "mineral_name": "vulfenit",
+              "locality": "Mežice, Slovenija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "787": {
+          "image_ids": [
+            "minerals_mineral_787_20260310_130917_b7e42f85"
+          ],
+          "added_dates": {
+            "minerals_mineral_787_20260310_130917_b7e42f85": "2026-03-10T13:09:17.426858"
+          },
+          "metadata": {
+            "minerals_mineral_787_20260310_130917_b7e42f85": {
+              "inventory_number": 2115,
+              "mineral_name": "cinabarit sa avalitom",
+              "locality": "Avala, Srbija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "1807": {
+          "image_ids": [
+            "minerals_mineral_1807_20260310_130917_8d8fff1f"
+          ],
+          "added_dates": {
+            "minerals_mineral_1807_20260310_130917_8d8fff1f": "2026-03-10T13:09:17.601034"
+          },
+          "metadata": {
+            "minerals_mineral_1807_20260310_130917_8d8fff1f": {
+              "inventory_number": 2249,
+              "mineral_name": "antimonit sa valentinitom i galenitom",
+              "locality": "Mezice, Slovenija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "777": {
+          "image_ids": [
+            "minerals_mineral_777_20260310_130917_efcc8aee"
+          ],
+          "added_dates": {
+            "minerals_mineral_777_20260310_130917_efcc8aee": "2026-03-10T13:09:17.684672"
+          },
+          "metadata": {
+            "minerals_mineral_777_20260310_130917_efcc8aee": {
+              "inventory_number": 2251,
+              "mineral_name": "kristali kalcita",
+              "locality": "Mežice, Slovenija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "704": {
+          "image_ids": [
+            "minerals_mineral_704_20260310_130917_8b77d51a"
+          ],
+          "added_dates": {
+            "minerals_mineral_704_20260310_130917_8b77d51a": "2026-03-10T13:09:17.860285"
+          },
+          "metadata": {
+            "minerals_mineral_704_20260310_130917_8b77d51a": {
+              "inventory_number": 3321,
+              "mineral_name": "mizonit i hedenbergit",
+              "locality": "Kopaonik, Srbija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "679": {
+          "image_ids": [
+            "minerals_mineral_679_20260310_130917_0232cffe"
+          ],
+          "added_dates": {
+            "minerals_mineral_679_20260310_130917_0232cffe": "2026-03-10T13:09:18.029362"
+          },
+          "metadata": {
+            "minerals_mineral_679_20260310_130917_0232cffe": {
+              "inventory_number": 3680,
+              "mineral_name": "vulfenit",
+              "locality": "Mežice, Slovenija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "568": {
+          "image_ids": [
+            "minerals_mineral_568_20260310_130918_a188478d"
+          ],
+          "added_dates": {
+            "minerals_mineral_568_20260310_130918_a188478d": "2026-03-10T13:09:18.208850"
+          },
+          "metadata": {
+            "minerals_mineral_568_20260310_130918_a188478d": {
+              "inventory_number": 3790,
+              "mineral_name": "valentinit",
+              "locality": "Zajača, Srbija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "563": {
+          "image_ids": [
+            "minerals_mineral_563_20260310_130918_4f14dbb7"
+          ],
+          "added_dates": {
+            "minerals_mineral_563_20260310_130918_4f14dbb7": "2026-03-10T13:09:18.383848"
+          },
+          "metadata": {
+            "minerals_mineral_563_20260310_130918_4f14dbb7": {
+              "inventory_number": 3795,
+              "mineral_name": "ametist",
+              "locality": "Lece, Srbija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "560": {
+          "image_ids": [
+            "minerals_mineral_560_20260310_130918_f0bc0901"
+          ],
+          "added_dates": {
+            "minerals_mineral_560_20260310_130918_f0bc0901": "2026-03-10T13:09:18.518139"
+          },
+          "metadata": {
+            "minerals_mineral_560_20260310_130918_f0bc0901": {
+              "inventory_number": 3798,
+              "mineral_name": "realgar",
+              "locality": "Alšar, Makedonija",
+              "has_scalebar": true
+            }
+          }
+        },
+        "519": {
+          "image_ids": [
+            "minerals_mineral_519_20260310_130918_84757544"
+          ],
+          "added_dates": {
+            "minerals_mineral_519_20260310_130918_84757544": "2026-03-10T13:09:18.698791"
+          },
+          "metadata": {
+            "minerals_mineral_519_20260310_130918_84757544": {
+              "inventory_number": 3841,
+              "mineral_name": "kermezit",
+              "locality": "Zajača, Srbija",
+              "has_scalebar": true
+            }
+          }
+        }
+      },
+      "entity_type": "item"
+    }
+  },
+  "statistics": {
+    "total_items_with_images": 83,
+    "total_images": 85,
+    "by_database": {
+      "mineral": {
+        "items_with_images": 36,
+        "total_images": 37
+      },
+      "minerals": {
+        "items_with_images": 47,
+        "total_images": 48
+      }
+    },
+    "last_updated": "2026-03-10T13:09:18.698806"
+  }
+}
