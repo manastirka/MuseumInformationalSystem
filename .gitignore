@@ -1,0 +1,212 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Flask stuff
+instance/
+.webassets-cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Rope project settings
+.ropeproject
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================
+# Museum Information System
+# ============================================
+
+# --- Large data directories (NOT source code) ---
+ImagesDatabase/
+MDatabase/
+RRUFF_data/
+BIO/
+GEROC/
+Karte/
+Tektonika/
+PrirodnjackiMuzej/
+Prstenovanje/
+Projekti/
+storage/
+backups/
+exports/
+stalna postavka/
+data/cif_files/
+data/dem_serbia/
+data/fastsam_test/
+data/geo_zones/
+data/nhm_datasets/
+data/space_planner_backups/
+data/migrations/
+localSQLtesting/
+
+# --- Static assets (generated/uploaded, not source) ---
+static/
+
+# --- ML model weights ---
+*.pt
+
+# --- Database files ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Session & temp ---
+flask_session/
+tmp/
+*.pid
+*.tmp
+*.temp
+
+# --- Documents (not source code) ---
+*.xlsx
+*.xls
+*.doc
+*.docx
+*.pdf
+
+# --- Configuration with secrets ---
+config.ini
+secrets.json
+data/.mail_key
+data/api_providers.json
+data/mail_settings.json
+
+# --- Credentials ---
+MUSEUM_LOGIN_CREDENTIALS.txt
+*_cookies.txt
+cookies.txt
+
+# --- OS generated ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Backup & archive files ---
+*.bak
+*.backup
+*.old
+*.zip
+*.tar.gz
+*.rar
+*_backup.json
+
+# --- Test reports ---
+test_report*.json
+test_report*.html
+*_report.json
+*_report.txt
+
+# --- Shell scripts (deployment-specific, not portable) ---
+FINAL_FIX.sh
+fix_csrf_restart.sh
+fix_nginx_gunicorn.sh
+fix_postgresql_startup.sh
+check_active_users.sh
+check_status.sh
+
+# --- Images/icons (binary) ---
+*.ico
+*.png
+memorandum.png
+icon_*.png
+
+# --- Large migration data ---
+migration/
+
+# --- Symlinks to external data ---
+data/dem_serbia
+
+# --- Empty/stale files ---
+sudo
+
+# --- Desktop/service files (machine-specific) ---
+museum-control-center.desktop
+museum-system.service
