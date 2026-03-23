@@ -80,41 +80,32 @@ class MineralDatabase:
                 }
 
                 sort_column = valid_sort_columns.get(sort_by, 'id')
+                if sort_column not in valid_sort_columns.values():
+                    sort_column = 'id'
                 sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
 
-                # Special handling for different columns
+                # Build ORDER BY from validated whitelist values only
                 if sort_column == 'inventory_number':
-                    # Sort inventory_number numerically
-                    # Pure numeric entries first, then BEZ/non-numeric at end
-                    order_clause = f"""
-                        CASE
-                            WHEN inventory_number ~ '^[0-9]+$' THEN 0
-                            WHEN inventory_number LIKE 'BEZ-%' THEN 2
-                            ELSE 1
-                        END ASC,
-                        CASE
-                            WHEN inventory_number ~ '^[0-9]+$' THEN CAST(inventory_number AS INTEGER)
-                            ELSE 0
-                        END {sort_direction},
-                        inventory_number {sort_direction} NULLS LAST
-                    """
+                    nulls_fallback = '999999999' if sort_direction == 'ASC' else '-1'
+                    order_clause = (
+                        "CASE WHEN inventory_number ~ '^[0-9]+$' THEN 0 "
+                        "WHEN inventory_number LIKE 'BEZ-%' THEN 2 ELSE 1 END ASC, "
+                        "CASE WHEN inventory_number ~ '^[0-9]+$' "
+                        "THEN CAST(inventory_number AS INTEGER) ELSE 0 END " + sort_direction + ", "
+                        "inventory_number " + sort_direction + " NULLS LAST"
+                    )
                 elif sort_column == 'storage_location':
-                    # Sort storage_location by first number found (handles "105-110", "105/110", etc.)
-                    # Extract first sequence of digits, convert to integer for numeric sorting
-                    # Entries without numbers go to the end (using COALESCE with large number)
-                    order_clause = f"""
-                        CASE
-                            WHEN storage_location ~ '[0-9]' THEN
-                                CAST(SUBSTRING(storage_location FROM '([0-9]+)') AS INTEGER)
-                            ELSE
-                                {'999999999' if sort_direction == 'ASC' else '-1'}
-                        END {sort_direction},
-                        storage_location {sort_direction} NULLS LAST
-                    """
+                    nulls_fallback = '999999999' if sort_direction == 'ASC' else '-1'
+                    order_clause = (
+                        "CASE WHEN storage_location ~ '[0-9]' THEN "
+                        "CAST(SUBSTRING(storage_location FROM '([0-9]+)') AS INTEGER) "
+                        "ELSE " + nulls_fallback + " END " + sort_direction + ", "
+                        "storage_location " + sort_direction + " NULLS LAST"
+                    )
                 elif sort_column == 'has_image':
-                    order_clause = f"has_image {sort_direction}, id ASC"
+                    order_clause = "has_image " + sort_direction + ", id ASC"
                 else:
-                    order_clause = f"{sort_column} {sort_direction} NULLS LAST"
+                    order_clause = sort_column + " " + sort_direction + " NULLS LAST"
 
                 # Get total count
                 result = conn.execute(text("SELECT COUNT(*) FROM minerals"))
@@ -124,31 +115,29 @@ class MineralDatabase:
                 offset = (page - 1) * per_page
 
                 # Get paginated results
-                query = text(f"""
-                    SELECT
-                        id,
-                        {self._HAS_IMAGE_SQL} as has_image,
-                        inventory_number as inventarni_broj,
-                        item_name as predmet,
-                        item_name as naziv,
-                        acquisition_method as nacin_nabavljanja,
-                        acquisition_date as datum_nabavljanja,
-                        input_date as datum_unosa,
-                        input_by as uneo_u_bazu,
-                        donor as legator,
-                        identifier as identifikovao,
-                        comments as komentar,
-                        description as napomena,
-                        storage_location as gde_se_nalazi,
-                        card_locality as lokalitet,
-                        bibliography_flag as u_bibliografiji,
-                        quantity as kolicina,
-                        created_at,
-                        updated_at
-                    FROM minerals
-                    ORDER BY {order_clause}
-                    LIMIT :limit OFFSET :offset
-                """)
+                query = text(
+                    "SELECT id, "
+                    + self._HAS_IMAGE_SQL + " as has_image, "
+                    "inventory_number as inventarni_broj, "
+                    "item_name as predmet, "
+                    "item_name as naziv, "
+                    "acquisition_method as nacin_nabavljanja, "
+                    "acquisition_date as datum_nabavljanja, "
+                    "input_date as datum_unosa, "
+                    "input_by as uneo_u_bazu, "
+                    "donor as legator, "
+                    "identifier as identifikovao, "
+                    "comments as komentar, "
+                    "description as napomena, "
+                    "storage_location as gde_se_nalazi, "
+                    "card_locality as lokalitet, "
+                    "bibliography_flag as u_bibliografiji, "
+                    "quantity as kolicina, "
+                    "created_at, updated_at "
+                    "FROM minerals "
+                    "ORDER BY " + order_clause + " "
+                    "LIMIT :limit OFFSET :offset"
+                )
 
                 result = conn.execute(query, {"limit": per_page, "offset": offset})
                 
@@ -554,10 +543,9 @@ class MineralDatabase:
 
                 # Build smart search with relevance scoring
                 # Score: exact name match (10), starts with (5), contains (2), other fields (1)
-                count_query = text(f"""
-                    SELECT COUNT(*) FROM minerals
-                    WHERE {where_clause}
-                """)
+                count_query = text(
+                    "SELECT COUNT(*) FROM minerals WHERE " + where_clause
+                )
 
                 result = conn.execute(count_query, params)
                 total = result.scalar()
@@ -584,68 +572,56 @@ class MineralDatabase:
                 }
 
                 sort_column = valid_sort_columns.get(sort_by, 'relevance')
+                if sort_column not in valid_sort_columns.values():
+                    sort_column = 'relevance'
                 sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
 
-                # Build ORDER BY clause
+                # Build ORDER BY from validated whitelist values only
                 if sort_column == 'inventory_number':
-                    order_clause = f"""
-                        CASE
-                            WHEN inventory_number ~ '^[0-9]+$' THEN 0
-                            WHEN inventory_number LIKE 'BEZ-%' THEN 2
-                            ELSE 1
-                        END ASC,
-                        CASE
-                            WHEN inventory_number ~ '^[0-9]+$' THEN CAST(inventory_number AS INTEGER)
-                            ELSE 0
-                        END {sort_direction},
-                        inventory_number {sort_direction} NULLS LAST
-                    """
+                    order_clause = (
+                        "CASE WHEN inventory_number ~ '^[0-9]+$' THEN 0 "
+                        "WHEN inventory_number LIKE 'BEZ-%' THEN 2 ELSE 1 END ASC, "
+                        "CASE WHEN inventory_number ~ '^[0-9]+$' "
+                        "THEN CAST(inventory_number AS INTEGER) ELSE 0 END " + sort_direction + ", "
+                        "inventory_number " + sort_direction + " NULLS LAST"
+                    )
                 elif sort_column == 'storage_location':
-                    order_clause = f"""
-                        CASE
-                            WHEN storage_location ~ '[0-9]' THEN
-                                CAST(SUBSTRING(storage_location FROM '([0-9]+)') AS INTEGER)
-                            ELSE
-                                {'999999999' if sort_direction == 'ASC' else '-1'}
-                        END {sort_direction},
-                        storage_location {sort_direction} NULLS LAST
-                    """
+                    nulls_fallback = '999999999' if sort_direction == 'ASC' else '-1'
+                    order_clause = (
+                        "CASE WHEN storage_location ~ '[0-9]' THEN "
+                        "CAST(SUBSTRING(storage_location FROM '([0-9]+)') AS INTEGER) "
+                        "ELSE " + nulls_fallback + " END " + sort_direction + ", "
+                        "storage_location " + sort_direction + " NULLS LAST"
+                    )
                 elif sort_column == 'has_image':
-                    order_clause = f"has_image {sort_direction}, id ASC"
+                    order_clause = "has_image " + sort_direction + ", id ASC"
                 elif sort_column == 'relevance':
                     order_clause = "relevance DESC, item_name ASC"
                 else:
-                    order_clause = f"{sort_column} {sort_direction} NULLS LAST"
+                    order_clause = sort_column + " " + sort_direction + " NULLS LAST"
 
                 # Get paginated search results with relevance ranking
-                search_query = text(f"""
-                    SELECT
-                        id,
-                        {self._HAS_IMAGE_SQL} as has_image,
-                        inventory_number as inventarni_broj,
-                        item_name as predmet,
-                        item_name as naziv,
-                        acquisition_method as nacin_nabavljanja,
-                        acquisition_date as datum_nabavljanja,
-                        input_date as datum_unosa,
-                        input_by as uneo_u_bazu,
-                        donor as legator,
-                        identifier as identifikovao,
-                        comments as komentar,
-                        description as napomena,
-                        storage_location as gde_se_nalazi,
-                        card_locality as lokalitet,
-                        bibliography_flag as u_bibliografiji,
-                        quantity as kolicina,
-                        created_at,
-                        updated_at,
-                        -- Relevance score for ranking
-                        {relevance_clause} as relevance
-                    FROM minerals
-                    WHERE {where_clause}
-                    ORDER BY {order_clause}
-                    LIMIT :limit OFFSET :offset
-                """)
+                search_query = text(
+                    "SELECT id, "
+                    + self._HAS_IMAGE_SQL + " as has_image, "
+                    "inventory_number as inventarni_broj, "
+                    "item_name as predmet, item_name as naziv, "
+                    "acquisition_method as nacin_nabavljanja, "
+                    "acquisition_date as datum_nabavljanja, "
+                    "input_date as datum_unosa, input_by as uneo_u_bazu, "
+                    "donor as legator, identifier as identifikovao, "
+                    "comments as komentar, description as napomena, "
+                    "storage_location as gde_se_nalazi, "
+                    "card_locality as lokalitet, "
+                    "bibliography_flag as u_bibliografiji, "
+                    "quantity as kolicina, "
+                    "created_at, updated_at, "
+                    + relevance_clause + " as relevance "
+                    "FROM minerals "
+                    "WHERE " + where_clause + " "
+                    "ORDER BY " + order_clause + " "
+                    "LIMIT :limit OFFSET :offset"
+                )
 
                 query_params = dict(params)
                 query_params.update({
@@ -802,27 +778,27 @@ class MineralDatabase:
                 where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
                 
                 # Get total count
-                count_query = text(f"SELECT COUNT(*) FROM rruff_minerals{where_sql}")
+                count_query = text(
+                    "SELECT COUNT(*) FROM rruff_minerals" + where_sql
+                )
                 result = conn.execute(count_query, params)
                 total = result.scalar()
-                
+
                 total_pages = (total + per_page - 1) // per_page
                 offset = (page - 1) * per_page
-                
+
                 # Get paginated results
                 params['limit'] = per_page
                 params['offset'] = offset
-                
-                data_query = text(f"""
-                    SELECT
-                        id, rruff_id, name, name_plain,
-                        formula_rruff, formula_ima, formula_concise,
-                        crystal_system, ima_status
-                    FROM rruff_minerals
-                    {where_sql}
-                    ORDER BY name
-                    LIMIT :limit OFFSET :offset
-                """)
+
+                data_query = text(
+                    "SELECT id, rruff_id, name, name_plain, "
+                    "formula_rruff, formula_ima, formula_concise, "
+                    "crystal_system, ima_status "
+                    "FROM rruff_minerals "
+                    + where_sql
+                    + " ORDER BY name LIMIT :limit OFFSET :offset"
+                )
                 
                 result = conn.execute(data_query, params)
                 minerals = [dict(row._mapping) for row in result]

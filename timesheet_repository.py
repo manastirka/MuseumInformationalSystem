@@ -86,43 +86,33 @@ class TimesheetRepository:
         where_sql, params = self._build_filters(month, year, search)
         offset = (page - 1) * per_page
 
-        query = text(f"""
-            SELECT
-                tr.id,
-                tr.employee_name,
-                tr.month,
-                tr.year,
-                tr.organization_unit,
-                tr.position,
-                tr.is_verified,
-                tr.verified_by,
-                tr.verified_at,
-                tr.is_locked,
-                COALESCE(tr.status, 'DRAFT') AS status,
-                tr.reviewed_at,
-                SUM(CASE WHEN te.category = 'rad_na_mestu' THEN te.hours ELSE 0 END) AS work_in_museum,
-                SUM(CASE WHEN te.category = 'van_muzeja' THEN te.hours ELSE 0 END) AS work_outside,
-                SUM(CASE WHEN te.category = 'godisnji_odmor' THEN te.hours ELSE 0 END) AS vacation,
-                SUM(CASE WHEN te.category = 'drzavni_praznik' THEN te.hours ELSE 0 END) AS public_holiday,
-                SUM(CASE WHEN te.category = 'placeno_odsustvo' THEN te.hours ELSE 0 END) AS paid_leave,
-                SUM(CASE WHEN te.category = 'ostalo_odsustvo' THEN te.hours ELSE 0 END) AS other_leave,
-                SUM(CASE WHEN te.category = 'bolovanje_manje_30' THEN te.hours ELSE 0 END) AS sick_lt30,
-                SUM(CASE WHEN te.category = 'bolovanje_vece_30' THEN te.hours ELSE 0 END) AS sick_gte30,
-                COALESCE(SUM(te.hours), 0) AS total_hours
-            FROM timesheet_reports tr
-            LEFT JOIN timesheet_entries te ON te.report_id = tr.id
-            WHERE {where_sql}
-            GROUP BY tr.id, tr.employee_name, tr.month, tr.year, tr.organization_unit,
-                     tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at
-            ORDER BY tr.year DESC, tr.month DESC, tr.employee_name
-            LIMIT :limit OFFSET :offset
-        """)
+        query = text(
+            "SELECT "
+            "tr.id, tr.employee_name, tr.month, tr.year, "
+            "tr.organization_unit, tr.position, "
+            "tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, "
+            "COALESCE(tr.status, 'DRAFT') AS status, tr.reviewed_at, "
+            "SUM(CASE WHEN te.category = 'rad_na_mestu' THEN te.hours ELSE 0 END) AS work_in_museum, "
+            "SUM(CASE WHEN te.category = 'van_muzeja' THEN te.hours ELSE 0 END) AS work_outside, "
+            "SUM(CASE WHEN te.category = 'godisnji_odmor' THEN te.hours ELSE 0 END) AS vacation, "
+            "SUM(CASE WHEN te.category = 'drzavni_praznik' THEN te.hours ELSE 0 END) AS public_holiday, "
+            "SUM(CASE WHEN te.category = 'placeno_odsustvo' THEN te.hours ELSE 0 END) AS paid_leave, "
+            "SUM(CASE WHEN te.category = 'ostalo_odsustvo' THEN te.hours ELSE 0 END) AS other_leave, "
+            "SUM(CASE WHEN te.category = 'bolovanje_manje_30' THEN te.hours ELSE 0 END) AS sick_lt30, "
+            "SUM(CASE WHEN te.category = 'bolovanje_vece_30' THEN te.hours ELSE 0 END) AS sick_gte30, "
+            "COALESCE(SUM(te.hours), 0) AS total_hours "
+            "FROM timesheet_reports tr "
+            "LEFT JOIN timesheet_entries te ON te.report_id = tr.id "
+            "WHERE " + where_sql + " "
+            "GROUP BY tr.id, tr.employee_name, tr.month, tr.year, tr.organization_unit, "
+            "tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at "
+            "ORDER BY tr.year DESC, tr.month DESC, tr.employee_name "
+            "LIMIT :limit OFFSET :offset"
+        )
 
-        count_query = text(f"""
-            SELECT COUNT(*) AS total
-            FROM timesheet_reports tr
-            WHERE {where_sql}
-        """)
+        count_query = text(
+            "SELECT COUNT(*) AS total FROM timesheet_reports tr WHERE " + where_sql
+        )
 
         try:
             with self.engine.connect() as conn:

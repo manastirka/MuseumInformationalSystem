@@ -66,6 +66,8 @@ class MineralDatabase:
             }
 
             sort_column = valid_sort_columns.get(sort_by, 'id')
+            if sort_column not in valid_sort_columns.values():
+                sort_column = 'id'
             sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
 
             # Get total count
@@ -75,18 +77,19 @@ class MineralDatabase:
             total_pages = (total + per_page - 1) // per_page
             offset = (page - 1) * per_page
 
-            # Special handling for gde_se_nalazi sorting (numbers first, then text)
+            # Build ORDER BY from validated whitelist values only
             if sort_by == 'gde_se_nalazi':
-                order_clause = f"""
-                    CASE WHEN "Gde se nalazi" GLOB '[0-9]*' THEN 0 ELSE 1 END {sort_direction},
-                    CAST("Gde se nalazi" AS INTEGER) {sort_direction},
-                    "Gde se nalazi" {sort_direction}
-                """
+                order_clause = (
+                    'CASE WHEN "Gde se nalazi" GLOB \'[0-9]*\' THEN 0 ELSE 1 END ' + sort_direction + ', '
+                    'CAST("Gde se nalazi" AS INTEGER) ' + sort_direction + ', '
+                    '"Gde se nalazi" ' + sort_direction
+                )
             else:
-                order_clause = f"{sort_column} {sort_direction}"
+                order_clause = sort_column + ' ' + sort_direction
 
             # Get paginated results
-            cursor.execute(f"""
+            cursor.execute(
+                """
                 SELECT
                     id,
                     "Inv. broj" as inventarni_broj,
@@ -107,9 +110,9 @@ class MineralDatabase:
                     created_at,
                     updated_at
                 FROM minerali
-                ORDER BY {order_clause}
+                ORDER BY """ + order_clause + """
                 LIMIT ? OFFSET ?
-            """, (per_page, offset))
+                """, (per_page, offset))
 
             minerals = []
             for row in cursor.fetchall():
@@ -300,7 +303,9 @@ class MineralDatabase:
                 if term_clauses:
                     where_clauses.append(f"({' OR '.join(term_clauses)})")
 
-            cursor.execute(f"""
+            where_sql = ' OR '.join(where_clauses) if where_clauses else '0 = 1'
+            cursor.execute(
+                """
                 SELECT
                     id,
                     "Inv. broj" as inventarni_broj,
@@ -321,10 +326,10 @@ class MineralDatabase:
                     created_at,
                     updated_at
                 FROM minerali
-                WHERE {' OR '.join(where_clauses) if where_clauses else '0 = 1'}
+                WHERE """ + where_sql + """
                 ORDER BY id
                 LIMIT 100
-            """, params)
+                """, params)
 
             minerals = []
             for row in cursor.fetchall():
@@ -479,23 +484,25 @@ class MineralDatabase:
             where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
             # Get total count
-            cursor.execute(f"SELECT COUNT(*) FROM rruff_minerals{where_sql}", params)
+            cursor.execute(
+                "SELECT COUNT(*) FROM rruff_minerals" + where_sql, params)
             total = cursor.fetchone()[0]
 
             total_pages = (total + per_page - 1) // per_page
             offset = (page - 1) * per_page
 
             # Get paginated results
-            cursor.execute(f"""
+            cursor.execute(
+                """
                 SELECT
                     id, rruff_id, name, name_plain,
                     formula_rruff, formula_ima, formula_concise,
                     crystal_system, ima_status
                 FROM rruff_minerals
-                {where_sql}
+                """ + where_sql + """
                 ORDER BY name
                 LIMIT ? OFFSET ?
-            """, params + [per_page, offset])
+                """, params + [per_page, offset])
 
             minerals = [dict(row) for row in cursor.fetchall()]
             conn.close()

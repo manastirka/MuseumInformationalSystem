@@ -41,9 +41,13 @@ class RRUFFDatabase:
 
         try:
             with self.engine.connect() as conn:
-                limit_clause = f"LIMIT {limit}" if limit else ""
-                
-                query = text(f"""
+                params = {}
+                limit_clause = ""
+                if limit:
+                    limit_clause = "LIMIT :limit"
+                    params['limit'] = int(limit)
+
+                query = text("""
                     SELECT
                         id,
                         rruff_id,
@@ -70,10 +74,9 @@ class RRUFFDatabase:
                         status_notes
                     FROM rruff_minerals
                     ORDER BY name
-                    {limit_clause}
-                """)
-                
-                result = conn.execute(query)
+                """ + limit_clause)
+
+                result = conn.execute(query, params)
                 minerals = [dict(row._mapping) for row in result]
                 
             return minerals
@@ -309,27 +312,27 @@ class RRUFFDatabase:
                 where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
                 
                 # Get total count
-                count_query = text(f"SELECT COUNT(*) FROM rruff_minerals{where_sql}")
+                count_query = text(
+                    "SELECT COUNT(*) FROM rruff_minerals" + where_sql
+                )
                 result = conn.execute(count_query, params)
                 total = result.scalar()
-                
+
                 total_pages = (total + per_page - 1) // per_page
                 offset = (page - 1) * per_page
-                
+
                 # Get paginated results
                 params['limit'] = per_page
                 params['offset'] = offset
-                
-                data_query = text(f"""
-                    SELECT
-                        id, rruff_id, name, name_plain,
-                        formula_rruff, formula_ima, formula_concise,
-                        crystal_system, ima_status
-                    FROM rruff_minerals
-                    {where_sql}
-                    ORDER BY name
-                    LIMIT :limit OFFSET :offset
-                """)
+
+                data_query = text(
+                    "SELECT id, rruff_id, name, name_plain, "
+                    "formula_rruff, formula_ima, formula_concise, "
+                    "crystal_system, ima_status "
+                    "FROM rruff_minerals "
+                    + where_sql
+                    + " ORDER BY name LIMIT :limit OFFSET :offset"
+                )
                 
                 result = conn.execute(data_query, params)
                 minerals = [dict(row._mapping) for row in result]

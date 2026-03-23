@@ -653,11 +653,12 @@ def _pg_update_record(record_id: int, record_data: Dict) -> bool:
                 set_clauses.append('raw_json = %(raw_json)s')
 
             params['record_id'] = record_id
-            cur.execute(f"""
-                UPDATE bird_ringing_records
-                SET {', '.join(set_clauses)}
-                WHERE id = %(record_id)s
-            """, params)
+            cur.execute(
+                "UPDATE bird_ringing_records SET "
+                + ', '.join(set_clauses)
+                + " WHERE id = %(record_id)s",
+                params,
+            )
             updated = cur.rowcount > 0
         conn.commit()
 

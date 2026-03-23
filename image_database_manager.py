@@ -181,16 +181,17 @@ class ImageDatabaseManager:
                     conditions.append("entity_id = %s")
                     params.append(str(entity_id))
 
-                where = "WHERE " + " AND ".join(conditions) if conditions else ""
+                where = " WHERE " + " AND ".join(conditions) if conditions else ""
 
-                cur.execute(f"""
-                    SELECT database_name, entity_type, entity_id,
-                           COUNT(*) as image_count,
-                           array_agg(image_id) as image_ids
-                    FROM images {where}
-                    GROUP BY database_name, entity_type, entity_id
-                    ORDER BY database_name, entity_id
-                """, params)
+                cur.execute(
+                    "SELECT database_name, entity_type, entity_id, "
+                    "COUNT(*) as image_count, "
+                    "array_agg(image_id) as image_ids "
+                    "FROM images" + where + " "
+                    "GROUP BY database_name, entity_type, entity_id "
+                    "ORDER BY database_name, entity_id",
+                    params,
+                )
 
                 results = []
                 for row in cur.fetchall():

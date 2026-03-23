@@ -218,24 +218,25 @@ def api_get_archive_requests():
 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-                cur.execute(f"SELECT COUNT(*) FROM archive_requests WHERE {where_clause}", params)
+                cur.execute(
+                    "SELECT COUNT(*) FROM archive_requests WHERE " + where_clause,
+                    params,
+                )
                 total = cur.fetchone()[0]
 
                 offset = (page - 1) * per_page
                 cur.execute(
-                    f"""
-                    SELECT
-                        id, request_type, subtype, title, description,
-                        request_data, status, priority,
-                        created_by_email, created_by_name, created_by_department,
-                        created_at, updated_at, attachments, approval_chain,
-                        current_approval_step, final_decision, final_decision_by_name,
-                        final_decision_at, archived_at, archive_reference
-                    FROM archive_requests
-                    WHERE {where_clause}
-                    ORDER BY created_at DESC
-                    LIMIT %s OFFSET %s
-                    """,
+                    "SELECT "
+                    "id, request_type, subtype, title, description, "
+                    "request_data, status, priority, "
+                    "created_by_email, created_by_name, created_by_department, "
+                    "created_at, updated_at, attachments, approval_chain, "
+                    "current_approval_step, final_decision, final_decision_by_name, "
+                    "final_decision_at, archived_at, archive_reference "
+                    "FROM archive_requests "
+                    "WHERE " + where_clause + " "
+                    "ORDER BY created_at DESC "
+                    "LIMIT %s OFFSET %s",
                     params + [per_page, offset],
                 )
 

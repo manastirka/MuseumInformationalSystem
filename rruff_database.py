@@ -45,9 +45,13 @@ class RRUFFDatabase:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            limit_clause = f"LIMIT {limit}" if limit else ""
+            params = []
+            limit_clause = ""
+            if limit:
+                limit_clause = "LIMIT ?"
+                params.append(int(limit))
 
-            cursor.execute(f"""
+            cursor.execute("""
                 SELECT
                     id,
                     rruff_id,
@@ -74,8 +78,7 @@ class RRUFFDatabase:
                     status_notes
                 FROM rruff_minerals
                 ORDER BY name
-                {limit_clause}
-            """)
+            """ + limit_clause, params)
 
             minerals = []
             for row in cursor.fetchall():

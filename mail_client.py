@@ -1508,32 +1508,38 @@ class MailClient:
                 logger.warning("Could not schedule background sync for %s: %s", folder, e)
         offset = (page - 1) * per_page
         col = self._SORT_COLUMNS.get(sort_by, 'uid')
+        if col not in ('sort_date_iso', 'from_name', 'subject', 'is_read', 'uid'):
+            col = 'uid'
         direction = 'ASC' if sort_dir == 'asc' else 'DESC'
-        order = f'{col} {direction}'
-        # For unread sort: show unread (is_read=0) first when desc, read first when asc
+        # Build ORDER BY from validated whitelist values only
         if sort_by == 'unread':
-            order = f'is_read ASC, uid DESC' if sort_dir == 'desc' else f'is_read DESC, uid DESC'
+            order_clause = 'is_read ASC, uid DESC' if sort_dir == 'desc' else 'is_read DESC, uid DESC'
+        else:
+            order_clause = col + ' ' + direction
+
+        base_select = 'SELECT uid, from_name, from_address, subject, date_iso, is_read FROM mail_cache_messages'
+        base_where = ' WHERE user_email=%s AND folder=%s'
+        search_filter = ' AND (subject ILIKE %s OR from_name ILIKE %s OR from_address ILIKE %s)'
+        order_suffix = ' ORDER BY ' + order_clause + ' LIMIT %s OFFSET %s'
 
         if search:
-            like = f'%{search}%'
-            rows = self.db.execute(f'''
-                SELECT uid, from_name, from_address, subject, date_iso, is_read
-                FROM mail_cache_messages WHERE user_email=%s AND folder=%s
-                  AND (subject ILIKE %s OR from_name ILIKE %s OR from_address ILIKE %s)
-                ORDER BY {order} LIMIT %s OFFSET %s
-            ''', (self.user_email, folder, like, like, like, per_page, offset)).fetchall()
-            total = self.db.execute('''
-                SELECT COUNT(*) AS message_count FROM mail_cache_messages WHERE user_email=%s AND folder=%s
-                  AND (subject ILIKE %s OR from_name ILIKE %s OR from_address ILIKE %s)
-            ''', (self.user_email, folder, like, like, like)).fetchone()
+            like = '%' + search + '%'
+            rows = self.db.execute(
+                base_select + base_where + search_filter + order_suffix,
+                (self.user_email, folder, like, like, like, per_page, offset),
+            ).fetchall()
+            total = self.db.execute(
+                'SELECT COUNT(*) AS message_count FROM mail_cache_messages' + base_where + search_filter,
+                (self.user_email, folder, like, like, like),
+            ).fetchone()
             total = _row_value(total, 'message_count', 0, default=0)
         else:
-            rows = self.db.execute(f'''
-                SELECT uid, from_name, from_address, subject, date_iso, is_read
-                FROM mail_cache_messages WHERE user_email=%s AND folder=%s ORDER BY {order} LIMIT %s OFFSET %s
-            ''', (self.user_email, folder, per_page, offset)).fetchall()
+            rows = self.db.execute(
+                base_select + base_where + order_suffix,
+                (self.user_email, folder, per_page, offset),
+            ).fetchall()
             total = self.db.execute(
-                'SELECT COUNT(*) AS message_count FROM mail_cache_messages WHERE user_email=%s AND folder=%s',
+                'SELECT COUNT(*) AS message_count FROM mail_cache_messages' + base_where,
                 (self.user_email, folder),
             ).fetchone()
             total = _row_value(total, 'message_count', 0, default=0)
