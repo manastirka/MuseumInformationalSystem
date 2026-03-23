@@ -173,6 +173,16 @@ class ImageStorageEngine:
             raise
         return thumb_paths
 
+    def _cleanup_stored_files(self, original_path: Path, thumb_paths: Dict[str, str]):
+        """Remove files written to disk when DB persistence fails."""
+        for label, path_str in [('original', str(original_path))] + list(thumb_paths.items()):
+            try:
+                p = Path(path_str)
+                if p.exists():
+                    p.unlink()
+            except OSError as exc:
+                logger.warning("Could not clean up %s (%s): %s", label, path_str, exc)
+
     def store_image(
         self,
         file_path: str,
@@ -253,6 +263,9 @@ class ImageStorageEngine:
                 except Exception as e:
                     logger.error(f"Error saving image reference to PostgreSQL: {e}")
                     conn.rollback()
+                    # Clean up orphaned files on DB failure
+                    self._cleanup_stored_files(original_path, thumb_paths)
+                    return None
                 finally:
                     conn.close()
             else:
@@ -489,26 +502,29 @@ class ImageStorageEngine:
             finally:
                 conn.close()
 
+            failed = 0
             for row in rows:
                 img_id = row['image_id']
                 original_path = self.get_image_path(img_id, 'original')
                 if not original_path:
+                    failed += 1
                     continue
 
-                files = {'file': open(original_path, 'rb')}
-                data = {
-                    'image_id': img_id,
-                    'metadata': json.dumps(dict(row), default=str)
-                }
+                with open(original_path, 'rb') as fh:
+                    files = {'file': fh}
+                    data = {
+                        'image_id': img_id,
+                        'metadata': json.dumps(dict(row), default=str)
+                    }
 
-                response = requests.post(
-                    f"{self.server_backup_url}/api/backup/image",
-                    files=files,
-                    data=data,
-                    timeout=30
-                )
+                    response = requests.post(
+                        f"{self.server_backup_url}/api/images/backup/receive",
+                        files=files,
+                        data=data,
+                        timeout=30
+                    )
 
-                if response.status_code == 200:
+                if response.status_code in (200, 201):
                     conn2 = _get_db_connection()
                     if conn2:
                         try:
@@ -523,8 +539,11 @@ class ImageStorageEngine:
                     logger.info(f"Backed up image to server: {img_id}")
                 else:
                     logger.error(f"Server backup failed for {img_id}: {response.status_code}")
+                    failed += 1
 
-            return True
+            if failed:
+                logger.warning("Server backup completed with %d failures out of %d images", failed, len(rows))
+            return failed == 0
 
         except Exception as e:
             logger.error(f"Error backing up to server: {e}")

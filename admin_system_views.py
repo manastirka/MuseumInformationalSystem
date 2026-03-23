@@ -199,8 +199,16 @@ def api_save_security_settings():
         current_app.config['PASSWORD_MIN_LENGTH'] = min_password_length
         current_app.config['MAX_LOGIN_ATTEMPTS'] = max_login_attempts
         current_app.config['ACCOUNT_LOCKOUT_DURATION'] = int(lockout_duration) * 60
+        current_app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(session_timeout))
+        current_app.config['PASSWORD_REQUIRE_SPECIAL'] = require_special_chars
 
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'warning': 'Подешавања су примењена на овај радни процес. '
+                       'Рестартујте апликацију да примените на све радне процесе.'
+                       if os.environ.get('GUNICORN_WORKERS', os.environ.get('WEB_CONCURRENCY', '1')) != '1'
+                       else None,
+        })
     except Exception as exc:
         logger.error("Error saving security settings: %s", exc)
         return jsonify({'success': False, 'error': 'Грешка при чувању подешавања безбедности'})
@@ -213,16 +221,12 @@ def api_database_backup():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_file = BACKUP_DIR / f'museum_system_backup_{timestamp}.sql'
 
+        database_url = get_database_url()
+        # Convert SQLAlchemy URL to libpq format for pg_dump
+        pg_url = database_url.replace('postgresql+psycopg://', 'postgresql://')
+
         result = subprocess.run(
-            [
-                'pg_dump',
-                '-U',
-                os.environ.get('DB_USER', 'aleksandarlukovic'),
-                '-d',
-                'museum_system',
-                '-f',
-                str(backup_file),
-            ],
+            ['pg_dump', '-f', str(backup_file), pg_url],
             capture_output=True,
             text=True,
         )

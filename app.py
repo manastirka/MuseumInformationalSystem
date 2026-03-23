@@ -167,6 +167,26 @@ app = Flask(__name__)
 app.config.from_object(app_config)
 app_config.init_app(app)
 
+# Apply persisted admin security settings (shared across workers via JSON file)
+_settings_file = Path('data/system_settings.json')
+if _settings_file.exists():
+    try:
+        with _settings_file.open('r', encoding='utf-8') as _fh:
+            _saved = json.load(_fh)
+        if 'min_password_length' in _saved:
+            app.config['PASSWORD_MIN_LENGTH'] = _saved['min_password_length']
+        if 'max_login_attempts' in _saved:
+            app.config['MAX_LOGIN_ATTEMPTS'] = _saved['max_login_attempts']
+        if 'lockout_duration' in _saved:
+            app.config['ACCOUNT_LOCKOUT_DURATION'] = int(_saved['lockout_duration']) * 60
+        if 'session_timeout' in _saved:
+            from datetime import timedelta as _td
+            app.config['PERMANENT_SESSION_LIFETIME'] = _td(minutes=int(_saved['session_timeout']))
+        if 'require_special_chars' in _saved:
+            app.config['PASSWORD_REQUIRE_SPECIAL'] = _saved['require_special_chars']
+    except Exception as _exc:
+        logging.getLogger(__name__).warning("Could not load saved settings: %s", _exc)
+
 # Trust proxy headers from nginx (1 proxy hop)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
