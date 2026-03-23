@@ -179,6 +179,17 @@ class ProductionConfig(Config):
         if not app.config.get('SESSION_COOKIE_SECURE'):
             raise RuntimeError('SESSION_COOKIE_SECURE must be enabled in production')
 
+        # Warn if rate limiting uses in-memory storage with multiple workers
+        ratelimit_url = app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
+        workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', '1')))
+        if workers > 1 and ratelimit_url.startswith('memory'):
+            import logging
+            logging.getLogger(__name__).warning(
+                "Rate limiting uses in-memory storage with %d workers — "
+                "limits are per-worker, not global. Set RATELIMIT_STORAGE_URL "
+                "to a Redis URL for shared rate limiting.", workers
+            )
+
         # Log to syslog in production
         import logging
         from logging.handlers import SysLogHandler

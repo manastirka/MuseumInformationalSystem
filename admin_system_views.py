@@ -18,7 +18,7 @@ from postgres_service import get_database_url, get_postgres_connection
 logger = logging.getLogger(__name__)
 
 SETTINGS_FILE = Path('data/system_settings.json')
-MAIN_LOG_FILE = Path('logs/main_app.log')
+MAIN_LOG_FILE = Path('logs/museum_info_system.log')
 BACKUP_DIR = Path('backups')
 
 

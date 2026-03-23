@@ -35,9 +35,9 @@ else
     echo "⚠️  .env file not found. Using production defaults..."
 fi
 
-# Production defaults
-HOST=${HOST:-"0.0.0.0"}
-PORT=${PORT:-"5000"}
+# Production defaults — must match nginx_museum.conf proxy_pass (127.0.0.1:8000)
+HOST=${HOST:-"127.0.0.1"}
+PORT=${PORT:-"8000"}
 WORKERS=${WORKERS:-$(($(nproc) * 2 + 1))}
 
 echo ""
