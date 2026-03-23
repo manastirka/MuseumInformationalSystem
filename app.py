@@ -2499,6 +2499,7 @@ def add_book():
     return museum_content_views.handle_add_book(
         library_database=LIBRARY_DATABASE,
         save_library_database=save_library_database,
+        phase3a_databases=globals().get('phase3a_databases'),
     )
 
 @app.route('/admin/add_heritage_item', methods=['GET', 'POST'])

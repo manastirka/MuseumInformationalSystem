@@ -1,6 +1,7 @@
 """Shared route implementations for museum reporting and content views."""
 
 import logging
+import os
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from psycopg.rows import dict_row
@@ -10,16 +11,15 @@ from postgres_service import get_postgres_connection
 logger = logging.getLogger(__name__)
 
 
-def handle_add_book(*, library_database, save_library_database):
+def handle_add_book(*, library_database, save_library_database, phase3a_databases=None):
     """Handle library book creation form."""
     if request.method == 'POST':
         book_data = {
-            'id': len(library_database['books']) + 1,
             'title': request.form.get('title', '').strip(),
             'author': request.form.get('author', '').strip(),
             'isbn': request.form.get('isbn', '').strip(),
             'category': request.form.get('category', '').strip(),
-            'year': int(request.form.get('year', 0))
+            'publication_year': int(request.form.get('year', 0))
             if request.form.get('year', '').strip().isdigit()
             else None,
             'location': request.form.get('location', '').strip(),
@@ -31,9 +31,20 @@ def handle_add_book(*, library_database, save_library_database):
             'publisher': request.form.get('publisher', '').strip(),
             'language': request.form.get('language', 'српски').strip(),
         }
-        library_database['books'].append(book_data)
-        save_library_database()
-        flash('Књига је успешно додата у библиотеку!', 'success')
+
+        if os.environ.get('DATABASE_URL') and phase3a_databases is not None:
+            book_id = phase3a_databases.save_library_book(book_data)
+            if book_id:
+                flash('Књига је успешно додата у библиотеку!', 'success')
+            else:
+                flash('Грешка при чувању књиге у базу.', 'error')
+        else:
+            book_data['id'] = len(library_database['books']) + 1
+            book_data['year'] = book_data.pop('publication_year')
+            library_database['books'].append(book_data)
+            save_library_database()
+            flash('Књига је успешно додата у библиотеку!', 'success')
+
         return redirect(url_for('library_database'))
 
     return render_template('admin_add_book.html')
@@ -299,7 +310,7 @@ def api_save_news(*, news_database):
                 if article_id:
                     cur.execute(
                         """
-                        UPDATE news SET
+                        UPDATE news_articles SET
                             title = %s,
                             description = %s,
                             type = %s,
@@ -327,7 +338,7 @@ def api_save_news(*, news_database):
                 else:
                     cur.execute(
                         """
-                        INSERT INTO news (
+                        INSERT INTO news_articles (
                             title,
                             description,
                             type,
