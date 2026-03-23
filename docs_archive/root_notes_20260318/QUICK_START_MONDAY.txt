@@ -1,0 +1,124 @@
+═══════════════════════════════════════════════════════════════
+  TIMESHEET SYSTEM - QUICK START FOR MONDAY
+  January 9, 2026
+═══════════════════════════════════════════════════════════════
+
+📋 WHAT WE DID TODAY
+────────────────────────────────────────────────────────────────
+✅ Upgraded work categories to official 2026 template (14 fields)
+✅ Split into Entry page (blank) and View page (shows saved data)
+✅ Changed hours to integers only (no more decimals)
+✅ Fixed data loading and saving
+✅ Everything tested and working
+
+📂 MAIN FILES CHANGED
+────────────────────────────────────────────────────────────────
+• app.py (lines: 12, 2605, 2665, 2931, 3043, 3161)
+• templates/employee_timesheet.html (lines: 87-125, 289-441, 769, 889-984)
+• templates/base.html (lines: 163-181)
+
+🚀 START SYSTEM
+────────────────────────────────────────────────────────────────
+cd /home/aleksandarlukovic/MuseumInfoSystem
+./start_all.sh
+
+🛑 STOP SYSTEM
+────────────────────────────────────────────────────────────────
+./stop_all.sh
+
+🔄 RESTART SYSTEM
+────────────────────────────────────────────────────────────────
+./stop_all.sh && ./start_all.sh
+
+📊 CHECK LOGS
+────────────────────────────────────────────────────────────────
+tail -50 logs/main_app.log
+
+🗄️ CHECK DATABASE
+────────────────────────────────────────────────────────────────
+psql -U aleksandarlukovic -d museum_system -c "SELECT employee_name, month, year, LEFT(extraordinary_tasks, 100) FROM timesheet_reports ORDER BY created_at DESC LIMIT 3;"
+
+🌐 ACCESS URLs
+────────────────────────────────────────────────────────────────
+Local:      http://localhost:5000
+Production: http://192.168.144.48
+
+📝 TWO PAGES NOW
+────────────────────────────────────────────────────────────────
+1. Унос радних листа (/timesheet/entry)
+   - Blank form for NEW data
+   - Current month only
+   - For daily work entry
+
+2. Преглед радних листа (/timesheet/view)
+   - Select any month/year
+   - Shows SAVED data
+   - Read-only view
+
+💾 WORK CATEGORIES (14 fields)
+────────────────────────────────────────────────────────────────
+Section 2: РУКОПИСИ И ЗБИРКЕ
+  2.1. РАД НА ЗБИРКАМА
+  2.2. ИДЕНТИФИКАЦИЈЕ И ЕКСПЕРТИЗЕ
+  2.3. НАУЧНИ И СТРУЧНИ РАД
+
+Section 3: ТЕРЕНСКИ РАД
+  3.1. ТЕРЕНСКИ РАД
+  3.2. НОВИ ПРЕДМЕТИ У ЗБИРЦИ
+
+Section 4: ИЗЛОЖБЕ
+  4.1. ТЕКУЋЕ ИЗЛОЖБЕ
+  4.2. ПЛАНИРАНЕ ИЗЛОЖБЕ
+
+Section 5: ЕДУКАЦИЈА И ПОПУЛАРИЗАЦИЈА
+  5.1. САРАДЊА СА ПЕДАГОШКОМ СЛУЖБОМ
+  5.2. СТРУЧНО ВОЂЕЊЕ / ПРЕДАВАЊА / РАДИОНИЦЕ
+  5.3. МЕДИЈИ / PR / КОМУНИКАЦИЈА
+
+Section 6: САРАДЊА И ПАРТНЕРСТВА
+  6.1. ПРОЈЕКТИ / РАДНЕ ГРУПЕ
+  6.2. НАЦИОНАЛНА И МЕЂУНАРОДНА ПАРТНЕРСТВА
+
+Section 7: ДИГИТАЛИЗАЦИЈА И ДОКУМЕНТАЦИЈА
+  7. ДИГИТАЛИЗАЦИЈА И ДОКУМЕНТАЦИЈА
+
+Section 8: ОСТАЛИ ПОСЛОВИ
+  8. ОСТАЛИ ПОСЛОВИ И АКТИВНОСТИ
+
+⚠️ IMPORTANT - TODO ON MONDAY
+────────────────────────────────────────────────────────────────
+1. Remove debug logging (app.py lines 2792-2797)
+2. Remove console.log statements (employee_timesheet.html)
+3. Re-enable edit restrictions (app.py line 2681)
+4. Test with multiple users
+5. Backup before major changes:
+   pg_dump -U aleksandarlukovic museum_system > backup.sql
+
+✅ CURRENT STATUS
+────────────────────────────────────────────────────────────────
+• System is WORKING and tested
+• Data saves correctly as JSON
+• Entry page is blank (correct)
+• View page loads saved data (correct)
+• Ready for production testing
+
+🐛 IF SOMETHING BREAKS
+────────────────────────────────────────────────────────────────
+1. Check logs: tail -50 logs/main_app.log
+2. Check browser console (F12)
+3. Restart system: ./stop_all.sh && ./start_all.sh
+4. Check database connection: psql -U aleksandarlukovic museum_system
+5. Read full document: TIMESHEET_UPGRADE_2026-01-09.md
+
+📞 KEY TECHNICAL NOTES
+────────────────────────────────────────────────────────────────
+• Session vars: user_name, user_email, full_name, email
+• Work categories field: OPosao (in template)
+• Database field: extraordinary_tasks (JSON string)
+• Hours: integers only (no decimals)
+• Entry mode: is_entry_page = True (blank form)
+• View mode: is_entry_page = False (loads data)
+
+═══════════════════════════════════════════════════════════════
+For detailed information, see: TIMESHEET_UPGRADE_2026-01-09.md
+═══════════════════════════════════════════════════════════════

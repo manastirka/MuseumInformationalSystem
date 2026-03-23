@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <title>Where to Find Add Buttons - Museum Information System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .highlight { background: yellow; padding: 2px 4px; border: 2px solid red; }
+        .button-demo { display: inline-block; padding: 8px 16px; margin: 5px; text-decoration: none; border-radius: 4px; color: white; }
+        .btn-info { background: #0dcaf0; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-success { background: #198754; }
+        .location { font-size: 18px; margin: 10px 0; }
+        .step { margin: 15px 0; padding: 10px; background: #e9ecef; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 How to Find the Add Buttons in Museum Information System</h1>
+
+        <div class="step">
+            <h2>Step 1: Login to the System</h2>
+            <p><strong>URL:</strong> http://localhost:5555</p>
+            <p><strong>Credentials:</strong></p>
+            <ul>
+                <li>Email: <code>admin</code></li>
+                <li>Password: <code>admin123</code></li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h2>Step 2: Navigate to Admin Panel</h2>
+            <p>After login, click on <strong>"Администрациони панел"</strong> from the dashboard</p>
+        </div>
+
+        <div class="step">
+            <h2>Step 3: Go to Museum Databases</h2>
+            <p>Click on <strong>"Музејске базе података"</strong> section</p>
+        </div>
+
+        <div class="step">
+            <h2>Step 4: Access Any Database</h2>
+            <p>Click <strong>"Приступи бази"</strong> for any database (Library, Cultural Heritage, etc.)</p>
+        </div>
+
+        <div class="step">
+            <h2>Step 5: Look for the Add Buttons</h2>
+            <p class="location">🎯 <strong>LOCATION:</strong> Top-right area, next to the search box</p>
+
+            <h3>What you should see:</h3>
+
+            <h4>📚 Library Database (/admin/library_database):</h4>
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" placeholder="Претражите књиге по наслову, аутору или ISBN-у..."
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-left: 10px;">
+                        <span class="highlight">
+                            <a href="#" class="button-demo btn-info">📖 Додај књигу</a>
+                        </span>
+                        <a href="#" class="button-demo" style="background: #0d6efd;">🖨️ Штампај</a>
+                        <a href="#" class="button-demo" style="background: #198754;">📄 Извези CSV</a>
+                    </div>
+                </div>
+            </div>
+
+            <h4>🏛️ Cultural Heritage Database (/admin/cultural_heritage_database):</h4>
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" placeholder="Претражите културна добра по називу..."
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-left: 10px;">
+                        <span class="highlight">
+                            <a href="#" class="button-demo btn-warning">🏛️ Додај културно добро</a>
+                        </span>
+                        <a href="#" class="button-demo" style="background: #0d6efd;">🖨️ Штампај</a>
+                        <a href="#" class="button-demo" style="background: #198754;">📄 Извези CSV</a>
+                    </div>
+                </div>
+            </div>
+
+            <h4>🌿 Collection Databases (any /admin/...collection):</h4>
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" placeholder="Претражите узорке..."
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-left: 10px;">
+                        <span class="highlight">
+                            <a href="#" class="button-demo btn-success">🔬 Додај узорак</a>
+                        </span>
+                        <a href="#" class="button-demo" style="background: #0d6efd;">🖨️ Штампај</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <h2>💡 Troubleshooting</h2>
+            <p><strong>If you don't see the buttons:</strong></p>
+            <ul>
+                <li>✅ Make sure you're logged in as <code>admin</code> with password <code>admin123</code></li>
+                <li>✅ Verify you're on the correct URL (should show /admin/library_database, /admin/cultural_heritage_database, etc.)</li>
+                <li>✅ Check browser zoom level (should be 100%)</li>
+                <li>✅ Try refreshing the page (F5)</li>
+                <li>✅ Make sure the server is running on port 5555</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h2>✅ Verification</h2>
+            <p>When working correctly, clicking these buttons will take you to forms like:</p>
+            <ul>
+                <li><strong>Library:</strong> http://localhost:5555/admin/add_book</li>
+                <li><strong>Heritage:</strong> http://localhost:5555/admin/add_heritage_item</li>
+                <li><strong>Collections:</strong> http://localhost:5555/admin/add_collection_item/botany</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; margin-top: 30px; color: #666;">
+            <em>Generated by Claude Code - Museum Information System</em>
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+PostgreSQL Phase 2 Status (Dec 24, 2025)
+=======================================
+
+Artifacts already in repo:
+- db/schema.sql — creates full Postgres schema plus staging tables.
+- db/promote_from_staging.sql — moves staged rows into production tables and truncates staging tables.
+- scripts/migrate_to_postgres.py — streams bird_ringing, minerals, and inventory data from SQLite into staging tables (chunked batches, CLI driven).
+- inventory_reconciliation.py — now loads inventory entries via postgres when DATABASE_URL is set, falling back to SQLite otherwise; admin inventory route uses this abstraction.
+- bird_ringing_database.py — admin bird ringing module now prefers PostgreSQL automatically (with graceful SQLite fallback) once DATABASE_URL is configured.
+- Bird ringing pipeline updated: staging/promote scripts and migrate_to_postgres.py now carry every column (color_ring, biometrics, notes, etc.) so no fields are lost when promoting into Postgres.
+- Timesheet pipeline scaffolding added: Postgres now has `timesheet_reports`, `timesheet_report_days`, and enriched `timesheet_entries`; migration script + promote SQL pull `radna_lista` data from `localSQLtesting/museum_timesheet.db`.
+
+Next steps to validate / finish:
+1. Ensure postgres driver installed (pip install "psycopg[binary]>=3.1.0").
+2. Set DATABASE_URL (e.g., postgresql://aleksandarlukovic@localhost:5432/museum_system).
+3. Provision schema: psql "$DATABASE_URL" -f db/schema.sql.
+4. Stage datasets: run migrate_to_postgres.py for bird_ringing/minerals/inventory.
+5. Promote: psql "$DATABASE_URL" -f db/promote_from_staging.sql.
+6. Verify counts: compare SQLite vs Postgres row totals to ensure migration fidelity.
+7. Restart app, confirm inventory screens use Postgres (already coded) and run regression checks.
+
+Current blocker inside sandbox:
+- No network route to localhost:5432, so psycopg reports connection failure; verification scripts shared but must run where the DB is reachable.
+
+Once Codex runs from a context with Postgres access, execute the verification script to confirm row parity, then continue Phase 2 (timesheets, minerals refactor, etc.).

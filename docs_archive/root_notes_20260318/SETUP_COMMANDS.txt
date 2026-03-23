@@ -1,0 +1,36 @@
+# Copy and paste these commands into a terminal (one by one or all at once)
+
+# Step 1: Install the systemd service
+cd /home/aleksandarlukovic/MuseumInfoSystem
+sudo cp museum-system.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable museum-system
+sudo systemctl start museum-system
+
+# Step 2: Setup passwordless sudo for Control Center
+sudo tee /etc/sudoers.d/museum-control-center > /dev/null << 'EOF'
+# Allow user to control museum services without password
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl start museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl status museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl is-active museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl show museum-system
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl start nginx
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop nginx
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl status nginx
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl is-active nginx
+aleksandarlukovic ALL=(ALL) NOPASSWD: /usr/bin/systemctl show nginx
+EOF
+
+# Step 3: Set correct permissions
+sudo chmod 0440 /etc/sudoers.d/museum-control-center
+
+# Step 4: Verify sudoers syntax
+sudo visudo -c
+
+# Step 5: Test it works
+sudo systemctl status museum-system
+
+echo "✓ Done! Now the Control Center can manage services without passwords."

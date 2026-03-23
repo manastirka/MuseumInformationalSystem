@@ -1,0 +1,179 @@
+VIRTUAL DEPOT 3D - DEVELOPMENT CONTEXT
+======================================
+Date: 2026-01-22
+File: templates/admin_virtual_depot.html
+
+CURRENT STATE
+-------------
+The 3D Virtual Mineral Depot is a Three.js-based interactive visualization
+of the museum's mineral collection storage area.
+
+COMPLETED FEATURES
+------------------
+
+1. ROOM SETUP
+   - Room dimensions: 85 x 90 x 12 units (width x depth x height)
+   - Dark glossy wooden floor (walnut/mahogany color, roughness 0.25)
+   - Concrete walls and ceiling
+   - Plank texture repeat: (54, 45) - 50% shorter plank length
+
+2. LIGHTING (ACES)
+   - ACES Filmic Tone Mapping enabled
+   - Exposure: 1.2
+   - sRGB Color Space output
+   - Hemisphere light (warm sky 0xffeeb1 / cool ground 0x080820)
+   - Soft ambient fill light (0xfff5e6)
+   - Main directional light with 4K soft shadows
+   - Cool blue fill light for realism
+   - 6 ceiling spotlights (warm museum-style)
+   - Rim light for depth
+
+3. BOXES
+   - 150 mineral boxes on metal shelves
+   - Cardboard texture with box numbers on front face
+   - Color coding by mineral count:
+     * Red tint: >30 minerals
+     * Yellow tint: >15 minerals
+     * Cyan tint: >5 minerals
+     * Natural: few minerals
+   - Boxes start from LEFT BOTTOM corner (front shelf, closest to camera)
+   - Box dimensions: 3 x 2.5 x 3 units
+
+4. SHELVES
+   - Metal shelf structure with vertical posts
+   - 3 shelf levels per unit
+   - 15 boxes per row
+   - Cross braces REMOVED (were going through boxes)
+
+5. SORTING MENU (Right wall, z=25)
+   - Golden/orange panel with title "СОРТИРАЊЕ"
+   - Two buttons:
+     * "ОД ПРВЕ КУТИЈЕ (1→)" - ascending, green when active
+     * "ОД ПОСЛЕДЊЕ (150→)" - descending, red when active
+   - Invisible clickable planes for button interaction
+   - Clicking changes box order and refreshes display
+
+6. MUSEUM LOGO (Left wall, z=20)
+   - "ПРИРОДЊАЧКИ МУЗЕЈ" text with relief effect
+     * Golden gradient text with shadow
+     * Raised 3D box (0.5 depth)
+     * White outline
+     * Golden backlight (PointLight 0xffd700)
+   - Museum logo image below (logotransparent.png)
+     * White backlight
+
+7. NAVIGATION
+   - First-person camera controls
+   - WASD movement
+   - Mouse look (pointer lock)
+   - Click on boxes to open modal with mineral list
+   - ESC to close modal
+
+8. BOX MODAL (Futuristic style)
+   - Glassmorphism effect
+   - Shows minerals in clicked box
+   - Click mineral to see RRUFF data
+   - Serbian to English mineral translation (mineral_translator.py)
+   - Chemical formula formatting with Unicode subscripts/superscripts
+
+TECHNICAL DETAILS
+-----------------
+- Three.js loaded via CDN
+- Raycaster for click detection on boxes and menu
+- Canvas-based procedural textures (wood, concrete, cardboard)
+- Minimap in bottom-right corner
+
+KEY FILES
+---------
+- templates/admin_virtual_depot.html - Main 3D depot page
+- mineral_translator.py - Serbian to English mineral name translation
+- static/images/logotransparent.png - Museum logo image
+- app.py - Contains /api/depot/boxes and /api/rruff/mineral endpoints
+
+GLOBAL VARIABLES (JavaScript)
+-----------------------------
+- sortOrder: 'asc' or 'desc'
+- menuMeshes: array of clickable menu buttons
+- boxMeshes: array of box meshes
+- boxes: array of box data from API
+
+POSITION REFERENCE
+------------------
+- Camera starts at: (0, 5, 20)
+- Front shelf (shelf 0): z = positive (near camera)
+- Back shelves: z = negative
+- Left side: x = negative
+- Right side: x = positive
+- Box 1 position (ascending): left bottom corner of front shelf
+
+API ENDPOINTS USED
+------------------
+- GET /api/depot/boxes - Returns all boxes with mineral counts
+- GET /api/rruff/mineral/<name> - Returns RRUFF data for mineral
+
+COMPLETED (2026-01-23)
+----------------------
+- Online mineral data fallback (Wikipedia API)
+- Added "disten" -> "Kyanite" translation
+- Added "garnet" -> "Garnet" translation
+- Added "biotit" -> "Biotite" translation
+- Wikipedia data shown with purple styling
+- Additional fields: Mohs hardness, specific gravity, color, luster, description
+- Source badges (RRUFF green vs Wikipedia purple)
+- Known mineral formulas fallback dictionary
+
+LOCALITIES SYSTEM (2026-01-23)
+------------------------------
+New module: locality_data.py
+
+Database of 13+ major Balkan mining localities:
+- Trepča/Stari Trg - Lead-Zinc-Silver (Serbia/Kosovo) - 435 specimens
+- Majdanpek - Porphyry Copper (Serbia)
+- Bor - Porphyry Copper-Gold (Serbia)
+- Rudnik - Lead-Zinc-Silver (Serbia)
+- Kopaonik - Lead-Zinc-Silver (Serbia)
+- Lece - Gold-Silver-Copper (Serbia)
+- Zajača - Antimony with famous stibnite (Serbia)
+- Mežica - Lead-Zinc with famous wulfenite (Slovenia)
+- Alšar - Thallium minerals, lorandite type locality (N. Macedonia)
+- Busovača - Lead-Zinc-Barite (Bosnia)
+- Prilep - Marble quarries (N. Macedonia)
+- Bukulja - Granitic pegmatites (Serbia)
+
+Each locality entry includes:
+- Scientific name (English) and Serbian name
+- Coordinates (lat/lon)
+- Geology description
+- Mineral deposit type
+- Associated minerals list
+- Scientific references (author, year, journal)
+- Wikipedia and Mindat.org links
+
+New API endpoints:
+- GET /api/depot/localities - List all 801 unique localities with mineral counts
+- GET /api/depot/locality/<name> - Detailed locality info and specimens
+
+3D Depot UI:
+- Green "ЛОКАЛИТЕТИ" panel on right wall (z=5)
+- Click opens localities modal
+- Expandable locality entries showing:
+  * Geology info
+  * Coordinates
+  * Minerals in collection
+  * Scientific references
+  * Links to Wikipedia/Mindat
+
+PENDING/FUTURE IMPROVEMENTS
+---------------------------
+- Box search functionality
+- Box filtering by mineral type
+- Export functionality
+- VR support
+- Performance optimization for large collections
+
+SERVER
+------
+- Gunicorn on port 8000
+- Config: gunicorn.conf.py
+- Start: python3 -m gunicorn --config gunicorn.conf.py wsgi:application --daemon
+- Check: curl http://127.0.0.1:8000/
