@@ -12,6 +12,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+import image_api as image_api_mod
 
 
 class ImageAPIAuthTests(unittest.TestCase):
@@ -123,11 +124,12 @@ class ImageAPIAuthTests(unittest.TestCase):
                           json={'image_id': '1'})
         self.assertEqual(resp.status_code, 403)
 
-    def test_backup_receive_requires_admin(self):
+    def test_backup_receive_requires_admin_or_token(self):
         self._login_as('employee')
         resp = self._post('/api/images/backup/receive',
                           data={'image_id': '1'})
-        self.assertEqual(resp.status_code, 403)
+        # Employee without backup token should be rejected
+        self.assertIn(resp.status_code, (401, 403))
 
     # --- Restore must reject path traversal ---
 
@@ -142,6 +144,48 @@ class ImageAPIAuthTests(unittest.TestCase):
         resp = self._post('/api/images/backup/restore',
                           json={'backup_path': '/etc/passwd'})
         self.assertEqual(resp.status_code, 400)
+
+    def test_restore_rejects_sibling_prefix_path(self):
+        """Sibling path with same prefix should not pass validation."""
+        self._login_as('admin')
+        # If backup root is /x/storage/backups, then /x/storage/backups_evil should fail
+        resp = self._post('/api/images/backup/restore',
+                          json={'backup_path': str(image_api_mod._BACKUP_ROOT) + '_evil/data'})
+        self.assertEqual(resp.status_code, 400)
+
+    # --- Delete and metadata require admin (object-level auth) ---
+
+    def test_delete_requires_admin(self):
+        self._login_as('employee')
+        resp = self._delete('/api/images/test-id')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_metadata_requires_admin(self):
+        self._login_as('employee')
+        resp = self._get('/api/images/test-id/metadata')
+        self.assertEqual(resp.status_code, 403)
+
+    # --- Backup name sanitization ---
+
+    def test_backup_create_rejects_unsafe_name(self):
+        self._login_as('admin')
+        resp = self._post('/api/images/backup/create',
+                          json={'backup_name': '../etc/evil'})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_backup_create_rejects_spaces_in_name(self):
+        self._login_as('admin')
+        resp = self._post('/api/images/backup/create',
+                          json={'backup_name': 'my backup name'})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_backup_create_accepts_safe_name(self):
+        """A safe alphanumeric name should not be rejected at validation."""
+        self._login_as('admin')
+        resp = self._post('/api/images/backup/create',
+                          json={'backup_name': 'daily-2026-03-23'})
+        # May fail for other reasons (no storage), but should NOT be 400
+        self.assertNotEqual(resp.status_code, 400)
 
 
 if __name__ == '__main__':

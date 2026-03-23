@@ -5,7 +5,9 @@ Flask endpoints for image management and server backup
 """
 
 import os
+import re
 import logging
+import uuid
 from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
@@ -19,6 +21,9 @@ image_api = Blueprint('image_api', __name__, url_prefix='/api/images')
 
 # Allowed backup root — all restore paths must resolve inside this directory
 _BACKUP_ROOT = Path('./storage/backups').resolve()
+
+# Backup name must be a safe slug (alphanumeric, dash, underscore only)
+_SAFE_BACKUP_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
 
 
 @image_api.route('/upload', methods=['POST'])
@@ -56,24 +61,27 @@ def upload_image():
         description = request.form.get('description', '')
         metadata = request.form.get('metadata', {})
 
-        # Save file temporarily
+        # Save file to a unique temp path to prevent concurrent overwrites
         storage = get_image_storage()
-        temp_path = storage.base_path / 'temp' / secure_filename(file.filename)
-        file.save(temp_path)
+        safe_name = secure_filename(file.filename)
+        temp_name = f"{uuid.uuid4().hex}_{safe_name}"
+        temp_path = storage.base_path / 'temp' / temp_name
+        try:
+            file.save(temp_path)
 
-        # Store image
-        image_id = storage.store_image(
-            file_path=str(temp_path),
-            database=database,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            description=description,
-            metadata=metadata
-        )
-
-        # Clean up temp file
-        if temp_path.exists():
-            temp_path.unlink()
+            # Store image
+            image_id = storage.store_image(
+                file_path=str(temp_path),
+                database=database,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                description=description,
+                metadata=metadata
+            )
+        finally:
+            # Always clean up temp file
+            if temp_path.exists():
+                temp_path.unlink()
 
         if image_id:
             return jsonify({
@@ -114,9 +122,9 @@ def get_image(image_id):
 
 
 @image_api.route('/<image_id>/metadata', methods=['GET'])
-@login_required
+@admin_required
 def get_image_metadata(image_id):
-    """Get image metadata."""
+    """Get image metadata. Admin-only to prevent path/metadata leakage."""
     try:
         storage = get_image_storage()
         metadata = storage.get_image_metadata(image_id)
@@ -155,9 +163,9 @@ def get_entity_images(database, entity_type, entity_id):
 
 
 @image_api.route('/<image_id>', methods=['DELETE'])
-@login_required
+@admin_required
 def delete_image(image_id):
-    """Delete an image."""
+    """Delete an image. Admin-only — destructive action."""
     try:
         storage = get_image_storage()
         success = storage.delete_image(image_id)
@@ -181,8 +189,12 @@ def create_backup():
     """Create a local backup of all images."""
     try:
         backup_name = request.json.get('backup_name') if request.json else None
-        storage = get_image_storage()
 
+        # Sanitize backup_name to prevent path traversal
+        if backup_name and not _SAFE_BACKUP_NAME.match(backup_name):
+            return jsonify({'error': 'Invalid backup name — use only letters, numbers, dash, underscore'}), 400
+
+        storage = get_image_storage()
         backup_path = storage.create_local_backup(backup_name)
 
         if backup_path:
@@ -203,7 +215,8 @@ def _validate_backup_path(backup_path):
     """Validate that a backup path resolves inside the allowed backup root."""
     try:
         resolved = Path(backup_path).resolve()
-        if not str(resolved).startswith(str(_BACKUP_ROOT)):
+        # Use is_relative_to for proper containment check (not string prefix)
+        if not resolved.is_relative_to(_BACKUP_ROOT):
             return None
         return resolved
     except (ValueError, OSError):
@@ -280,14 +293,27 @@ def get_storage_stats():
         return jsonify({'error': str(e)}), 500
 
 
+def _check_backup_token():
+    """Verify X-Backup-Token header for service-to-service backup auth."""
+    expected = os.environ.get('IMAGE_BACKUP_TOKEN')
+    if not expected:
+        return False
+    return request.headers.get('X-Backup-Token') == expected
+
+
 # Server-side backup receiver endpoint
 @image_api.route('/backup/receive', methods=['POST'])
-@admin_required
 def receive_backup():
     """
     Receive image backup from another instance.
-    This endpoint should be deployed on the backup server.
+    Accepts either admin session auth or X-Backup-Token header.
     """
+    # Allow service-to-service token auth OR admin session
+    from flask import session
+    is_admin = session.get('user_role') == 'admin' and 'user_id' in session
+    has_token = _check_backup_token()
+    if not is_admin and not has_token:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -299,29 +325,35 @@ def receive_backup():
         if not image_id:
             return jsonify({'error': 'image_id required'}), 400
 
-        # Initialize storage with backup directory
-        backup_storage = get_image_storage(base_path='./storage/backups/server')
+        # Use a dedicated backup storage path (not the singleton main storage)
+        backup_base = Path('./storage/backups/server')
+        backup_base.mkdir(parents=True, exist_ok=True)
+        backup_storage = get_image_storage(base_path=str(backup_base))
 
-        # Save uploaded file temporarily
-        temp_path = backup_storage.base_path / 'temp' / secure_filename(file.filename)
-        file.save(temp_path)
+        # Save to unique temp path
+        safe_name = secure_filename(file.filename)
+        temp_name = f"{uuid.uuid4().hex}_{safe_name}"
+        temp_dir = backup_base / 'temp'
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = temp_dir / temp_name
 
-        # Store in backup location
-        import json
-        meta_dict = json.loads(metadata) if metadata else {}
+        try:
+            file.save(temp_path)
 
-        backup_id = backup_storage.store_image(
-            file_path=str(temp_path),
-            database=meta_dict.get('database', 'unknown'),
-            entity_type=meta_dict.get('entity_type', 'backup'),
-            entity_id=image_id,
-            description=f"Backup of {image_id}",
-            metadata=meta_dict
-        )
+            import json
+            meta_dict = json.loads(metadata) if metadata else {}
 
-        # Clean up
-        if temp_path.exists():
-            temp_path.unlink()
+            backup_id = backup_storage.store_image(
+                file_path=str(temp_path),
+                database=meta_dict.get('database', 'unknown'),
+                entity_type=meta_dict.get('entity_type', 'backup'),
+                entity_id=image_id,
+                description=f"Backup of {image_id}",
+                metadata=meta_dict
+            )
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
 
         if backup_id:
             return jsonify({

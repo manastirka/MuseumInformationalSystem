@@ -516,11 +516,16 @@ class ImageStorageEngine:
                         'image_id': img_id,
                         'metadata': json.dumps(dict(row), default=str)
                     }
+                    headers = {}
+                    backup_token = os.environ.get('IMAGE_BACKUP_TOKEN')
+                    if backup_token:
+                        headers['X-Backup-Token'] = backup_token
 
                     response = requests.post(
                         f"{self.server_backup_url}/api/images/backup/receive",
                         files=files,
                         data=data,
+                        headers=headers,
                         timeout=30
                     )
 

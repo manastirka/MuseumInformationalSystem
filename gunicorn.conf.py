@@ -9,7 +9,9 @@ bind = "127.0.0.1:8000"
 backlog = 2048
 
 # Worker processes
-workers = 4
+# NOTE: with in-memory rate limiting (default), login throttling is per-worker.
+# Set RATELIMIT_STORAGE_URL to a Redis URL if using multiple workers.
+workers = int(os.environ.get('WORKERS', '4'))
 worker_class = 'sync'
 worker_connections = 1000
 timeout = 120
