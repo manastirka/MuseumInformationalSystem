@@ -6,10 +6,25 @@ Provides password validation, rate limiting helpers, and security decorators
 import re
 import hashlib
 import secrets
-from typing import Tuple, Optional, Dict, Any
+import logging
+from typing import Tuple, Optional, Dict, Any, Union
 from functools import wraps
 from flask import session, request, flash, redirect, url_for, current_app
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ImportError:
+    BCRYPT_AVAILABLE = False
+    logging.critical("bcrypt not installed! Password hashing will use weak SHA-512 fallback. "
+                     "Install bcrypt: pip install bcrypt")
+
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
 
 
 class PasswordValidator:
@@ -62,70 +77,186 @@ class PasswordValidator:
     def generate_strong_password(self, length: int = 16) -> str:
         """Generate a cryptographically secure random password."""
         alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()'
-        password = ''.join(secrets.choice(alphabet) for _ in range(length))
-
-        # Ensure it meets all requirements
-        if self.validate(password)[0]:
-            return password
-        else:
-            return self.generate_strong_password(length)  # Retry if validation fails
+        for _ in range(100):  # Max 100 attempts instead of unbounded recursion
+            password = ''.join(secrets.choice(alphabet) for _ in range(length))
+            if self.validate(password)[0]:
+                return password
+        # If we still can't generate a valid password, return the last attempt
+        return password
 
 
 class PasswordHasher:
-    """Secure password hashing and verification."""
+    """Secure password hashing and verification using bcrypt.
+
+    Bcrypt is designed for password hashing with:
+    - Built-in salt generation
+    - Configurable work factor (cost)
+    - Resistance to GPU/ASIC attacks
+
+    Maintains backward compatibility with legacy SHA-512 hashes.
+    """
+
+    # Bcrypt work factor (cost) - 12 is a good balance of security and performance
+    # Each increment doubles the computation time
+    BCRYPT_ROUNDS = 12
 
     @staticmethod
     def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
         """
-        Hash password with salt using SHA-512.
+        Hash password using bcrypt (preferred) or SHA-512 (fallback).
 
         Args:
             password: Plain text password
-            salt: Optional salt (generated if not provided)
+            salt: Optional salt (ignored for bcrypt, used for SHA-512 fallback)
 
         Returns:
             Tuple of (password_hash, salt)
+            For bcrypt: salt is embedded in hash, returned as empty string
         """
-        if salt is None:
-            salt = secrets.token_hex(16)
-
-        password_hash = hashlib.sha512((password + salt).encode()).hexdigest()
-        return password_hash, salt
+        if BCRYPT_AVAILABLE:
+            # Bcrypt handles salt internally
+            password_bytes = password.encode('utf-8')
+            hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt(rounds=PasswordHasher.BCRYPT_ROUNDS))
+            # Return hash as string, empty salt (bcrypt embeds salt in hash)
+            return hashed.decode('utf-8'), ''
+        else:
+            # Fallback to SHA-512 (not recommended for production)
+            if salt is None:
+                salt = secrets.token_hex(16)
+            password_hash = hashlib.sha512((password + salt).encode()).hexdigest()
+            return password_hash, salt
 
     @staticmethod
     def verify_password(password: str, stored_hash: str, salt: str) -> bool:
         """
         Verify password against stored hash.
 
+        Automatically detects hash type (bcrypt vs SHA-512) for backward compatibility.
+
         Args:
             password: Plain text password to verify
             stored_hash: Stored password hash
-            salt: Salt used for hashing
+            salt: Salt used for hashing (empty for bcrypt)
 
         Returns:
             True if password matches, False otherwise
         """
-        hash_to_check, _ = PasswordHasher.hash_password(password, salt)
-        return secrets.compare_digest(hash_to_check, stored_hash)
+        # Detect bcrypt hash (starts with $2a$, $2b$, or $2y$)
+        if stored_hash.startswith(('$2a$', '$2b$', '$2y$')):
+            if not BCRYPT_AVAILABLE:
+                logging.error("Cannot verify bcrypt hash - bcrypt module not installed")
+                return False
+            try:
+                return bcrypt.checkpw(
+                    password.encode('utf-8'),
+                    stored_hash.encode('utf-8')
+                )
+            except Exception as e:
+                logging.error(f"Bcrypt verification error: {e}")
+                return False
+        else:
+            # Legacy SHA-512 verification
+            hash_to_check = hashlib.sha512((password + salt).encode()).hexdigest()
+            return secrets.compare_digest(hash_to_check, stored_hash)
+
+    @staticmethod
+    def needs_rehash(stored_hash: str) -> bool:
+        """
+        Check if password needs to be rehashed (e.g., upgrade from SHA-512 to bcrypt).
+
+        Args:
+            stored_hash: Currently stored password hash
+
+        Returns:
+            True if password should be rehashed on next login
+        """
+        if not BCRYPT_AVAILABLE:
+            return False
+
+        # SHA-512 hashes are 128 hex characters, bcrypt hashes start with $2
+        if not stored_hash.startswith(('$2a$', '$2b$', '$2y$')):
+            return True  # Legacy hash, needs upgrade
+
+        # Check if bcrypt cost factor is outdated
+        try:
+            # Extract rounds from bcrypt hash (format: $2b$12$...)
+            parts = stored_hash.split('$')
+            if len(parts) >= 3:
+                current_rounds = int(parts[2])
+                if current_rounds < PasswordHasher.BCRYPT_ROUNDS:
+                    return True  # Work factor too low
+        except (ValueError, IndexError):
+            pass
+
+        return False
 
 
 class LoginAttemptTracker:
-    """Track and limit login attempts to prevent brute force attacks."""
+    """Track and limit login attempts to prevent brute force attacks.
 
-    def __init__(self):
-        # In-memory storage for simplicity
-        # For production, use Redis for distributed systems
+    Uses Redis for distributed tracking across multiple workers when available,
+    falls back to in-memory storage for development/single-worker deployments.
+    """
+
+    def __init__(self, redis_url: Optional[str] = None):
+        """
+        Initialize tracker with optional Redis backend.
+
+        Args:
+            redis_url: Redis connection URL (e.g., 'redis://localhost:6379/0')
+        """
+        self.redis_client = None
+        self.use_redis = False
+
+        # Try to connect to Redis if available
+        if REDIS_AVAILABLE and redis_url:
+            try:
+                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                self.redis_client.ping()  # Test connection
+                self.use_redis = True
+                logging.info("LoginAttemptTracker: Using Redis backend")
+            except Exception as e:
+                logging.warning(f"LoginAttemptTracker: Redis unavailable ({e}), using in-memory")
+
+        # In-memory fallback
         self.attempts: Dict[str, list] = {}
         self.lockouts: Dict[str, datetime] = {}
 
+    def _redis_key(self, prefix: str, email: str) -> str:
+        """Generate Redis key for email."""
+        # Sanitize email for use as Redis key
+        safe_email = email.lower().replace('@', '_at_').replace('.', '_')
+        return f"login_tracker:{prefix}:{safe_email}"
+
     def record_attempt(self, email: str, success: bool = False) -> None:
         """Record a login attempt."""
+        if self.use_redis:
+            self._record_attempt_redis(email, success)
+        else:
+            self._record_attempt_memory(email, success)
+
+    def _record_attempt_redis(self, email: str, success: bool) -> None:
+        """Record attempt in Redis."""
+        attempts_key = self._redis_key("attempts", email)
+        lockout_key = self._redis_key("lockout", email)
+
         if success:
             # Clear attempts on successful login
+            self.redis_client.delete(attempts_key, lockout_key)
+        else:
+            # Record failed attempt with 1 hour TTL
+            pipe = self.redis_client.pipeline()
+            pipe.lpush(attempts_key, datetime.utcnow().isoformat())
+            pipe.ltrim(attempts_key, 0, 99)  # Keep max 100 attempts
+            pipe.expire(attempts_key, 3600)  # 1 hour TTL
+            pipe.execute()
+
+    def _record_attempt_memory(self, email: str, success: bool) -> None:
+        """Record attempt in memory (fallback)."""
+        if success:
             self.attempts.pop(email, None)
             self.lockouts.pop(email, None)
         else:
-            # Record failed attempt
             if email not in self.attempts:
                 self.attempts[email] = []
 
@@ -150,6 +281,32 @@ class LoginAttemptTracker:
         Returns:
             Tuple of (is_locked, seconds_remaining)
         """
+        if self.use_redis:
+            return self._is_locked_out_redis(email, max_attempts, lockout_duration)
+        else:
+            return self._is_locked_out_memory(email, max_attempts, lockout_duration)
+
+    def _is_locked_out_redis(self, email: str, max_attempts: int, lockout_duration: int) -> Tuple[bool, Optional[int]]:
+        """Check lockout status in Redis."""
+        lockout_key = self._redis_key("lockout", email)
+        attempts_key = self._redis_key("attempts", email)
+
+        # Check explicit lockout
+        lockout_ttl = self.redis_client.ttl(lockout_key)
+        if lockout_ttl > 0:
+            return True, lockout_ttl
+
+        # Check attempt count
+        attempt_count = self.redis_client.llen(attempts_key)
+        if attempt_count >= max_attempts:
+            # Lock out the account
+            self.redis_client.setex(lockout_key, lockout_duration, "locked")
+            return True, lockout_duration
+
+        return False, None
+
+    def _is_locked_out_memory(self, email: str, max_attempts: int, lockout_duration: int) -> Tuple[bool, Optional[int]]:
+        """Check lockout status in memory (fallback)."""
         # Check if explicitly locked out
         if email in self.lockouts:
             lockout_end = self.lockouts[email]
@@ -157,7 +314,6 @@ class LoginAttemptTracker:
                 remaining = int((lockout_end - datetime.utcnow()).total_seconds())
                 return True, remaining
             else:
-                # Lockout expired
                 self.lockouts.pop(email)
                 self.attempts.pop(email, None)
                 return False, None
@@ -165,7 +321,6 @@ class LoginAttemptTracker:
         # Check attempt count
         attempts = self.attempts.get(email, [])
         if len(attempts) >= max_attempts:
-            # Lock out the account
             self.lockouts[email] = datetime.utcnow() + timedelta(seconds=lockout_duration)
             return True, lockout_duration
 
@@ -173,19 +328,52 @@ class LoginAttemptTracker:
 
     def get_remaining_attempts(self, email: str, max_attempts: int) -> int:
         """Get number of remaining login attempts."""
-        attempts = len(self.attempts.get(email, []))
-        return max(0, max_attempts - attempts)
+        if self.use_redis:
+            attempts_key = self._redis_key("attempts", email)
+            attempt_count = self.redis_client.llen(attempts_key)
+        else:
+            attempt_count = len(self.attempts.get(email, []))
+
+        return max(0, max_attempts - attempt_count)
 
 
-# Global instance
+# Global instance - initialized without Redis by default
+# Call init_login_tracker(redis_url) from app initialization to enable Redis
 login_tracker = LoginAttemptTracker()
+
+
+def init_login_tracker(redis_url: Optional[str] = None) -> LoginAttemptTracker:
+    """
+    Initialize or reinitialize the global login tracker with Redis support.
+
+    Call this during app initialization with Redis URL to enable distributed tracking.
+
+    Args:
+        redis_url: Redis connection URL (e.g., 'redis://localhost:6379/0')
+
+    Returns:
+        The configured LoginAttemptTracker instance
+    """
+    global login_tracker
+    new_tracker = LoginAttemptTracker(redis_url=redis_url)
+    # Preserve object identity so already-imported references stay current.
+    login_tracker.__dict__.clear()
+    login_tracker.__dict__.update(new_tracker.__dict__)
+    return login_tracker
 
 
 def login_required(f):
     """Decorator to require login for a route."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        from flask import request, jsonify
+
         if 'user_id' not in session:
+            # Check if this is an API request - return JSON instead of redirect
+            is_api_request = request.path.startswith('/api/') or request.is_json
+            if is_api_request:
+                return jsonify({'success': False, 'message': 'Морате бити пријављени'}), 401
+
             flash('Морате бити пријављени да бисте приступили овој страници.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -233,8 +421,7 @@ def module_access_required(module_key):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             from flask import request, jsonify
-            # Import here to avoid circular imports
-            from app import user_has_module_access
+            access_checker = getattr(current_app, 'user_has_module_access', None)
 
             is_api_request = request.path.startswith('/api/')
 
@@ -247,7 +434,14 @@ def module_access_required(module_key):
             user_email = session.get('user_email', '')
             user_role = session.get('user_role', '')
 
-            if not user_has_module_access(user_email, user_role, module_key):
+            if access_checker is None:
+                current_app.logger.error('user_has_module_access is not configured on the Flask app')
+                if is_api_request:
+                    return jsonify({'success': False, 'message': 'Грешка у конфигурацији апликације'}), 500
+                flash('Грешка у конфигурацији апликације.', 'danger')
+                return redirect(url_for('dashboard'))
+
+            if not access_checker(user_email, user_role, module_key):
                 if is_api_request:
                     return jsonify({'success': False, 'message': 'Немате дозволу за приступ овом модулу'}), 403
                 flash('Немате дозволу за приступ овом модулу.', 'danger')
@@ -296,16 +490,12 @@ def allowed_file(filename: str, allowed_extensions: set) -> bool:
 
 
 def get_client_ip() -> str:
-    """Get client IP address, considering proxy headers."""
-    if request.headers.get('X-Forwarded-For'):
-        # Behind proxy
-        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    elif request.headers.get('X-Real-IP'):
-        ip = request.headers.get('X-Real-IP')
-    else:
-        ip = request.remote_addr or 'unknown'
+    """Get client IP address from Werkzeug's ProxyFix-corrected remote_addr.
 
-    return ip
+    ProxyFix middleware (configured in app.py) handles X-Forwarded-For
+    parsing with trusted proxy count, so we use request.remote_addr directly.
+    """
+    return request.remote_addr or 'unknown'
 
 
 def log_security_event(event_type: str, details: Dict[str, Any]) -> None:
@@ -315,10 +505,10 @@ def log_security_event(event_type: str, details: Dict[str, Any]) -> None:
 
     event_data = {
         'type': event_type,
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(UTC).isoformat(),
         'ip_address': get_client_ip(),
         'user_agent': request.headers.get('User-Agent', 'unknown'),
-        'user_email': session.get('user', {}).get('email', 'anonymous'),
+        'user_email': session.get('user_email') or session.get('user', {}).get('email', 'anonymous'),
         **details
     }
 
