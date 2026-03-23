@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Ботаничка збирка - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-flower1 me-2"></i>
+                                Ботаничка збирка
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Хербаријум >40.000 примерака - ендемске биљке Балкана
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">>40,000</h2>
+                                <small>Примерака</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="Претражите биљне узорке по научном називу, фамилији или локацији...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('add_collection_item', collection_type='botany') }}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Додај узорак
+                </a>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>
+                    Штампај
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collection Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-success" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>О збирци</h5>
+                <p class="mb-2">Ботаничка збирка садржи више од 40.000 примерака биљака, са посебним фокусом на ендемске врсте Балканског полуострва.</p>
+                <hr>
+                <p class="mb-0"><strong>Кустоси:</strong> Др М. Никетић (SANU), В. Стојановић, Др А. Савић, Др М. Несторовић</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Data Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Примери из збирке</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Каталошки број</th>
+                                    <th>Научни назив</th>
+                                    <th>Фамилија</th>
+                                    <th>Локација наласка</th>
+                                    <th>Датум сакупљања</th>
+                                    <th>Сакупљач</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>BOT-001234</td>
+                                    <td><em>Ramonda serbica</em></td>
+                                    <td>Gesneriaceae</td>
+                                    <td>Стара планина, Србија</td>
+                                    <td>15.06.2023</td>
+                                    <td>Др М. Никетић</td>
+                                </tr>
+                                <tr>
+                                    <td>BOT-001235</td>
+                                    <td><em>Pinus peuce</em></td>
+                                    <td>Pinaceae</td>
+                                    <td>Проклетије, Србија</td>
+                                    <td>22.07.2023</td>
+                                    <td>В. Стојановић</td>
+                                </tr>
+                                <tr>
+                                    <td>BOT-001236</td>
+                                    <td><em>Daphne blagayana</em></td>
+                                    <td>Thymelaeaceae</td>
+                                    <td>Тара, Србија</td>
+                                    <td>08.05.2023</td>
+                                    <td>Др А. Савић</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

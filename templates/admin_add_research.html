@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Додај истраживачки пројекат - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-search me-2"></i>
+                                Додај истраживачки пројекат
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Додај нови научни пројекат у базу истраживања
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('research_database') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад на базу
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Research Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-journal-text me-2"></i>
+                        Подаци о истраживачком пројекту
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="addResearchForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="row g-3">
+                            <!-- Title -->
+                            <div class="col-12">
+                                <label for="title" class="form-label">
+                                    <i class="bi bi-file-text me-1"></i>
+                                    Назив пројекта *
+                                </label>
+                                <input type="text" class="form-control" id="title" name="title" required
+                                       placeholder="Унесите пун назив истраживачког пројекта">
+                            </div>
+
+                            <!-- Project Code -->
+                            <div class="col-md-4">
+                                <label for="project_code" class="form-label">
+                                    <i class="bi bi-upc me-1"></i>
+                                    Шифра пројекта
+                                </label>
+                                <input type="text" class="form-control" id="project_code" name="project_code"
+                                       placeholder="нпр. ПРО-2024-001">
+                            </div>
+
+                            <!-- Principal Investigator -->
+                            <div class="col-md-8">
+                                <label for="principal_investigator" class="form-label">
+                                    <i class="bi bi-person-badge me-1"></i>
+                                    Руководилац пројекта *
+                                </label>
+                                <input type="text" class="form-control" id="principal_investigator" name="principal_investigator" required
+                                       placeholder="Име и презиме руководиоца">
+                            </div>
+
+                            <!-- Department -->
+                            <div class="col-md-6">
+                                <label for="department" class="form-label">
+                                    <i class="bi bi-building me-1"></i>
+                                    Одељење
+                                </label>
+                                <select class="form-select" id="department" name="department">
+                                    <option value="">Изаберите одељење</option>
+                                    <option value="Биолошко одељење">Биолошко одељење</option>
+                                    <option value="Геолошко одељење">Геолошко одељење</option>
+                                    <option value="Одељење за едукацију">Одељење за едукацију</option>
+                                    <option value="Конзерваторско одељење">Конзерваторско одељење</option>
+                                    <option value="Библиотека">Библиотека</option>
+                                </select>
+                            </div>
+
+                            <!-- Research Area -->
+                            <div class="col-md-6">
+                                <label for="research_area" class="form-label">
+                                    <i class="bi bi-tag me-1"></i>
+                                    Област истраживања *
+                                </label>
+                                <select class="form-select" id="research_area" name="research_area" required>
+                                    <option value="">Изаберите област</option>
+                                    <option value="Ботаника">Ботаника</option>
+                                    <option value="Зоологија">Зоологија</option>
+                                    <option value="Палеонтологија">Палеонтологија</option>
+                                    <option value="Минералогија">Минералогија</option>
+                                    <option value="Петрологија">Петрологија</option>
+                                    <option value="Екологија">Екологија</option>
+                                    <option value="Конзервација">Конзервација</option>
+                                    <option value="Музеологија">Музеологија</option>
+                                </select>
+                            </div>
+
+                            <!-- Start Date -->
+                            <div class="col-md-4">
+                                <label for="start_date" class="form-label">
+                                    <i class="bi bi-calendar-check me-1"></i>
+                                    Датум почетка
+                                </label>
+                                <input type="date" class="form-control" id="start_date" name="start_date">
+                            </div>
+
+                            <!-- End Date -->
+                            <div class="col-md-4">
+                                <label for="end_date" class="form-label">
+                                    <i class="bi bi-calendar-x me-1"></i>
+                                    Датум завршетка
+                                </label>
+                                <input type="date" class="form-control" id="end_date" name="end_date">
+                            </div>
+
+                            <!-- Status -->
+                            <div class="col-md-4">
+                                <label for="status" class="form-label">
+                                    <i class="bi bi-activity me-1"></i>
+                                    Статус
+                                </label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="У току">У току</option>
+                                    <option value="Завршен">Завршен</option>
+                                    <option value="Планиран">Планиран</option>
+                                    <option value="Обустављен">Обустављен</option>
+                                </select>
+                            </div>
+
+                            <!-- Funding Source -->
+                            <div class="col-md-8">
+                                <label for="funding_source" class="form-label">
+                                    <i class="bi bi-bank me-1"></i>
+                                    Извор финансирања
+                                </label>
+                                <input type="text" class="form-control" id="funding_source" name="funding_source"
+                                       placeholder="нпр. Министарство науке, ЕУ пројекат...">
+                            </div>
+
+                            <!-- Budget -->
+                            <div class="col-md-4">
+                                <label for="budget" class="form-label">
+                                    <i class="bi bi-cash me-1"></i>
+                                    Буџет
+                                </label>
+                                <input type="text" class="form-control" id="budget" name="budget"
+                                       placeholder="нпр. 500.000 РСД">
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-12">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-card-text me-1"></i>
+                                    Опис пројекта *
+                                </label>
+                                <textarea class="form-control" id="description" name="description" rows="4" required
+                                          placeholder="Детаљан опис циљева, методологије и очекиваних резултата пројекта..."></textarea>
+                            </div>
+
+                            <!-- Collaborators -->
+                            <div class="col-12">
+                                <label for="collaborators" class="form-label">
+                                    <i class="bi bi-people me-1"></i>
+                                    Сарадници
+                                </label>
+                                <textarea class="form-control" id="collaborators" name="collaborators" rows="2"
+                                          placeholder="Имена и институције сарадника на пројекту..."></textarea>
+                            </div>
+
+                            <!-- Publications -->
+                            <div class="col-12">
+                                <label for="publications" class="form-label">
+                                    <i class="bi bi-book me-1"></i>
+                                    Публикације
+                                </label>
+                                <textarea class="form-control" id="publications" name="publications" rows="3"
+                                          placeholder="Наведите објављене радове у вези са пројектом (формат: аутори, година, наслов, часопис)"></textarea>
+                            </div>
+
+                            <!-- Keywords -->
+                            <div class="col-12">
+                                <label for="keywords" class="form-label">
+                                    <i class="bi bi-tags me-1"></i>
+                                    Кључне речи
+                                </label>
+                                <input type="text" class="form-control" id="keywords" name="keywords"
+                                       placeholder="Унесите кључне речи одвојене зарезима">
+                                <div class="form-text">Унесите 3-10 кључних речи које описују пројекат</div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <a href="{{ url_for('research_database') }}" class="btn btn-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Откажи
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Додај пројекат
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-info-circle me-2"></i>Упутство за евидентирање истраживања</h6>
+                <ul class="mb-0 small">
+                    <li>Обавезно попуните назив, руководиоца, област истраживања и опис пројекта</li>
+                    <li>Редовно ажурирајте статус пројекта и додавајте нове публикације</li>
+                    <li>Прецизно наведите изворе финансирања за лакше извештавање</li>
+                    <li>Кључне речи помажу у претрази и категоризацији пројеката</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+document.getElementById('addResearchForm').addEventListener('submit', function(e) {
+    const title = document.getElementById('title').value;
+    const pi = document.getElementById('principal_investigator').value;
+    const area = document.getElementById('research_area').value;
+    const desc = document.getElementById('description').value;
+
+    if (!title || !pi || !area || !desc) {
+        e.preventDefault();
+        alert('Молимо попуните сва обавезна поља');
+        return;
+    }
+
+    // Confirmation
+    if (!confirm(`Да ли сте сигурни да желите да додате пројекат "${title}"?`)) {
+        e.preventDefault();
+    }
+});
+
+// Set default start date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const startDate = document.getElementById('start_date');
+    if (!startDate.value) {
+        const today = new Date().toISOString().split('T')[0];
+        startDate.value = today;
+    }
+});
+</script>
+
+<style>
+.form-label {
+    font-weight: 500;
+    color: var(--museum-primary);
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--museum-primary);
+    box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+</style>
+{% endblock %}

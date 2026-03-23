@@ -1,0 +1,666 @@
+{% extends "base.html" %}
+
+{% block title %}Додај геолошки узорак - {{ collection_name }}{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-warning text-dark">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-gem me-2"></i>
+                                Додај геолошки узорак
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Унос новог геолошког узорка - {{ collection_name }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад на збирку
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Geological Item Form -->
+    <form method="POST" id="addGeologicalItemForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="collection_type" value="{{ collection_type }}">
+
+        <div class="row">
+            <!-- Left Column - Basic Info -->
+            <div class="col-lg-6">
+                <!-- Basic Information Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Основни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Catalog Number -->
+                        <div class="mb-3">
+                            <label for="catalog_number" class="form-label">
+                                <i class="bi bi-hash me-1"></i>
+                                Каталошки број <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="catalog_number" name="catalog_number" required>
+                            <div class="form-text">Јединствени идентификатор узорка у збирци</div>
+                        </div>
+
+                        <!-- Scientific Name -->
+                        <div class="mb-3">
+                            <label for="scientific_name" class="form-label">
+                                <i class="bi bi-mortarboard me-1"></i>
+                                Научни назив <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="scientific_name" name="scientific_name" required>
+                            <div class="form-text">Таксономски или минералошки назив</div>
+                        </div>
+
+                        <!-- Common Name -->
+                        <div class="mb-3">
+                            <label for="common_name" class="form-label">
+                                <i class="bi bi-type me-1"></i>
+                                Народни назив
+                            </label>
+                            <input type="text" class="form-control" id="common_name" name="common_name">
+                        </div>
+
+                        <!-- Rock Type Classification (for Petrology) -->
+                        <div class="mb-3" id="rock_type_section">
+                            <label for="rock_type" class="form-label">
+                                <i class="bi bi-layers me-1"></i>
+                                Тип стене <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select mb-2" id="rock_type_main" name="rock_type_main" required>
+                                <option value="">Изаберите главни тип...</option>
+                                <option value="Магматске">Магматске (Igneous)</option>
+                                <option value="Седиментне">Седиментне (Sedimentary)</option>
+                                <option value="Метаморфне">Метаморфне (Metamorphic)</option>
+                            </select>
+
+                            <!-- Magmatic Subtypes -->
+                            <select class="form-select mb-2 d-none" id="rock_type_magmatic" name="rock_type_subtype">
+                                <option value="">Изаберите подтип...</option>
+                                <optgroup label="Плутонске (дубинске)">
+                                    <option value="Гранит">Гранит (Granite)</option>
+                                    <option value="Гранодиорит">Гранодиорит (Granodiorite)</option>
+                                    <option value="Диорит">Диорит (Diorite)</option>
+                                    <option value="Габро">Габро (Gabbro)</option>
+                                    <option value="Перидотит">Перидотит (Peridotite)</option>
+                                </optgroup>
+                                <optgroup label="Вулканске (изливне)">
+                                    <option value="Риолит">Риолит (Rhyolite)</option>
+                                    <option value="Андезит">Андезит (Andesite)</option>
+                                    <option value="Базалт">Базалт (Basalt)</option>
+                                    <option value="Пумица">Пумица (Pumice)</option>
+                                    <option value="Обсидијан">Обсидијан (Obsidian)</option>
+                                </optgroup>
+                            </select>
+
+                            <!-- Sedimentary Subtypes -->
+                            <select class="form-select mb-2 d-none" id="rock_type_sedimentary" name="rock_type_subtype">
+                                <option value="">Изаберите подтип...</option>
+                                <optgroup label="Кластичне">
+                                    <option value="Конгломерат">Конгломерат (Conglomerate)</option>
+                                    <option value="Пешчар">Пешчар (Sandstone)</option>
+                                    <option value="Алевролит">Алевролит (Siltstone)</option>
+                                    <option value="Глинац/Шкриљац">Глинац/Шкриљац (Shale)</option>
+                                </optgroup>
+                                <optgroup label="Хемијске и органогене">
+                                    <option value="Кречњак">Кречњак (Limestone)</option>
+                                    <option value="Доломит">Доломит (Dolomite)</option>
+                                    <option value="Гипс">Гипс (Gypsum)</option>
+                                    <option value="Со">Со (Rock salt/Halite)</option>
+                                    <option value="Угаљ">Угаљ (Coal)</option>
+                                </optgroup>
+                            </select>
+
+                            <!-- Metamorphic Subtypes -->
+                            <select class="form-select mb-2 d-none" id="rock_type_metamorphic" name="rock_type_subtype">
+                                <option value="">Изаберите подтип...</option>
+                                <optgroup label="Фолијациони (са шкриљавошћу)">
+                                    <option value="Гнајс">Гнајс (Gneiss)</option>
+                                    <option value="Шист">Шист (Schist)</option>
+                                    <option value="Филит">Филит (Phyllite)</option>
+                                    <option value="Слејт">Слејт (Slate)</option>
+                                </optgroup>
+                                <optgroup label="Нефолијациони">
+                                    <option value="Мермер">Мермер (Marble)</option>
+                                    <option value="Кварцит">Кварцит (Quartzite)</option>
+                                    <option value="Амфиболит">Амфиболит (Amphibolite)</option>
+                                    <option value="Серпентинит">Серпентинит (Serpentinite)</option>
+                                </optgroup>
+                            </select>
+
+                            <div class="form-text">Детаљна класификација типа стене</div>
+                        </div>
+
+                        <!-- Mineral Composition (for Petrology) -->
+                        <div class="mb-3" id="mineral_composition_section">
+                            <label for="mineral_composition" class="form-label">
+                                <i class="bi bi-gem me-1"></i>
+                                Минералошки састав
+                            </label>
+                            <textarea class="form-control" id="mineral_composition" name="mineral_composition" rows="2" placeholder="нпр. Кварц 40%, фелдспат 35%, биотит 20%, мусковит 5%"></textarea>
+                            <div class="form-text">Процентуални удео минерала</div>
+                        </div>
+
+                        <!-- Texture (for Petrology) -->
+                        <div class="mb-3" id="texture_section">
+                            <label for="rock_texture" class="form-label">
+                                <i class="bi bi-grid me-1"></i>
+                                Текстура
+                            </label>
+                            <input type="text" class="form-control" id="rock_texture" name="rock_texture" placeholder="нпр. Грубозрна, финозрна, порфирска">
+                            <div class="form-text">Величина и распоред зрна</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acquisition Information Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-arrow-down-circle me-2"></i>
+                            Начин прибављања
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="acquisition_method" class="form-label">
+                                <i class="bi bi-box-arrow-in-down me-1"></i>
+                                Начин прибављања <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="acquisition_method" name="acquisition_method" required>
+                                <option value="">Изаберите начин...</option>
+                                <option value="Теренски">Теренски (налаз на терену)</option>
+                                <option value="Поклон">Поклон (донација)</option>
+                                <option value="Откуп">Откуп (куповина)</option>
+                                <option value="Размена">Размена</option>
+                                <option value="Пренос">Пренос из друге институције</option>
+                            </select>
+                            <div class="form-text">Како је узорак дошао у музејску колекцију</div>
+                        </div>
+
+                        <!-- Collection Location -->
+                        <div class="mb-3">
+                            <label for="collection_location" class="form-label">
+                                <i class="bi bi-geo-alt me-1"></i>
+                                Локација налаза
+                            </label>
+                            <input type="text" class="form-control" id="collection_location" name="collection_location">
+                            <div class="form-text">Место и GPS координате (за теренске налазе)</div>
+                        </div>
+
+                        <!-- Collection Date -->
+                        <div class="mb-3">
+                            <label for="collection_date" class="form-label">
+                                <i class="bi bi-calendar me-1"></i>
+                                Датум прибављања
+                            </label>
+                            <input type="date" class="form-control" id="collection_date" name="collection_date">
+                        </div>
+
+                        <!-- Collector -->
+                        <div class="mb-3">
+                            <label for="collector" class="form-label">
+                                <i class="bi bi-person me-1"></i>
+                                Прибавио/Донатор
+                            </label>
+                            <input type="text" class="form-control" id="collector" name="collector">
+                            <div class="form-text">Име особе која је прибавила узорак</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Physical Characteristics Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-rulers me-2"></i>
+                            Физичке карактеристике
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="size" class="form-label">
+                                    <i class="bi bi-arrows-angle-expand me-1"></i>
+                                    Димензије
+                                </label>
+                                <input type="text" class="form-control" id="size" name="size" placeholder="нпр. 15×10×8 cm">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="weight" class="form-label">
+                                    <i class="bi bi-archive me-1"></i>
+                                    Маса
+                                </label>
+                                <input type="text" class="form-control" id="weight" name="weight" placeholder="нпр. 250 g">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Стање очуваности
+                            </label>
+                            <select class="form-select" id="condition" name="condition">
+                                <option value="">Изаберите...</option>
+                                <option value="Одлично">Одлично</option>
+                                <option value="Добро">Добро</option>
+                                <option value="Задовољавајуће">Задовољавајуће</option>
+                                <option value="Лоше">Лоше</option>
+                                <option value="Фрагментарно">Фрагментарно</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="completeness" class="form-label">
+                                <i class="bi bi-puzzle me-1"></i>
+                                Комплетност
+                            </label>
+                            <input type="text" class="form-control" id="completeness" name="completeness" placeholder="нпр. 85%, комплетан, делимичан">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Geological Specific -->
+            <div class="col-lg-6">
+                <!-- Geological Age Card with Stratigraphic Chart -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Геолошка старост
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Selected Age Display -->
+                        <div class="mb-3">
+                            <label for="age" class="form-label">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                Одабрана геолошка старост
+                            </label>
+                            <input type="text" class="form-control" id="age" name="age" readonly>
+                            <div class="form-text">Кликните на период у стратиграфској скали испод</div>
+                        </div>
+
+                        <!-- International Stratigraphic Chart -->
+                        <div class="stratigraphic-chart border rounded p-2 mb-3" style="max-height: 600px; overflow-y: auto;">
+                            <h6 class="text-center mb-3">Међународна стратиграфска скала (са катовима)</h6>
+
+                            <!-- Cenozoic Era -->
+                            <div class="era-section mb-2">
+                                <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #F2F91D; color: #000;" data-age="Кенозоик">
+                                    <strong>ЕРА: Кенозоик (Cenozoic)</strong> - 66 Ma - данас
+                                </button>
+                                <div class="ms-2">
+                                    <!-- Quaternary -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FEF2E0; color: #000;" data-age="Квартар">
+                                        <strong>Квартар (Quaternary)</strong> - 2.6 Ma - данас
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFF2BA; color: #000; font-size: 0.75rem;" data-age="Квартар - Холоцен">
+                                            Холоцен (Holocene) - 11.7 ka - данас
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFF2CC; color: #000; font-size: 0.75rem;" data-age="Квартар - Плеистоцен">
+                                            Плеистоцен (Pleistocene) - 2.6 Ma - 11.7 ka
+                                        </button>
+                                    </div>
+
+                                    <!-- Neogene -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFFF99; color: #000;" data-age="Неоген">
+                                        <strong>Неоген (Neogene)</strong> - 23 - 2.6 Ma
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFFFCC; color: #000; font-size: 0.75rem;" data-age="Неоген - Плиоцен">
+                                            Плиоцен (Pliocene) - 5.3 - 2.6 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFFF80; color: #000; font-size: 0.75rem;" data-age="Неоген - Миоцен">
+                                            Миоцен (Miocene) - 23 - 5.3 Ma
+                                        </button>
+                                    </div>
+
+                                    <!-- Paleogene -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FFCC99; color: #000;" data-age="Палеоген">
+                                        <strong>Палеоген (Paleogene)</strong> - 66 - 23 Ma
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FEDDAA; color: #000; font-size: 0.75rem;" data-age="Палеоген - Олигоцен">
+                                            Олигоцен (Oligocene) - 33.9 - 23 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FDBB8C; color: #000; font-size: 0.75rem;" data-age="Палеоген - Еоцен">
+                                            Еоцен (Eocene) - 56 - 33.9 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FD9966; color: #000; font-size: 0.75rem;" data-age="Палеоген - Палеоцен">
+                                            Палеоцен (Paleocene) - 66 - 56 Ma
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mesozoic Era -->
+                            <div class="era-section mb-2">
+                                <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #67C5CA; color: #000;" data-age="Мезозоик">
+                                    <strong>ЕРА: Мезозоик (Mesozoic)</strong> - 252 - 66 Ma
+                                </button>
+                                <div class="ms-2">
+                                    <!-- Cretaceous -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #A6D854; color: #000;" data-age="Креда">
+                                        <strong>Креда (Cretaceous)</strong> - 145 - 66 Ma
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #D5F47F; color: #000; font-size: 0.75rem;" data-age="Креда - Горња">
+                                            Горња креда (Upper) - 100.5 - 66 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #C4EA5D; color: #000; font-size: 0.75rem;" data-age="Креда - Доња">
+                                            Доња креда (Lower) - 145 - 100.5 Ma
+                                        </button>
+                                    </div>
+
+                                    <!-- Jurassic -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #99CCFF; color: #000;" data-age="Јура">
+                                        <strong>Јура (Jurassic)</strong> - 201 - 145 Ma
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #B3DDFF; color: #000; font-size: 0.75rem;" data-age="Јура - Горња (Малм)">
+                                            Горња јура - Малм (Upper) - 163.5 - 145 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #80C2FF; color: #000; font-size: 0.75rem;" data-age="Јура - Средња (Догер)">
+                                            Средња јура - Догер (Middle) - 174.7 - 163.5 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #5CAAFF; color: #000; font-size: 0.75rem;" data-age="Јура - Доња (Лијас)">
+                                            Доња јура - Лијас (Lower) - 201.4 - 174.7 Ma
+                                        </button>
+                                    </div>
+
+                                    <!-- Triassic -->
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #CC99FF; color: #000;" data-age="Тријас">
+                                        <strong>Тријас (Triassic)</strong> - 252 - 201 Ma
+                                    </button>
+                                    <div class="ms-3">
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #E5B3FF; color: #000; font-size: 0.75rem;" data-age="Тријас - Горњи">
+                                            Горњи тријас (Upper) - 237 - 201.4 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #D699FF; color: #000; font-size: 0.75rem;" data-age="Тријас - Средњи">
+                                            Средњи тријас (Middle) - 247.2 - 237 Ma
+                                        </button>
+                                        <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #C280FF; color: #000; font-size: 0.75rem;" data-age="Тријас - Доњи">
+                                            Доњи тријас (Lower) - 252.2 - 247.2 Ma
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Paleozoic Era -->
+                            <div class="era-section mb-2">
+                                <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #99C08D; color: #000;" data-age="Палеозоик">
+                                    <strong>ЕРА: Палеозоик (Paleozoic)</strong> - 541 - 252 Ma
+                                </button>
+                                <div class="ms-2">
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #F2A095; color: #000;" data-age="Перм">
+                                        <strong>Перм (Permian)</strong> - 299 - 252 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #99C2B5; color: #000;" data-age="Карбон">
+                                        <strong>Карбон (Carboniferous)</strong> - 359 - 299 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #CB8C37; color: #000;" data-age="Девон">
+                                        <strong>Девон (Devonian)</strong> - 419 - 359 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #B3E0E6; color: #000;" data-age="Силур">
+                                        <strong>Силур (Silurian)</strong> - 444 - 419 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #009270; color: #fff;" data-age="Ордовицијум">
+                                        <strong>Ордовицијум (Ordovician)</strong> - 485 - 444 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #7FA056; color: #000;" data-age="Камбријум">
+                                        <strong>Камбријум (Cambrian)</strong> - 541 - 485 Ma
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Precambrian -->
+                            <div class="era-section mb-2">
+                                <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #F74370; color: #fff;" data-age="Прекамбријум">
+                                    <strong>Прекамбријум (Precambrian)</strong> - >541 Ma
+                                </button>
+                                <div class="ms-3">
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #FE9AA4; color: #000;" data-age="Протерозоик">
+                                        Протерозоик (Proterozoic) - 2500 - 541 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #F04370; color: #fff;" data-age="Археј">
+                                        Археј (Archean) - 4000 - 2500 Ma
+                                    </button>
+                                    <button type="button" class="btn btn-sm w-100 text-start mb-1" style="background-color: #A23C5A; color: #fff;" data-age="Хадеј">
+                                        Хадеј (Hadean) - 4600 - 4000 Ma
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Storage & Conservation Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-box-seam me-2"></i>
+                            Услови чувања (геолошки узорци)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="storage_location" class="form-label">
+                                <i class="bi bi-building me-1"></i>
+                                Локација складиштења
+                            </label>
+                            <input type="text" class="form-control" id="storage_location" name="storage_location" placeholder="нпр. Депо А, полица 3, кутија 12">
+                            <div class="form-text">Тачна локација у депоу</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="storage_type" class="form-label">
+                                <i class="bi bi-archive me-1"></i>
+                                Тип складиштења
+                            </label>
+                            <select class="form-select" id="storage_type" name="storage_type">
+                                <option value="">Изаберите...</option>
+                                <option value="Отворена полица">Отворена полица</option>
+                                <option value="Затворена витрина">Затворена витрина</option>
+                                <option value="Кутија">Кутија (картонска/пластична)</option>
+                                <option value="Специјална амбалажа">Специјална амбалажа</option>
+                                <option value="Изложба">На изложби</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="storage_conditions" class="form-label">
+                                <i class="bi bi-thermometer me-1"></i>
+                                Услови чувања
+                            </label>
+                            <textarea class="form-control" id="storage_conditions" name="storage_conditions" rows="2" placeholder="нпр. Температура 18-22°C, влажност 40-60%, заштита од светла"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="preservation_method" class="form-label">
+                                <i class="bi bi-shield-check me-1"></i>
+                                Препарација/Третман
+                            </label>
+                            <input type="text" class="form-control" id="preservation_method" name="preservation_method" placeholder="нпр. Чишћење, учвршћавање, имп">
+                            <div class="form-text">Примењени конзерваторски третмани</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Info Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-journal-text me-2"></i>
+                            Додатне информације
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="bi bi-card-text me-1"></i>
+                                Опис
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="4" placeholder="Детаљан опис узорка, минералошки састав, текстура, боја..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="determiner" class="form-label">
+                                <i class="bi bi-person-check me-1"></i>
+                                Детерминатор
+                            </label>
+                            <input type="text" class="form-control" id="determiner" name="determiner">
+                            <div class="form-text">Стручњак који је идентификовао узорак</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="research_project" class="form-label">
+                                <i class="bi bi-search me-1"></i>
+                                Истраживачки пројекат
+                            </label>
+                            <input type="text" class="form-control" id="research_project" name="research_project">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">
+                                <i class="bi bi-sticky me-1"></i>
+                                Напомене
+                            </label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Откажи
+                            </a>
+                            <button type="submit" class="btn btn-warning text-dark">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Сачувај геолошки узорак
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Rock type cascading selection
+document.getElementById('rock_type_main').addEventListener('change', function() {
+    // Hide all subtype selects
+    document.getElementById('rock_type_magmatic').classList.add('d-none');
+    document.getElementById('rock_type_sedimentary').classList.add('d-none');
+    document.getElementById('rock_type_metamorphic').classList.add('d-none');
+
+    // Reset all subtype values
+    document.getElementById('rock_type_magmatic').value = '';
+    document.getElementById('rock_type_sedimentary').value = '';
+    document.getElementById('rock_type_metamorphic').value = '';
+
+    // Show relevant subtype based on main type
+    const mainType = this.value;
+    if (mainType === 'Магматске') {
+        document.getElementById('rock_type_magmatic').classList.remove('d-none');
+        document.getElementById('rock_type_magmatic').required = true;
+    } else if (mainType === 'Седиментне') {
+        document.getElementById('rock_type_sedimentary').classList.remove('d-none');
+        document.getElementById('rock_type_sedimentary').required = true;
+    } else if (mainType === 'Метаморфне') {
+        document.getElementById('rock_type_metamorphic').classList.remove('d-none');
+        document.getElementById('rock_type_metamorphic').required = true;
+    }
+});
+
+// Stratigraphic chart selection
+document.querySelectorAll('.stratigraphic-chart button').forEach(button => {
+    button.addEventListener('click', function() {
+        const age = this.getAttribute('data-age');
+        document.getElementById('age').value = age;
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.stratigraphic-chart button').forEach(btn => {
+            btn.classList.remove('border-dark', 'border-3');
+        });
+
+        // Add active class to clicked button
+        this.classList.add('border-dark', 'border-3');
+    });
+});
+
+// Form validation
+document.getElementById('addGeologicalItemForm').addEventListener('submit', function(e) {
+    if (!this.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    this.classList.add('was-validated');
+});
+
+// Set today's date as default for collection date
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('collection_date');
+    if (!dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+
+<style>
+.stratigraphic-chart button {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.stratigraphic-chart button:hover {
+    border-color: #000;
+    transform: translateX(4px);
+}
+
+.stratigraphic-chart button.border-dark {
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--museum-primary);
+}
+
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+</style>
+{% endblock %}

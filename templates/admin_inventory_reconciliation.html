@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Упоређивање инвентара - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-danger text-white">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-clipboard-check me-2"></i>
+                        Упоређивање инвентара
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Алат за упоређивање физичке књиге инвентара са стварном ревидираном базом података
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('inventory_book') }}" class="btn btn-warning">
+                    <i class="bi bi-book me-1"></i>
+                    Књига инвентара
+                </a>
+                <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-info">
+                    <i class="bi bi-gem me-1"></i>
+                    Минералошка база
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-book" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ summary.total_items }}</h5>
+                    <p class="text-muted mb-0 small">Ставки у књизи</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-gem" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ report.statistics.total_in_collection }}</h5>
+                    <p class="text-muted mb-0 small">Ставки у бази</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ report.statistics.matched }}</h5>
+                    <p class="text-muted mb-0 small">Упарено ставки</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--museum-danger); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ report.statistics.missing_from_collection + report.statistics.missing_from_book + report.statistics.name_differences + report.statistics.locality_differences }}</h5>
+                    <p class="text-muted mb-0 small">Неслагања</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Book Breakdown -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Распоред књиге инвентара
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">По листовима:</h6>
+                            {% for sheet, count in summary.by_sheet.items() %}
+                            <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded">
+                                <span>{{ sheet }}</span>
+                                <span class="badge bg-primary">{{ count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Посебне категорије:</h6>
+                            {% if summary.by_category %}
+                                {% for category, count in summary.by_category.items() %}
+                                <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded">
+                                    <span>{{ category }}</span>
+                                    <span class="badge bg-warning text-dark">{{ count }}</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">Нема специјалних категорија</p>
+                            {% endif %}
+
+                            <h6 class="mt-4 mb-3">Опсег инвентарних бројева:</h6>
+                            <div class="p-3 bg-info bg-opacity-10 rounded text-center">
+                                <h4 class="mb-0">{{ summary.inventory_range.min }} - {{ summary.inventory_range.max }}</h4>
+                                <small class="text-muted">{{ summary.unique_inventory_numbers }} јединствених бројева</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reconciliation Status -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clipboard-data me-2"></i>
+                        Статус упоређивања
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if report.statistics.total_in_collection == 0 %}
+                    <!-- No collection data available yet -->
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Напомена:</strong> Упоређивање са ревидираном базом података тренутно није доступно.
+                        <br>
+                        <small>Ова функционалност биће омогућена када ревидирани подаци буду доступни у минералошкој бази.</small>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6>Тренутно доступно:</h6>
+                        <ul>
+                            <li>Преглед целе књиге инвентара ({{ summary.total_items }} ставки)</li>
+                            <li>Претрага по називу, локалитету, инвентарном броју</li>
+                            <li>Филтрирање по листовима и категоријама</li>
+                            <li>Статистички преглед података</li>
+                        </ul>
+
+                        <h6 class="mt-4">Планирано за будућност:</h6>
+                        <ul>
+                            <li>Аутоматско упоређивање са ревидираном базом</li>
+                            <li>Извештаји о неслагањима</li>
+                            <li>Предлози за исправке</li>
+                            <li>Извоз извештаја у PDF/Excel формату</li>
+                        </ul>
+                    </div>
+                    {% else %}
+                    <!-- Collection data available - show discrepancies -->
+                    <div class="mb-3">
+                        <p class="text-muted small mb-1">
+                            У ревидираној бази: <strong>{{ report.statistics.total_in_collection }}</strong> јединствених инвентарних бројева,
+                            <strong>{{ report.statistics.collection_without_inventory }}</strong> записа без инвентарног броја.
+                        </p>
+                        <p class="text-muted small mb-0">
+                            Дупликати — књига: <strong>{{ report.statistics.book_duplicate_numbers }}</strong>,
+                            база: <strong>{{ report.statistics.collection_duplicate_numbers }}</strong>.
+                        </p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-danger mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">Недостаје у физичкој збирци</h6>
+                                </div>
+                                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                    {% if report.discrepancies.missing_in_collection %}
+                                        <p class="text-muted small">Ставке које су у књизи али нису пронађене у бази:</p>
+                                        <ul class="list-group">
+                                            {% for item in report.discrepancies.missing_in_collection[:20] %}
+                                            <li class="list-group-item">
+                                                <strong>Инв. #{{ item.inventory_number }}</strong>: {{ item.name or 'Без назива' }}
+                                                <br><small class="text-muted">{{ item.locality or 'Без локалитета' }} - {{ item.sheet }}</small>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% if report.discrepancies.missing_in_collection|length > 20 %}
+                                        <p class="mt-2 text-muted small">... и још {{ report.discrepancies.missing_in_collection|length - 20 }} ставки</p>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-success">✓ Нема ставки које недостају</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-warning mb-3">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0">Недостаје у књизи инвентара</h6>
+                                </div>
+                                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                    {% if report.discrepancies.missing_in_inventory_book %}
+                                        <p class="text-muted small">Ставке које су у бази али нису у књизи:</p>
+                                        <ul class="list-group">
+                                            {% for item in report.discrepancies.missing_in_inventory_book[:20] %}
+                                            <li class="list-group-item">
+                                                <strong>Инв. #{{ item.inventory_number }}</strong>: {{ item.name or 'Без назива' }}
+                                                <br><small class="text-muted">{{ item.locality or 'Без локалитета' }}</small>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% if report.discrepancies.missing_in_inventory_book|length > 20 %}
+                                        <p class="mt-2 text-muted small">... и још {{ report.discrepancies.missing_in_inventory_book|length - 20 }} ставки</p>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-success">✓ Нема ставки које недостају</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Name Mismatches -->
+                    {% if report.discrepancies.name_mismatches %}
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">Разлике у називима</h6>
+                        </div>
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            <p class="text-muted small">Ставке где се назив разликује између књиге и базе:</p>
+                            <ul class="list-group">
+                                {% for item in report.discrepancies.name_mismatches[:20] %}
+                                <li class="list-group-item">
+                                    <strong>Инв. #{{ item.inventory_number }}</strong>
+                                    <br>Књига: {{ item.book_name }}
+                                    <br>База: {{ item.collection_name }}
+                                    <br><small class="text-muted">Сличност: {{ (item.similarity * 100)|round|int }}%</small>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% if report.discrepancies.name_mismatches|length > 20 %}
+                            <p class="mt-2 text-muted small">... и још {{ report.discrepancies.name_mismatches|length - 20 }} ставки</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if report.discrepancies.locality_mismatches %}
+                    <div class="card border-secondary mt-3">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0">Разлике у локалитетима</h6>
+                        </div>
+                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                            <p class="text-muted small">Ставке где се наведени локалитет разликује:</p>
+                            <ul class="list-group">
+                                {% for item in report.discrepancies.locality_mismatches[:20] %}
+                                <li class="list-group-item">
+                                    <strong>Инв. #{{ item.inventory_number }}</strong>
+                                    <br>Књига: {{ item.book_locality or 'Без локалитета' }}
+                                    <br>База: {{ item.collection_locality or 'Без локалитета' }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% if report.discrepancies.locality_mismatches|length > 20 %}
+                            <p class="mt-2 text-muted small">... и још {{ report.discrepancies.locality_mismatches|length - 20 }} ставки</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Како користити овај алат</h6>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Преглед књиге инвентара - приказ свих ставки из физичке књиге инвентара</li>
+                        <li>Претрага - претражите по називу минерала, локалитету или инвентарном броју</li>
+                        <li>Филтрирање - издвојте ставке по листовима (Главни инвентар, Метеорити, итд.)</li>
+                        <li>Упоређивање - алат аутоматски пореди унос из књиге са ревидираном минералошком базом и истиче неслагања</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card-body ul.list-group {
+    border-radius: 0.25rem;
+}
+
+.list-group-item {
+    padding: 0.75rem;
+}
+</style>
+{% endblock %}

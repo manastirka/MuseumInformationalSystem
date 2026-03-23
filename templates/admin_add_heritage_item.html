@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Додај културно добро - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-warning text-dark">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-award me-2"></i>
+                                Додај заштићено културно добро
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Унос новог покретног културног добра под заштитом
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-light p-3 rounded">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('dashboard') }}" class="text-decoration-none">
+                            <i class="bi bi-house me-1"></i>Почетна
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin_panel') }}" class="text-decoration-none">
+                            <i class="bi bi-gear me-1"></i>Администрација
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('cultural_heritage_database') }}" class="text-decoration-none">
+                            <i class="bi bi-award me-1"></i>Културна добра
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="bi bi-plus-circle me-1"></i>Додај културно добро
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add Heritage Item Form -->
+    <form method="POST" id="addHeritageForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row">
+            <!-- Basic Information -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Основни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Name -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="name" class="form-label">
+                                    <i class="bi bi-type text-warning me-1"></i>
+                                    Назив културног добра <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                                <div class="invalid-feedback">Молимо унесите назив културног добра.</div>
+                            </div>
+                        </div>
+
+                        <!-- Registry Number -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="registry_number" class="form-label">
+                                    <i class="bi bi-card-heading text-warning me-1"></i>
+                                    Регистарски број <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="registry_number" name="registry_number"
+                                       placeholder="КД-ПМ-001/2024" required>
+                                <div class="invalid-feedback">Молимо унесите регистарски број.</div>
+                                <div class="form-text">Формат: КД-ПМ-XXX/YYYY</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="type" class="form-label">
+                                    <i class="bi bi-collection text-warning me-1"></i>
+                                    Тип <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="type" name="type" required>
+                                    <option value="">Изаберите тип...</option>
+                                    <option value="Покретно културно добро">Покретно културно добро</option>
+                                    <option value="Непокретно културно добро">Непокретно културно добро</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите тип културног добра.</div>
+                            </div>
+                        </div>
+
+                        <!-- Category and Subcategory -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="category" class="form-label">
+                                    <i class="bi bi-tag text-warning me-1"></i>
+                                    Категорија <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="">Изаберите категорију...</option>
+                                    <option value="Природњачко наслеђе">Природњачко наслеђе</option>
+                                    <option value="Уметничко-историјска дела">Уметничко-историјска дела</option>
+                                    <option value="Архивска грађа">Архивска грађа</option>
+                                    <option value="Старе и ретке књиге">Старе и ретке књиге</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите категорију.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="subcategory" class="form-label">
+                                    <i class="bi bi-tags text-warning me-1"></i>
+                                    Подкатегорија <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="subcategory" name="subcategory" required>
+                                    <option value="">Изаберите подкатегорију...</option>
+                                    <option value="Палеонтолошки узорак">Палеонтолошки узорак</option>
+                                    <option value="Минералошки узорак">Минералошки узорак</option>
+                                    <option value="Палеоботанички узорак">Палеоботанички узорак</option>
+                                    <option value="Ентомолошка збирка">Ентомолошка збирка</option>
+                                    <option value="Зоолошки узорак">Зоолошки узорак</option>
+                                    <option value="Геолошки узорак">Геолошки узорак</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите подкатегорију.</div>
+                            </div>
+                        </div>
+
+                        <!-- Significance -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="significance" class="form-label">
+                                    <i class="bi bi-star text-warning me-1"></i>
+                                    Значај <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="significance" name="significance" required>
+                                    <option value="">Изаберите значај...</option>
+                                    <option value="Културно добро">Културно добро</option>
+                                    <option value="Културно добро од великог значаја">Културно добро од великог значаја</option>
+                                    <option value="Културно добро од изузетног значаја">Културно добро од изузетног значаја</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите значај културног добра.</div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-card-text text-warning me-1"></i>
+                                    Опис <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="4" required></textarea>
+                                <div class="invalid-feedback">Молимо унесите опис културног добра.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legal and Administrative Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Правни и административни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Legal Basis -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="legal_basis" class="form-label">
+                                    <i class="bi bi-file-earmark-text text-info me-1"></i>
+                                    Правни основ заштите
+                                </label>
+                                <input type="text" class="form-control" id="legal_basis" name="legal_basis"
+                                       placeholder="Решење Министарства културе РС бр...">
+                                <div class="form-text">Број и датум решења о заштити</div>
+                            </div>
+                        </div>
+
+                        <!-- Protection Date -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="protection_date" class="form-label">
+                                    <i class="bi bi-calendar-check text-info me-1"></i>
+                                    Датум стављања под заштиту
+                                </label>
+                                <input type="date" class="form-control" id="protection_date" name="protection_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="acquisition_date" class="form-label">
+                                    <i class="bi bi-calendar-plus text-info me-1"></i>
+                                    Датум набавке/доласка
+                                </label>
+                                <input type="date" class="form-control" id="acquisition_date" name="acquisition_date">
+                            </div>
+                        </div>
+
+                        <!-- Cultural Value -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="cultural_value" class="form-label">
+                                    <i class="bi bi-gem text-info me-1"></i>
+                                    Културна вредност
+                                </label>
+                                <textarea class="form-control" id="cultural_value" name="cultural_value"
+                                          rows="2" placeholder="Научно и едукативно наслеђе..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location and Physical Properties -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-geo-alt me-2"></i>
+                            Локација и стање
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Location -->
+                        <div class="mb-3">
+                            <label for="location" class="form-label">
+                                <i class="bi bi-pin-map text-success me-1"></i>
+                                Локација <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="location" name="location" required>
+                                <option value="">Изаберите локацију...</option>
+                                <option value="Сала 1">Сала 1</option>
+                                <option value="Сала 2">Сала 2</option>
+                                <option value="Сала 3">Сала 3</option>
+                                <option value="Депо А">Депо А</option>
+                                <option value="Депо Б">Депо Б</option>
+                                <option value="Привремени депо">Привремени депо</option>
+                            </select>
+                            <div class="invalid-feedback">Молимо изаберите локацију.</div>
+                        </div>
+
+                        <!-- Condition -->
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">
+                                <i class="bi bi-heart text-success me-1"></i>
+                                Стање <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="condition" name="condition" required>
+                                <option value="">Изаберите стање...</option>
+                                <option value="Одлично">Одлично</option>
+                                <option value="Добро">Добро</option>
+                                <option value="Задовољавајуће">Задовољавајуће</option>
+                                <option value="Лоше">Лоше</option>
+                                <option value="Захтева рестаурацију">Захтева рестаурацију</option>
+                            </select>
+                            <div class="invalid-feedback">Молимо изаберите стање.</div>
+                        </div>
+
+                        <!-- Protection Status -->
+                        <div class="mb-3">
+                            <label for="protection_status" class="form-label">
+                                <i class="bi bi-shield text-success me-1"></i>
+                                Статус заштите
+                            </label>
+                            <select class="form-select" id="protection_status" name="protection_status">
+                                <option value="заштićено" selected>Заштићено</option>
+                                <option value="у поступку заштите">У поступку заштите</option>
+                                <option value="предложено за заштиту">Предложено за заштиту</option>
+                                <option value="неевидентирано">Неевидентирано</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Physical Properties -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-rulers me-2"></i>
+                            Физичке карактеристике
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Dimensions -->
+                        <div class="mb-3">
+                            <label for="dimensions" class="form-label">
+                                <i class="bi bi-aspect-ratio text-secondary me-1"></i>
+                                Димензије
+                            </label>
+                            <input type="text" class="form-control" id="dimensions" name="dimensions"
+                                   placeholder="4.5m × 2.1m × 1.8m">
+                            <div class="form-text">Формат: дужина × ширина × висина</div>
+                        </div>
+
+                        <!-- Material -->
+                        <div class="mb-3">
+                            <label for="material" class="form-label">
+                                <i class="bi bi-box text-secondary me-1"></i>
+                                Материјал
+                            </label>
+                            <input type="text" class="form-control" id="material" name="material"
+                                   placeholder="Окамењене кости">
+                        </div>
+
+                        <!-- Weight -->
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">
+                                <i class="bi bi-speedometer text-secondary me-1"></i>
+                                Тежина
+                            </label>
+                            <input type="text" class="form-control" id="weight" name="weight"
+                                   placeholder="450 kg">
+                        </div>
+
+                        <!-- Period -->
+                        <div class="mb-3">
+                            <label for="period" class="form-label">
+                                <i class="bi bi-clock-history text-secondary me-1"></i>
+                                Период/Старост
+                            </label>
+                            <input type="text" class="form-control" id="period" name="period"
+                                   placeholder="Креда (65 милиона година)">
+                        </div>
+
+                        <!-- Origin -->
+                        <div class="mb-3">
+                            <label for="origin" class="form-label">
+                                <i class="bi bi-globe text-secondary me-1"></i>
+                                Порекло
+                            </label>
+                            <input type="text" class="form-control" id="origin" name="origin"
+                                   placeholder="Монтана, САД">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-plus-circle me-2"></i>Додај културно добро
+                            </button>
+                            <a href="{{ url_for('cultural_heritage_database') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Назад
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Help Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-warning me-2"></i>
+                        Информације о уносу заштићених културних добара
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-warning">Обавезна поља:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check text-success me-1"></i> Назив</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Регистарски број</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Тип и категорија</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Значај</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Опис</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Локација и стање</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-warning">Категорије значаја:</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-star text-warning me-1"></i> Културно добро</li>
+                                <li><i class="bi bi-star-fill text-warning me-1"></i> Од великог значаја</li>
+                                <li><i class="bi bi-award text-warning me-1"></i> Од изузетног значаја</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-warning">Напомене:</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Регистарски број мора бити јединствен</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Обавезно унети правни основ</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Редовно ажурирати стање</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    const form = document.getElementById('addHeritageForm');
+
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+})();
+
+// Auto-format registry number
+document.getElementById('registry_number').addEventListener('input', function(e) {
+    let value = e.target.value.toUpperCase();
+    // Allow only specific format: КД-ПМ-###/YYYY
+    if (!value.startsWith('КД-ПМ-')) {
+        if (value.length <= 6) {
+            value = 'КД-ПМ-' + value.replace(/[^0-9]/g, '');
+        }
+    }
+    e.target.value = value;
+});
+</script>
+{% endblock %}

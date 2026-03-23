@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-graph-up me-2"></i>
+                                Аналитика система радних листи
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Статистике и извештаји о раду запослених
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('admin_timesheet_main') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Назад
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overall Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-file-earmark-text" style="font-size: 2.5rem; color: var(--museum-primary);"></i>
+                    <h3 class="mt-3 mb-1">{{ overall_summary.total_reports }}</h3>
+                    <p class="text-muted mb-0">Укупно извештаја</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-people" style="font-size: 2.5rem; color: var(--museum-success);"></i>
+                    <h3 class="mt-3 mb-1">{{ overall_summary.total_employees }}</h3>
+                    <p class="text-muted mb-0">Запослених са извештајима</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-clock" style="font-size: 2.5rem; color: var(--museum-warning);"></i>
+                    <h3 class="mt-3 mb-1">{{ "%.1f"|format(overall_summary.total_hours) }}</h3>
+                    <p class="text-muted mb-0">Укупно сати</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-calendar-month" style="font-size: 2.5rem; color: var(--museum-info);"></i>
+                    <h3 class="mt-3 mb-1">{{ overall_summary.unique_months }}</h3>
+                    <p class="text-muted mb-0">Месеци са подацима</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Распоред по категоријама
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Категорија</th>
+                                    <th class="text-end">Сати</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if overall_summary.category_breakdown %}
+                                    {% for category, data in overall_summary.category_breakdown.items() %}
+                                    <tr>
+                                        <td>{{ data.label }}</td>
+                                        <td class="text-end">{{ "%.1f"|format(data.hours) }}</td>
+                                        <td class="text-end">
+                                            <div class="d-flex align-items-center justify-content-end">
+                                                <span class="me-2">{{ "%.1f"|format(data.percentage) }}%</span>
+                                                <div class="progress" style="width: 60px; height: 8px;">
+                                                    <div class="progress-bar bg-primary" role="progressbar"
+                                                         style="width: {{ data.percentage }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-4">
+                                            Нема података за приказ
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Trends -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up-arrow me-2"></i>
+                        Месечни трендови
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if monthly_trends %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Месец</th>
+                                    <th class="text-end">Извештаја</th>
+                                    <th class="text-end">Сати</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trend in monthly_trends %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-calendar3 me-1 text-muted"></i>
+                                        {{ trend.month_name }} {{ trend.year }}
+                                    </td>
+                                    <td class="text-end">{{ trend.report_count }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-warning text-dark">{{ "%.1f"|format(trend.total_hours) }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Нема података о месечним трендовима</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Employee Analytics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge me-2"></i>
+                        Индивидуална аналитика запослених
+                    </h5>
+                    <span class="badge bg-light text-success">{{ employee_stats|length }} запослених</span>
+                </div>
+                <div class="card-body">
+                    {% if employee_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="employeeTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Запослени</th>
+                                    <th>Одељење</th>
+                                    <th class="text-center">Извештаја</th>
+                                    <th class="text-end">Рад у музеју</th>
+                                    <th class="text-end">Рад ван музеја</th>
+                                    <th class="text-end">Одмор/Одсуство</th>
+                                    <th class="text-end">Укупно сати</th>
+                                    <th class="text-center">Просек/месец</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in employee_stats %}
+                                <tr class="employee-row" style="cursor: pointer;"
+                                    onclick="showEmployeeDetails('{{ emp.name }}', '{{ emp.department }}')"
+                                    title="Кликни за детаље">
+                                    <td>
+                                        <i class="bi bi-person-circle me-2 text-primary"></i>
+                                        <strong>{{ emp.name }}</strong>
+                                        <i class="bi bi-box-arrow-up-right ms-2 text-muted" style="font-size: 0.8rem;"></i>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ emp.department }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">{{ emp.report_count }}</span>
+                                    </td>
+                                    <td class="text-end">{{ "%.1f"|format(emp.work_in_museum) }}</td>
+                                    <td class="text-end">{{ "%.1f"|format(emp.work_outside) }}</td>
+                                    <td class="text-end">{{ "%.1f"|format(emp.leave_hours) }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ "%.1f"|format(emp.total_hours) }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info">{{ "%.1f"|format(emp.avg_per_month) }} сати</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary">
+                                <tr>
+                                    <th>УКУПНО</th>
+                                    <th></th>
+                                    <th class="text-center">{{ totals.report_count }}</th>
+                                    <th class="text-end">{{ "%.1f"|format(totals.work_in_museum) }}</th>
+                                    <th class="text-end">{{ "%.1f"|format(totals.work_outside) }}</th>
+                                    <th class="text-end">{{ "%.1f"|format(totals.leave_hours) }}</th>
+                                    <th class="text-end"><strong>{{ "%.1f"|format(totals.total_hours) }}</strong></th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-people" style="font-size: 3rem;"></i>
+                        <p class="mt-2 mb-0">Нема података о запосленима</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Comparison -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building me-2"></i>
+                        Поређење по одељењима
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if department_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Одељење</th>
+                                    <th class="text-center">Запослених</th>
+                                    <th class="text-end">Укупно сати</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in department_stats %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-diagram-3 me-2 text-info"></i>
+                                        {{ dept.name or 'Није дефинисано' }}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ dept.employee_count }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ "%.1f"|format(dept.total_hours) }}</strong>
+                                        <div class="progress mt-1" style="height: 5px;">
+                                            <div class="progress-bar bg-info" role="progressbar"
+                                                 style="width: {{ dept.percentage }}%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-building" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Нема података о одељењима</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Yearly Summary -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-range me-2"></i>
+                        Годишњи преглед
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if yearly_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Година</th>
+                                    <th class="text-center">Извештаја</th>
+                                    <th class="text-center">Запослених</th>
+                                    <th class="text-end">Укупно сати</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for year in yearly_stats %}
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-calendar-event me-2 text-danger"></i>
+                                        <strong>{{ year.year }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger">{{ year.report_count }}</span>
+                                    </td>
+                                    <td class="text-center">{{ year.employee_count }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ "%.1f"|format(year.total_hours) }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-calendar-range" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Нема годишњих података</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-primary">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Извештаји радних листи
+                        </a>
+                        <a href="{{ url_for('admin_timesheet_pending') }}" class="btn btn-info">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Захтеви за одобрење
+                        </a>
+                        <a href="{{ url_for('admin_timesheet_main') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Администрација радних листи
+                        </a>
+                        <button class="btn btn-outline-success" onclick="exportAnalytics()">
+                            <i class="bi bi-download me-2"></i>
+                            Извези извештај
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Details Modal -->
+<div class="modal fade" id="employeeDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-badge me-2"></i>
+                    <span id="employeeModalName">Детаљи запосленог</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="employeeDetailsContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-success" role="status"></div>
+                        <p class="mt-2 text-muted">Учитавање података...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.employee-row:hover {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+.month-card {
+    transition: transform 0.2s;
+}
+.month-card:hover {
+    transform: translateY(-2px);
+}
+</style>
+
+<script>
+function exportAnalytics() {
+    // Create a simple CSV export
+    let csv = 'Запослени,Одељење,Извештаја,Рад у музеју,Рад ван музеја,Одмор/Одсуство,Укупно сати\n';
+
+    document.querySelectorAll('#employeeTable tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 7) {
+            const name = cells[0].textContent.trim().replace(/[\n\r]/g, ' ');
+            const dept = cells[1].textContent.trim();
+            const reports = cells[2].textContent.trim();
+            const museum = cells[3].textContent.trim();
+            const outside = cells[4].textContent.trim();
+            const leave = cells[5].textContent.trim();
+            const total = cells[6].textContent.trim();
+            csv += `"${name}","${dept}",${reports},${museum},${outside},${leave},${total}\n`;
+        }
+    });
+
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'analitika_radnih_listi.csv';
+    link.click();
+}
+
+function showEmployeeDetails(employeeName, department) {
+    const modal = new bootstrap.Modal(document.getElementById('employeeDetailsModal'));
+    document.getElementById('employeeModalName').textContent = employeeName;
+    document.getElementById('employeeDetailsContent').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-2 text-muted">Учитавање података за ${employeeName}...</p>
+        </div>
+    `;
+    modal.show();
+
+    // Fetch employee details
+    fetch(`/api/admin/timesheet/employee-analytics?name=${encodeURIComponent(employeeName)}`, {
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP грешка: ${response.status}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Сервер није вратио JSON одговор');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                renderEmployeeDetails(data, employeeName, department);
+            } else {
+                document.getElementById('employeeDetailsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Грешка: ${data.message || data.error || 'Непозната грешка'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('employeeDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Грешка при учитавању: ${error.message || error}
+                </div>
+            `;
+        });
+}
+
+function renderEmployeeDetails(data, employeeName, department) {
+    const summary = data.summary;
+    const monthly = data.monthly_breakdown;
+    const categories = data.category_breakdown;
+
+    let html = `
+        <!-- Employee Info Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <i class="bi bi-person-circle text-success" style="font-size: 3rem;"></i>
+                            </div>
+                            <div class="col">
+                                <h4 class="mb-1">${employeeName}</h4>
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-building me-1"></i>${department}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card text-center border-primary h-100">
+                    <div class="card-body py-3">
+                        <i class="bi bi-file-earmark-text text-primary" style="font-size: 1.5rem;"></i>
+                        <h4 class="mt-2 mb-0">${summary.total_reports}</h4>
+                        <small class="text-muted">Извештаја</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-success h-100">
+                    <div class="card-body py-3">
+                        <i class="bi bi-clock text-success" style="font-size: 1.5rem;"></i>
+                        <h4 class="mt-2 mb-0">${summary.total_hours.toFixed(1)}</h4>
+                        <small class="text-muted">Укупно сати</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-info h-100">
+                    <div class="card-body py-3">
+                        <i class="bi bi-bar-chart text-info" style="font-size: 1.5rem;"></i>
+                        <h4 class="mt-2 mb-0">${summary.avg_per_month.toFixed(1)}</h4>
+                        <small class="text-muted">Просек/месец</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-warning h-100">
+                    <div class="card-body py-3">
+                        <i class="bi bi-building text-warning" style="font-size: 1.5rem;"></i>
+                        <h4 class="mt-2 mb-0">${summary.work_in_museum.toFixed(1)}</h4>
+                        <small class="text-muted">Рад у музеју</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Category Breakdown -->
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Распоред по категоријама</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tbody>`;
+
+    // Category breakdown
+    const categoryLabels = {
+        'work_in_museum': 'Рад у музеју',
+        'work_outside': 'Рад ван музеја',
+        'vacation': 'Годишњи одмор',
+        'public_holiday': 'Државни празник',
+        'paid_leave': 'Плаћено одсуство',
+        'other_leave': 'Остало одсуство',
+        'sick_leave_lt30': 'Боловање < 30 дана',
+        'sick_leave_gte30': 'Боловање >= 30 дана'
+    };
+
+    for (const [key, label] of Object.entries(categoryLabels)) {
+        const hours = categories[key] || 0;
+        if (hours > 0) {
+            const pct = summary.total_hours > 0 ? (hours / summary.total_hours * 100) : 0;
+            html += `
+                <tr>
+                    <td>${label}</td>
+                    <td class="text-end">${hours.toFixed(1)} сати</td>
+                    <td class="text-end" style="width: 100px;">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: ${pct}%"></div>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+    }
+
+    html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Summary -->
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Сумарни преглед</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><i class="bi bi-building me-2 text-success"></i>Рад у музеју</td>
+                                <td class="text-end"><strong>${summary.work_in_museum.toFixed(1)} сати</strong></td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-geo-alt me-2 text-info"></i>Рад ван музеја</td>
+                                <td class="text-end"><strong>${summary.work_outside.toFixed(1)} сати</strong></td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-sun me-2 text-warning"></i>Одмори и одсуства</td>
+                                <td class="text-end"><strong>${summary.leave_hours.toFixed(1)} сати</strong></td>
+                            </tr>
+                            <tr class="table-success">
+                                <td><strong>УКУПНО</strong></td>
+                                <td class="text-end"><strong>${summary.total_hours.toFixed(1)} сати</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Breakdown -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Месечни преглед</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">`;
+
+    // Monthly breakdown
+    if (monthly && monthly.length > 0) {
+        monthly.forEach(m => {
+            html += `
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                    <div class="card month-card border h-100">
+                        <div class="card-body p-2 text-center">
+                            <small class="text-muted d-block">${m.month_name}</small>
+                            <strong>${m.year}</strong>
+                            <div class="mt-1">
+                                <span class="badge bg-success">${m.total_hours.toFixed(0)} сати</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    } else {
+        html += `<div class="col-12 text-center text-muted py-3">Нема месечних података</div>`;
+    }
+
+    html += `
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('employeeDetailsContent').innerHTML = html;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,834 @@
+{% extends "base.html" %}
+
+{% block title %}Изабери формат налепница - QR генератор{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-6">
+            <i class="bi bi-file-earmark-ruled text-success"></i> Изабери формат налепница
+        </h1>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-10 mx-auto">
+            <div class="alert alert-info">
+                <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Избор формата налепница</h5>
+                <p class="mb-0">
+                    Изаберите формат Sigma налепница за A4 папир. Сваки формат има различите димензије и број налепница по листу.
+                    Систем ће аутоматски прилагодити QR кодове изабраном формату.
+                </p>
+                {% if session.qr_generated_data %}
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong><i class="bi bi-collection me-2"></i>Збирка:</strong> {{ session.qr_generated_data.collection_info.name }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong><i class="bi bi-qr-code me-2"></i>Број QR кодова:</strong> {{ session.qr_generated_data.collection_info.count }}
+                    </div>
+                </div>
+                {% if session.qr_generated_data.fields %}
+                <div class="mt-2">
+                    <strong><i class="bi bi-sliders me-2"></i>Прилагођена поља:</strong> {{ session.qr_generated_data.fields|join(', ') }}
+                </div>
+                {% endif %}
+                {% if session.qr_generated_data.selected_boxes %}
+                <div class="mt-2">
+                    <strong><i class="bi bi-box-seam me-2"></i>Изабране кутије:</strong> {{ session.qr_generated_data.selected_boxes|join(', ') }}
+                </div>
+                {% endif %}
+                {% if session.qr_generated_data.selected_specimens %}
+                <div class="mt-2">
+                    <strong><i class="bi bi-filter-square me-2"></i>Изабрани примерци:</strong> {{ session.qr_generated_data.selected_specimens|length }} примерака
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Mode Selection -->
+    <div class="row mb-4">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-printer me-2"></i>Режим штампања</h5>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="print_mode" id="mode_regular" value="regular">
+                        <label class="btn btn-outline-primary" for="mode_regular">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            <div class="d-block">
+                                <strong>Обична штампа</strong>
+                                <br><small>Слободан распоред, 3 колоне</small>
+                            </div>
+                        </label>
+
+                        <input type="radio" class="btn-check" name="print_mode" id="mode_sticker" value="sticker" checked>
+                        <label class="btn btn-outline-success" for="mode_sticker">
+                            <i class="bi bi-sticky me-2"></i>
+                            <div class="d-block">
+                                <strong>Самолепљиве налепнице</strong>
+                                <br><small>Sigma формати за A4 папир</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sigma Label Formats -->
+    <form method="POST" action="{{ continue_url }}" id="formatForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <!-- Hidden field to always submit print mode -->
+        <input type="hidden" name="print_mode" id="hidden_print_mode" value="sticker">
+        
+        <div id="stickerFormats" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-lg-10 mx-auto">
+                    <h5 class="mb-3"><i class="bi bi-grid-3x3 me-2"></i>Sigma формати налепница (A4)</h5>
+
+                    <div class="row g-3">
+                        <!-- Format 1: 1 label per sheet (210x297mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_1" value="1" checked>
+                            <label class="label-format-card" for="format_1">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(1, 1fr); grid-template-rows: repeat(1, 1fr);">
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>1 налепница</strong>
+                                    <div class="text-muted small">210 × 297 mm</div>
+                                    <div class="text-muted small">Цео лист A4</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 2: 2 labels (210x148mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_2" value="2">
+                            <label class="label-format-card" for="format_2">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(1, 1fr); grid-template-rows: repeat(2, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>2 налепнице</strong>
+                                    <div class="text-muted small">210 × 148 mm</div>
+                                    <div class="text-muted small">1 колона × 2 реда</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 3: 4 labels (105x148mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_4" value="4">
+                            <label class="label-format-card" for="format_4">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>4 налепнице</strong>
+                                    <div class="text-muted small">105 × 148 mm</div>
+                                    <div class="text-muted small">2 колоне × 2 реда</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 4: 6 labels (105x99mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_6" value="6">
+                            <label class="label-format-card" for="format_6">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>6 налепница</strong>
+                                    <div class="text-muted small">105 × 99 mm</div>
+                                    <div class="text-muted small">2 колоне × 3 реда</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 5: 8 labels (105x74mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_8" value="8">
+                            <label class="label-format-card" for="format_8">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>8 налепница</strong>
+                                    <div class="text-muted small">105 × 74 mm</div>
+                                    <div class="text-muted small">2 колоне × 4 реда</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 6: 10 labels (105x59mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_10" value="10">
+                            <label class="label-format-card" for="format_10">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(5, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>10 налепница</strong>
+                                    <div class="text-muted small">105 × 59 mm</div>
+                                    <div class="text-muted small">2 колоне × 5 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 7: 12 labels (70x67mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_12" value="12">
+                            <label class="label-format-card" for="format_12">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>12 налепница</strong>
+                                    <div class="text-muted small">70 × 67 mm</div>
+                                    <div class="text-muted small">3 колоне × 4 реда</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 8: 14 labels (105x42mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_14" value="14">
+                            <label class="label-format-card" for="format_14">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(7, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>14 налепница</strong>
+                                    <div class="text-muted small">105 × 42 mm</div>
+                                    <div class="text-muted small">2 колоне × 7 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 9: 18 labels (70x47mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_18" value="18">
+                            <label class="label-format-card" for="format_18">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(6, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>18 налепница</strong>
+                                    <div class="text-muted small">70 × 47 mm</div>
+                                    <div class="text-muted small">3 колоне × 6 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 10: 21 labels (70x42mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_21" value="21">
+                            <label class="label-format-card" for="format_21">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(7, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>21 налепница</strong>
+                                    <div class="text-muted small">70 × 42 mm</div>
+                                    <div class="text-muted small">3 колоне × 7 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 11: 24 labels (70x37mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_24" value="24">
+                            <label class="label-format-card" for="format_24">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(8, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>24 налепнице</strong>
+                                    <div class="text-muted small">70 × 37 mm</div>
+                                    <div class="text-muted small">3 колоне × 8 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 12: 27 labels (70x32mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_27" value="27">
+                            <label class="label-format-card" for="format_27">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(9, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>27 налепница</strong>
+                                    <div class="text-muted small">70 × 32 mm</div>
+                                    <div class="text-muted small">3 колоне × 9 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 13: 32 labels (52x37mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_32" value="32">
+                            <label class="label-format-card" for="format_32">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(8, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>32 налепнице</strong>
+                                    <div class="text-muted small">52 × 37 mm</div>
+                                    <div class="text-muted small">4 колоне × 8 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 14: 40 labels (52x30mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_40" value="40">
+                            <label class="label-format-card" for="format_40">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(10, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>40 налепница</strong>
+                                    <div class="text-muted small">52 × 30 mm</div>
+                                    <div class="text-muted small">4 колоне × 10 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 15: 44 labels (48x25mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_44" value="44">
+                            <label class="label-format-card" for="format_44">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(11, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>44 налепнице</strong>
+                                    <div class="text-muted small">48 × 25 mm</div>
+                                    <div class="text-muted small">4 колоне × 11 редова</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Format 16: 65 labels (38x21mm) -->
+                        <div class="col-md-6 col-lg-4">
+                            <input type="radio" class="btn-check" name="label_format" id="format_65" value="65">
+                            <label class="label-format-card" for="format_65">
+                                <div class="format-preview">
+                                    <div class="preview-grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(13, 1fr);">
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                        <div class="preview-label"></div>
+                                    </div>
+                                </div>
+                                <div class="format-details">
+                                    <strong>65 налепница</strong>
+                                    <div class="text-muted small">38 × 21 mm</div>
+                                    <div class="text-muted small">5 колона × 13 редова</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="row mt-4">
+                <div class="col-lg-10 mx-auto">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Генериши QR кодове са изабраним форматом
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regular Print Instructions -->
+        <div id="regularPrintInfo" class="row mt-4">
+        <div class="col-lg-10 mx-auto">
+            <div class="alert alert-light">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Обична штампа:</strong> QR кодови ће бити распоређени у 3 колоне на A4 формату.
+                Можете их исећи и користити по потреби.
+            </div>
+            <div class="d-grid">
+                <button type="button" class="btn btn-primary btn-lg" onclick="submitRegularMode()">
+                    <i class="bi bi-arrow-right me-2"></i>
+                    Настави са обичном штампом
+                </button>
+            </div>
+        </div>
+    </div>
+    </form>
+</div>
+
+<style>
+.label-format-card {
+    display: block;
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    padding: 15px;
+    transition: all 0.3s ease;
+    background: white;
+    height: 100%;
+}
+
+.label-format-card:hover {
+    border-color: #28a745;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+    transform: translateY(-3px);
+}
+
+.btn-check:checked + .label-format-card {
+    border-color: #28a745;
+    background: #d4edda;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.format-preview {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 12px;
+    aspect-ratio: 210/297; /* A4 ratio */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-grid {
+    display: grid;
+    gap: 2px;
+    width: 90%;
+    height: 90%;
+}
+
+.preview-label {
+    background: #28a745;
+    border: 1px solid #fff;
+    border-radius: 2px;
+    opacity: 0.7;
+}
+
+.format-details {
+    text-align: center;
+}
+
+.format-details strong {
+    font-size: 1.1rem;
+    color: #212529;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.btn-check:checked + .label-format-card .preview-label {
+    opacity: 1;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const printModeRadios = document.querySelectorAll('input[name="print_mode"]');
+    const stickerFormats = document.getElementById('stickerFormats');
+    const regularPrintInfo = document.getElementById('regularPrintInfo');
+
+    function updateVisibility() {
+        const selectedMode = document.querySelector('input[name="print_mode"]:checked').value;
+        const hiddenPrintMode = document.getElementById('hidden_print_mode');
+
+        // Update hidden field with selected mode
+        hiddenPrintMode.value = selectedMode;
+
+        if (selectedMode === 'sticker') {
+            stickerFormats.style.display = 'block';
+            regularPrintInfo.style.display = 'none';
+        } else {
+            stickerFormats.style.display = 'none';
+            regularPrintInfo.style.display = 'block';
+        }
+    }
+    
+    // Auto-select sticker mode when a Sigma format is clicked
+    const formatRadios = document.querySelectorAll('input[name="label_format"]');
+    const stickerModeRadio = document.getElementById('mode_sticker');
+    
+    formatRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Automatically switch to sticker mode when a Sigma format is selected
+            stickerModeRadio.checked = true;
+            updateVisibility();
+        });
+    });
+
+    printModeRadios.forEach(radio => {
+        radio.addEventListener('change', updateVisibility);
+    });
+
+    // Initialize
+    updateVisibility();
+});
+
+// Function to submit form with regular mode
+function submitRegularMode() {
+    const hiddenPrintMode = document.getElementById('hidden_print_mode');
+    const formatForm = document.getElementById('formatForm');
+    
+    // Set print mode to regular
+    hiddenPrintMode.value = 'regular';
+    
+    // Submit the form
+    formatForm.submit();
+}
+</script>
+{% endblock %}

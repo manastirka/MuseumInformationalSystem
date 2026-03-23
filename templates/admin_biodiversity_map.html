@@ -1,0 +1,841 @@
+{% extends "base.html" %}
+
+{% block title %}Карта биодиверзитета Србије - Администрација{% endblock %}
+
+{% block content %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<!-- Leaflet MarkerCluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<!-- Leaflet MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<style>
+    #map-container {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 280px);
+        min-height: 500px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #dee2e6;
+    }
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+    .fullscreen #map-container {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        border-radius: 0;
+        border: none;
+        min-height: unset;
+    }
+    .fullscreen .map-sidebar {
+        z-index: 10000;
+    }
+    .fullscreen .map-info-bar {
+        z-index: 10000;
+    }
+    .fullscreen .map-legend {
+        z-index: 10000;
+    }
+
+    /* Collection selector pills */
+    .collection-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 0;
+    }
+    .collection-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 1.5px solid #dee2e6;
+        background: #fff;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .collection-pill:hover {
+        border-color: #2e7d32;
+        color: #2e7d32;
+        background: #f1f8f1;
+    }
+    .collection-pill.active {
+        border-color: #2e7d32;
+        background: #2e7d32;
+        color: #fff;
+    }
+
+    /* Sidebar */
+    .map-sidebar {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        width: 260px;
+        max-height: calc(100% - 60px);
+        overflow-y: auto;
+    }
+    .map-sidebar h6 {
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #2e7d32;
+    }
+    .map-sidebar label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+        display: block;
+    }
+    .map-sidebar select {
+        font-size: 0.78rem;
+        padding: 4px 8px;
+    }
+    .map-sidebar .btn-sm {
+        font-size: 0.78rem;
+        padding: 3px 10px;
+    }
+    .sidebar-stats {
+        font-size: 0.75rem;
+        color: #555;
+    }
+    .sidebar-stats .stat-value {
+        font-weight: 700;
+        color: #2e7d32;
+    }
+
+    /* Bottom info bar */
+    .map-info-bar {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.92);
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 0.78rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .map-info-bar span {
+        margin-right: 14px;
+    }
+    .map-info-bar .info-label {
+        color: #888;
+    }
+    .map-info-bar .info-value {
+        font-weight: 700;
+        color: #333;
+    }
+
+    /* Legend */
+    .map-legend {
+        position: absolute;
+        bottom: 50px;
+        left: 10px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.92);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.72rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .map-legend h6 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+    }
+    .legend-circle {
+        display: inline-block;
+        border-radius: 50%;
+        margin-right: 6px;
+        opacity: 0.8;
+        border: 1px solid rgba(0,0,0,0.3);
+    }
+
+    /* Popup styling */
+    .bio-popup .leaflet-popup-content {
+        min-width: 220px;
+    }
+    .bio-popup h6 {
+        margin: 0 0 6px 0;
+        font-size: 0.9rem;
+        color: #2e7d32;
+    }
+    .popup-badge {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
+    .popup-badge-records {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    .popup-badge-species {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    .popup-badge-family {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    .popup-badge-status {
+        background: #fce4ec;
+        color: #c62828;
+    }
+    .popup-coords {
+        font-size: 0.72rem;
+        color: #888;
+        margin-bottom: 4px;
+    }
+    .popup-years {
+        font-size: 0.75rem;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    .popup-species-list {
+        font-size: 0.75rem;
+        margin: 0;
+        padding-left: 16px;
+    }
+    .popup-species-list li {
+        margin-bottom: 1px;
+    }
+    .popup-species-count {
+        color: #888;
+        font-size: 0.7rem;
+    }
+    .popup-detail {
+        font-size: 0.75rem;
+        color: #555;
+        margin-bottom: 2px;
+    }
+    .popup-detail strong {
+        color: #333;
+    }
+
+    /* Loading overlay */
+    .map-loading {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.8);
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        color: #555;
+    }
+</style>
+
+<!-- Header card -->
+<div class="card mb-2" style="border-left: 4px solid #2e7d32;">
+    <div class="card-body py-2 d-flex align-items-center justify-content-between">
+        <div>
+            <h5 class="mb-0" style="color: #2e7d32;">
+                <i class="bi bi-globe-americas me-2"></i>Карта биодиверзитета Србије
+            </h5>
+            <small class="text-muted" id="headerSubtitle">Локалитети прстеновања птица</small>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary" id="btnFullscreen" title="Цео екран">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Collection selector pills -->
+<div class="collection-pills mb-2" id="collectionPills">
+    <div class="collection-pill active" data-type="bird_ringing">
+        <i class="bi bi-circle"></i> Прстеновање птица
+    </div>
+    <div class="collection-pill" data-type="botany">
+        <i class="bi bi-flower1"></i> Ботаничка збирка
+    </div>
+    <div class="collection-pill" data-type="ornithology">
+        <i class="bi bi-feather"></i> Орнитолошка збирка
+    </div>
+    <div class="collection-pill" data-type="ichthyology">
+        <i class="bi bi-water"></i> Ихтиолошка збирка
+    </div>
+    <div class="collection-pill" data-type="herpetology">
+        <i class="bi bi-bug"></i> Херпетолошка збирка
+    </div>
+    <div class="collection-pill" data-type="entomology">
+        <i class="bi bi-bug-fill"></i> Ентомолошка збирка
+    </div>
+    <div class="collection-pill" data-type="mycology">
+        <i class="bi bi-virus"></i> Миколошка збирка
+    </div>
+</div>
+
+<!-- Map container -->
+<div id="map-wrapper">
+    <div id="map-container">
+        <div id="map"></div>
+
+        <!-- Loading overlay -->
+        <div class="map-loading" id="mapLoading">
+            <div class="text-center">
+                <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                Учитавање локалитета...
+            </div>
+        </div>
+
+        <!-- Right sidebar with filters -->
+        <div class="map-sidebar" id="mapSidebar">
+            <!-- Bird ringing filters (shown only for bird_ringing) -->
+            <div id="birdRingingFilters">
+                <h6><i class="bi bi-funnel me-1"></i>Филтери</h6>
+
+                <label for="filterSpecies">Врста</label>
+                <select class="form-select form-select-sm mb-2" id="filterSpecies">
+                    <option value="">Све врсте</option>
+                </select>
+
+                <label for="filterYear">Година</label>
+                <select class="form-select form-select-sm mb-2" id="filterYear">
+                    <option value="">Све године</option>
+                </select>
+
+                <label for="filterLocation">Локалитет</label>
+                <select class="form-select form-select-sm mb-2" id="filterLocation">
+                    <option value="">Сви локалитети</option>
+                </select>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-sm btn-success flex-fill" id="btnApplyFilters">
+                        <i class="bi bi-check-lg me-1"></i>Примени
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary flex-fill" id="btnResetFilters">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Ресет
+                    </button>
+                </div>
+
+                <hr class="my-2">
+            </div>
+
+            <!-- Collection info (shown for non-bird-ringing collections) -->
+            <div id="collectionInfo" style="display:none;">
+                <h6><i class="bi bi-info-circle me-1"></i>Збирка</h6>
+                <div class="sidebar-stats mb-2">
+                    <div>Примерака на карти: <span class="stat-value" id="statCollectionCount">-</span></div>
+                    <div>Јединствених врста: <span class="stat-value" id="statCollectionSpecies">-</span></div>
+                    <div>Фамилија: <span class="stat-value" id="statCollectionFamilies">-</span></div>
+                </div>
+                <hr class="my-2">
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="toggleCluster" checked>
+                <label class="form-check-label" for="toggleCluster" style="font-size:0.78rem;">
+                    Груписање маркера
+                </label>
+            </div>
+
+            <hr class="my-2">
+
+            <h6><i class="bi bi-bar-chart me-1"></i>Статистика</h6>
+            <div class="sidebar-stats">
+                <div>Укупно записа: <span class="stat-value" id="statRecords">-</span></div>
+                <div>Јединствених врста: <span class="stat-value" id="statSpecies">-</span></div>
+                <div>Локалитета: <span class="stat-value" id="statLocations">-</span></div>
+                <div class="geocoded-stat-row" style="display:none;">Без GPS (приближно): <span class="stat-value" style="color:#e65100;" id="statGeocoded">0</span></div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="map-legend" id="mapLegend">
+            <!-- Populated dynamically -->
+        </div>
+
+        <!-- Bottom info bar -->
+        <div class="map-info-bar" id="mapInfoBar">
+            <span><span class="info-label">Локалитета:</span> <span class="info-value" id="infoLocalities">0</span></span>
+            <span><span class="info-label">Записа:</span> <span class="info-value" id="infoRecords">0</span></span>
+            <span><span class="info-label">Врста:</span> <span class="info-value" id="infoSpecies">0</span></span>
+            <span><span class="info-label">Зум:</span> <span class="info-value" id="infoZoom">7</span></span>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ---- Collection config ----
+    var COLLECTIONS = {
+        bird_ringing: { name: 'Прстеновање птица', color: '#2196F3', icon: 'bi-circle' },
+        botany:       { name: 'Ботаничка збирка',  color: '#4CAF50', icon: 'bi-flower1' },
+        ornithology:  { name: 'Орнитолошка збирка', color: '#03A9F4', icon: 'bi-feather' },
+        ichthyology:  { name: 'Ихтиолошка збирка',  color: '#009688', icon: 'bi-water' },
+        herpetology:  { name: 'Херпетолошка збирка', color: '#795548', icon: 'bi-bug' },
+        entomology:   { name: 'Ентомолошка збирка',  color: '#FF9800', icon: 'bi-bug-fill' },
+        mycology:     { name: 'Миколошка збирка',    color: '#9C27B0', icon: 'bi-virus' }
+    };
+
+    var activeCollection = 'bird_ringing';
+
+    // ---- Map init ----
+    var map = L.map('map', {
+        center: [44.17, 19.25],
+        zoom: 7,
+        zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    map.on('zoomend', function() {
+        document.getElementById('infoZoom').textContent = map.getZoom();
+    });
+
+    // ---- Marker cluster group ----
+    var clusterGroup = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        iconCreateFunction: function(cluster) {
+            var count = cluster.getChildCount();
+            var size = 'small';
+            var dim = 30;
+            if (count > 100) { size = 'large'; dim = 50; }
+            else if (count > 20) { size = 'medium'; dim = 40; }
+            return L.divIcon({
+                html: '<div><span>' + count + '</span></div>',
+                className: 'marker-cluster marker-cluster-' + size,
+                iconSize: L.point(dim, dim)
+            });
+        }
+    });
+
+    var directLayer = L.layerGroup();
+    var useCluster = true;
+    var currentData = [];
+
+    // ---- Helpers ----
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ---- Bird ringing marker style (by record count) ----
+    function getBirdMarkerStyle(recordCount) {
+        if (recordCount >= 100) return { color: '#F44336', radius: 11, fillOpacity: 0.7 };
+        if (recordCount >= 50)  return { color: '#FF9800', radius: 9, fillOpacity: 0.7 };
+        if (recordCount >= 20)  return { color: '#FFC107', radius: 8, fillOpacity: 0.7 };
+        if (recordCount >= 10)  return { color: '#4CAF50', radius: 7, fillOpacity: 0.7 };
+        return { color: '#2196F3', radius: 5, fillOpacity: 0.7 };
+    }
+
+    // ---- Collection marker style (single color per collection) ----
+    function getCollectionMarkerStyle(collectionType) {
+        var cfg = COLLECTIONS[collectionType] || COLLECTIONS.botany;
+        return { color: cfg.color, radius: 7, fillOpacity: 0.75 };
+    }
+
+    // ---- Bird ringing popup ----
+    function buildBirdPopup(loc) {
+        var html = '<div class="bio-popup-inner">';
+        html += '<h6>' + escapeHtml(loc.location) + '</h6>';
+        if (loc.geocoded) {
+            html += '<div style="font-size:0.72rem;color:#e65100;margin-bottom:4px;"><i class="bi bi-exclamation-triangle me-1"></i>Приближна позиција (без GPS података)</div>';
+        }
+        html += '<div class="popup-coords">' + loc.latitude.toFixed(4) + ', ' + loc.longitude.toFixed(4) + '</div>';
+        html += '<div class="mb-1">';
+        html += '<span class="popup-badge popup-badge-records">' + loc.record_count.toLocaleString() + ' записа</span>';
+        html += '<span class="popup-badge popup-badge-species">' + loc.species_count + ' врста</span>';
+        html += '</div>';
+        if (loc.first_year && loc.last_year) {
+            html += '<div class="popup-years"><i class="bi bi-calendar-range me-1"></i>' + loc.first_year + ' – ' + loc.last_year + '</div>';
+        }
+        if (loc.top_species && loc.top_species.length > 0) {
+            html += '<div style="font-size:0.75rem;font-weight:600;margin-bottom:2px;">Најчешће врсте:</div>';
+            html += '<ol class="popup-species-list">';
+            loc.top_species.forEach(function(sp) {
+                html += '<li>' + escapeHtml(sp.species) + ' <span class="popup-species-count">(' + sp.count + ')</span></li>';
+            });
+            html += '</ol>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // ---- Collection specimen popup ----
+    function buildCollectionPopup(spec) {
+        var html = '<div class="bio-popup-inner">';
+        html += '<h6>' + escapeHtml(spec.scientific_name) + '</h6>';
+        if (spec.common_name_sr) {
+            html += '<div style="font-size:0.82rem;margin-bottom:4px;color:#555;">' + escapeHtml(spec.common_name_sr) + '</div>';
+        }
+        html += '<div class="popup-coords">' + Number(spec.latitude).toFixed(4) + ', ' + Number(spec.longitude).toFixed(4) + '</div>';
+        html += '<div class="mb-1">';
+        if (spec.family) {
+            html += '<span class="popup-badge popup-badge-family">' + escapeHtml(spec.family) + '</span>';
+        }
+        if (spec.conservation_status) {
+            html += '<span class="popup-badge popup-badge-status">' + escapeHtml(spec.conservation_status) + '</span>';
+        }
+        html += '</div>';
+        if (spec.location) {
+            html += '<div class="popup-detail"><strong>Локалитет:</strong> ' + escapeHtml(spec.location) + '</div>';
+        }
+        if (spec.collector) {
+            html += '<div class="popup-detail"><strong>Сакупљач:</strong> ' + escapeHtml(spec.collector) + '</div>';
+        }
+        if (spec.date_collected) {
+            html += '<div class="popup-detail"><strong>Датум:</strong> ' + escapeHtml(spec.date_collected) + '</div>';
+        }
+        if (spec.catalog_number) {
+            html += '<div class="popup-detail"><strong>Каталог:</strong> ' + escapeHtml(spec.catalog_number) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // ---- Render bird ringing markers ----
+    function renderBirdMarkers(data) {
+        clusterGroup.clearLayers();
+        directLayer.clearLayers();
+
+        var totalRecords = 0;
+        var geocodedCount = 0;
+        var speciesSet = new Set();
+
+        data.forEach(function(loc) {
+            if (!loc.latitude || !loc.longitude) return;
+            var isGeocoded = !!loc.geocoded;
+            var style = getBirdMarkerStyle(loc.record_count);
+            var marker = L.circleMarker([loc.latitude, loc.longitude], {
+                radius: style.radius,
+                fillColor: isGeocoded ? 'transparent' : style.color,
+                color: isGeocoded ? style.color : '#333',
+                weight: isGeocoded ? 2.5 : 1,
+                opacity: isGeocoded ? 0.9 : 0.8,
+                fillOpacity: isGeocoded ? 0.15 : style.fillOpacity,
+                dashArray: isGeocoded ? '4 3' : null
+            });
+            marker.bindPopup(buildBirdPopup(loc), { maxWidth: 280, className: 'bio-popup' });
+            clusterGroup.addLayer(marker);
+            directLayer.addLayer(marker);
+
+            totalRecords += loc.record_count;
+            if (isGeocoded) geocodedCount++;
+            if (loc.top_species) {
+                loc.top_species.forEach(function(sp) { speciesSet.add(sp.species); });
+            }
+        });
+
+        showActiveLayer();
+        updateInfoBar(data.length, totalRecords, speciesSet.size);
+
+        // Show geocoded count in stats if any
+        var geocodedInfo = document.getElementById('statGeocoded');
+        if (geocodedInfo) {
+            geocodedInfo.textContent = geocodedCount.toLocaleString();
+            geocodedInfo.closest('.geocoded-stat-row').style.display = geocodedCount > 0 ? '' : 'none';
+        }
+    }
+
+    // ---- Render collection markers ----
+    function renderCollectionMarkers(data, collectionType) {
+        clusterGroup.clearLayers();
+        directLayer.clearLayers();
+
+        var style = getCollectionMarkerStyle(collectionType);
+        var speciesSet = new Set();
+        var familySet = new Set();
+
+        data.forEach(function(spec) {
+            if (!spec.latitude || !spec.longitude) return;
+            var marker = L.circleMarker([spec.latitude, spec.longitude], {
+                radius: style.radius,
+                fillColor: style.color,
+                color: '#333',
+                weight: 1,
+                opacity: 0.8,
+                fillOpacity: style.fillOpacity
+            });
+            marker.bindPopup(buildCollectionPopup(spec), { maxWidth: 280, className: 'bio-popup' });
+            clusterGroup.addLayer(marker);
+            directLayer.addLayer(marker);
+
+            if (spec.scientific_name) speciesSet.add(spec.scientific_name);
+            if (spec.family) familySet.add(spec.family);
+        });
+
+        showActiveLayer();
+        updateInfoBar(data.length, data.length, speciesSet.size);
+
+        // Update collection sidebar stats
+        document.getElementById('statCollectionCount').textContent = data.length.toLocaleString();
+        document.getElementById('statCollectionSpecies').textContent = speciesSet.size.toLocaleString();
+        document.getElementById('statCollectionFamilies').textContent = familySet.size.toLocaleString();
+    }
+
+    function showActiveLayer() {
+        map.removeLayer(clusterGroup);
+        map.removeLayer(directLayer);
+        if (useCluster) {
+            map.addLayer(clusterGroup);
+        } else {
+            map.addLayer(directLayer);
+        }
+    }
+
+    function updateInfoBar(localities, records, species) {
+        document.getElementById('infoLocalities').textContent = localities.toLocaleString();
+        document.getElementById('infoRecords').textContent = records.toLocaleString();
+        document.getElementById('infoSpecies').textContent = species.toLocaleString();
+    }
+
+    // ---- Update legend ----
+    function updateLegend(collectionType) {
+        var legend = document.getElementById('mapLegend');
+        if (collectionType === 'bird_ringing') {
+            legend.innerHTML =
+                '<h6>Легенда</h6>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:10px;height:10px;background:#2196F3;"></span> 1 – 10 записа</div>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:13px;height:13px;background:#4CAF50;"></span> 10 – 20 записа</div>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:16px;height:16px;background:#FFC107;"></span> 20 – 50 записа</div>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:19px;height:19px;background:#FF9800;"></span> 50 – 100 записа</div>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:22px;height:22px;background:#F44336;"></span> 100+ записа</div>' +
+                '<hr style="margin:4px 0;">' +
+                '<div class="legend-item"><span class="legend-circle" style="width:12px;height:12px;background:transparent;border:2px dashed #2196F3;"></span> Без GPS (приближно)</div>';
+        } else {
+            var cfg = COLLECTIONS[collectionType] || COLLECTIONS.botany;
+            legend.innerHTML =
+                '<h6>Легенда</h6>' +
+                '<div class="legend-item"><span class="legend-circle" style="width:12px;height:12px;background:' + cfg.color + ';"></span> ' + escapeHtml(cfg.name) + '</div>';
+        }
+    }
+
+    // ---- Update sidebar visibility ----
+    function updateSidebar(collectionType) {
+        var birdFilters = document.getElementById('birdRingingFilters');
+        var collectionInfo = document.getElementById('collectionInfo');
+        if (collectionType === 'bird_ringing') {
+            birdFilters.style.display = '';
+            collectionInfo.style.display = 'none';
+        } else {
+            birdFilters.style.display = 'none';
+            collectionInfo.style.display = '';
+        }
+    }
+
+    // ---- Load bird ringing data ----
+    function loadBirdRinging(params) {
+        var loading = document.getElementById('mapLoading');
+        loading.style.display = 'flex';
+
+        var url = '/api/map/bird-ringing-localities';
+        var qs = new URLSearchParams();
+        if (params && params.species) qs.set('species', params.species);
+        if (params && params.year) qs.set('year', params.year);
+        if (params && params.location) qs.set('location', params.location);
+        var qsStr = qs.toString();
+        if (qsStr) url += '?' + qsStr;
+
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(resp) {
+                loading.style.display = 'none';
+                if (resp.success) {
+                    currentData = resp.data;
+                    renderBirdMarkers(currentData);
+                } else {
+                    console.error('Failed to load bird ringing localities:', resp.message);
+                }
+            })
+            .catch(function(err) {
+                loading.style.display = 'none';
+                console.error('Error fetching bird ringing localities:', err);
+            });
+    }
+
+    // ---- Load collection data ----
+    function loadCollectionLocalities(collectionType) {
+        var loading = document.getElementById('mapLoading');
+        loading.style.display = 'flex';
+
+        fetch('/api/map/collection-localities?type=' + encodeURIComponent(collectionType))
+            .then(function(r) { return r.json(); })
+            .then(function(resp) {
+                loading.style.display = 'none';
+                if (resp.success) {
+                    currentData = resp.data;
+                    renderCollectionMarkers(currentData, collectionType);
+                } else {
+                    console.error('Failed to load collection localities:', resp.message);
+                }
+            })
+            .catch(function(err) {
+                loading.style.display = 'none';
+                console.error('Error fetching collection localities:', err);
+            });
+    }
+
+    // ---- Load bird ringing filter options ----
+    function loadFilters() {
+        fetch('/api/map/bird-ringing-filters')
+            .then(function(r) { return r.json(); })
+            .then(function(resp) {
+                if (!resp.success) return;
+
+                var speciesSelect = document.getElementById('filterSpecies');
+                resp.species.forEach(function(sp) {
+                    var opt = document.createElement('option');
+                    opt.value = sp;
+                    opt.textContent = sp;
+                    speciesSelect.appendChild(opt);
+                });
+
+                var yearSelect = document.getElementById('filterYear');
+                resp.years.forEach(function(yr) {
+                    var opt = document.createElement('option');
+                    opt.value = yr;
+                    opt.textContent = yr;
+                    yearSelect.appendChild(opt);
+                });
+
+                var locationSelect = document.getElementById('filterLocation');
+                resp.locations.forEach(function(loc) {
+                    var opt = document.createElement('option');
+                    opt.value = loc;
+                    opt.textContent = loc;
+                    locationSelect.appendChild(opt);
+                });
+
+                if (resp.stats) {
+                    document.getElementById('statRecords').textContent = (resp.stats.total_records || 0).toLocaleString();
+                    document.getElementById('statSpecies').textContent = (resp.stats.unique_species || 0).toLocaleString();
+                    document.getElementById('statLocations').textContent = (resp.stats.unique_locations || 0).toLocaleString();
+                }
+            })
+            .catch(function(err) {
+                console.error('Error loading filters:', err);
+            });
+    }
+
+    // ---- Switch active collection ----
+    function switchCollection(collectionType) {
+        if (collectionType === activeCollection) return;
+        activeCollection = collectionType;
+
+        // Update pill states
+        document.querySelectorAll('.collection-pill').forEach(function(pill) {
+            pill.classList.toggle('active', pill.getAttribute('data-type') === collectionType);
+        });
+
+        // Update header subtitle
+        var cfg = COLLECTIONS[collectionType];
+        document.getElementById('headerSubtitle').textContent =
+            collectionType === 'bird_ringing' ? 'Локалитети прстеновања птица' : cfg.name;
+
+        // Update sidebar, legend
+        updateSidebar(collectionType);
+        updateLegend(collectionType);
+
+        // Load data
+        if (collectionType === 'bird_ringing') {
+            loadBirdRinging();
+        } else {
+            loadCollectionLocalities(collectionType);
+        }
+    }
+
+    // ---- Event handlers ----
+    document.querySelectorAll('.collection-pill').forEach(function(pill) {
+        pill.addEventListener('click', function() {
+            switchCollection(this.getAttribute('data-type'));
+        });
+    });
+
+    document.getElementById('btnApplyFilters').addEventListener('click', function() {
+        loadBirdRinging({
+            species: document.getElementById('filterSpecies').value,
+            year: document.getElementById('filterYear').value,
+            location: document.getElementById('filterLocation').value
+        });
+    });
+
+    document.getElementById('btnResetFilters').addEventListener('click', function() {
+        document.getElementById('filterSpecies').value = '';
+        document.getElementById('filterYear').value = '';
+        document.getElementById('filterLocation').value = '';
+        loadBirdRinging();
+    });
+
+    document.getElementById('toggleCluster').addEventListener('change', function() {
+        useCluster = this.checked;
+        showActiveLayer();
+    });
+
+    document.getElementById('btnFullscreen').addEventListener('click', function() {
+        var wrapper = document.getElementById('map-wrapper');
+        wrapper.classList.toggle('fullscreen');
+        var icon = this.querySelector('i');
+        if (wrapper.classList.contains('fullscreen')) {
+            icon.className = 'bi bi-fullscreen-exit';
+        } else {
+            icon.className = 'bi bi-arrows-fullscreen';
+        }
+        setTimeout(function() { map.invalidateSize(); }, 200);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var wrapper = document.getElementById('map-wrapper');
+            if (wrapper.classList.contains('fullscreen')) {
+                wrapper.classList.remove('fullscreen');
+                document.getElementById('btnFullscreen').querySelector('i').className = 'bi bi-arrows-fullscreen';
+                setTimeout(function() { map.invalidateSize(); }, 200);
+            }
+        }
+    });
+
+    // ---- Init ----
+    updateLegend('bird_ringing');
+    updateSidebar('bird_ringing');
+    loadFilters();
+    loadBirdRinging();
+
+})();
+</script>
+{% endblock %}

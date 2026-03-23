@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Пројектна документација{% endblock %}
+
+{% block content %}
+<style>
+    .docs-shell {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+    .docs-sidebar,
+    .docs-reader {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+    }
+    .docs-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .docs-sidebar {
+        padding: 1rem;
+        position: sticky;
+        top: 92px;
+    }
+    .docs-sidebar h5 {
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #173b2a;
+    }
+    .doc-nav-item {
+        display: block;
+        padding: 0.95rem 1rem;
+        border-radius: 14px;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid rgba(26, 71, 42, 0.08);
+        background: #fff;
+        margin-bottom: 0.75rem;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .doc-nav-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(24, 43, 29, 0.08);
+        border-color: rgba(26, 71, 42, 0.18);
+        color: inherit;
+    }
+    .doc-nav-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+    }
+    .doc-nav-meta {
+        font-size: 0.8rem;
+        color: #647067;
+    }
+    .docs-reader {
+        padding: 1.25rem;
+    }
+    .doc-panel {
+        border: 1px solid rgba(26, 71, 42, 0.1);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+        background: #fff;
+    }
+    .doc-panel-header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid rgba(26, 71, 42, 0.08);
+        background: linear-gradient(180deg, rgba(249,248,245,1), rgba(242,239,232,1));
+    }
+    .doc-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 700;
+        color: #173b2a;
+        margin-bottom: 0.3rem;
+    }
+    .doc-panel-body {
+        padding: 1rem 1.2rem 1.2rem;
+    }
+    .doc-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.76rem;
+        padding: 0.28rem 0.65rem;
+        border-radius: 999px;
+        color: #fff;
+        font-weight: 700;
+    }
+    .doc-badge.docx { background: #1565c0; }
+    .doc-badge.rtf { background: #7b1fa2; }
+    .doc-badge.pdf { background: #c62828; }
+    .doc-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        margin-top: 0.8rem;
+    }
+    .doc-preview-text {
+        white-space: pre-wrap;
+        font-size: 0.95rem;
+        line-height: 1.72;
+        color: #2e342f;
+        background: linear-gradient(180deg, #fff, #f9f8f5);
+        border: 1px solid rgba(26, 71, 42, 0.08);
+        border-radius: 14px;
+        padding: 1.25rem;
+        max-height: 780px;
+        overflow: auto;
+    }
+    .doc-preview-frame {
+        width: 100%;
+        height: 780px;
+        border: 1px solid rgba(26, 71, 42, 0.08);
+        border-radius: 14px;
+        background: #f5f5f5;
+    }
+    .doc-missing {
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        background: #fff3cd;
+        color: #664d03;
+    }
+    @media (max-width: 991px) {
+        .docs-shell {
+            grid-template-columns: 1fr;
+        }
+        .docs-sidebar {
+            position: static;
+        }
+        .doc-preview-frame {
+            height: 560px;
+        }
+    }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <div class="docs-header">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="h3 mb-2"><i class="bi bi-journal-richtext me-2"></i>Пројектна документација</h1>
+                <p class="mb-0" style="opacity:0.88;">
+                    Преглед документације нове зграде Природњачког музеја директно унутар система.
+                </p>
+            </div>
+            <a class="btn btn-light" href="{{ url_for('admin_projekti') }}">
+                <i class="bi bi-building me-1"></i>Назад на пројекат
+            </a>
+        </div>
+    </div>
+
+    <div class="docs-shell">
+        <aside class="docs-sidebar">
+            <h5><i class="bi bi-folder2-open me-2"></i>Документи</h5>
+            {% for doc in documents %}
+            <a class="doc-nav-item" href="#doc-{{ loop.index }}">
+                <div class="doc-nav-title">{{ doc.title }}</div>
+                <div class="doc-nav-meta">{{ doc.badge }}{% if doc.size_label %} · {{ doc.size_label }}{% endif %}</div>
+            </a>
+            {% endfor %}
+        </aside>
+
+        <section class="docs-reader">
+            {% for doc in documents %}
+            <article class="doc-panel" id="doc-{{ loop.index }}">
+                <div class="doc-panel-header">
+                    <div class="doc-panel-title">
+                        <i class="bi {{ doc.icon }}"></i>
+                        <span>{{ doc.title }}</span>
+                        <span class="doc-badge {{ doc.theme }}">{{ doc.badge }}</span>
+                    </div>
+                    <div class="text-muted small">{{ doc.description }}</div>
+                    <div class="doc-actions">
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('projekti_file', filename=doc.filename) }}" target="_blank">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Отвори фајл
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('projekti_file', filename=doc.filename) }}" download>
+                            <i class="bi bi-download me-1"></i>Преузми
+                        </a>
+                    </div>
+                </div>
+                <div class="doc-panel-body">
+                    {% if not doc.exists %}
+                    <div class="doc-missing">
+                        Фајл није пронађен на серверу.
+                    </div>
+                    {% elif doc.inline_type == 'pdf' %}
+                    <iframe class="doc-preview-frame" src="{{ url_for('projekti_file', filename=doc.filename) }}#toolbar=1"></iframe>
+                    {% elif doc.content %}
+                    <div class="doc-preview-text">{{ doc.content }}</div>
+                    {% else %}
+                    <div class="doc-missing">
+                        Овај формат није могао бити учитан за inline читање. Користите „Отвори фајл” или „Преузми”.
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Захтеви за одобрење - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-clock-history me-2"></i>
+                                Захтеви за одобрење измена
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Управљање захтевима за измену верификованих радних листи
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Назад на админ панел
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Development Notice -->
+    {% if message %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Напомена:</strong> {{ message }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pending Review Timesheets (Status Workflow) -->
+    {% if pending_reports is defined and pending_reports %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-send-check me-2"></i>
+                        Поднете радне листе за преглед ({{ pending_reports|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Запослени</th>
+                                    <th>Период</th>
+                                    <th>Организација</th>
+                                    <th>Поднето</th>
+                                    <th>Акције</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rpt in pending_reports %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ rpt.employee_name }}</strong><br>
+                                        <small class="text-muted">{{ rpt.employee_email or '' }}</small>
+                                    </td>
+                                    <td>{{ rpt.month }}/{{ rpt.year }}</td>
+                                    <td>{{ rpt.organization_unit or 'N/A' }}</td>
+                                    <td>{{ rpt.submitted_at.strftime('%d.%m.%Y %H:%M') if rpt.submitted_at else 'N/A' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin_timesheet_report_detail', report_id=rpt.id) }}" class="btn btn-sm btn-outline-info me-1">
+                                            <i class="bi bi-eye"></i> Преглед
+                                        </a>
+                                        <button class="btn btn-sm btn-success me-1"
+                                                onclick="quickApprove({{ rpt.id }})">
+                                            <i class="bi bi-check-circle"></i> Одобри
+                                        </button>
+                                        <button class="btn btn-sm btn-danger"
+                                                onclick="quickReject({{ rpt.id }})">
+                                            <i class="bi bi-x-circle"></i> Врати
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pending Requests Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check me-2"></i>
+                        Захтеви на чекању
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_requests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Статус</th>
+                                        <th>Запослени</th>
+                                        <th>Месец/Година</th>
+                                        <th>Разлог</th>
+                                        <th>Датум захтева</th>
+                                        <th>Акције</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for req in pending_requests %}
+                                    <tr class="{% if req.status == 'approved' %}table-success{% elif req.status == 'rejected' %}table-danger{% endif %}">
+                                        <td>
+                                            {% if req.status == 'pending' %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-clock"></i> На чекању
+                                                </span>
+                                            {% elif req.status == 'approved' %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Одобрено
+                                                </span>
+                                            {% elif req.status == 'rejected' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="bi bi-x-circle"></i> Одбијено
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ req.employee_name }}</strong><br>
+                                            <small class="text-muted">{{ req.requester_email }}</small>
+                                        </td>
+                                        <td>{{ req.month_name }} {{ req.year }}</td>
+                                        <td>{{ req.reason }}</td>
+                                        <td>
+                                            {{ req.requested_at.strftime('%d.%m.%Y %H:%M') if req.requested_at else 'N/A' }}
+                                            {% if req.processed_at %}
+                                                <br><small class="text-muted">
+                                                    Обрађено: {{ req.processed_at.strftime('%d.%m.%Y %H:%M') }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if req.status == 'pending' %}
+                                                <button class="btn btn-sm btn-success"
+                                                        onclick="handleRequest({{ req.id }}, 'approve')"
+                                                        title="Одобри">
+                                                    <i class="bi bi-check-circle"></i> Одобри
+                                                </button>
+                                                <button class="btn btn-sm btn-danger"
+                                                        onclick="handleRequest({{ req.id }}, 'reject')"
+                                                        title="Одбиј">
+                                                    <i class="bi bi-x-circle"></i> Одбиј
+                                                </button>
+                                            {% else %}
+                                                <small class="text-muted">
+                                                    {% if req.processed_by %}
+                                                        Обрадио: {{ req.processed_by }}
+                                                    {% endif %}
+                                                    {% if req.notes %}
+                                                        <br>Напомена: {{ req.notes }}
+                                                    {% endif %}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox" style="font-size: 4rem; opacity: 0.3;"></i>
+                            <p class="mt-3 text-muted">Тренутно нема захтева на чекању.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Извештаји радних листи
+                </a>
+                <a href="{{ url_for('admin_timesheet_analytics') }}" class="btn btn-outline-info">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Аналитика
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function quickApprove(reportId) {
+    if (!confirm('Да ли сте сигурни да желите да одобрите ову радну листу?')) return;
+    fetch(`/api/timesheet/${reportId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => { alert(data.message); if (data.success) location.reload(); })
+    .catch(() => alert('Грешка при комуникацији са сервером.'));
+}
+
+function quickReject(reportId) {
+    const note = prompt('Унесите разлог враћања:');
+    if (!note) return;
+    fetch(`/api/timesheet/${reportId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: note })
+    })
+    .then(r => r.json())
+    .then(data => { alert(data.message); if (data.success) location.reload(); })
+    .catch(() => alert('Грешка при комуникацији са сервером.'));
+}
+
+function handleRequest(requestId, action) {
+    const actionText = action === 'approve' ? 'одобрити' : 'одбити';
+    const notes = prompt(`Напомена (опционо) за ${actionText} захтев:`);
+
+    if (notes === null) {
+        return; // User cancelled
+    }
+
+    secureFetch(`/admin/timesheet/pending/approve/${requestId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: action,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Грешка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Грешка при обради захтева: ' + error);
+    });
+}
+</script>
+{% endblock %}

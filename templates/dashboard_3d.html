@@ -1,0 +1,621 @@
+{% extends "base.html" %}
+
+{% block title %}Контролна табла - Природњачки музеј{% endblock %}
+
+{% block content %}
+<div id="dashboard-3d-container">
+<style>
+/* 3D Dashboard Styles */
+#dashboard-3d-container {
+    min-height: calc(100vh - 56px);
+    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+    margin: -2rem -1rem;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Glowing orbs background */
+#dashboard-3d-container::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 5%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(255,107,107,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float-glow 8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+#dashboard-3d-container::after {
+    content: '';
+    position: absolute;
+    bottom: 10%;
+    right: 5%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(78,205,196,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float-glow 10s ease-in-out infinite reverse;
+    pointer-events: none;
+}
+
+@keyframes float-glow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -30px) scale(1.1); }
+}
+
+.dashboard-header {
+    text-align: center;
+    padding: 1rem 0 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.dashboard-header h1 {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-header p {
+    color: rgba(255,255,255,0.6);
+    font-size: 1.1rem;
+}
+
+.logo-dashboard-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    position: relative;
+    z-index: 5;
+}
+
+#logo-canvas-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 460 / 580;
+}
+
+#logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 30px rgba(255,107,107,0.4))
+            drop-shadow(0 0 60px rgba(78,205,196,0.3));
+    transition: filter 0.3s ease;
+}
+
+#logo-canvas-container:hover #logo-image {
+    filter: drop-shadow(0 0 40px rgba(255,107,107,0.6))
+            drop-shadow(0 0 80px rgba(78,205,196,0.5));
+}
+
+#interactive-logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+/* SVG segment hover effects */
+#interactive-logo path,
+#interactive-logo circle {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+#interactive-logo .segment:hover {
+    filter: brightness(1.3) drop-shadow(0 0 15px currentColor);
+    transform: scale(1.05);
+}
+
+#interactive-logo .segment.active {
+    filter: brightness(1.5) drop-shadow(0 0 25px currentColor);
+    transform: scale(1.08);
+}
+
+/* Tooltip */
+.segment-tooltip {
+    position: fixed;
+    background: linear-gradient(135deg, rgba(26,26,46,0.95) 0%, rgba(15,15,26,0.95) 100%);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    color: #fff;
+    font-size: 0.95rem;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    max-width: 250px;
+}
+
+.segment-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.segment-tooltip h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.segment-tooltip p {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 0.85rem;
+}
+
+.segment-tooltip .color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Quick stats panel */
+.quick-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.stat-card {
+    background: rgba(30,30,50,0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(78,205,196,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-card .stat-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+/* Three.js canvas */
+#three-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Legend */
+.dashboard-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(30,30,50,0.4);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+    background: rgba(30,30,50,0.8);
+    border-color: rgba(255,255,255,0.15);
+    transform: translateX(5px);
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.legend-text {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #logo-canvas-container {
+        max-width: 90%;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .quick-stats {
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem 1.5rem;
+        min-width: 120px;
+    }
+}
+</style>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<div class="dashboard-header">
+    <h1>Добродошли, {{ user_name if user_name else user_email }}</h1>
+    <p>Кликните на било који сегмент логоа за приступ модулу</p>
+</div>
+
+<div class="logo-dashboard-wrapper">
+    <canvas id="three-canvas"></canvas>
+    <div id="logo-canvas-container">
+        <!-- Actual PNG logo image -->
+        <img src="{{ url_for('static', filename='images/museum-logo.svg') }}" alt="Museum Logo" id="logo-image" />
+
+        <!-- Interactive overlay SVG with invisible clickable areas -->
+        <svg id="interactive-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 580">
+            <!-- Pink petal (top) - Exhibitions -->
+            <path class="segment" id="seg-exhibitions"
+                  d="M185 30 Q150 80 160 130 Q170 160 200 170 Q220 160 230 130 Q240 80 210 30 Q200 15 185 30Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Изложбе" data-desc="Управљање изложбама и експонатима" data-url="{{ url_for('exhibitions_database') }}" data-color="#e91e9e"/>
+
+            <!-- Cyan petal - Collections -->
+            <path class="segment" id="seg-collections"
+                  d="M140 80 Q100 100 90 150 Q85 190 110 210 Q140 215 165 190 Q180 160 170 120 Q160 85 140 80Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Базе збирки" data-desc="Музејске колекције и базе података" data-url="{{ url_for('museum_databases') }}" data-color="#00bcd4"/>
+
+            <!-- Orange petal left - Employees -->
+            <path class="segment" id="seg-employees"
+                  d="M95 140 Q60 170 55 220 Q55 260 85 280 Q115 285 140 255 Q155 220 145 180 Q135 145 95 140Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Запослени" data-desc="База запослених и радне листе" data-url="{{ url_for('employees_database') }}" data-color="#ff9800"/>
+
+            <!-- Orange petal right - Bird Ringing -->
+            <path class="segment" id="seg-birds"
+                  d="M250 50 Q290 40 330 70 Q370 100 365 150 Q355 190 310 195 Q270 190 255 150 Q245 100 250 50Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Прстеновање" data-desc="База прстеновања птица" data-url="{{ url_for('bird_ringing_database_view') }}" data-color="#ff5722"/>
+            <circle class="segment" cx="320" cy="110" r="25" fill="transparent" stroke="transparent"
+                    data-title="Прстеновање" data-desc="База прстеновања птица" data-url="{{ url_for('bird_ringing_database_view') }}" data-color="#00bcd4"/>
+
+            <!-- Green wing - Statistics -->
+            <path class="segment" id="seg-statistics"
+                  d="M310 195 Q350 200 380 240 Q400 290 370 320 Q330 340 290 310 Q270 280 280 240 Q290 205 310 195Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Статистика" data-desc="Извештаји и аналитика" data-url="{{ url_for('admin_statistics') }}" data-color="#4caf50"/>
+            <circle class="segment" cx="340" cy="260" r="20" fill="transparent" stroke="transparent"
+                    data-title="Статистика" data-desc="Извештаји и аналитика" data-url="{{ url_for('admin_statistics') }}" data-color="#2196f3"/>
+
+            <!-- Purple wedge - Library -->
+            <path class="segment" id="seg-library"
+                  d="M200 170 L175 200 L190 230 L210 230 L225 200 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Библиотека" data-desc="Библиотечка база података" data-url="{{ url_for('library_database') }}" data-color="#9c27b0"/>
+
+            <!-- Yellow wedge - QR Codes -->
+            <path class="segment" id="seg-qr"
+                  d="M225 200 L250 180 L270 210 L250 240 L220 230 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="QR кодови" data-desc="QR опције у збиркама" data-url="{{ url_for('museum_databases') }}" data-color="#ffeb3b"/>
+
+            <!-- Teal small - Field Activities -->
+            <path class="segment" id="seg-field"
+                  d="M175 200 L150 220 L170 250 L190 230 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Теренске активности" data-desc="Планирање теренских истраживања" data-url="{{ url_for('terenska_aktivnost') }}" data-color="#009688"/>
+
+            <!-- Green small - Botany -->
+            <path class="segment" id="seg-botany"
+                  d="M270 210 L290 230 L270 260 L250 240 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Ботаника" data-desc="Ботаничка збирка" data-url="{{ url_for('botany_collection') }}" data-color="#4caf50"/>
+
+            <!-- Blue center - Minerals -->
+            <path class="segment" id="seg-minerals"
+                  d="M170 250 L190 280 L230 280 L250 250 L230 230 L190 230 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Минерали" data-desc="Минералошка збирка" data-url="{{ url_for('admin_mineral_collection') }}" data-color="#673ab7"/>
+
+            <!-- Red large - Inventory -->
+            <path class="segment" id="seg-inventory"
+                  d="M85 280 L50 320 L60 380 L120 360 L140 300 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Инвентар" data-desc="Инвентарна књига" data-url="{{ url_for('inventory_book') }}" data-color="#f44336"/>
+
+            <!-- Teal section - Vehicles -->
+            <path class="segment" id="seg-vehicles"
+                  d="M60 380 L40 450 L100 480 L140 440 L120 360 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Возила" data-desc="Управљање возним парком" data-url="{{ url_for('vehicle_management') }}" data-color="#009688"/>
+
+            <!-- Pink section - Visitors -->
+            <path class="segment" id="seg-visitors"
+                  d="M100 480 L130 540 L200 520 L180 450 L140 440 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Посетиоци" data-desc="База посетилаца" data-url="{{ url_for('visitors_database') }}" data-color="#e91e9e"/>
+
+            <!-- Gold section - Research -->
+            <path class="segment" id="seg-research"
+                  d="M200 520 L230 560 L260 520 L240 460 L180 450 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Истраживања" data-desc="Научна истраживања" data-url="{{ url_for('system_reports') }}" data-color="#c99700"/>
+
+            <!-- Blue section - Paleontology -->
+            <path class="segment" id="seg-paleo"
+                  d="M170 250 L140 300 L160 360 L200 380 L220 340 L190 280 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Палеонтологија" data-desc="Палеозоолошка и палеоботаничка збирка" data-url="{{ url_for('museum_databases') }}" data-color="#2196f3"/>
+
+            <!-- Purple bottom - Cultural Heritage -->
+            <path class="segment" id="seg-heritage"
+                  d="M260 520 L290 480 L270 420 L240 460 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Културно наслеђе" data-desc="База културног наслеђа" data-url="{{ url_for('cultural_heritage_database') }}" data-color="#673ab7"/>
+
+            <!-- Yellow triangle - Reports -->
+            <path class="segment" id="seg-reports"
+                  d="M290 310 L320 360 L350 340 L340 300 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Извештаји" data-desc="Генерисање извештаја" data-url="{{ url_for('system_reports') }}" data-color="#ffeb3b"/>
+
+            <!-- Purple right - Admin -->
+            <path class="segment" id="seg-admin"
+                  d="M350 340 L380 380 L370 320 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Администрација" data-desc="Админ панел" data-url="{{ url_for('admin_panel') }}" data-color="#9c27b0"/>
+
+            <!-- Blue small - News -->
+            <path class="segment" id="seg-news"
+                  d="M270 260 L290 310 L320 280 L300 250 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Вести" data-desc="Управљање вестима" data-url="{{ url_for('museum_news') }}" data-color="#2196f3"/>
+
+            <!-- Gold bottom - Timesheet -->
+            <path class="segment" id="seg-timesheet"
+                  d="M220 340 L250 390 L290 370 L270 320 L250 340 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Радне листе" data-desc="Евиденција радног времена" data-url="{{ url_for('admin_timesheet_main') }}" data-color="#c99700"/>
+
+            <!-- Small triangles -->
+            <path class="segment" d="M320 360 L350 400 L370 370 L350 340 Z" fill="transparent" stroke="transparent"
+                  data-title="Дигитални потписи" data-desc="Управљање дигиталним потписима" data-url="{{ url_for('archive_signature.admin_digital_signatures') }}" data-color="#9c27b0"/>
+            <path class="segment" d="M350 400 L330 450 L370 440 L380 400 Z" fill="transparent" stroke="transparent"
+                  data-title="Архива" data-desc="Архивски документи" data-url="{{ url_for('archive_signature.admin_archive_dashboard') }}" data-color="#2196f3"/>
+
+            <!-- Stem - System Settings -->
+            <path class="segment" id="seg-settings"
+                  d="M200 380 L195 520 L205 560 L220 560 L225 520 L220 380 Z"
+                  fill="transparent" stroke="transparent"
+                  data-title="Подешавања" data-desc="Системска подешавања" data-url="{{ url_for('admin_system_settings') }}" data-color="#673ab7"/>
+        </svg>
+    </div>
+</div>
+
+<!-- Tooltip -->
+<div id="segment-tooltip" class="segment-tooltip">
+    <h4><span class="color-indicator"></span><span class="tooltip-title"></span></h4>
+    <p class="tooltip-desc"></p>
+</div>
+
+<!-- Quick Stats -->
+<div class="quick-stats">
+    <div class="stat-card">
+        <div class="stat-value">185K+</div>
+        <div class="stat-label">Примерака</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">15+</div>
+        <div class="stat-label">Збирки</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">50+</div>
+        <div class="stat-label">Запослених</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">130+</div>
+        <div class="stat-label">Год. традиције</div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const segments = document.querySelectorAll('#interactive-logo .segment');
+    const tooltip = document.getElementById('segment-tooltip');
+    const tooltipTitle = tooltip.querySelector('.tooltip-title');
+    const tooltipDesc = tooltip.querySelector('.tooltip-desc');
+    const colorIndicator = tooltip.querySelector('.color-indicator');
+
+    // Three.js particle background
+    const canvas = document.getElementById('three-canvas');
+    const container = document.getElementById('dashboard-3d-container');
+
+    let scene, camera, renderer, particles;
+    let mouseX = 0, mouseY = 0;
+
+    function initThree() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+        camera.position.z = 50;
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Create particles
+        const particleCount = 200;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        const colorPalette = [
+            [1, 0.42, 0.42],     // #ff6b6b
+            [0.31, 0.8, 0.77],   // #4ecdc4
+            [1, 0.9, 0.43],      // #ffe66d
+            [0.66, 0.33, 0.97],  // #a855f7
+            [0, 0.74, 0.83],     // #00bcd4
+        ];
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 100;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+
+            const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+            colors[i * 3] = color[0];
+            colors[i * 3 + 1] = color[1];
+            colors[i * 3 + 2] = color[2];
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.5,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+
+        particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        animate();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        particles.rotation.x += 0.0003;
+        particles.rotation.y += 0.0005;
+
+        // Mouse interaction
+        particles.rotation.x += (mouseY * 0.00005 - particles.rotation.x) * 0.05;
+        particles.rotation.y += (mouseX * 0.00005 - particles.rotation.y) * 0.05;
+
+        renderer.render(scene, camera);
+    }
+
+    // Mouse move for particles
+    document.addEventListener('mousemove', function(e) {
+        mouseX = e.clientX - window.innerWidth / 2;
+        mouseY = e.clientY - window.innerHeight / 2;
+    });
+
+    // Resize handler
+    window.addEventListener('resize', function() {
+        if (camera && renderer) {
+            camera.aspect = container.offsetWidth / container.offsetHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+        }
+    });
+
+    // Initialize Three.js
+    if (typeof THREE !== 'undefined') {
+        initThree();
+    }
+
+    // Segment interactions
+    segments.forEach(segment => {
+        // Hover - show tooltip
+        segment.addEventListener('mouseenter', function(e) {
+            const title = this.getAttribute('data-title');
+            const desc = this.getAttribute('data-desc');
+            const color = this.getAttribute('data-color') || this.getAttribute('fill');
+
+            tooltipTitle.textContent = title;
+            tooltipDesc.textContent = desc;
+            colorIndicator.style.backgroundColor = color;
+
+            tooltip.classList.add('visible');
+
+            // Add highlight effect on hover - show segment area
+            this.style.fill = 'rgba(255,255,255,0.2)';
+            this.style.stroke = color;
+            this.style.strokeWidth = '3';
+        });
+
+        segment.addEventListener('mousemove', function(e) {
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+        });
+
+        segment.addEventListener('mouseleave', function() {
+            tooltip.classList.remove('visible');
+            this.style.fill = 'transparent';
+            this.style.stroke = 'transparent';
+            this.style.strokeWidth = '';
+        });
+
+        // Click - navigate
+        segment.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            const color = this.getAttribute('data-color') || '#fff';
+            if (url) {
+                // Add click animation - flash effect
+                this.style.fill = color;
+                this.style.opacity = '0.5';
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 150);
+            }
+        });
+    });
+});
+</script>
+
+</div>
+{% endblock %}

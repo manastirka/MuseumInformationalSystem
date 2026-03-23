@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{% block title %}Радне листе (PostgreSQL){% endblock %}
+
+{% block content %}
+<style>
+    /* Full-width layout for timesheet reports table */
+    .container-main.timesheet-reports-wide {
+        max-width: 100%;
+        padding: 1.5rem 2rem;
+    }
+    .timesheet-table {
+        width: 100%;
+        font-size: 0.9rem;
+    }
+    .timesheet-table th,
+    .timesheet-table td {
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: 0.5rem 0.75rem;
+    }
+    .timesheet-table .col-employee {
+        white-space: normal;
+        min-width: 160px;
+        max-width: 220px;
+    }
+    .timesheet-table .col-org {
+        white-space: normal;
+        min-width: 120px;
+        max-width: 200px;
+    }
+    .timesheet-table .col-status {
+        min-width: 130px;
+    }
+    .timesheet-table .col-actions {
+        min-width: 160px;
+    }
+    .timesheet-table .col-number {
+        min-width: 70px;
+    }
+</style>
+<div class="container-main timesheet-reports-wide">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="bi bi-card-checklist me-2"></i>
+                            Централизоване радне листе
+                        </h1>
+                        <p class="mb-0 opacity-75">Подаци су преузети из PostgreSQL базе након миграције</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Месечни преглед</h5>
+                </div>
+                <div class="card-body">
+                    {% if month_summary %}
+                    <p class="text-muted">
+                        Период: <strong>{{ calendar.month_name[month_summary.month] }} {{ month_summary.year }}</strong>,
+                        извештаја: <strong>{{ month_summary.totals.reports_count }}</strong>
+                    </p>
+                    <div class="row">
+                        {% for key, label in category_labels.items() %}
+                        <div class="col-md-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-light text-dark me-2">{{ label }}</span>
+                                <span class="fw-semibold">{{ '%.2f'|format(month_summary.totals[key]) }} h</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Нема података за изабрани период.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Укупно стање</h5>
+                </div>
+                <div class="card-body">
+                    {% if overall_summary %}
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <h3 class="mb-0">{{ overall_summary.reports }}</h3>
+                            <small class="text-muted">укупно извештаја</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="mb-0">{{ overall_summary.employees }}</h3>
+                            <small class="text-muted">запослених</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        {% for key, label in category_labels.items() %}
+                        <div class="col-md-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-light text-dark me-2">{{ label }}</span>
+                                <span class="fw-semibold">{{ '%.2f'|format(overall_summary.category_totals[key]) }} h</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Укупни подаци нису доступни.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Филтери</h5>
+                <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-sm btn-outline-secondary">
+                    Ресетуј
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form class="row gy-2 gx-3 align-items-end" method="get">
+                <div class="col-md-3">
+                    <label class="form-label">Месец</label>
+                    <select class="form-select" name="month">
+                        <option value="">Сви месеци</option>
+                        {% for value, label in month_options %}
+                        <option value="{{ value }}" {% if month == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Година</label>
+                    <input type="number" class="form-control" name="year" min="2020" max="2100" value="{{ year or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Запослени</label>
+                    <input type="text" class="form-control" name="search" value="{{ search }}" placeholder="Име или презиме">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i> Примени
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-collection me-2"></i>Радне листе</h5>
+            <div class="batch-actions d-none" id="batchActionsPanel">
+                <span class="me-2 text-muted"><span id="selectedCount">0</span> изабрано</span>
+                <button type="button" class="btn btn-success btn-sm me-1" onclick="batchApprove(true)" title="Верификуј изабране">
+                    <i class="bi bi-check-circle me-1"></i>Верификуј
+                </button>
+                <button type="button" class="btn btn-warning btn-sm" onclick="batchApprove(false)" title="Повуци верификацију">
+                    <i class="bi bi-x-circle me-1"></i>Повуци
+                </button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover timesheet-table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox"
+                                   onchange="toggleSelectAll(this)" title="Изабери све">
+                        </th>
+                        <th class="col-status">Статус</th>
+                        <th class="col-employee">Запослени</th>
+                        <th>Период</th>
+                        <th class="col-org">Организација</th>
+                        <th class="text-end col-number">Рад у музеју</th>
+                        <th class="text-end col-number">Рад ван музеја</th>
+                        <th class="text-end col-number">Одсуства</th>
+                        <th class="text-end col-number">Укупно</th>
+                        <th class="text-end col-actions">Акције</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if reports.reports %}
+                        {% for report in reports.reports %}
+                        <tr class="{% if report.is_verified %}table-success{% endif %}" data-report-id="{{ report.id }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input report-checkbox"
+                                       value="{{ report.id }}" onchange="updateBatchSelection()">
+                            </td>
+                            <td class="col-status">
+                                {% if report.status is defined and report.status %}
+                                    {% if report.status == 'APPROVED' %}
+                                        <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
+                                            <i class="bi bi-check-circle-fill"></i> Одобрено
+                                        </span>
+                                    {% elif report.status == 'SUBMITTED' %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-hourglass-split"></i> Поднето
+                                        </span>
+                                    {% elif report.status == 'REJECTED' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-x-circle"></i> Враћено
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-pencil"></i> Нацрт
+                                        </span>
+                                    {% endif %}
+                                {% elif report.is_verified %}
+                                    <span class="badge bg-success" title="Верификовано {{ report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '' }}">
+                                        <i class="bi bi-check-circle-fill"></i> Верификовано
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-pencil"></i> Нацрт
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="col-employee">
+                                <strong>{{ report.employee_name }}</strong>
+                                {% if report.verified_by %}
+                                    <br><small class="text-muted">Вер: {{ report.verified_by }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ calendar.month_name[report.month] }} {{ report.year }}</td>
+                            <td class="col-org">{{ report.organization_unit or 'N/A' }}</td>
+                            <td class="text-end col-number">{{ '%.2f'|format(report.work_in_museum) }}</td>
+                            <td class="text-end col-number">{{ '%.2f'|format(report.work_outside) }}</td>
+                            <td class="text-end col-number">{{ '%.2f'|format(report.vacation + report.public_holiday + report.paid_leave + report.other_leave + report.sick_lt30 + report.sick_gte30) }}</td>
+                            <td class="text-end col-number fw-semibold">{{ '%.2f'|format(report.total_hours) }}</td>
+                            <td class="text-end col-actions">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-info"
+                                            onclick="viewReport({{ report.id }})"
+                                            title="Преглед детаља">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+
+                                    {% if report.is_verified %}
+                                        <button type="button" class="btn btn-outline-warning"
+                                                onclick="toggleApproval({{ report.id }}, false)"
+                                                title="Повуци верификацију">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    {% else %}
+                                        <button type="button" class="btn btn-outline-success"
+                                                onclick="toggleApproval({{ report.id }}, true)"
+                                                title="Верификуј и закључај">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    {% endif %}
+
+                                    <button type="button" class="btn btn-outline-primary"
+                                            onclick="exportReport({{ report.id }})"
+                                            title="Извоз у Word">
+                                        <i class="bi bi-file-earmark-word"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-danger"
+                                            onclick="deleteReport({{ report.id }}, '{{ report.employee_name }}', '{{ calendar.month_name[report.month] }} {{ report.year }}')"
+                                            title="Обриши извештај">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            Нема резултата за изабране филтере.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if reports.total_pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted">
+                Страница {{ reports.page }} од {{ reports.total_pages }} ({{ reports.total }} извештаја)
+            </small>
+            <div>
+                {% if reports.page > 1 %}
+                <a class="btn btn-outline-secondary btn-sm"
+                   href="{{ url_for('admin_timesheet_reports', page=reports.page-1, month=month, year=year, search=search) }}">Назад</a>
+                {% endif %}
+                {% if reports.page < reports.total_pages %}
+                <a class="btn btn-outline-secondary btn-sm ms-2"
+                   href="{{ url_for('admin_timesheet_reports', page=reports.page+1, month=month, year=year, search=search) }}">Напред</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Report Details Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Детаљи извештаја</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="reportModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Учитавање...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Batch selection management
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.report-checkbox');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+    updateBatchSelection();
+}
+
+function updateBatchSelection() {
+    const checkboxes = document.querySelectorAll('.report-checkbox:checked');
+    const count = checkboxes.length;
+    const panel = document.getElementById('batchActionsPanel');
+    const countDisplay = document.getElementById('selectedCount');
+    const masterCheckbox = document.getElementById('selectAllCheckbox');
+    const allCheckboxes = document.querySelectorAll('.report-checkbox');
+
+    countDisplay.textContent = count;
+
+    if (count > 0) {
+        panel.classList.remove('d-none');
+    } else {
+        panel.classList.add('d-none');
+    }
+
+    // Update master checkbox state
+    if (count === 0) {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = false;
+    } else if (count === allCheckboxes.length) {
+        masterCheckbox.checked = true;
+        masterCheckbox.indeterminate = false;
+    } else {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = true;
+    }
+}
+
+function getSelectedReportIds() {
+    const checkboxes = document.querySelectorAll('.report-checkbox:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+function batchApprove(approve) {
+    const reportIds = getSelectedReportIds();
+    if (reportIds.length === 0) {
+        alert('Изаберите најмање један извештај');
+        return;
+    }
+
+    const action = approve ? 'верификовати и закључати' : 'повући верификацију за';
+    if (!confirm(`Да ли сте сигурни да желите да ${action} ${reportIds.length} извештај(а)?`)) {
+        return;
+    }
+
+    secureFetch('/api/admin/timesheet/reports/batch-approve', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            report_ids: reportIds,
+            approve: approve
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Грешка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Грешка при обради: ' + error);
+    });
+}
+
+// View report details in modal
+function viewReport(reportId) {
+    const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+    const modalBody = document.getElementById('reportModalBody');
+
+    // Show loading spinner
+    modalBody.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Учитавање...</span>
+            </div>
+        </div>
+    `;
+
+    modal.show();
+
+    // Fetch report details
+    fetch(`/api/admin/timesheet/report/${reportId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayReportDetails(data.report);
+            } else {
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Грешка: ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Грешка при учитавању: ${error}
+                </div>
+            `;
+        });
+}
+
+function displayReportDetails(report) {
+    const modalBody = document.getElementById('reportModalBody');
+    const header = report.header || {};
+    // Backend returns 'category_totals', not 'totals'
+    const totals = report.category_totals || report.totals || {};
+    // total_hours is at root level in the response
+    const reportTotalHours = report.total_hours || 0;
+
+    const categoryLabels = {
+        'rad_na_mestu': 'Рад на самом месту (у музеју)',
+        'van_muzeja': 'Ван музеја',
+        'godisnji_odmor': 'Годишњи одмор',
+        'drzavni_praznik': 'Државни празник',
+        'placeno_odsustvo': 'Плаћено одсуство',
+        'ostalo_odsustvo': 'Остало одсуство',
+        'bolovanje_manje_30': 'Боловање < 30 дана',
+        'bolovanje_vece_30': 'Боловање ≥ 30 дана'
+    };
+
+    let html = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Запослени:</strong> ${header.employee_name || 'N/A'}
+            </div>
+            <div class="col-md-6">
+                <strong>Период:</strong> ${header.month || '?'}/${header.year || '?'}
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Организација:</strong> ${header.organization_unit || 'N/A'}
+            </div>
+            <div class="col-md-6">
+                <strong>Позиција:</strong> ${header.position || 'N/A'}
+            </div>
+        </div>
+
+        <h6 class="mt-4 mb-3">Укупан број сати по категоријама:</h6>
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Категорија</th>
+                    <th class="text-end">Сати</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (const [key, label] of Object.entries(categoryLabels)) {
+        const hours = totals[key] || 0;
+        html += `
+                <tr>
+                    <td>${label}</td>
+                    <td class="text-end">${typeof hours === 'number' ? hours.toFixed(2) : '0.00'}</td>
+                </tr>
+        `;
+    }
+
+    html += `
+                <tr class="table-light fw-bold">
+                    <td>УКУПНО</td>
+                    <td class="text-end">${typeof reportTotalHours === 'number' ? reportTotalHours.toFixed(2) : '0.00'}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+
+    // Display work categories (stored in special_tasks or extraordinary_tasks as JSON)
+    const workTasksData = header.special_tasks || header.extraordinary_tasks;
+    if (workTasksData) {
+        html += `<h6 class="mt-4 mb-3">Обављени послови:</h6>`;
+
+        // Work category labels matching the 2026 template
+        const workCategoryLabels = {
+            'cat_2_1': '2.1. РАД НА ЗБИРКАМА',
+            'cat_2_2': '2.2. ИДЕНТИФИКАЦИЈЕ И ЕКСПЕРТИЗЕ',
+            'cat_2_3': '2.3. НАУЧНИ И СТРУЧНИ РАД',
+            'cat_3_1': '3.1. ТЕРЕНСКИ РАД',
+            'cat_3_2': '3.2. НОВИ ПРЕДМЕТИ У ЗБИРЦИ',
+            'cat_4_1': '4.1. ТЕКУЋЕ ИЗЛОЖБЕ',
+            'cat_4_2': '4.2. ПЛАНИРАНЕ ИЗЛОЖБЕ',
+            'cat_5_1': '5.1. САРАДЊА СА ПЕДАГОШКОМ СЛУЖБОМ',
+            'cat_5_2': '5.2. СТРУЧНО ВОЂЕЊЕ / ПРЕДАВАЊА / РАДИОНИЦЕ',
+            'cat_5_3': '5.3. МЕДИЈИ / PR / КОМУНИКАЦИЈА',
+            'cat_6_1': '6.1. ПРОЈЕКТИ / РАДНЕ ГРУПЕ',
+            'cat_6_2': '6.2. НАЦИОНАЛНА И МЕЂУНАРОДНА ПАРТНЕРСТВА',
+            'cat_7': '7. ДИГИТАЛИЗАЦИЈА И ДОКУМЕНТАЦИЈА',
+            'cat_8': '8. ОСТАЛИ ПОСЛОВИ И АКТИВНОСТИ'
+        };
+
+        try {
+            const workData = JSON.parse(workTasksData);
+            let hasAnyWork = false;
+            let workHtml = '<table class="table table-sm table-bordered"><tbody>';
+
+            for (const [key, label] of Object.entries(workCategoryLabels)) {
+                const value = workData[key];
+                if (value && value.trim() !== '') {
+                    hasAnyWork = true;
+                    workHtml += `
+                        <tr>
+                            <td class="fw-semibold" style="width: 40%;">${label}</td>
+                            <td>${value}</td>
+                        </tr>
+                    `;
+                }
+            }
+
+            workHtml += '</tbody></table>';
+
+            if (hasAnyWork) {
+                html += workHtml;
+            } else {
+                html += '<p class="text-muted">Нема унетих послова.</p>';
+            }
+        } catch (e) {
+            // If not JSON, display as plain text (old format)
+            html += `<p class="text-muted">${workTasksData}</p>`;
+        }
+    }
+
+    if (header.duties_summary) {
+        html += `
+            <h6 class="mt-4 mb-2">Додатне напомене:</h6>
+            <p class="text-muted">${header.duties_summary}</p>
+        `;
+    }
+
+    modalBody.innerHTML = html;
+}
+
+// Toggle approval status
+function toggleApproval(reportId, approve) {
+    const action = approve ? 'верификовати и закључати' : 'повући верификацију';
+
+    if (!confirm(`Да ли сте сигурни да желите да ${action} овај извештај?`)) {
+        return;
+    }
+
+    secureFetch(`/api/admin/timesheet/report/${reportId}/approve`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ approve: approve })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Грешка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Грешка при обради: ' + error);
+    });
+}
+
+// Export report to Word
+function exportReport(reportId) {
+    // Open export URL in new window to trigger download
+    window.location.href = `/api/admin/timesheet/export/${reportId}`;
+}
+
+// Delete report
+function deleteReport(reportId, employeeName, period) {
+    if (!confirm(`Да ли сте СИГУРНИ да желите да обришете извештај за:\n\n${employeeName}\n${period}\n\nОва акција је неповратна!`)) {
+        return;
+    }
+
+    secureFetch(`/api/admin/timesheet/report/${reportId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Грешка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Грешка при брисању: ' + error);
+    });
+}
+</script>
+{% endblock %}

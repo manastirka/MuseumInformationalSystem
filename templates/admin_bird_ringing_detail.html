@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Детаљи прстеновања - {{ record.species or 'N/A' }}{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ url_for('static', filename='images/bird_ringing_logo.jpg') }}"
+                                 alt="Serbian Bird Ringing Scheme Logo"
+                                 class="rounded me-3"
+                                 style="height: 90px; width: auto; background-color: white; padding: 8px;">
+                            <div>
+                                <h1 class="h3 mb-1">
+                                    <i class="bi bi-egg me-2"></i>
+                                    Детаљи прстеновања птице
+                                </h1>
+                                <p class="mb-0 opacity-75">
+                                    Запис #{{ record.id }} - <em>{{ record.species or 'Непозната врста' }}</em>
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('bird_ringing_database_view') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Information -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основне информације</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Број прстена:</dt>
+                        <dd class="col-sm-7"><code>{{ record.ring_number or 'N/A' }}</code></dd>
+
+                        <dt class="col-sm-5">Колор прстен:</dt>
+                        <dd class="col-sm-7">{{ record.color_ring or 'N/A' }}</dd>
+
+                        <dt class="col-sm-5">Врста:</dt>
+                        <dd class="col-sm-7"><em>{{ record.species or 'N/A' }}</em></dd>
+
+                        <dt class="col-sm-5">Старост:</dt>
+                        <dd class="col-sm-7">{{ record.age if record.age is not none else 'N/A' }}</dd>
+
+                        <dt class="col-sm-5">Пол:</dt>
+                        <dd class="col-sm-7">
+                            {% if record.sex == 'M' %}
+                            <i class="bi bi-gender-male text-primary"></i> Мужјак
+                            {% elif record.sex == 'F' %}
+                            <i class="bi bi-gender-female text-danger"></i> Женка
+                            {% elif record.sex == 'U' %}
+                            <i class="bi bi-question-circle text-secondary"></i> Непознато
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Статус:</dt>
+                        <dd class="col-sm-7">
+                            {% if record.status %}
+                            <span class="badge bg-secondary">{{ record.status }}</span>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Локација и време</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Локалитет:</dt>
+                        <dd class="col-sm-7">{{ record.location or 'N/A' }}</dd>
+
+                        <dt class="col-sm-5">Координате:</dt>
+                        <dd class="col-sm-7">{{ record.coordinates or 'N/A' }}</dd>
+
+                        <dt class="col-sm-5">Тачност:</dt>
+                        <dd class="col-sm-7">{{ record.coordinate_accuracy or 'N/A' }}</dd>
+
+                        <dt class="col-sm-5">Датум:</dt>
+                        <dd class="col-sm-7">
+                            <i class="bi bi-calendar-date"></i>
+                            {{ record.date or 'N/A' }}
+                        </dd>
+
+                        <dt class="col-sm-5">Време:</dt>
+                        <dd class="col-sm-7">
+                            <i class="bi bi-clock"></i>
+                            {{ record.time or 'N/A' }}
+                        </dd>
+
+                        <dt class="col-sm-5">Заштићена подручја:</dt>
+                        <dd class="col-sm-7">{{ record.protected_areas or 'N/A' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Методологија</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Прстеновач:</dt>
+                        <dd class="col-sm-6">{{ record.ringer or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Метални прстен:</dt>
+                        <dd class="col-sm-6">{{ record.metal_ring_position if record.metal_ring_position is not none else 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Пластични прстен:</dt>
+                        <dd class="col-sm-6">{{ record.plastic_ring or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Хватање:</dt>
+                        <dd class="col-sm-6">{{ record.catching_method or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Мамац:</dt>
+                        <dd class="col-sm-6">{{ record.bait or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Манипулација:</dt>
+                        <dd class="col-sm-6">{{ record.manipulation or 'N/A' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biometrics -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-rulers me-2"></i>Биометријска мерења</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-6">Дужина крила:</dt>
+                                <dd class="col-sm-6">{{ record.wing_length or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Треће перо:</dt>
+                                <dd class="col-sm-6">{{ record.third_primary_feather or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Маса:</dt>
+                                <dd class="col-sm-6">{{ record.mass or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Задња кандža:</dt>
+                                <dd class="col-sm-6">{{ record.back_claw or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Дужина кљуна:</dt>
+                                <dd class="col-sm-6">{{ record.bill_length or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Метод мерења:</dt>
+                                <dd class="col-sm-6">{{ record.bill_measurement_method or 'N/A' }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-6">Дужина главе:</dt>
+                                <dd class="col-sm-6">{{ record.head_length or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Тарзус:</dt>
+                                <dd class="col-sm-6">{{ record.tarsus or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Метод тарзуса:</dt>
+                                <dd class="col-sm-6">{{ record.tarsus_measurement_method or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Дужина репа:</dt>
+                                <dd class="col-sm-6">{{ record.tail_length or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Алула:</dt>
+                                <dd class="col-sm-6">{{ record.alula or 'N/A' }}</dd>
+
+                                <dt class="col-sm-6">Карпална пера:</dt>
+                                <dd class="col-sm-6">{{ record.carpal_feathers or 'N/A' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Физиолошко стање</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Митарење:</dt>
+                        <dd class="col-sm-6">{{ record.molting or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Масне наслаге:</dt>
+                        <dd class="col-sm-6">{{ record.fat_deposits or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Грудни мишић:</dt>
+                        <dd class="col-sm-6">{{ record.pectoral_muscle or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Инкубациона површина:</dt>
+                        <dd class="col-sm-6">{{ record.incubation_patch or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Утврђивање пола:</dt>
+                        <dd class="col-sm-6">{{ record.sex_determination or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Величина легла:</dt>
+                        <dd class="col-sm-6">{{ record.clutch_size or 'N/A' }}</dd>
+
+                        <dt class="col-sm-6">Старост pullus-а:</dt>
+                        <dd class="col-sm-6">{{ record.pullus_age or 'N/A' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    {% if record.notes %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Напомене</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ record.notes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Info -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <small class="text-muted">
+                        <i class="bi bi-clock-history me-1"></i>
+                        Запис креиран: {{ record.created_at or 'N/A' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+dl {
+    font-size: 0.9rem;
+}
+
+dt {
+    font-weight: 600;
+    color: #495057;
+}
+
+dd {
+    color: #6c757d;
+}
+</style>
+{% endblock %}

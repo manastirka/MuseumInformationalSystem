@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+
+{% block title %}Финансије - Архива и верификација{% endblock %}
+
+{% block content %}
+<div x-data="archiveFinansije()" x-init="init()" x-cloak>
+<style>
+.request-card {
+    transition: all 0.3s ease;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+.request-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+.request-card.selected {
+    border: 2px solid #f59e0b;
+}
+.status-badge { font-size: 0.75rem; padding: 0.35em 0.65em; }
+.approval-step {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.approval-step.pending { background: #fef3c7; }
+.approval-step.approved { background: #d1fae5; }
+.approval-step.rejected { background: #fee2e2; }
+.approval-step.current { border: 2px solid #3b82f6; }
+.detail-panel { position: sticky; top: 20px; }
+.priority-badge { font-size: 0.7rem; text-transform: uppercase; }
+.comment-item {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+.filter-chip {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.filter-chip:hover, .filter-chip.active {
+    background: #f59e0b;
+    color: white;
+    border-color: #f59e0b;
+}
+</style>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/admin/archive">Архива</a></li>
+                <li class="breadcrumb-item active">Финансије</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0">
+            <i class="bi bi-cash-stack me-2 text-warning"></i>Финансије
+        </h2>
+    </div>
+    <button class="btn btn-warning" @click="showNewModal = true">
+        <i class="bi bi-plus-lg me-2"></i>Нови захтев
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="text-muted me-2">Статус:</span>
+            <span class="filter-chip" :class="{'active': filter.status === ''}" @click="filter.status = ''; loadRequests()">Сви</span>
+            <span class="filter-chip" :class="{'active': filter.status === 'pending'}" @click="filter.status = 'pending'; loadRequests()">На чекању</span>
+            <span class="filter-chip" :class="{'active': filter.status === 'in_review'}" @click="filter.status = 'in_review'; loadRequests()">У прегледу</span>
+            <span class="filter-chip" :class="{'active': filter.status === 'approved'}" @click="filter.status = 'approved'; loadRequests()">Одобрено</span>
+            <span class="filter-chip" :class="{'active': filter.status === 'rejected'}" @click="filter.status = 'rejected'; loadRequests()">Одбијено</span>
+            <span class="filter-chip" :class="{'active': filter.status === 'archived'}" @click="filter.status = 'archived'; loadRequests()">Архивирано</span>
+
+            <div class="vr mx-3"></div>
+
+            <span class="text-muted me-2">Подтип:</span>
+            <select class="form-select form-select-sm" style="width: auto;" x-model="filter.subtype" @change="loadRequests()">
+                <option value="">Сви подтипови</option>
+                <template x-for="st in subtypes" :key="st.value">
+                    <option :value="st.value" x-text="st.label"></option>
+                </template>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Requests List -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Листа захтева <span class="badge bg-secondary" x-text="total"></span></h5>
+                <button class="btn btn-sm btn-outline-secondary" @click="loadRequests()" title="Освежи">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body p-0" style="max-height: 70vh; overflow-y: auto;">
+                <template x-if="loading">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-warning" role="status"></div>
+                        <p class="mt-2 text-muted">Учитавање...</p>
+                    </div>
+                </template>
+                <template x-if="!loading && requests.length === 0">
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 mb-3 d-block"></i>
+                        <p>Нема захтева</p>
+                    </div>
+                </template>
+                <template x-for="req in requests" :key="req.id">
+                    <div class="request-card p-3 m-2" :class="{'selected': selectedId === req.id}" @click="selectRequest(req.id)">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0" x-text="req.title"></h6>
+                            <span class="status-badge badge" :class="{
+                                'bg-warning text-dark': req.status === 'pending',
+                                'bg-info': req.status === 'in_review',
+                                'bg-success': req.status === 'approved',
+                                'bg-danger': req.status === 'rejected',
+                                'bg-secondary': req.status === 'archived'
+                            }" x-text="getStatusText(req.status)"></span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-person me-1"></i>
+                                <span x-text="req.created_by_name || 'Непознато'"></span>
+                            </small>
+                            <small class="text-muted" x-text="formatDate(req.created_at)"></small>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark me-1" x-text="getSubtypeLabel(req.subtype)"></span>
+                            <span class="priority-badge badge" :class="{
+                                'bg-danger': req.priority === 'urgent',
+                                'bg-warning text-dark': req.priority === 'high',
+                                'bg-success': req.priority === 'normal',
+                                'bg-secondary': req.priority === 'low'
+                            }" x-text="getPriorityText(req.priority)"></span>
+                            <template x-if="req.is_owner">
+                                <span class="badge bg-primary ms-1">Моја</span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="card-footer bg-white border-0" x-show="totalPages > 1">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        <li class="page-item" :class="{'disabled': page === 1}">
+                            <a class="page-link" href="#" @click.prevent="page--; loadRequests()"><i class="bi bi-chevron-left"></i></a>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link" x-text="page + ' / ' + totalPages"></span>
+                        </li>
+                        <li class="page-item" :class="{'disabled': page === totalPages}">
+                            <a class="page-link" href="#" @click.prevent="page++; loadRequests()"><i class="bi bi-chevron-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="col-lg-7">
+        <div class="detail-panel">
+            <template x-if="!selectedRequest">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-hand-index fs-1 text-muted mb-3 d-block"></i>
+                        <p class="text-muted">Изаберите захтев са листе за преглед детаља</p>
+                    </div>
+                </div>
+            </template>
+            <template x-if="selectedRequest">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 class="mb-1" x-text="selectedRequest.title"></h4>
+                                <small class="text-muted">
+                                    Креирао/ла: <strong x-text="selectedRequest.created_by_name"></strong>
+                                    • <span x-text="formatDate(selectedRequest.created_at)"></span>
+                                </small>
+                            </div>
+                            <span class="status-badge badge fs-6" :class="{
+                                'bg-warning text-dark': selectedRequest.status === 'pending',
+                                'bg-info': selectedRequest.status === 'in_review',
+                                'bg-success': selectedRequest.status === 'approved',
+                                'bg-danger': selectedRequest.status === 'rejected',
+                                'bg-secondary': selectedRequest.status === 'archived'
+                            }" x-text="getStatusText(selectedRequest.status)"></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">Опис</h6>
+                            <p x-text="selectedRequest.description || 'Без описа'" class="mb-0"></p>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Подтип</small>
+                                <span x-text="getSubtypeLabel(selectedRequest.subtype)"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Приоритет</small>
+                                <span class="priority-badge badge" :class="{
+                                    'bg-danger': selectedRequest.priority === 'urgent',
+                                    'bg-warning text-dark': selectedRequest.priority === 'high',
+                                    'bg-success': selectedRequest.priority === 'normal',
+                                    'bg-secondary': selectedRequest.priority === 'low'
+                                }" x-text="getPriorityText(selectedRequest.priority)"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Архивски број</small>
+                                <span x-text="selectedRequest.archive_reference || '-'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Approval Chain -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Ланац одобрења (3 нивоа)</h6>
+                            <template x-for="(sig, index) in selectedRequest.signatures" :key="sig.role">
+                                <div class="approval-step" :class="{
+                                    'pending': sig.decision === 'pending',
+                                    'approved': sig.decision === 'approved',
+                                    'rejected': sig.decision === 'rejected',
+                                    'current': index === selectedRequest.current_approval_step && selectedRequest.status !== 'rejected' && selectedRequest.status !== 'approved'
+                                }">
+                                    <div class="me-3">
+                                        <i class="bi fs-4" :class="{
+                                            'bi-hourglass text-warning': sig.decision === 'pending',
+                                            'bi-check-circle-fill text-success': sig.decision === 'approved',
+                                            'bi-x-circle-fill text-danger': sig.decision === 'rejected'
+                                        }"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <strong x-text="getRoleLabel(sig.role)"></strong>
+                                        <template x-if="sig.name">
+                                            <span class="text-muted ms-2" x-text="'(' + sig.name + ')'"></span>
+                                        </template>
+                                        <template x-if="sig.signed_at">
+                                            <small class="d-block text-muted" x-text="formatDate(sig.signed_at)"></small>
+                                        </template>
+                                        <template x-if="sig.comments">
+                                            <small class="d-block fst-italic" x-text="sig.comments"></small>
+                                        </template>
+                                    </div>
+                                    <span class="badge" :class="{
+                                        'bg-warning text-dark': sig.decision === 'pending',
+                                        'bg-success': sig.decision === 'approved',
+                                        'bg-danger': sig.decision === 'rejected'
+                                    }" x-text="sig.decision === 'pending' ? 'Чека' : sig.decision === 'approved' ? 'Одобрено' : 'Одбијено'"></span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <template x-if="selectedRequest.can_approve && (selectedRequest.status === 'pending' || selectedRequest.status === 'in_review')">
+                            <div class="mb-4 p-3 bg-light rounded">
+                                <h6 class="mb-3">Ваша одлука</h6>
+                                <div class="mb-3">
+                                    <textarea class="form-control" rows="2" placeholder="Коментар (опционо за одобрење, обавезно за одбијање)" x-model="approvalComment"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success" @click="approveRequest()" :disabled="processing">
+                                        <span x-show="processing" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i class="bi bi-check-lg me-2" x-show="!processing"></i>Одобри
+                                    </button>
+                                    <button class="btn btn-danger" @click="rejectRequest()" :disabled="processing || !approvalComment.trim()">
+                                        <i class="bi bi-x-lg me-2"></i>Одбиј
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Comments -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Коментари <span class="badge bg-secondary" x-text="(selectedRequest.comments || []).length"></span></h6>
+                            <template x-if="!selectedRequest.comments || selectedRequest.comments.length === 0">
+                                <p class="text-muted">Нема коментара</p>
+                            </template>
+                            <template x-for="comment in (selectedRequest.comments || [])" :key="comment.id">
+                                <div class="comment-item">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <strong x-text="comment.author_name"></strong>
+                                        <small class="text-muted" x-text="formatDate(comment.created_at)"></small>
+                                    </div>
+                                    <p class="mb-0" x-text="comment.comment"></p>
+                                </div>
+                            </template>
+                            <div class="mt-3">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Додај коментар..." x-model="newComment" @keyup.enter="addComment()">
+                                    <button class="btn btn-outline-primary" @click="addComment()" :disabled="!newComment.trim()">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <template x-if="selectedRequest.status === 'approved' && userRole === 'admin'">
+                            <div class="text-end">
+                                <button class="btn btn-secondary" @click="archiveRequest()" :disabled="processing">
+                                    <i class="bi bi-archive me-2"></i>Архивирај
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal fade" :class="{'show d-block': showNewModal}" tabindex="-1" style="background: rgba(0,0,0,0.5);" x-show="showNewModal" @click.self="showNewModal = false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Нови финансијски захтев</h5>
+                <button type="button" class="btn-close" @click="showNewModal = false"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Подтип</label>
+                    <select class="form-select" x-model="newRequest.subtype">
+                        <option value="">-- Изаберите --</option>
+                        <template x-for="st in subtypes" :key="st.value">
+                            <option :value="st.value" x-text="st.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Наслов</label>
+                    <input type="text" class="form-control" x-model="newRequest.title">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Опис</label>
+                    <textarea class="form-control" rows="4" x-model="newRequest.description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Приоритет</label>
+                    <select class="form-select" x-model="newRequest.priority">
+                        <option value="low">Низак</option>
+                        <option value="normal">Нормалан</option>
+                        <option value="high">Висок</option>
+                        <option value="urgent">Хитан</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="showNewModal = false">Откажи</button>
+                <button type="button" class="btn btn-warning" @click="createRequest()" :disabled="!newRequest.title.trim() || creating">
+                    <span x-show="creating" class="spinner-border spinner-border-sm me-2"></span>
+                    Креирај
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+function archiveFinansije() {
+    return {
+        requests: [],
+        loading: false,
+        total: 0,
+        page: 1,
+        totalPages: 1,
+        selectedId: null,
+        selectedRequest: null,
+        filter: { status: '', subtype: '' },
+        subtypes: {{ subtypes | tojson }},
+        showNewModal: false,
+        creating: false,
+        processing: false,
+        approvalComment: '',
+        newComment: '',
+        userRole: '{{ session.get("user_role", "employee") }}',
+        newRequest: { subtype: '', title: '', description: '', priority: 'normal' },
+
+        async init() {
+            const params = new URLSearchParams(window.location.search);
+            const requestId = params.get('id');
+            await this.loadRequests();
+            if (requestId) this.selectRequest(parseInt(requestId));
+        },
+
+        async loadRequests() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams({ type: 'finansije', page: this.page });
+                if (this.filter.status) params.append('status', this.filter.status);
+                if (this.filter.subtype) params.append('subtype', this.filter.subtype);
+                const response = await fetch(`/api/archive/requests?${params}`);
+                const data = await response.json();
+                if (data.success) {
+                    this.requests = data.requests;
+                    this.total = data.total;
+                    this.totalPages = data.total_pages;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async selectRequest(id) {
+            this.selectedId = id;
+            try {
+                const response = await fetch(`/api/archive/requests/${id}`);
+                const data = await response.json();
+                if (data.success) this.selectedRequest = data.request;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        },
+
+        async createRequest() {
+            this.creating = true;
+            try {
+                const response = await secureFetch('/api/archive/requests', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ ...this.newRequest, request_type: 'finansije' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.showNewModal = false;
+                    this.newRequest = { subtype: '', title: '', description: '', priority: 'normal' };
+                    await this.loadRequests();
+                    this.selectRequest(data.id);
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                this.creating = false;
+            }
+        },
+
+        async approveRequest() {
+            this.processing = true;
+            try {
+                const response = await secureFetch(`/api/archive/requests/${this.selectedId}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ comments: this.approvalComment })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.approvalComment = '';
+                    await this.loadRequests();
+                    await this.selectRequest(this.selectedId);
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        async rejectRequest() {
+            if (!this.approvalComment.trim()) { alert('Молимо унесите разлог одбијања'); return; }
+            this.processing = true;
+            try {
+                const response = await secureFetch(`/api/archive/requests/${this.selectedId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ comments: this.approvalComment })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.approvalComment = '';
+                    await this.loadRequests();
+                    await this.selectRequest(this.selectedId);
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        async addComment() {
+            if (!this.newComment.trim()) return;
+            try {
+                const response = await secureFetch(`/api/archive/requests/${this.selectedId}/comment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify({ comment: this.newComment })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.newComment = '';
+                    await this.selectRequest(this.selectedId);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        },
+
+        async archiveRequest() {
+            this.processing = true;
+            try {
+                const response = await secureFetch(`/api/archive/requests/${this.selectedId}/archive`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    await this.loadRequests();
+                    await this.selectRequest(this.selectedId);
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        getStatusText(status) {
+            const texts = { 'pending': 'На чекању', 'in_review': 'У прегледу', 'approved': 'Одобрено', 'rejected': 'Одбијено', 'archived': 'Архивирано' };
+            return texts[status] || status;
+        },
+
+        getSubtypeLabel(value) {
+            const st = this.subtypes.find(s => s.value === value);
+            return st ? st.label : value || '-';
+        },
+
+        getPriorityText(priority) {
+            const texts = { 'urgent': 'Хитан', 'high': 'Висок', 'normal': 'Нормалан', 'low': 'Низак' };
+            return texts[priority] || priority;
+        },
+
+        getRoleLabel(role) {
+            const labels = { 'sef_odeljenja': 'Шеф одељења', 'sef_racunovodstva': 'Шеф рачуноводства', 'direktor': 'Директор' };
+            return labels[role] || role;
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            return new Date(dateStr).toLocaleDateString('sr-Latn-RS', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+    };
+}
+</script>
+{% endblock %}

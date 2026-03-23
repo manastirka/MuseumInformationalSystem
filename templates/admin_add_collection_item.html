@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}Додај у збирку - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-collection me-2"></i>
+                                Додај нови предмет у збирку
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Унос новог предмета у кустоску збирку - {{ collection_name }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-plus-circle" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-light p-3 rounded">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('dashboard') }}" class="text-decoration-none">
+                            <i class="bi bi-house me-1"></i>Почетна
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin_panel') }}" class="text-decoration-none">
+                            <i class="bi bi-gear me-1"></i>Администрација
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('museum_databases') }}" class="text-decoration-none">
+                            <i class="bi bi-database me-1"></i>Музејске базе
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for(collection_route) }}" class="text-decoration-none">
+                            <i class="bi bi-collection me-1"></i>{{ collection_name }}
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="bi bi-plus-circle me-1"></i>Додај предмет
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add Collection Item Form -->
+    <form method="POST" id="addCollectionItemForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="collection_type" value="{{ collection_type }}">
+
+        <div class="row">
+            <!-- Basic Information -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Основни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Catalog Number -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="catalog_number" class="form-label">
+                                    <i class="bi bi-hash text-success me-1"></i>
+                                    Каталошки број <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="catalog_number" name="catalog_number" required>
+                                <div class="invalid-feedback">Молимо унесите каталошки број.</div>
+                                <div class="form-text">Јединствени идентификатор предмета у збирци</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="accession_number" class="form-label">
+                                    <i class="bi bi-card-heading text-success me-1"></i>
+                                    Инвентарски број
+                                </label>
+                                <input type="text" class="form-control" id="accession_number" name="accession_number">
+                                <div class="form-text">Број под којим је предмет ушао у музеј</div>
+                            </div>
+                        </div>
+
+                        <!-- Scientific Name / Common Name -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="scientific_name" class="form-label">
+                                    <i class="bi bi-mortarboard text-success me-1"></i>
+                                    Научни назив <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="scientific_name" name="scientific_name" required>
+                                <div class="invalid-feedback">Молимо унесите научни назив.</div>
+                                <div class="form-text">Латински/бинарни назив</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="common_name" class="form-label">
+                                    <i class="bi bi-type text-success me-1"></i>
+                                    Народни назив
+                                </label>
+                                <input type="text" class="form-control" id="common_name" name="common_name">
+                                <div class="form-text">Назив на српском језику</div>
+                            </div>
+                        </div>
+
+                        <!-- Classification -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="family" class="form-label">
+                                    <i class="bi bi-diagram-3 text-success me-1"></i>
+                                    Фамилија
+                                </label>
+                                <input type="text" class="form-control" id="family" name="family">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="genus" class="form-label">
+                                    <i class="bi bi-diagram-2 text-success me-1"></i>
+                                    Род
+                                </label>
+                                <input type="text" class="form-control" id="genus" name="genus">
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="collection_location" class="form-label">
+                                    <i class="bi bi-geo-alt text-success me-1"></i>
+                                    Место наласка/сакупљања <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="collection_location" name="collection_location" required>
+                                <div class="invalid-feedback">Молимо унесите место наласка.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="collection_date" class="form-label">
+                                    <i class="bi bi-calendar text-success me-1"></i>
+                                    Датум сакупљања
+                                </label>
+                                <input type="date" class="form-control" id="collection_date" name="collection_date">
+                            </div>
+                        </div>
+
+                        <!-- Collector -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="collector" class="form-label">
+                                    <i class="bi bi-person text-success me-1"></i>
+                                    Сакупљач/истраживач
+                                </label>
+                                <input type="text" class="form-control" id="collector" name="collector">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="determiner" class="form-label">
+                                    <i class="bi bi-person-check text-success me-1"></i>
+                                    Одредио
+                                </label>
+                                <input type="text" class="form-control" id="determiner" name="determiner">
+                                <div class="form-text">Ко је извршио таксономску идентификацију</div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-card-text text-success me-1"></i>
+                                    Опис предмета
+                                </label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="3" placeholder="Детаљан опис предмета, карактеристике, стање..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preservation and Storage -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-archive me-2"></i>
+                            Чување и складиштење
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Storage Location -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="storage_location" class="form-label">
+                                    <i class="bi bi-building text-info me-1"></i>
+                                    Локација у збирци <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="storage_location" name="storage_location" required>
+                                <div class="invalid-feedback">Молимо унесите локацију у збирци.</div>
+                                <div class="form-text">Орман, полица, кутија...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="preservation_method" class="form-label">
+                                    <i class="bi bi-shield-check text-info me-1"></i>
+                                    Начин чувања
+                                </label>
+                                <select class="form-select" id="preservation_method" name="preservation_method">
+                                    <option value="">Изаберите начин чувања...</option>
+                                    <option value="суво">Суво чување</option>
+                                    <option value="алкохол">У алкохолу</option>
+                                    <option value="формалин">У формалину</option>
+                                    <option value="замрзнуто">Замрзнуто</option>
+                                    <option value="гликол">У гликолу</option>
+                                    <option value="хербаријум">Хербаријум</option>
+                                    <option value="остало">Остало</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Condition -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="condition" class="form-label">
+                                    <i class="bi bi-heart text-info me-1"></i>
+                                    Стање предмета <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="condition" name="condition" required>
+                                    <option value="">Изаберите стање...</option>
+                                    <option value="одлично">Одлично</option>
+                                    <option value="добро">Добро</option>
+                                    <option value="задовољавајуће">Задовољавајуће</option>
+                                    <option value="лоше">Лоше</option>
+                                    <option value="фрагментовано">Фрагментовано</option>
+                                    <option value="захтева рестаурацију">Захтева рестаурацију</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите стање предмета.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="completeness" class="form-label">
+                                    <i class="bi bi-check-circle text-info me-1"></i>
+                                    Комплетност
+                                </label>
+                                <select class="form-select" id="completeness" name="completeness">
+                                    <option value="">Изаберите комплетност...</option>
+                                    <option value="комплетан">Комплетан</option>
+                                    <option value="скоро комплетан">Скоро комплетан</option>
+                                    <option value="фрагмент">Фрагмент</option>
+                                    <option value="делимично очуван">Делимично очуван</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="col-lg-4">
+                <!-- Physical Properties -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-rulers me-2"></i>
+                            Физичке карактеристике
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Size -->
+                        <div class="mb-3">
+                            <label for="size" class="form-label">
+                                <i class="bi bi-aspect-ratio text-secondary me-1"></i>
+                                Величина/димензије
+                            </label>
+                            <input type="text" class="form-control" id="size" name="size"
+                                   placeholder="15 cm × 8 cm">
+                        </div>
+
+                        <!-- Weight -->
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">
+                                <i class="bi bi-speedometer text-secondary me-1"></i>
+                                Тежина
+                            </label>
+                            <input type="text" class="form-control" id="weight" name="weight"
+                                   placeholder="250 g">
+                        </div>
+
+                        <!-- Age/Period -->
+                        <div class="mb-3">
+                            <label for="age" class="form-label">
+                                <i class="bi bi-clock-history text-secondary me-1"></i>
+                                Старост/период
+                            </label>
+                            <input type="text" class="form-control" id="age" name="age"
+                                   placeholder="Плеистоцен, 50.000 година...">
+                        </div>
+
+                        <!-- Sex -->
+                        <div class="mb-3">
+                            <label for="sex" class="form-label">
+                                <i class="bi bi-gender-ambiguous text-secondary me-1"></i>
+                                Пол
+                            </label>
+                            <select class="form-select" id="sex" name="sex">
+                                <option value="">Неодређен</option>
+                                <option value="мужјак">Мужјак</option>
+                                <option value="женка">Женка</option>
+                                <option value="хермафродит">Хермафродит</option>
+                            </select>
+                        </div>
+
+                        <!-- Life Stage -->
+                        <div class="mb-3">
+                            <label for="life_stage" class="form-label">
+                                <i class="bi bi-arrow-up-circle text-secondary me-1"></i>
+                                Животни стадијум
+                            </label>
+                            <select class="form-select" id="life_stage" name="life_stage">
+                                <option value="">Неодређен</option>
+                                <option value="младунче">Младунче</option>
+                                <option value="јувенилан">Јувенилан</option>
+                                <option value="адулт">Адулт</option>
+                                <option value="сенилан">Сенилан</option>
+                                <option value="ларва">Ларва</option>
+                                <option value="пупа">Пупа</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Research Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-search me-2"></i>
+                            Истраживачки подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Research Project -->
+                        <div class="mb-3">
+                            <label for="research_project" class="form-label">
+                                <i class="bi bi-folder text-warning me-1"></i>
+                                Истраживачки пројекат
+                            </label>
+                            <input type="text" class="form-control" id="research_project" name="research_project">
+                        </div>
+
+                        <!-- Publications -->
+                        <div class="mb-3">
+                            <label for="publications" class="form-label">
+                                <i class="bi bi-journal text-warning me-1"></i>
+                                Публикације
+                            </label>
+                            <textarea class="form-control" id="publications" name="publications"
+                                      rows="2" placeholder="Цитати радова где је предмет поменут..."></textarea>
+                        </div>
+
+                        <!-- Special Notes -->
+                        <div class="mb-3">
+                            <label for="special_notes" class="form-label">
+                                <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                                Посебне напомене
+                            </label>
+                            <textarea class="form-control" id="special_notes" name="special_notes"
+                                      rows="2" placeholder="Тип, хологип, ендемска врста..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle me-2"></i>Додај у збирку
+                            </button>
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Назад на збирку
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Help Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-success">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-success me-2"></i>
+                        Информације о уносу предмета у збирке
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-success">Обавезна поља:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check text-success me-1"></i> Каталошки број</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Научни назив</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Место наласка</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Локација у збирци</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Стање предмета</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-success">Начини чувања:</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-droplet text-info me-1"></i> Алкохол (70-96%)</li>
+                                <li><i class="bi bi-droplet-half text-info me-1"></i> Формалин (4%)</li>
+                                <li><i class="bi bi-snow text-primary me-1"></i> Замрзнуто (-20°C)</li>
+                                <li><i class="bi bi-sun text-warning me-1"></i> Суво чување</li>
+                                <li><i class="bi bi-flower1 text-success me-1"></i> Хербаријум</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-success">Напомене:</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Каталошки број мора бити јединствен</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Користити стандардне научне називе</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Прецизно навести локацију</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Редовно ажурирати стање</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    const form = document.getElementById('addCollectionItemForm');
+
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+})();
+
+// Auto-suggest genus from scientific name
+document.getElementById('scientific_name').addEventListener('input', function(e) {
+    const scientificName = e.target.value;
+    const parts = scientificName.split(' ');
+    if (parts.length >= 1) {
+        document.getElementById('genus').value = parts[0];
+    }
+});
+</script>
+{% endblock %}

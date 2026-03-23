@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Додај корисника - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Додај новог корисника
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Додајте новог запосленог у систем музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('employees_database') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад на базу
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge me-2"></i>
+                        Подаци о новом кориснику
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="addUserForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="row g-3">
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">
+                                    <i class="bi bi-envelope me-1"></i>
+                                    Е-mail адреса *
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" required
+                                       placeholder="ime.prezime@nhmbeo.rs">
+                                <div class="form-text">Користи се за пријаву у систем</div>
+                            </div>
+
+                            <!-- Full Name -->
+                            <div class="col-md-6">
+                                <label for="full_name" class="form-label">
+                                    <i class="bi bi-person me-1"></i>
+                                    Пуно име *
+                                </label>
+                                <input type="text" class="form-control" id="full_name" name="full_name" required
+                                       placeholder="Име Презиме">
+                            </div>
+
+                            <!-- Department -->
+                            <div class="col-md-6">
+                                <label for="department" class="form-label">
+                                    <i class="bi bi-building me-1"></i>
+                                    Одељење *
+                                </label>
+                                <select class="form-select" id="department" name="department" required>
+                                    <option value="">Изаберите одељење</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept }}">{{ dept }}</option>
+                                    {% endfor %}
+                                    <option value="custom">Друго (унесите ново)</option>
+                                </select>
+                                <input type="text" class="form-control mt-2 d-none" id="custom_department"
+                                       placeholder="Унесите назив новог одељења">
+                            </div>
+
+                            <!-- Position -->
+                            <div class="col-md-6">
+                                <label for="position" class="form-label">
+                                    <i class="bi bi-briefcase me-1"></i>
+                                    Позиција *
+                                </label>
+                                <input type="text" class="form-control" id="position" name="position" required
+                                       placeholder="нпр. кустос, музејски саветник, препаратор">
+                            </div>
+
+                            <!-- Role -->
+                            <div class="col-md-6">
+                                <label for="role" class="form-label">
+                                    <i class="bi bi-shield me-1"></i>
+                                    Улога у систему
+                                </label>
+                                <select class="form-select" id="role" name="role">
+                                    <option value="employee">Запослени</option>
+                                    <option value="admin">Администратор</option>
+                                </select>
+                                <div class="form-text">Администратори имају приступ свим функцијама</div>
+                            </div>
+
+                            <!-- Password -->
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">
+                                    <i class="bi bi-key me-1"></i>
+                                    Привремена лозинка
+                                </label>
+                                <input type="text" class="form-control" id="password" name="password" value="user"
+                                       placeholder="Привремена лозинка">
+                                <div class="form-text">Корисник може променити лозинку након пријаве</div>
+                            </div>
+                        </div>
+
+                        <!-- Access Control Preview -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-eye me-1"></i>
+                                            Преглед приступа модулима
+                                        </h6>
+                                    </div>
+                                    <div class="card-body" id="accessPreview">
+                                        <p class="text-muted">Изаберите улогу да видите доступне модуле</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <a href="{{ url_for('employees_database') }}" class="btn btn-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Откажи
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Додај корисника
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-info-circle" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h6>Приступ модулима</h6>
+                    <p class="small text-muted">Нови запослени аутоматски добијају приступ систему за радне листе</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-check" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h6>Безбедност</h6>
+                    <p class="small text-muted">Додатни приступи се могу доделити кроз управљање приступима</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-key" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h6>Лозинке</h6>
+                    <p class="small text-muted">Корисници могу променити лозинку након првог приступа</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Department selection logic
+document.getElementById('department').addEventListener('change', function() {
+    const customDept = document.getElementById('custom_department');
+    if (this.value === 'custom') {
+        customDept.classList.remove('d-none');
+        customDept.required = true;
+        customDept.focus();
+    } else {
+        customDept.classList.add('d-none');
+        customDept.required = false;
+        customDept.value = '';
+    }
+});
+
+// Role selection preview
+document.getElementById('role').addEventListener('change', function() {
+    updateAccessPreview(this.value);
+});
+
+function updateAccessPreview(role) {
+    const preview = document.getElementById('accessPreview');
+
+    if (role === 'admin') {
+        preview.innerHTML = `
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-success">Систем за радне листе</span>
+                <span class="badge bg-success">Музејске базе података</span>
+                <span class="badge bg-success">Администрација</span>
+                <span class="badge bg-success">Управљање корисницима</span>
+                <span class="badge bg-success">Извештаји</span>
+            </div>
+            <p class="small text-muted mt-2 mb-0">Администратори имају приступ свим модулима система</p>
+        `;
+    } else {
+        preview.innerHTML = `
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-primary">Систем за радне листе</span>
+                <span class="badge bg-secondary">Музејске базе података <small>(по одобрењу)</small></span>
+            </div>
+            <p class="small text-muted mt-2 mb-0">Запослени имају основни приступ. Додатни приступи се додељују накнадно.</p>
+        `;
+    }
+}
+
+// Form validation
+document.getElementById('addUserForm').addEventListener('submit', function(e) {
+    const email = document.getElementById('email').value;
+    const fullName = document.getElementById('full_name').value;
+    const department = document.getElementById('department').value;
+    const customDept = document.getElementById('custom_department').value;
+    const position = document.getElementById('position').value;
+
+    // Check if custom department is needed
+    if (department === 'custom' && !customDept.trim()) {
+        e.preventDefault();
+        alert('Молимо унесите назив новог одељења');
+        document.getElementById('custom_department').focus();
+        return;
+    }
+
+    // Update department value if custom
+    if (department === 'custom') {
+        document.getElementById('department').value = customDept;
+    }
+
+    // Email format validation
+    if (!email.includes('@') || !email.includes('.')) {
+        e.preventDefault();
+        alert('Молимо унесите валидну е-mail адресу');
+        document.getElementById('email').focus();
+        return;
+    }
+
+    // Confirmation
+    if (!confirm(`Да ли сте сигурни да желите да додате корисника ${fullName}?`)) {
+        e.preventDefault();
+    }
+});
+
+// Initialize preview
+document.addEventListener('DOMContentLoaded', function() {
+    updateAccessPreview('employee');
+});
+</script>
+
+<style>
+.form-label {
+    font-weight: 500;
+    color: var(--museum-primary);
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--museum-primary);
+    box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+</style>
+{% endblock %}

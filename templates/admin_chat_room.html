@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+{% block title %}Ћаскаоница — Природњачки музеј{% endblock %}
+
+{% block content %}
+<div x-data="chatRoom()" x-init="init()" @keydown.escape.window="false" class="chat-app">
+    <div class="chat-layout" :class="{'show-convos': showConvoPanel}">
+
+        <!-- Left: Conversation list -->
+        <div class="chat-convos">
+            <div class="chat-convos-header">
+                <i class="bi bi-chat-left-text me-1"></i>Разговори
+            </div>
+            <div class="chat-convo-list">
+                <template x-for="ch in channels" :key="ch.id">
+                    <div class="chat-convo-item" :class="{'active': ch.id === activeChannel}"
+                         @click="switchChannel(ch.id)">
+                        <div class="chat-convo-icon" :style="ch.type==='group' ? 'background:#4e79a7' : 'background:' + avatarColor(ch.name)">
+                            <i x-show="ch.type==='group'" class="bi bi-people-fill" style="font-size:0.75rem"></i>
+                            <span x-show="ch.type!=='group'" x-text="initials(ch.name)" style="font-size:0.65rem"></span>
+                        </div>
+                        <div class="chat-convo-info">
+                            <div class="chat-convo-name" :style="ch.type!=='group' ? 'color:' + avatarColor(ch.name) : ''" x-text="ch.name"></div>
+                            <div class="chat-convo-preview" x-show="ch.preview">
+                                <span x-show="ch.type==='group' && ch.last_sender" :style="'color:' + avatarColor(ch.last_sender)" x-text="ch.last_sender.split(' ')[0] + ': '"></span><span x-text="ch.preview"></span>
+                            </div>
+                        </div>
+                        <span class="chat-unread-badge" x-show="ch.unread > 0" x-text="ch.unread"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Center: Chat main area -->
+        <div class="chat-main">
+            <!-- Header -->
+            <div class="chat-header">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-secondary me-2 d-lg-none chat-hamburger"
+                            @click="showConvoPanel = !showConvoPanel">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <i class="bi" :class="activeChannel === 'general' ? 'bi-people-fill' : 'bi-chat-dots'" class="fs-5 me-2"></i>
+                    <div>
+                        <strong x-text="currentChannelName()"></strong>
+                        <span class="text-muted small ms-2" x-show="activeChannel === 'general'"
+                              x-text="onlineUsers.length + ' на мрежи'"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="chat-messages" x-ref="messageBox">
+                <template x-if="messages.length === 0">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-chat-square-text fs-1 d-block mb-2"></i>
+                        Нема порука. Будите први који ће писати!
+                    </div>
+                </template>
+                <template x-for="(m, i) in messages" :key="m.id">
+                    <div class="chat-msg" :class="{'chat-msg-mine': m.user_id == myUserId}">
+                        <!-- Date separator -->
+                        <template x-if="i === 0 || dateSep(messages[i-1], m)">
+                            <div class="chat-date-sep">
+                                <span x-text="formatDateSep(m.timestamp)"></span>
+                            </div>
+                        </template>
+                        <div class="d-flex" :class="m.user_id == myUserId ? 'justify-content-end' : ''">
+                            <div class="chat-bubble" :class="m.user_id == myUserId ? 'chat-bubble-mine' : 'chat-bubble-other'"
+                                 :style="m.user_id != myUserId ? 'border-left: 3px solid ' + avatarColor(m.user_name) : ''">
+                                <div class="chat-sender" x-show="m.user_id != myUserId">
+                                    <strong :style="'color:' + avatarColor(m.user_name)" x-text="m.user_name"></strong>
+                                    <span class="chat-dept" x-show="m.department" x-text="m.department"></span>
+                                </div>
+                                <!-- File attachment -->
+                                <template x-if="m.file_name">
+                                    <div class="chat-file-attachment">
+                                        <template x-if="isImage(m.file_type)">
+                                            <a :href="'/api/chat/file/' + m.file_path" target="_blank" class="chat-file-image-link">
+                                                <img :src="'/api/chat/file/' + m.file_path" :alt="m.file_name"
+                                                     class="chat-file-thumbnail">
+                                            </a>
+                                        </template>
+                                        <template x-if="!isImage(m.file_type)">
+                                            <a :href="'/api/chat/file/' + m.file_path" class="chat-file-card" download>
+                                                <i class="bi" :class="fileIcon(m.file_type)" style="font-size:1.5rem"></i>
+                                                <div class="chat-file-info">
+                                                    <div class="chat-file-name" x-text="m.file_name"></div>
+                                                    <div class="chat-file-size" x-text="formatFileSize(m.file_size)"></div>
+                                                </div>
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+                                <!-- Text -->
+                                <div class="chat-text" x-show="m.message" x-html="linkify(m.message)"></div>
+                                <div class="chat-time" x-text="formatTime(m.timestamp)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Upload progress bar -->
+            <div class="chat-upload-progress" x-show="uploadProgress > 0 && uploadProgress < 100">
+                <div class="chat-upload-bar" :style="'width:' + uploadProgress + '%'"></div>
+            </div>
+
+            <!-- Selected file preview -->
+            <div class="chat-file-preview" x-show="selectedFile">
+                <i class="bi bi-paperclip me-1"></i>
+                <span x-text="selectedFile ? selectedFile.name : ''"></span>
+                <span class="text-muted ms-1" x-text="selectedFile ? formatFileSize(selectedFile.size) : ''"></span>
+                <button type="button" class="btn-close btn-close-sm ms-2" @click="removeFile()" aria-label="Уклони"></button>
+            </div>
+
+            <!-- Input -->
+            <div class="chat-input">
+                <form @submit.prevent="send()" class="d-flex gap-2 align-items-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm chat-attach-btn"
+                            @click="$refs.fileInput.click()" title="Приложи фајл">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
+                    <input type="file" x-ref="fileInput" class="d-none"
+                           accept=".jpg,.jpeg,.png,.gif,.pdf,.xlsx,.xls,.csv,.doc,.docx"
+                           @change="onFileSelect($event)">
+                    <input type="text" class="form-control" x-model="draft"
+                           placeholder="Напишите поруку..." maxlength="2000"
+                           autocomplete="off" x-ref="chatInput">
+                    <button type="submit" class="btn btn-primary"
+                            :disabled="(!draft.trim() && !selectedFile) || sending">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right: Online users sidebar -->
+        <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+                <!-- Status selector -->
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle d-flex align-items-center gap-1 w-100 p-1"
+                            type="button" data-bs-toggle="dropdown" style="border:none;background:none;">
+                        <span class="chat-status-dot" :class="'status-' + myStatus"></span>
+                        <span class="small fw-semibold" x-text="statusLabel(myStatus)"></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                               @click.prevent="setStatus('online')">
+                            <span class="chat-status-dot status-online"></span> На мрежи
+                        </a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                               @click.prevent="setStatus('busy')">
+                            <span class="chat-status-dot status-busy"></span> Заузет/а
+                        </a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                               @click.prevent="setStatus('offline')">
+                            <span class="chat-status-dot status-offline"></span> Невидљив/а
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="chat-sidebar-subheader">
+                <i class="bi bi-people me-1"></i>На мрежи
+                <span class="badge bg-success rounded-pill ms-1" x-text="onlineUsers.length"></span>
+            </div>
+            <div class="chat-user-list">
+                <template x-for="u in onlineUsers" :key="u.user_id">
+                    <div class="chat-user-item" @click="startDM(u.user_id, u.name)" style="cursor:pointer"
+                         :title="'Пошаљи поруку: ' + u.name">
+                        <div class="chat-user-avatar" :style="'background:' + avatarColor(u.name)">
+                            <span x-text="initials(u.name)"></span>
+                        </div>
+                        <div class="chat-user-info">
+                            <div class="chat-user-name" :style="'color:' + avatarColor(u.name)" x-text="u.name"></div>
+                            <div class="chat-user-dept" x-show="u.department" x-text="u.department"></div>
+                        </div>
+                        <span class="chat-status-dot" :class="'status-' + (u.status || 'online')"></span>
+                    </div>
+                </template>
+                <div x-show="onlineUsers.length === 0" class="p-3 text-muted small text-center">
+                    Нико тренутно није на мрежи
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-app { height: calc(100vh - 80px); overflow: hidden; }
+.chat-layout { display: grid; grid-template-columns: 250px 1fr 220px; height: 100%; }
+
+/* Conversation list (left) */
+.chat-convos { border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; overflow: hidden; background: var(--bs-body-bg); }
+.chat-convos-header { padding: 10px 12px; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid var(--bs-border-color); flex-shrink: 0; }
+.chat-convo-list { flex: 1; overflow-y: auto; }
+.chat-convo-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); transition: background 0.15s; }
+.chat-convo-item:hover { background: var(--bs-tertiary-bg); }
+.chat-convo-item.active { background: var(--bs-primary-bg-subtle); border-left: 3px solid var(--bs-primary); }
+.chat-convo-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.chat-convo-info { flex: 1; min-width: 0; }
+.chat-convo-name { font-size: 0.82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-convo-preview { font-size: 0.7rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-unread-badge { background: #dc3545; color: #fff; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; flex-shrink: 0; animation: pulsate 1.5s ease-in-out infinite; }
+
+/* Main chat area */
+.chat-main { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.chat-header { padding: 10px 16px; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-body-bg); flex-shrink: 0; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 12px 16px; background: var(--bs-tertiary-bg); }
+.chat-input { padding: 10px 16px; border-top: 1px solid var(--bs-border-color); background: var(--bs-body-bg); flex-shrink: 0; }
+
+/* Messages */
+.chat-msg { margin-bottom: 4px; }
+.chat-bubble { max-width: 70%; padding: 6px 12px; border-radius: 12px; font-size: 0.9rem; word-wrap: break-word; }
+.chat-bubble-other { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 12px 12px 12px 2px; }
+.chat-bubble-mine { background: var(--bs-primary); color: #fff; border-radius: 12px 12px 2px 12px; }
+.chat-bubble-mine .chat-time { color: rgba(255,255,255,0.7); }
+.chat-bubble-mine a { color: #cde; }
+.chat-sender { font-size: 0.75rem; margin-bottom: 1px; }
+.chat-sender strong { font-weight: 700; }
+.chat-dept { color: var(--bs-secondary-color); font-size: 0.7rem; margin-left: 4px; }
+.chat-text { line-height: 1.4; }
+.chat-text a { text-decoration: underline; }
+.chat-time { font-size: 0.65rem; color: var(--bs-secondary-color); text-align: right; margin-top: 1px; }
+
+/* Date separator */
+.chat-date-sep { text-align: center; margin: 12px 0 8px; }
+.chat-date-sep span { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-size: 0.72rem; padding: 2px 12px; border-radius: 10px; }
+
+/* Pulsate animation */
+@keyframes pulsate {
+    0%   { transform: scale(1);   opacity: 1; }
+    50%  { transform: scale(1.15); opacity: 0.7; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes pulsate-glow {
+    0%   { box-shadow: 0 0 0 0 currentColor; }
+    50%  { box-shadow: 0 0 6px 2px currentColor; }
+    100% { box-shadow: 0 0 0 0 currentColor; }
+}
+
+/* Status dots */
+.chat-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-online { background: #198754; animation: pulsate 2s ease-in-out infinite; }
+.status-busy { background: #fd7e14; animation: pulsate 3s ease-in-out infinite; }
+.status-offline { background: #adb5bd; }
+
+/* Sidebar (right) */
+.chat-sidebar { border-left: 1px solid var(--bs-border-color); display: flex; flex-direction: column; overflow: hidden; background: var(--bs-body-bg); }
+.chat-sidebar-header { padding: 8px 10px; border-bottom: 1px solid var(--bs-border-color); }
+.chat-sidebar-subheader { padding: 6px 12px; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid var(--bs-border-color); color: var(--bs-secondary-color); }
+.chat-user-list { flex: 1; overflow-y: auto; }
+.chat-user-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 4px; margin: 2px 4px; }
+.chat-user-item:hover { background: var(--bs-tertiary-bg); }
+.chat-user-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.chat-user-info { flex: 1; min-width: 0; }
+.chat-user-name { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-user-dept { font-size: 0.65rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* File attachment display */
+.chat-file-attachment { margin: 4px 0; }
+.chat-file-thumbnail { max-width: 240px; max-height: 200px; border-radius: 8px; display: block; cursor: pointer; }
+.chat-file-image-link { display: inline-block; }
+.chat-bubble-mine .chat-file-thumbnail { border: 2px solid rgba(255,255,255,0.3); }
+.chat-file-card { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; text-decoration: none; color: inherit; min-width: 200px; }
+.chat-bubble-other .chat-file-card { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+.chat-bubble-mine .chat-file-card { background: rgba(255,255,255,0.15); color: #fff; }
+.chat-file-info { flex: 1; min-width: 0; }
+.chat-file-name { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-file-size { font-size: 0.65rem; color: var(--bs-secondary-color); }
+.chat-bubble-mine .chat-file-size { color: rgba(255,255,255,0.7); }
+
+/* File preview bar and progress */
+.chat-file-preview { padding: 4px 16px; background: var(--bs-info-bg-subtle); font-size: 0.8rem; display: flex; align-items: center; border-top: 1px solid var(--bs-border-color); }
+.chat-upload-progress { height: 4px; background: var(--bs-secondary-bg); }
+.chat-upload-bar { height: 100%; background: var(--bs-primary); transition: width 0.2s; }
+
+/* Attach button */
+.chat-attach-btn { border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Hamburger for mobile */
+.chat-hamburger { display: none; }
+
+/* Responsive */
+@media (max-width: 991px) {
+    .chat-layout { grid-template-columns: 250px 1fr; }
+    .chat-sidebar { display: none; }
+    .chat-hamburger { display: inline-flex; }
+}
+
+@media (max-width: 767px) {
+    .chat-layout { grid-template-columns: 1fr; }
+    .chat-convos { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 280px; z-index: 1050; box-shadow: 4px 0 12px rgba(0,0,0,0.15); }
+    .chat-layout.show-convos .chat-convos { display: flex; }
+    .chat-sidebar { display: none; }
+    .chat-bubble { max-width: 85%; }
+    .chat-hamburger { display: inline-flex; }
+}
+
+/* ───── Dark mode adjustments ───── */
+
+/* Chat messages area — deeper shade to contrast with bubbles */
+[data-bs-theme="dark"] .chat-messages {
+    background: #1a1d21;
+}
+
+/* Other person's bubble — visible against dark message area */
+[data-bs-theme="dark"] .chat-bubble-other {
+    background: #2b3035;
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* My bubble — slightly softer primary for dark mode */
+[data-bs-theme="dark"] .chat-bubble-mine {
+    opacity: 0.95;
+}
+
+/* Conversation list hover & active */
+[data-bs-theme="dark"] .chat-convo-item:hover {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+}
+[data-bs-theme="dark"] .chat-convo-item.active {
+    background: rgba(var(--bs-primary-rgb), 0.18);
+}
+
+/* Sidebar user items */
+[data-bs-theme="dark"] .chat-user-item:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+/* File cards in other's bubbles */
+[data-bs-theme="dark"] .chat-bubble-other .chat-file-card {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Image thumbnails — slight dim to reduce glare */
+[data-bs-theme="dark"] .chat-file-thumbnail {
+    opacity: 0.92;
+}
+
+/* File preview bar */
+[data-bs-theme="dark"] .chat-file-preview {
+    background: var(--bs-tertiary-bg);
+}
+
+/* Date separator pill */
+[data-bs-theme="dark"] .chat-date-sep span {
+    background: #2b3035;
+    color: var(--bs-secondary-color);
+}
+
+/* Status dots — brighter for dark backgrounds */
+[data-bs-theme="dark"] .status-online { background: #22c55e; }
+[data-bs-theme="dark"] .status-busy { background: #ff922b; }
+
+/* Avatars & convo icons: softer glow in dark mode */
+[data-bs-theme="dark"] .chat-convo-icon,
+[data-bs-theme="dark"] .chat-user-avatar {
+    animation-name: pulsate-glow-dark;
+}
+@keyframes pulsate-glow-dark {
+    0%   { box-shadow: 0 0 0 0 transparent; }
+    50%  { box-shadow: 0 0 5px 1px rgba(255,255,255,0.15); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Unread badge — slightly brighter red */
+[data-bs-theme="dark"] .chat-unread-badge {
+    background: #ef4444;
+}
+
+/* Header & input areas — ensure border visibility */
+[data-bs-theme="dark"] .chat-header,
+[data-bs-theme="dark"] .chat-input {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Sidebar borders */
+[data-bs-theme="dark"] .chat-sidebar {
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .chat-sidebar-header,
+[data-bs-theme="dark"] .chat-sidebar-subheader {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Conversation list borders */
+[data-bs-theme="dark"] .chat-convos {
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .chat-convos-header {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Mobile slide-out panel — deeper shadow in dark */
+@media (max-width: 767px) {
+    [data-bs-theme="dark"] .chat-convos {
+        box-shadow: 4px 0 20px rgba(0,0,0,0.6);
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function chatRoom() {
+    return {
+        messages: [],
+        onlineUsers: [],
+        channels: [],
+        draft: '',
+        sending: false,
+        myUserId: {{ session.get('user_id', 0) }},
+        myName: {{ session.get('user_name', '')|tojson }},
+        lastEpoch: 0,
+        activeChannel: 'general',
+        myStatus: 'online',
+        selectedFile: null,
+        uploadProgress: 0,
+        showConvoPanel: false,
+        _pollTimer: null,
+
+        init() {
+            this.loadMessages();
+            this._pollTimer = setInterval(() => this.poll(), 3000);
+            this._onLeave = () => {
+                navigator.sendBeacon('/api/chat/leave', new Blob([JSON.stringify({})], {type:'application/json'}));
+            };
+            window.addEventListener('pagehide', this._onLeave);
+            window.addEventListener('beforeunload', this._onLeave);
+        },
+
+        currentChannelName() {
+            if (this.activeChannel === 'general') return 'Општи чат';
+            const ch = this.channels.find(c => c.id === this.activeChannel);
+            return ch ? ch.name : 'Разговор';
+        },
+
+        async loadMessages() {
+            try {
+                const r = await fetch(`/api/chat/messages?channel=${encodeURIComponent(this.activeChannel)}`);
+                const d = await r.json();
+                if (d.success) {
+                    this.messages = d.messages;
+                    if (d.messages.length) this.lastEpoch = d.messages[d.messages.length - 1].ts_epoch;
+                    else this.lastEpoch = 0;
+                    this.onlineUsers = d.online || [];
+                    this.channels = d.channels || [];
+                    this.$nextTick(() => this.scrollBottom());
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        async poll() {
+            if (document.hidden) return;
+            try {
+                const r = await fetch(`/api/chat/messages?since=${this.lastEpoch}&channel=${encodeURIComponent(this.activeChannel)}`);
+                const d = await r.json();
+                if (d.success) {
+                    if (d.messages.length) {
+                        this.messages.push(...d.messages);
+                        this.lastEpoch = d.messages[d.messages.length - 1].ts_epoch;
+                        if (this.messages.length > 500) this.messages = this.messages.slice(-500);
+                        this.$nextTick(() => this.scrollBottom());
+                    }
+                    this.onlineUsers = d.online || [];
+                    this.channels = d.channels || [];
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        switchChannel(channelId) {
+            if (channelId === this.activeChannel) return;
+            this.activeChannel = channelId;
+            this.messages = [];
+            this.lastEpoch = 0;
+            this.showConvoPanel = false;
+            this.loadMessages();
+        },
+
+        startDM(userId, userName) {
+            if (userId === this.myUserId) return;
+            const low = Math.min(this.myUserId, userId);
+            const high = Math.max(this.myUserId, userId);
+            const ch = `dm:${low}:${high}`;
+            // Add to channels if not present
+            if (!this.channels.find(c => c.id === ch)) {
+                this.channels.push({
+                    id: ch, type: 'dm', name: userName,
+                    other_id: userId, other_dept: '',
+                    unread: 0, last_epoch: 0, last_sender: '', preview: ''
+                });
+            }
+            this.switchChannel(ch);
+        },
+
+        async setStatus(status) {
+            this.myStatus = status;
+            try {
+                await secureFetch('/api/chat/status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status})
+                });
+            } catch (e) { /* ignore */ }
+        },
+
+        statusLabel(s) {
+            const labels = {online: 'На мрежи', busy: 'Заузет/а', offline: 'Невидљив/а'};
+            return labels[s] || 'На мрежи';
+        },
+
+        // File handling
+        onFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Фајл је превелик (макс. 10MB)');
+                this.$refs.fileInput.value = '';
+                return;
+            }
+            this.selectedFile = file;
+        },
+
+        removeFile() {
+            this.selectedFile = null;
+            this.$refs.fileInput.value = '';
+        },
+
+        async send() {
+            const text = this.draft.trim();
+            const file = this.selectedFile;
+            if (!text && !file) return;
+            this.sending = true;
+
+            try {
+                if (file) {
+                    // Use XHR for file upload with progress tracking
+                    await this._uploadWithFile(text, file);
+                } else {
+                    // Text-only via fetch
+                    const r = await secureFetch('/api/chat/send', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({message: text, channel: this.activeChannel})
+                    });
+                    const d = await r.json();
+                    if (d.success) {
+                        this.messages.push(d.msg);
+                        this.lastEpoch = d.msg.ts_epoch;
+                    }
+                }
+                this.draft = '';
+                this.selectedFile = null;
+                if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+                this.uploadProgress = 0;
+                this.$nextTick(() => {
+                    this.scrollBottom();
+                    this.$refs.chatInput.focus();
+                });
+            } catch (e) { /* ignore */ }
+            this.sending = false;
+        },
+
+        _uploadWithFile(text, file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('message', text);
+                formData.append('channel', this.activeChannel);
+                formData.append('file', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/chat/send');
+                xhr.setRequestHeader('X-CSRFToken', CSRF_TOKEN);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        this.uploadProgress = Math.round((e.loaded / e.total) * 100);
+                    }
+                };
+
+                xhr.onload = () => {
+                    this.uploadProgress = 0;
+                    try {
+                        const d = JSON.parse(xhr.responseText);
+                        if (d.success) {
+                            this.messages.push(d.msg);
+                            this.lastEpoch = d.msg.ts_epoch;
+                        }
+                    } catch (e) {}
+                    resolve();
+                };
+                xhr.onerror = () => { this.uploadProgress = 0; reject(); };
+                xhr.send(formData);
+            });
+        },
+
+        // File display helpers
+        isImage(type) {
+            if (!type) return false;
+            return type.startsWith('image/');
+        },
+
+        fileIcon(type) {
+            if (!type) return 'bi-file-earmark';
+            if (type.includes('pdf')) return 'bi-file-earmark-pdf';
+            if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv'))
+                return 'bi-file-earmark-spreadsheet';
+            if (type.includes('word') || type.includes('document') || type.includes('msword'))
+                return 'bi-file-earmark-word';
+            return 'bi-file-earmark';
+        },
+
+        formatFileSize(bytes) {
+            if (!bytes) return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+            return (bytes/(1024*1024)).toFixed(1) + ' MB';
+        },
+
+        scrollBottom() {
+            const el = this.$refs.messageBox;
+            if (el) el.scrollTop = el.scrollHeight;
+        },
+
+        // Helpers
+        formatTime(iso) {
+            if (!iso) return '';
+            try {
+                return new Date(iso).toLocaleTimeString('sr-RS', {hour:'2-digit', minute:'2-digit'});
+            } catch (e) { return ''; }
+        },
+
+        formatDateSep(iso) {
+            if (!iso) return '';
+            try {
+                const d = new Date(iso);
+                const today = new Date();
+                if (d.toDateString() === today.toDateString()) return 'Данас';
+                const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+                if (d.toDateString() === yesterday.toDateString()) return 'Јуче';
+                return d.toLocaleDateString('sr-RS', {day:'2-digit', month:'long', year:'numeric'});
+            } catch (e) { return ''; }
+        },
+
+        dateSep(prev, curr) {
+            try {
+                return new Date(prev.timestamp).toDateString() !== new Date(curr.timestamp).toDateString();
+            } catch (e) { return false; }
+        },
+
+        linkify(text) {
+            if (!text) return '';
+            const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+        },
+
+        initials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name.substring(0,2).toUpperCase();
+        },
+
+        avatarColor(name) {
+            if (!name) return '#6c757d';
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            const colors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+            return colors[Math.abs(hash) % colors.length];
+        },
+
+        destroy() {
+            if (this._pollTimer) clearInterval(this._pollTimer);
+            if (this._onLeave) {
+                window.removeEventListener('pagehide', this._onLeave);
+                window.removeEventListener('beforeunload', this._onLeave);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

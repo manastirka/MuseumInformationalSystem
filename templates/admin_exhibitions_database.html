@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+
+{% block title %}База изложби - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-purple text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-easel me-2"></i>
+                                База изложби
+                            </h1>
+                            <p class="mb-0 opacity-90">
+                                Привремене изложбе Природњачког музеја - Галерија на Калемегдану
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ statistics.total_exhibitions }}</h2>
+                                <small>Укупно изложби</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100 border-success">
+                <div class="card-body">
+                    <i class="bi bi-lightning-fill" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.active_exhibitions }}</h5>
+                    <p class="text-muted mb-0 small">Активна изложба</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-check-circle-fill" style="font-size: 2rem; color: var(--museum-accent); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.completed_exhibitions }}</h5>
+                    <p class="text-muted mb-0 small">Завршених изложби</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-people-fill" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ "{:,}".format(statistics.total_visitors) }}</h5>
+                    <p class="text-muted mb-0 small">Укупно посетилаца</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-calendar3" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.annual_exhibitions }}</h5>
+                    <p class="text-muted mb-0 small">Изложби годишње</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <span class="input-group-text bg-light">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="exhibitionSearch" placeholder="Претражите изложбе по називу, куратору или кључним речима...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>
+                    Штампај
+                </button>
+                <button class="btn btn-success" onclick="exportExhibitionsToCSV()">
+                    <i class="bi bi-download me-1"></i>
+                    Извези CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Статус:</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-outline-secondary btn-sm status-filter active" data-status="all">
+                                    Све
+                                </button>
+                                <button class="btn btn-outline-success btn-sm status-filter" data-status="Активна">
+                                    <i class="bi bi-lightning-fill me-1"></i>Активне
+                                </button>
+                                <button class="btn btn-outline-info btn-sm status-filter" data-status="Завршена">
+                                    <i class="bi bi-check-circle me-1"></i>Завршене
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm status-filter" data-status="Планирана">
+                                    <i class="bi bi-clock me-1"></i>Планиране
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm status-filter" data-status="Историјска">
+                                    <i class="bi bi-archive me-1"></i>Историјске
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Тип изложбе:</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-outline-secondary btn-sm type-filter active" data-type="all">
+                                    Све
+                                </button>
+                                {% for type in exhibition_types %}
+                                <button class="btn btn-outline-primary btn-sm type-filter" data-type="{{ type }}">
+                                    {{ type }}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exhibitions Timeline -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-collection me-2"></i>
+                        Каталог изложби
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4" id="exhibitionsGrid">
+                        {% for exhibition in exhibitions %}
+                        <div class="col-lg-6 col-md-12 exhibition-card"
+                             data-status="{{ exhibition.status }}"
+                             data-type="{{ exhibition.type }}">
+                            <div class="card h-100 shadow-sm {% if exhibition.status == 'Активна' %}border-success border-2{% endif %}">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-secondary">ID: {{ exhibition.id }}</span>
+                                    {% if exhibition.status == 'Активна' %}
+                                    <span class="badge bg-success"><i class="bi bi-lightning-fill me-1"></i>Активна</span>
+                                    {% elif exhibition.status == 'Завршена' %}
+                                    <span class="badge bg-info"><i class="bi bi-check-circle me-1"></i>Завршена</span>
+                                    {% elif exhibition.status == 'Историјска' %}
+                                    <span class="badge bg-secondary"><i class="bi bi-archive me-1"></i>Историјска</span>
+                                    {% else %}
+                                    <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>Планирана</span>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ exhibition.title }}</h5>
+                                    <p class="text-muted small mb-2">
+                                        <i class="bi bi-translate me-1"></i>{{ exhibition.title_en }}
+                                    </p>
+
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar-event me-1"></i>{{ exhibition.start_date }}
+                                            </small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar-x me-1"></i>{{ exhibition.end_date }}
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <p class="card-text small mb-3">{{ exhibition.description[:150] }}{% if exhibition.description|length > 150 %}...{% endif %}</p>
+
+                                    <div class="row g-2 small">
+                                        <div class="col-12">
+                                            <i class="bi bi-person-badge me-1"></i><strong>Кустос:</strong> {{ exhibition.curator }}
+                                            {% if exhibition.co_curator %}
+                                            <br><span class="ms-3">+ {{ exhibition.co_curator }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-12 mt-2">
+                                            <i class="bi bi-geo-alt me-1"></i>{{ exhibition.location }}
+                                        </div>
+                                        <div class="col-6 mt-2">
+                                            <i class="bi bi-collection me-1"></i>{{ exhibition.specimens_count }} примерака
+                                        </div>
+                                        <div class="col-6 mt-2">
+                                            <i class="bi bi-people me-1"></i>{{ "{:,}".format(exhibition.visitor_count) }} посетилаца
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        {% if exhibition.educational_programs %}
+                                        <span class="badge bg-primary me-1"><i class="bi bi-mortarboard me-1"></i>Едукација</span>
+                                        {% endif %}
+                                        {% if exhibition.guided_tours %}
+                                        <span class="badge bg-info me-1"><i class="bi bi-person-walking me-1"></i>Воденe туре</span>
+                                        {% endif %}
+                                        {% if exhibition.catalog_available %}
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-book me-1"></i>Каталог</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="bi bi-tag me-1"></i>{{ exhibition.type }}
+                                        </small>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="showExhibitionDetails({{ exhibition.id }})">
+                                                <i class="bi bi-eye me-1"></i>Детаљи
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="openImageModal('exhibitions', 'exhibition', '{{ exhibition.id }}', '{{ exhibition.title }}')" title="Слике">
+                                                <i class="bi bi-camera"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if touring_exhibitions %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bus-front me-2"></i>
+                        Путујуће изложбе
+                    </h5>
+                    <p class="mb-0 small text-dark opacity-75">Изложбе Природњачког музеја које гостују у другим градовима и институцијама.</p>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4" id="touringExhibitionsGrid">
+                        {% for exhibition in touring_exhibitions %}
+                        <div class="col-lg-6 col-md-12">
+                            <div class="card h-100 shadow-sm border-secondary touring-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">{{ exhibition.title }}</h5>
+                                        <span class="badge bg-secondary">Путујућа</span>
+                                    </div>
+                                    <p class="text-muted small mb-2">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ exhibition.start_date }}
+                                    </p>
+                                    {% if exhibition.description %}
+                                    <p class="card-text small mb-3">{{ exhibition.description[:200] }}{% if exhibition.description|length > 200 %}...{% endif %}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="bi bi-tag me-1"></i>{{ exhibition.type }}
+                                    </small>
+                                    {% if exhibition.source_link %}
+                                    <a href="{{ exhibition.source_link }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Више
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Exhibition Details Modal -->
+<div class="modal fade" id="exhibitionDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title">Детаљи изложбе</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="exhibitionDetailsContent">
+                <!-- Exhibition details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+                <button type="button" class="btn btn-warning">Уреди</button>
+                <button type="button" class="btn btn-primary">Промени статус</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Exhibition data for JavaScript
+const exhibitionsData = {{ exhibitions|tojson }};
+const touringExhibitionsData = {{ touring_exhibitions|tojson }};
+
+// Search functionality
+document.getElementById('exhibitionSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const cards = document.querySelectorAll('.exhibition-card');
+
+    cards.forEach(card => {
+        const cardText = card.textContent.toLowerCase();
+        if (cardText.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Filter functionality
+function setupFilters() {
+    // Status filters
+    document.querySelectorAll('.status-filter').forEach(button => {
+        button.addEventListener('click', function() {
+            document.querySelectorAll('.status-filter').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            applyFilters();
+        });
+    });
+
+    // Type filters
+    document.querySelectorAll('.type-filter').forEach(button => {
+        button.addEventListener('click', function() {
+            document.querySelectorAll('.type-filter').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            applyFilters();
+        });
+    });
+}
+
+function applyFilters() {
+    const selectedStatus = document.querySelector('.status-filter.active').dataset.status;
+    const selectedType = document.querySelector('.type-filter.active').dataset.type;
+
+    const cards = document.querySelectorAll('.exhibition-card');
+
+    cards.forEach(card => {
+        const statusMatch = selectedStatus === 'all' || card.dataset.status === selectedStatus;
+        const typeMatch = selectedType === 'all' || card.dataset.type === selectedType;
+
+        if (statusMatch && typeMatch) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Show exhibition details
+function showExhibitionDetails(exhibitionId) {
+    const exhibition = exhibitionsData.find(e => e.id === exhibitionId);
+    if (!exhibition) return;
+
+    const statusBadge = exhibition.status === 'Активна' ?
+        '<span class="badge bg-success">Активна</span>' :
+        exhibition.status === 'Завршена' ?
+        '<span class="badge bg-info">Завршена</span>' :
+        '<span class="badge bg-warning">Планирана</span>';
+
+    const detailsHTML = `
+        <div class="row">
+            <div class="col-12 mb-3">
+                <h3>${exhibition.title}</h3>
+                <h6 class="text-muted">${exhibition.title_en}</h6>
+                ${statusBadge}
+                <span class="badge bg-secondary ms-2">${exhibition.type}</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основне информације</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><td><strong>Почетак:</strong></td><td>${exhibition.start_date}</td></tr>
+                            <tr><td><strong>Завршетак:</strong></td><td>${exhibition.end_date}</td></tr>
+                            <tr><td><strong>Локација:</strong></td><td>${exhibition.location}</td></tr>
+                            <tr><td><strong>Кустос:</strong></td><td>${exhibition.curator}</td></tr>
+                            ${exhibition.co_curator ? `<tr><td><strong>Ко-кустос:</strong></td><td>${exhibition.co_curator}</td></tr>` : ''}
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Статистика</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><td><strong>Примерака:</strong></td><td>${exhibition.specimens_count.toLocaleString()}</td></tr>
+                            <tr><td><strong>Врста:</strong></td><td>${exhibition.species_count.toLocaleString()}</td></tr>
+                            ${exhibition.boxes_count > 0 ? `<tr><td><strong>Кутија:</strong></td><td>${exhibition.boxes_count}</td></tr>` : ''}
+                            <tr><td><strong>Илустрација:</strong></td><td>${exhibition.illustrations_count}</td></tr>
+                            <tr><td><strong>Посетилаца:</strong></td><td>${exhibition.visitor_count.toLocaleString()}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Опис</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><strong>Српски:</strong></p>
+                        <p class="bg-light p-3 rounded">${exhibition.description}</p>
+                        <p class="mb-2 mt-3"><strong>English:</strong></p>
+                        <p class="bg-light p-3 rounded">${exhibition.description_en}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-people me-2"></i>Циљна група</h6>
+                    </div>
+                    <div class="card-body">
+                        <p>${exhibition.target_audience}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-award me-2"></i>Услуге и садржаји</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" ${exhibition.educational_programs ? 'checked' : ''} disabled>
+                            <label class="form-check-label">Едукативни програми</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" ${exhibition.guided_tours ? 'checked' : ''} disabled>
+                            <label class="form-check-label">Воденe туре</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" ${exhibition.catalog_available ? 'checked' : ''} disabled>
+                            <label class="form-check-label">Каталог доступан</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-tags me-2"></i>Кључне речи</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">${exhibition.keywords}</p>
+                        ${exhibition.source_link ? `<p class="mt-3 mb-0"><i class="bi bi-link-45deg me-1"></i><a href="${exhibition.source_link}" target="_blank" rel="noopener">Отвори званичну објаву</a></p>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('exhibitionDetailsContent').innerHTML = detailsHTML;
+    new bootstrap.Modal(document.getElementById('exhibitionDetailsModal')).show();
+}
+
+// Export to CSV
+function exportExhibitionsToCSV() {
+    let csv = 'ID,Назив,Назив (EN),Тип,Статус,Почетак,Завршетак,Локација,Кустос,Ко-кустос,Примерци,Врсте,Кутије,Илустрације,Посетиоци,Циљна група,Едукација,Туре,Каталог,Кључне речи\n';
+
+    exhibitionsData.forEach(exhibition => {
+        csv += `${exhibition.id},"${exhibition.title}","${exhibition.title_en}","${exhibition.type}","${exhibition.status}","${exhibition.start_date}","${exhibition.end_date}","${exhibition.location}","${exhibition.curator}","${exhibition.co_curator}",${exhibition.specimens_count},${exhibition.species_count},${exhibition.boxes_count},${exhibition.illustrations_count},${exhibition.visitor_count},"${exhibition.target_audience}",${exhibition.educational_programs},${exhibition.guided_tours},${exhibition.catalog_available},"${exhibition.keywords}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'izlozbe_muzeja.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Initialize filters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setupFilters();
+});
+</script>
+
+<style>
+@media print {
+    .btn, .input-group, .card-header, .modal {
+        display: none !important;
+    }
+}
+
+.exhibition-card {
+    transition: transform 0.2s;
+}
+
+.exhibition-card:hover {
+    transform: translateY(-2px);
+}
+
+.status-filter.active,
+.type-filter.active {
+    background-color: #667eea !important;
+    color: white !important;
+    border-color: #667eea !important;
+}
+
+.card-footer {
+    border-top: 1px solid #dee2e6;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.table-sm td {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.border-success {
+    border-width: 2px !important;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.bg-purple {
+    background-color: #667eea !important;
+}
+</style>
+{% include '_image_upload_modal.html' %}
+{% endblock %}

@@ -225,7 +225,7 @@ function grantAccess(moduleKey) {
     formData.append('module_key', moduleKey);
     formData.append('csrf_token', '{{ csrf_token() }}');
 
-    fetch('{{ url_for("grant_module_access") }}', {
+    secureFetch('{{ url_for("grant_module_access") }}', {
         method: 'POST',
         body: formData
     })
@@ -259,7 +259,7 @@ function revokeAccess(moduleKey) {
     formData.append('module_key', moduleKey);
     formData.append('csrf_token', '{{ csrf_token() }}');
 
-    fetch('{{ url_for("revoke_module_access") }}', {
+    secureFetch('{{ url_for("revoke_module_access") }}', {
         method: 'POST',
         body: formData
     })

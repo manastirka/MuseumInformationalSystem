@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block title %}Резервација музејских возила{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-truck me-2"></i>
+                                Резервација музејских возила
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Распоред резервација музејских возила
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                {% if is_admin() %}
+                                <a href="{{ url_for('vehicle_management') }}" class="btn btn-light">
+                                    <i class="bi bi-gear me-1"></i>
+                                    Управљање возилима
+                                </a>
+                                {% endif %}
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#reservationModal">
+                                    <i class="bi bi-plus-circle me-1"></i>
+                                    Нова резервација
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vehicle Cards -->
+    <div class="row mb-4">
+        {% for vehicle in vehicles %}
+        <div class="col-md-6 mb-3">
+            <div class="card vehicle-card" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
+                 title="<div class='text-start'><strong>{{ vehicle.make_model or vehicle.name }}</strong><br>&#128203; Регистрација: {{ vehicle.registration }}<br>&#128663; Тип: {{ vehicle.type }}<br>&#128100; Капацитет: {{ vehicle.capacity }} путника<br>&#128197; Година: {{ vehicle.year or 'Н/А' }}<br>&#9981; Гориво: {{ vehicle.fuel_type or 'Н/А' }}<br>&#9889; Потрошња: {{ vehicle.fuel_consumption or 'Н/А' }}{% if vehicle.fuel_consumption %} L/100km{% endif %}</div>">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title mb-1">
+                                <i class="bi bi-truck text-primary me-2"></i>
+                                {{ vehicle.name }}
+                            </h5>
+                            <div class="serbian-plate mb-2">
+                                <div class="plate-blue-strip">
+                                    <img src="https://flagcdn.com/w20/rs.png" alt="SRB" class="plate-flag">
+                                    <span class="plate-country">SRB</span>
+                                </div>
+                                <div class="plate-text">{{ vehicle.registration }}</div>
+                            </div>
+                        </div>
+                        <span class="badge bg-success">{{ vehicle.status }}</span>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <small class="text-muted">Тип:</small>
+                            <p class="mb-0">{{ vehicle.type }}</p>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Капацитет:</small>
+                            <p class="mb-0">{{ vehicle.capacity }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Month Navigation -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-outline-primary" id="prevMonth">
+                            <i class="bi bi-chevron-left"></i> Претходни месец
+                        </button>
+                        <h5 class="mb-0" id="currentMonth"></h5>
+                        <button class="btn btn-outline-primary" id="nextMonth">
+                            Следећи месец <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" id="calendarTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 100px;">Датум</th>
+                                    {% for vehicle in vehicles %}
+                                    <th class="text-center vehicle-header" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                        title="<div class='text-start'><strong>{{ vehicle.make_model or vehicle.name }}</strong><br>&#128203; {{ vehicle.registration }}<br>&#128663; {{ vehicle.type }} | &#128100; {{ vehicle.capacity }} путника<br>&#128197; {{ vehicle.year or 'Н/А' }} | &#9981; {{ vehicle.fuel_type or 'Н/А' }}<br>&#9889; {{ vehicle.fuel_consumption or 'Н/А' }}{% if vehicle.fuel_consumption %} L/100km{% endif %}</div>">
+                                        {{ vehicle.name }}
+                                        <i class="bi bi-info-circle-fill ms-1" style="font-size: 0.75rem; opacity: 0.7;"></i>
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody id="calendarBody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="mb-3">Легенда:</h6>
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="d-flex align-items-center">
+                            <div class="legend-box bg-success me-2"></div>
+                            <span>Слободно</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="legend-box bg-warning me-2"></div>
+                            <span>Резервисано</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="legend-box bg-secondary me-2"></div>
+                            <span>Прошло</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="legend-box bg-info me-2"></div>
+                            <span>Викенд</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reservation Modal -->
+<div class="modal fade" id="reservationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-calendar-plus me-2"></i>
+                    Нова резервација возила
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_vehicle_reservation') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Vehicle Selection -->
+                        <div class="col-md-6">
+                            <label for="vehicle_id" class="form-label">Возило *</label>
+                            <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                                <option value="">Изаберите возило</option>
+                                {% for vehicle in vehicles %}
+                                <option value="{{ vehicle.id }}">{{ vehicle.name }} ({{ vehicle.registration }})</option>
+                                {% endfor %}
+                            </select>
+                            <div id="vehicleSpecInfo" class="form-text text-muted mt-1" style="display: none;"></div>
+                        </div>
+
+                        <!-- Employee Name -->
+                        <div class="col-md-6">
+                            <label for="employee_name" class="form-label">Запослени *</label>
+                            <input type="text" class="form-control" id="employee_name" name="employee_name"
+                                   value="{{ user_name }}" required>
+                        </div>
+
+                        <!-- Start Date -->
+                        <div class="col-md-6">
+                            <label for="start_date" class="form-label">Датум почетка *</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+
+                        <!-- End Date -->
+                        <div class="col-md-6">
+                            <label for="end_date" class="form-label">Датум завршетка *</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+
+                        <!-- Purpose -->
+                        <div class="col-12">
+                            <label for="purpose" class="form-label">Сврха коришћења *</label>
+                            <select class="form-select" id="purpose" name="purpose" required>
+                                <option value="">Изаберите сврху</option>
+                                <option value="Теренско истраживање">Теренско истраживање</option>
+                                <option value="Прикупљање материјала">Прикупљање материјала</option>
+                                <option value="Превоз експоната">Превоз експоната</option>
+                                <option value="Службено путовање">Службено путовање</option>
+                                <option value="Одлазак на конференцију">Одлазак на конференцију</option>
+                                <option value="Посета музејима">Посета музејима</option>
+                                <option value="Остало">Остало</option>
+                            </select>
+                        </div>
+
+                        <!-- Destination -->
+                        <div class="col-12">
+                            <label for="destination" class="form-label">Дестинација *</label>
+                            <input type="text" class="form-control" id="destination" name="destination"
+                                   placeholder="нпр. Фрушка гора, Национални парк" required>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-12">
+                            <label for="notes" class="form-label">Напомене</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Додатне информације о резервацији..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Откажи
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Резервиши
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reservation Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Детаљи резервације
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Get reservations data from server
+const reservations = {{ reservations | tojson }};
+const vehicles = {{ vehicles | tojson }};
+
+// Current date tracking
+let currentDate = new Date();
+let displayMonth = new Date();
+
+// Initialize calendar
+function initCalendar() {
+    updateMonthDisplay();
+    renderCalendar();
+}
+
+// Update month display
+function updateMonthDisplay() {
+    const monthNames = [
+        'Јануар', 'Фебруар', 'Март', 'Април', 'Мај', 'Јун',
+        'Јул', 'Август', 'Септембар', 'Октобар', 'Новембар', 'Децембар'
+    ];
+    document.getElementById('currentMonth').textContent =
+        `${monthNames[displayMonth.getMonth()]} ${displayMonth.getFullYear()}`;
+}
+
+// Render calendar
+function renderCalendar() {
+    const tbody = document.getElementById('calendarBody');
+    tbody.innerHTML = '';
+
+    const year = displayMonth.getFullYear();
+    const month = displayMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = date.toISOString().split('T')[0];
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const isPast = date < new Date().setHours(0, 0, 0, 0);
+
+        const row = document.createElement('tr');
+
+        // Date cell
+        const dateCell = document.createElement('td');
+        const dayNames = ['Нед', 'Пон', 'Уто', 'Сре', 'Чет', 'Пет', 'Суб'];
+        dateCell.innerHTML = `
+            <div class="fw-bold">${day}</div>
+            <small class="text-muted">${dayNames[date.getDay()]}</small>
+        `;
+        if (isWeekend) dateCell.classList.add('bg-light');
+        row.appendChild(dateCell);
+
+        // Vehicle cells
+        vehicles.forEach(vehicle => {
+            const cell = document.createElement('td');
+            cell.className = 'text-center p-2';
+
+            // Check if vehicle is reserved on this date
+            const reservation = reservations.find(r =>
+                r.vehicle_id === vehicle.id &&
+                dateStr >= r.start_date &&
+                dateStr <= r.end_date
+            );
+
+            if (isPast) {
+                cell.classList.add('bg-secondary', 'bg-opacity-25');
+                cell.innerHTML = '<small class="text-muted">-</small>';
+            } else if (reservation) {
+                cell.classList.add('bg-warning', 'bg-opacity-25', 'reservation-cell');
+                cell.innerHTML = `
+                    <small class="fw-bold">${reservation.employee_name}</small><br>
+                    <small class="text-muted">${reservation.purpose}</small>
+                `;
+                cell.style.cursor = 'pointer';
+                cell.onclick = () => showReservationDetails(reservation);
+            } else if (isWeekend) {
+                cell.classList.add('bg-info', 'bg-opacity-10');
+                cell.innerHTML = '<small class="text-muted">Викенд</small>';
+            } else {
+                cell.classList.add('bg-success', 'bg-opacity-10');
+                cell.innerHTML = '<small class="text-success">Слободно</small>';
+            }
+
+            row.appendChild(cell);
+        });
+
+        tbody.appendChild(row);
+    }
+}
+
+// Show reservation details
+function showReservationDetails(reservation) {
+    const vehicle = vehicles.find(v => v.id === reservation.vehicle_id);
+    const content = `
+        <div class="mb-3">
+            <strong>Возило:</strong> ${vehicle.name}
+            <div class="serbian-plate mt-1">
+                <div class="plate-blue-strip">
+                    <img src="https://flagcdn.com/w20/rs.png" alt="SRB" class="plate-flag">
+                    <span class="plate-country">SRB</span>
+                </div>
+                <div class="plate-text">${vehicle.registration}</div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <strong>Запослени:</strong> ${reservation.employee_name}
+        </div>
+        <div class="mb-3">
+            <strong>Период:</strong> ${reservation.start_date} - ${reservation.end_date}
+        </div>
+        <div class="mb-3">
+            <strong>Сврха:</strong> ${reservation.purpose}
+        </div>
+        <div class="mb-3">
+            <strong>Дестинација:</strong> ${reservation.destination}
+        </div>
+        ${reservation.notes ? `<div class="mb-3"><strong>Напомене:</strong> ${reservation.notes}</div>` : ''}
+    `;
+    document.getElementById('detailsContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('detailsModal')).show();
+}
+
+// Month navigation
+document.getElementById('prevMonth').addEventListener('click', () => {
+    displayMonth.setMonth(displayMonth.getMonth() - 1);
+    updateMonthDisplay();
+    renderCalendar();
+});
+
+document.getElementById('nextMonth').addEventListener('click', () => {
+    displayMonth.setMonth(displayMonth.getMonth() + 1);
+    updateMonthDisplay();
+    renderCalendar();
+});
+
+// Set minimum date for reservation
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('end_date').min = today;
+
+    // Ensure end date is after start date
+    document.getElementById('start_date').addEventListener('change', function() {
+        document.getElementById('end_date').min = this.value;
+    });
+
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+
+    // Show vehicle specs when selecting in the form
+    document.getElementById('vehicle_id').addEventListener('change', function() {
+        const specDiv = document.getElementById('vehicleSpecInfo');
+        const selectedId = parseInt(this.value);
+        const vehicle = vehicles.find(v => v.id === selectedId);
+        if (vehicle) {
+            specDiv.innerHTML = `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="serbian-plate">
+                        <div class="plate-blue-strip">
+                            <img src="https://flagcdn.com/w20/rs.png" alt="SRB" class="plate-flag">
+                            <span class="plate-country">SRB</span>
+                        </div>
+                        <div class="plate-text">${vehicle.registration}</div>
+                    </div>
+                    <span>
+                        <strong>${vehicle.make_model || vehicle.name}</strong> |
+                        ${vehicle.type} | ${vehicle.capacity} путника |
+                        ${vehicle.year || 'Н/А'} год. |
+                        ${vehicle.fuel_type || 'Н/А'} ${vehicle.fuel_consumption ? vehicle.fuel_consumption + ' L/100km' : ''}
+                    </span>
+                </div>`;
+            specDiv.style.display = 'block';
+        } else {
+            specDiv.style.display = 'none';
+        }
+    });
+
+    initCalendar();
+});
+</script>
+
+<style>
+.vehicle-card {
+    transition: all 0.3s ease;
+}
+
+.vehicle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.legend-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+#calendarTable td {
+    min-width: 120px;
+    height: 60px;
+    vertical-align: middle;
+}
+
+#calendarTable th {
+    background-color: var(--museum-primary);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem;
+}
+
+.reservation-cell:hover {
+    opacity: 0.8;
+}
+
+.vehicle-header {
+    cursor: help;
+    position: relative;
+}
+
+.vehicle-header:hover {
+    background-color: rgba(255,255,255,0.15) !important;
+}
+
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    background-color: rgba(33, 37, 41, 0.85);
+}
+
+.tooltip .tooltip-arrow::before {
+    border-top-color: rgba(33, 37, 41, 0.85);
+}
+
+.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: rgba(33, 37, 41, 0.85);
+}
+
+/* Serbian License Plate */
+.serbian-plate {
+    display: inline-flex;
+    align-items: stretch;
+    border: 2.5px solid #2a2a2a;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.2),
+        inset 0 0 0 0.5px rgba(255,255,255,0.1);
+    height: 32px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.serbian-plate:hover {
+    transform: scale(1.03);
+    box-shadow:
+        0 3px 10px rgba(0,0,0,0.25),
+        inset 0 0 0 0.5px rgba(255,255,255,0.1);
+}
+
+.plate-blue-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #003da5 0%, #00287a 100%);
+    padding: 2px 5px;
+    gap: 1px;
+    min-width: 26px;
+    border-right: 1.5px solid #2a2a2a;
+}
+
+.plate-flag {
+    width: 15px;
+    height: 11px;
+    object-fit: cover;
+    border-radius: 1px;
+    border: 0.5px solid rgba(255,255,255,0.3);
+}
+
+.plate-country {
+    color: #fff;
+    font-size: 0.48rem;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    line-height: 1;
+    text-shadow: 0 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.plate-text {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-family: 'FE-Schrift', 'Arial Black', 'Impact', system-ui, sans-serif;
+    font-weight: 900;
+    font-size: 0.95rem;
+    color: #111;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    background: linear-gradient(180deg, #f8f8f8 0%, #fff 40%, #f0f0f0 100%);
+    text-shadow: 0 0.5px 0 rgba(0,0,0,0.05);
+}
+
+#vehicleSpecInfo {
+    background: rgba(13, 110, 253, 0.08);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+    #calendarTable {
+        font-size: 0.85rem;
+    }
+
+    #calendarTable td {
+        min-width: 80px;
+        height: 50px;
+    }
+}
+</style>
+{% endblock %}

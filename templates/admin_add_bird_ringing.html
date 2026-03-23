@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Додај прстенованe птицe - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ url_for('static', filename='images/bird_ringing_logo.jpg') }}"
+                                 alt="Serbian Bird Ringing Scheme Logo"
+                                 class="rounded me-3"
+                                 style="height: 90px; width: auto; background-color: white; padding: 8px;">
+                            <div>
+                                <h1 class="h3 mb-1">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    Додај нови запис о прстеновању
+                                </h1>
+                                <p class="mb-0 opacity-75">
+                                    Унесите податке о прстенованој птици
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('bird_ringing_database_view') }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="{{ url_for('add_bird_ringing') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <!-- Basic Information -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основне информације</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Број прстена <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="ring_number" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Бoja и број колор прстена</label>
+                                <input type="text" class="form-control" name="color_ring">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Врста <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="species" list="speciesList" required>
+                                <datalist id="speciesList">
+                                    {% for species in all_species %}
+                                    <option value="{{ species }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Старост</label>
+                                <select class="form-select" name="age">
+                                    <option value="">Изаберите...</option>
+                                    <option value="0">0 - Pullus</option>
+                                    <option value="1">1 - Prvi godišnji</option>
+                                    <option value="2">2 - Други godišnji</option>
+                                    <option value="3">3 - Трећи godišnji</option>
+                                    <option value="4">4 - Четврти godišnji</option>
+                                    <option value="5">5 - Пети godišnji+</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Пол</label>
+                                <select class="form-select" name="sex">
+                                    <option value="">Изаберите...</option>
+                                    <option value="M">Мужјак (M)</option>
+                                    <option value="F">Женка (F)</option>
+                                    <option value="U">Непознато (U)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Статус</label>
+                                <input type="text" class="form-control" name="status" maxlength="10">
+                                <small class="text-muted">Нпр: K, U, R</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location and Time -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Локација и време</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Локалитет <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="location" list="locationsList" required>
+                                <datalist id="locationsList">
+                                    {% for location in all_locations %}
+                                    <option value="{{ location }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Координате</label>
+                                <input type="text" class="form-control" name="coordinates" placeholder="Нпр: 44.8125, 20.4612">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Тачност координата</label>
+                                <input type="text" class="form-control" name="coordinate_accuracy">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Датум <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="date" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Време</label>
+                                <input type="time" class="form-control" name="time">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Заштићена подручја</label>
+                                <input type="text" class="form-control" name="protected_areas">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Methodology -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Методологија</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Прстеновач <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="ringer" list="ringersList" required>
+                                <datalist id="ringersList">
+                                    {% for ringer in all_ringers %}
+                                    <option value="{{ ringer }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Положај металног прстена</label>
+                                <select class="form-select" name="metal_ring_position">
+                                    <option value="">Изаберите...</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Пластични прстен</label>
+                                <input type="text" class="form-control" name="plastic_ring">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Начин хватања</label>
+                                <select class="form-select" name="catching_method">
+                                    <option value="">Изаберите...</option>
+                                    <option value="M">M - Мрежа</option>
+                                    <option value="R">R - Ручно</option>
+                                    <option value="N">N - Из гнезда</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Мамац</label>
+                                <select class="form-select" name="bait">
+                                    <option value="">Изаберите...</option>
+                                    <option value="N">N - Без мамца</option>
+                                    <option value="D">D - Са мамцем</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Манипулација</label>
+                                <select class="form-select" name="manipulation">
+                                    <option value="">Изаберите...</option>
+                                    <option value="N">N - Нема</option>
+                                    <option value="D">D - Има</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Biometrics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-rulers me-2"></i>Биометријска мерења</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Дужина крила (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="wing_length">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Треће примарно перо (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="third_primary_feather">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Маса (g)</label>
+                                <input type="number" step="0.1" class="form-control" name="mass">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Задња кандžа (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="back_claw">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дужина кљуна (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="bill_length">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Начин мерења кљуна</label>
+                                <input type="text" class="form-control" name="bill_measurement_method">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дужина главе (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="head_length">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тарзус (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="tarsus">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Начин мерења тарзуса</label>
+                                <input type="text" class="form-control" name="tarsus_measurement_method">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дужина репа (mm)</label>
+                                <input type="number" step="0.1" class="form-control" name="tail_length">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Алула</label>
+                                <input type="text" class="form-control" name="alula">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Карпална пера</label>
+                                <input type="text" class="form-control" name="carpal_feathers">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Physiological Condition -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Физиолошко стање</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Митарење</label>
+                                <input type="text" class="form-control" name="molting">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Масне наслаге</label>
+                                <input type="text" class="form-control" name="fat_deposits">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Грудни мишић</label>
+                                <input type="text" class="form-control" name="pectoral_muscle">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Инкубациона површина</label>
+                                <input type="text" class="form-control" name="incubation_patch">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Утврђивање пола</label>
+                                <input type="text" class="form-control" name="sex_determination">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Величина легла</label>
+                                <input type="text" class="form-control" name="clutch_size">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Старост pullus-а</label>
+                                <input type="text" class="form-control" name="pullus_age">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Напомене</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Додатне напомене</label>
+                                <textarea class="form-control" name="notes" rows="4" placeholder="Опционалне напомене о прстеновању..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <button type="submit" class="btn btn-primary btn-lg me-2">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Сачувај запис
+                        </button>
+                        <a href="{{ url_for('bird_ringing_database_view') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Откажи
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.form-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+</style>
+{% endblock %}

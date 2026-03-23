@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}База запослених - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-people-fill me-2"></i>
+                                База запослених
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Преглед свих запослених у информационом систему музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ total_employees }}</h2>
+                                <small>Укупно запослених</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-shield-check" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ employees|selectattr('role', 'equalto', 'admin')|list|length }}</h5>
+                    <p class="text-muted mb-0 small">Администратори</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-person-badge" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ employees|selectattr('role', 'equalto', 'employee')|list|length }}</h5>
+                    <p class="text-muted mb-0 small">Запослени</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-calendar-check" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ employees|selectattr('department')|list|length }}</h5>
+                    <p class="text-muted mb-0 small">Са одељењем</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-gem" style="font-size: 2rem; color: var(--museum-secondary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">1</h5>
+                    <p class="text-muted mb-0 small">Минералог</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employees Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="bi bi-table me-2"></i>
+                                Детаљи запослених
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="d-flex gap-2 justify-content-end align-items-center">
+                                <a href="{{ url_for('add_user') }}" class="btn btn-primary">
+                                    <i class="bi bi-person-plus me-1"></i>
+                                    Додај запосленог
+                                </a>
+                                <div class="input-group" style="max-width: 300px;">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="searchInput" placeholder="Претражи запослене...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="25%">Име и презиме</th>
+                                    <th width="25%">Емејл адреса</th>
+                                    <th width="20%">Одељење</th>
+                                    <th width="15%">Улога</th>
+                                    <th width="10%">Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesTable">
+                                {% for employee in employees %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2">
+                                                {{ employee.full_name.split()[0][0] }}{{ employee.full_name.split()[1][0] if employee.full_name.split()|length > 1 else '' }}
+                                            </div>
+                                            <strong>{{ employee.full_name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-envelope me-1 text-muted"></i>
+                                        {{ employee.email }}
+                                    </td>
+                                    <td>
+                                        {% if employee.department %}
+                                            <span class="badge bg-secondary">{{ employee.department }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if employee.role == 'admin' %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-shield-check me-1"></i>Админ
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-person me-1"></i>Запослени
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Активан
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <small>Приказано {{ total_employees }} запослених</small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small>Последње ажурирано: {{ moment().format('DD.MM.YYYY HH:mm') if moment else 'данас' }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightning me-2"></i>
+                        Брзе акције
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('manage_user_access') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-shield-check me-2"></i>
+                                Управљај приступом
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success w-100" onclick="exportEmployees()">
+                                <i class="bi bi-download me-2"></i>
+                                Извези CSV
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info w-100" onclick="printEmployees()">
+                                <i class="bi bi-printer me-2"></i>
+                                Штампај листу
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Назад на панел
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--museum-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+@media print {
+    .card-header, .card-footer, .btn, .input-group {
+        display: none !important;
+    }
+}
+</style>
+
+<script>
+// Search functionality
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const tableRows = document.querySelectorAll('#employeesTable tr');
+
+    tableRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Export to CSV
+function exportEmployees() {
+    const employees = [
+        ['#', 'Име и презиме', 'Емејл адреса', 'Одељење', 'Улога', 'Статус']
+    ];
+
+    document.querySelectorAll('#employeesTable tr').forEach((row, index) => {
+        if (row.style.display !== 'none') {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                employees.push([
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim(),
+                    cells[4].textContent.trim(),
+                    cells[5].textContent.trim()
+                ]);
+            }
+        }
+    });
+
+    const csvContent = employees.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'zaposleni_muzej_' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Print employees list
+function printEmployees() {
+    window.print();
+}
+</script>
+{% endblock %}

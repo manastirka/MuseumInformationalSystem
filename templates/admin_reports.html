@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Извештаји система - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main page-transition">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-glass card-shine bg-secondary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-graph-up me-2"></i>
+                                Извештаји система
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Аналитика и статистике информационог система музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ report_data.system_overview.active_databases }}</h2>
+                                <small>Активне базе</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Overview Cards -->
+    <div class="row g-4 mb-4 stagger-children">
+        <div class="col-lg-3 col-md-6">
+            <div class="card card-glass card-shine text-center h-100 icon-pulse">
+                <div class="card-body">
+                    <i class="bi bi-people-fill" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">{{ report_data.system_overview.total_employees }}</h4>
+                    <p class="text-muted mb-0 small">Укупно запослених</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card card-glass card-shine text-center h-100 icon-pulse">
+                <div class="card-body">
+                    <i class="bi bi-book" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">{{ report_data.system_overview.total_books }}</h4>
+                    <p class="text-muted mb-0 small">Књига у библиотеци</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card card-glass card-shine text-center h-100 icon-pulse">
+                <div class="card-body">
+                    <i class="bi bi-collection" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">{{ report_data.system_overview.total_artifacts }}</h4>
+                    <p class="text-muted mb-0 small">Експоната у збирци</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card card-glass card-shine text-center h-100 icon-pulse">
+                <div class="card-body">
+                    <i class="bi bi-database" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h4 class="mb-1">{{ report_data.system_overview.active_databases }}</h4>
+                    <p class="text-muted mb-0 small">Активних база података</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Reports -->
+    <div class="row g-4 stagger-children">
+        <!-- Employee Statistics -->
+        <div class="col-lg-6">
+            <div class="card card-glass card-shine h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge me-2"></i>
+                        Статистике запослених
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-primary">{{ report_data.employee_stats.admins }}</h4>
+                                <small class="text-muted">Администратори</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-info">{{ report_data.employee_stats.employees }}</h4>
+                                <small class="text-muted">Запослени</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mb-3">Подела по одељењима:</h6>
+                    {% for dept, count in report_data.employee_stats.departments.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">{{ dept }}</span>
+                        <div class="d-flex align-items-center">
+                            <div class="progress me-2" style="width: 100px; height: 6px;">
+                                <div class="progress-bar bg-info" style="width: {{ (count / report_data.employee_stats.total * 100) }}%"></div>
+                            </div>
+                            <span class="badge bg-info">{{ count }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Library Statistics -->
+        <div class="col-lg-6">
+            <div class="card card-glass card-shine h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-book me-2"></i>
+                        Статистике библиотеке
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-success">{{ report_data.library_stats.available_books }}</h4>
+                                <small class="text-muted">Доступне књиге</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-warning">{{ report_data.library_stats.borrowed_books }}</h4>
+                                <small class="text-muted">Позајмљене књиге</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Искориштеност библиотеке:</span>
+                            <span class="fw-bold">{{ report_data.library_stats.utilization_rate }}%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" style="width: {{ report_data.library_stats.utilization_rate }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('library_database') }}" class="btn btn-ripple btn-info btn-sm">
+                            <i class="bi bi-eye me-1"></i>
+                            Прегледај библиотеку
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exhibits Statistics -->
+        <div class="col-lg-6">
+            <div class="card card-glass card-shine h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-collection me-2"></i>
+                        Статистике експоната
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-success">{{ report_data.exhibit_stats.displayed_artifacts }}</h4>
+                                <small class="text-muted">Изложени</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-primary">{{ report_data.exhibit_stats.storage_artifacts }}</h4>
+                                <small class="text-muted">У депоу</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Проценат изложених:</span>
+                            <span class="fw-bold">{{ report_data.exhibit_stats.display_rate }}%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning" style="width: {{ report_data.exhibit_stats.display_rate }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('exhibits_database') }}" class="btn btn-ripple btn-warning btn-sm">
+                            <i class="bi bi-eye me-1"></i>
+                            Прегледај експонате
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Control Statistics -->
+        <div class="col-lg-6">
+            <div class="card card-glass card-shine h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>
+                        Статистике приступа
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-primary">{{ report_data.access_stats.timesheet_users }}</h4>
+                                <small class="text-muted">Радне листе</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <h4 class="mb-1 text-info">{{ report_data.access_stats.database_users }}</h4>
+                                <small class="text-muted">Музејске базе</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>{{ report_data.access_stats.timesheet_users }}</strong> запослених има приступ систему
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('manage_user_access') }}" class="btn btn-ripple btn-primary btn-sm">
+                            <i class="bi bi-gear me-1"></i>
+                            Управљај приступима
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row mt-4 stagger-children">
+        <div class="col-12">
+            <div class="card card-glass card-shine">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-download me-2"></i>
+                        Извози извештаје
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 stagger-children">
+                        <div class="col-md-3">
+                            <button class="btn btn-ripple btn-outline-primary w-100 icon-pulse" onclick="window.print()">
+                                <i class="bi bi-printer me-2"></i>
+                                Штампај извештај
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-ripple btn-outline-success w-100 icon-pulse" onclick="exportSystemReport()">
+                                <i class="bi bi-file-earmark-excel me-2"></i>
+                                Извези у CSV
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-ripple btn-outline-info w-100 icon-pulse" onclick="generatePDFReport()">
+                                <i class="bi bi-file-earmark-pdf me-2"></i>
+                                Генериши PDF
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-ripple btn-outline-secondary w-100 icon-pulse" onclick="scheduleReport()">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Закажи извештај
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="row mt-4 stagger-children">
+        <div class="col-12">
+            <div class="card card-glass card-shine">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-heart-pulse me-2"></i>
+                        Здравље система
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 stagger-children">
+                        <div class="col-md-3">
+                            <div class="text-center icon-pulse">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Сервер</h6>
+                                <small class="text-muted">Активан</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center icon-pulse">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Базе података</h6>
+                                <small class="text-muted">Функционалне</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center icon-pulse">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Аутентификација</h6>
+                                <small class="text-muted">Стабилна</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center icon-pulse">
+                                <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Backup</h6>
+                                <small class="text-muted">Мануелни</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportSystemReport() {
+    const reportData = {{ report_data|tojson }};
+
+    let csv = 'Категорија,Назив,Вредност\n';
+
+    // System Overview
+    csv += 'Преглед система,Укупно запослених,' + reportData.system_overview.total_employees + '\n';
+    csv += 'Преглед система,Књига у библиотеци,' + reportData.system_overview.total_books + '\n';
+    csv += 'Преглед система,Експоната у збирци,' + reportData.system_overview.total_artifacts + '\n';
+    csv += 'Преглед система,Активне базе података,' + reportData.system_overview.active_databases + '\n';
+
+    // Employee Stats
+    csv += 'Запослени,Администратори,' + reportData.employee_stats.admins + '\n';
+    csv += 'Запослени,Запослени,' + reportData.employee_stats.employees + '\n';
+
+    // Library Stats
+    csv += 'Библиотека,Доступне књиге,' + reportData.library_stats.available_books + '\n';
+    csv += 'Библиотека,Позајмљене књиге,' + reportData.library_stats.borrowed_books + '\n';
+    csv += 'Библиотека,Искориштеност (%),' + reportData.library_stats.utilization_rate + '\n';
+
+    // Exhibits Stats
+    csv += 'Експонати,Изложени,' + reportData.exhibit_stats.displayed_artifacts + '\n';
+    csv += 'Експонати,У депоу,' + reportData.exhibit_stats.storage_artifacts + '\n';
+    csv += 'Експонати,Проценат изложених (%),' + reportData.exhibit_stats.display_rate + '\n';
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'izvestaj_sistema_' + new Date().toISOString().split('T')[0] + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function generatePDFReport() {
+    alert('PDF генерисање ће бити имплементирано у следећој верзији.');
+}
+
+function scheduleReport() {
+    alert('Заказивање извештаја ће бити имплементирано у следећој верзији.');
+}
+
+// Generate timestamp for reports
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const timestamp = now.toLocaleString('sr-RS');
+
+    // Add timestamp to page
+    const timestampElement = document.createElement('small');
+    timestampElement.className = 'text-muted';
+    timestampElement.innerHTML = '<i class="bi bi-clock me-1"></i>Генерисано: ' + timestamp;
+
+    const header = document.querySelector('.card.bg-secondary .card-body');
+    if (header) {
+        header.appendChild(timestampElement);
+    }
+});
+</script>
+
+<style>
+@media print {
+    .btn, .card-header {
+        display: none !important;
+    }
+
+    .card {
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+    }
+}
+
+.progress {
+    height: 8px;
+}
+
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-body .bg-light {
+    border-radius: 0.375rem;
+}
+
+.text-success { color: #198754 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-info { color: #0dcaf0 !important; }
+.text-primary { color: var(--museum-primary) !important; }
+</style>
+{% endblock %}

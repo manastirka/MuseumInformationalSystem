@@ -1,0 +1,2051 @@
+{% extends "base.html" %}
+
+{% block title %}Интерактивни editor plana -5{% endblock %}
+
+{% block content %}
+<style>
+    .space-planner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 210px;
+        gap: 0.75rem;
+        transition: grid-template-columns 0.2s ease;
+    }
+    .space-planner.has-detail {
+        grid-template-columns: minmax(0, 1fr) 210px 260px;
+    }
+    .space-shell,
+    .space-sidebar {
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,243,238,0.98));
+        border: 1px solid rgba(30, 65, 49, 0.12);
+        box-shadow: 0 22px 40px rgba(23, 44, 33, 0.09);
+    }
+    .space-shell:fullscreen {
+        padding: 1rem;
+        overflow: auto;
+        background: linear-gradient(180deg, #f6f4ef, #ece9e0);
+    }
+    .space-shell:fullscreen .space-toolbar,
+    .space-shell:fullscreen .space-subtoolbar {
+        border-radius: 18px;
+    }
+    .space-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.9rem;
+        flex-wrap: wrap;
+        padding: 1rem 1.1rem;
+        border-bottom: 1px solid rgba(30, 65, 49, 0.08);
+        background: linear-gradient(135deg, #173b2a 0%, #245540 55%, #2d6f53 100%);
+        color: #fff;
+        border-radius: 22px 22px 0 0;
+    }
+    .space-toolbar h1 {
+        font-size: 1.22rem;
+        margin: 0;
+        font-weight: 700;
+    }
+    .space-toolbar-meta {
+        font-size: 0.84rem;
+        opacity: 0.9;
+        max-width: 720px;
+    }
+    .space-toolbar-actions,
+    .space-subtoolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+    }
+    .space-subtoolbar {
+        justify-content: space-between;
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid rgba(30, 65, 49, 0.08);
+        background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,244,238,0.96));
+    }
+    .space-view-tabs,
+    .space-draw-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+    .space-subtoolbar-note {
+        font-size: 0.8rem;
+        color: #5f6f64;
+    }
+    .space-canvas-wrap {
+        padding: 1rem;
+    }
+    .planner-status {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 0.65rem;
+        font-size: 0.84rem;
+        color: #5f6f64;
+        flex-wrap: wrap;
+    }
+    .planner-view-meta {
+        font-size: 0.81rem;
+        color: #6a766c;
+        margin-bottom: 0.9rem;
+    }
+    .space-canvas {
+        position: relative;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid rgba(23, 44, 33, 0.12);
+        background:
+            linear-gradient(180deg, rgba(231, 235, 232, 0.92), rgba(221, 228, 224, 0.96)),
+            radial-gradient(circle at top right, rgba(36, 85, 64, 0.08), transparent 35%);
+        user-select: none;
+        touch-action: none;
+        min-height: 420px;
+    }
+    .space-canvas.is-drawing {
+        cursor: crosshair;
+    }
+    .space-canvas.is-pannable:not(.is-drawing) {
+        cursor: grab;
+    }
+    .space-canvas.is-panning:not(.is-drawing) {
+        cursor: grabbing;
+    }
+    .space-stage {
+        position: absolute;
+        transform-origin: top left;
+    }
+    .space-stage img {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+    .space-shape-div {
+        position: absolute;
+        border: 3px solid #0d5a3a;
+        background: rgba(29, 180, 100, 0.35);
+        cursor: move;
+        transition: background 0.14s ease, border-color 0.14s ease;
+        box-sizing: border-box;
+    }
+    .space-canvas.is-drawing .space-shape-div,
+    .space-canvas.is-drawing .space-vertex-div {
+        pointer-events: none;
+    }
+    .space-shape-div.auto-shape {
+        background: rgba(50, 120, 220, 0.3);
+        border-color: rgba(30, 80, 200, 0.9);
+    }
+    .space-shape-div:hover {
+        background: rgba(29, 180, 100, 0.5);
+        border-color: #083d26;
+        border-width: 4px;
+    }
+    .space-shape-div.selected {
+        background: rgba(230, 60, 50, 0.4);
+        border: 4px dashed #cc2200;
+    }
+    .space-draft-div {
+        position: absolute;
+        background: rgba(255, 165, 0, 0.4);
+        border: 4px dashed #cc6600;
+        box-sizing: border-box;
+    }
+    .space-resize-handle {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #cc2200;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        z-index: 3;
+    }
+    .space-resize-handle.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+    .space-resize-handle.sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+    .space-resize-handle.ne { right: -6px; top: -6px; cursor: nesw-resize; }
+    .space-resize-handle.nw { left: -6px; top: -6px; cursor: nwse-resize; }
+    .space-resize-handle.n { left: calc(50% - 6px); top: -6px; cursor: ns-resize; }
+    .space-resize-handle.s { left: calc(50% - 6px); bottom: -6px; cursor: ns-resize; }
+    .space-resize-handle.e { right: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+    .space-resize-handle.w { left: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+    .space-vertex-div {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        margin-left: -7px;
+        margin-top: -7px;
+        background: #cc2200;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .space-vertex-div.draft {
+        background: #fff;
+        border-color: #0d5a3a;
+    }
+    .space-label {
+        position: absolute;
+        transform: translateY(-100%);
+        border: 0;
+        padding: 0.32rem 0.55rem;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.92);
+        color: #173b2a;
+        font-size: 0.72rem;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(17, 31, 24, 0.12);
+        pointer-events: auto;
+        white-space: nowrap;
+        max-width: 240px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .space-label.selected {
+        background: rgba(217, 72, 65, 0.95);
+        color: #fff;
+    }
+    /* Fullscreen hover tooltip */
+    .space-hover-tooltip {
+        position: absolute;
+        z-index: 20;
+        pointer-events: none;
+        min-width: 220px;
+        max-width: 340px;
+        padding: 0.7rem 0.85rem;
+        border-radius: 14px;
+        background: rgba(20, 42, 32, 0.82);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #e8ece9;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+        transform: translate(-50%, -105%);
+        white-space: normal;
+    }
+    .space-hover-tooltip .tooltip-title {
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: #fff;
+        margin-bottom: 0.3rem;
+    }
+    .space-hover-tooltip .tooltip-type {
+        display: inline-block;
+        padding: 0.12rem 0.5rem;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.15);
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+    .space-hover-tooltip .tooltip-area {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #7edba8;
+        margin-bottom: 0.3rem;
+    }
+    .space-hover-tooltip .tooltip-row {
+        display: flex;
+        gap: 0.35rem;
+        margin-bottom: 0.18rem;
+    }
+    .space-hover-tooltip .tooltip-label {
+        flex-shrink: 0;
+        font-weight: 600;
+        color: #a0c8b4;
+        min-width: 52px;
+    }
+    .space-hover-tooltip .tooltip-value {
+        color: #d4e0d9;
+    }
+    .space-sidebar {
+        display: flex;
+        flex-direction: column;
+        min-height: 82vh;
+        overflow: hidden;
+    }
+    .space-detail-aside {
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,243,238,0.98));
+        border: 1px solid rgba(30, 65, 49, 0.12);
+        box-shadow: 0 14px 28px rgba(23, 44, 33, 0.07);
+        display: flex;
+        flex-direction: column;
+        min-height: 82vh;
+        overflow: hidden;
+    }
+    .space-detail-scroll {
+        padding: 0.65rem;
+        overflow: auto;
+        flex: 1;
+    }
+    .space-detail-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid rgba(23, 44, 33, 0.08);
+    }
+    .space-detail-top h5 {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #173b2a;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin: 0;
+    }
+    .space-sidebar-scroll {
+        padding: 0.55rem;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .space-panel {
+        border: 1px solid rgba(23, 44, 33, 0.08);
+        border-radius: 12px;
+        background: #fff;
+        padding: 0.55rem;
+    }
+    .space-panel h5 {
+        margin: 0 0 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #173b2a;
+    }
+    .space-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        max-height: calc(82vh - 120px);
+        overflow: auto;
+    }
+    .space-list-item {
+        border-radius: 8px;
+        border: 1px solid rgba(23, 44, 33, 0.07);
+        background: linear-gradient(180deg, #fff, #f8f7f4);
+        padding: 0.32rem 0.45rem;
+        cursor: pointer;
+        transition: all 0.12s ease;
+    }
+    .space-list-item:hover {
+        border-color: rgba(23, 44, 33, 0.18);
+        background: linear-gradient(180deg, #f8faf8, #f2f5f3);
+    }
+    .space-list-item.active {
+        border-color: rgba(29, 123, 93, 0.45);
+        background: linear-gradient(180deg, #eef7f2, #e5f0ea);
+        box-shadow: 0 0 0 1.5px rgba(29, 123, 93, 0.12);
+    }
+    .space-list-item-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.3rem;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.72rem;
+        color: #173b2a;
+        line-height: 1.25;
+    }
+    .space-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.05rem 0.3rem;
+        font-size: 0.6rem;
+        background: #eef5f1;
+        color: #2c5743;
+        flex-shrink: 0;
+    }
+    .space-list-item-meta {
+        font-size: 0.65rem;
+        color: #637166;
+        margin-top: 0.05rem;
+        line-height: 1.2;
+    }
+    .room-search-input {
+        border-radius: 7px;
+        border: 1px solid rgba(23, 44, 33, 0.12);
+        padding: 0.25rem 0.45rem 0.25rem 1.6rem;
+        font-size: 0.7rem;
+        width: 100%;
+        background: #f8faf8;
+        transition: border-color 0.15s ease;
+    }
+    .room-search-input:focus {
+        outline: none;
+        border-color: rgba(29, 123, 93, 0.5);
+        background: #fff;
+    }
+    .room-search-wrap {
+        position: relative;
+    }
+    .room-search-wrap i {
+        position: absolute;
+        left: 0.45rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8a9a8e;
+        font-size: 0.7rem;
+    }
+    .room-detail-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .room-detail-actions button {
+        padding: 0.12rem 0.32rem;
+        font-size: 0.65rem;
+    }
+    .room-detail-grid {
+        display: grid;
+        gap: 0.4rem;
+    }
+    .room-detail-grid label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #4a5c4f;
+        margin-bottom: 0.08rem;
+        display: block;
+    }
+    .room-detail-grid .form-control-sm,
+    .room-detail-grid .form-select-sm {
+        font-size: 0.72rem;
+        padding: 0.2rem 0.35rem;
+        border-radius: 6px;
+    }
+    .room-detail-grid textarea {
+        min-height: 40px;
+        resize: vertical;
+    }
+    .room-detail-geo {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.3rem;
+    }
+    .room-terms-toggle {
+        font-size: 0.68rem;
+        color: #5f6f64;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.3rem 0;
+        border: none;
+        background: none;
+    }
+    .room-terms-toggle:hover {
+        color: #173b2a;
+    }
+    .spec-grid {
+        display: grid;
+        gap: 0.82rem;
+    }
+    .term-search {
+        position: sticky;
+        top: 0;
+        background: #fff;
+        padding-bottom: 0.75rem;
+        z-index: 2;
+    }
+    .term-group {
+        margin-bottom: 0.9rem;
+    }
+    .term-group-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #6f7b71;
+        margin-bottom: 0.45rem;
+        font-weight: 700;
+    }
+    .term-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .term-chip {
+        border: 1px solid rgba(23, 44, 33, 0.12);
+        border-radius: 999px;
+        background: #f6faf8;
+        color: #173b2a;
+        padding: 0.18rem 0.42rem;
+        font-size: 0.65rem;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .term-chip:hover {
+        background: #e5f4ee;
+        border-color: rgba(29, 123, 93, 0.3);
+    }
+    .planner-empty {
+        border-radius: 14px;
+        padding: 1rem;
+        background: #f5f8f6;
+        border: 1px dashed rgba(23, 44, 33, 0.18);
+        color: #5e6d63;
+        font-size: 0.9rem;
+    }
+    .planner-summary {
+        border-radius: 14px;
+        padding: 0.8rem 0.9rem;
+        background: linear-gradient(180deg, #f8faf8, #f3f6f4);
+        border: 1px solid rgba(23, 44, 33, 0.08);
+        color: #5f6f64;
+        font-size: 0.84rem;
+    }
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    @media (max-width: 1199px) {
+        .space-planner,
+        .space-planner.has-detail {
+            grid-template-columns: 1fr;
+        }
+        .space-sidebar,
+        .space-detail-aside {
+            min-height: unset;
+        }
+    }
+</style>
+
+<div class="container-fluid px-4 py-3"
+     x-data="spacePlanner()"
+     x-init="init()"
+     @keydown.window.escape="cancelDraft()"
+     @keydown.window.enter.prevent="finishPolygonDraft()"
+     @keydown.window.delete.prevent="deleteSelectedSpaces()">
+    <div class="space-planner" :class="{ 'has-detail': selectedSpace || selectedCount > 1 }">
+        <section class="space-shell" x-ref="fullscreenHost">
+            <div class="space-toolbar">
+                <div>
+                    <h1><i class="bi bi-bounding-box-circles me-2"></i>Интерактивни editor plana -5</h1>
+                    <div class="space-toolbar-meta">
+                        За прецизно цртање користи полигон и прати контуре просторије. У normal view радиш над podeljenim high-res prikazom, a fullscreen prelazi na ceo plan.
+                    </div>
+                </div>
+                <div class="space-toolbar-actions">
+                    <button class="btn btn-outline-light btn-sm" @click="syncDetectedSpaces()">
+                        <i class="bi bi-magic me-1"></i>Освежи auto prostore
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" @click="deleteSelectedSpaces()" :disabled="selectedCount === 0 || lockOverlays">
+                        <i class="bi bi-trash me-1"></i>Обриши селектоване
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" @click="toggleFullscreen()">
+                        <i class="bi" :class="isFullscreen ? 'bi-fullscreen-exit me-1' : 'bi-fullscreen me-1'"></i>
+                        <span x-text="isFullscreen ? 'Izađi iz fullscreen' : 'Fullscreen'"></span>
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" @click="saveNow()" :disabled="saving">
+                        <i class="bi" :class="saving ? 'bi-arrow-repeat spin' : 'bi-save me-1'"></i>Сачувај
+                    </button>
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('admin_projekti') }}">
+                        <i class="bi bi-building me-1"></i>Пројекти
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-subtoolbar">
+                <div class="space-view-tabs">
+                    <template x-for="view in planViews" :key="'vtab-' + view.key">
+                        <button class="btn btn-sm"
+                                :class="activeViewKey === view.key ? 'btn-success' : 'btn-outline-secondary'"
+                                @click="switchView(view.key)"
+                                :disabled="false"
+                                x-text="view.label">
+                        </button>
+                    </template>
+                </div>
+
+                <div class="space-draw-tabs">
+                    <button class="btn btn-sm"
+                            :class="drawingMode === 'polygon' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="toggleDrawMode('polygon')"
+                            :disabled="lockOverlays">
+                        <i class="bi bi-bezier2 me-1"></i>Crtaj prostor
+                    </button>
+                    <button class="btn btn-sm"
+                            :class="drawingMode === 'rect' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="toggleDrawMode('rect')"
+                            :disabled="lockOverlays">
+                        <i class="bi bi-bounding-box me-1"></i>Pravougaonik
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @click="finishPolygonDraft()"
+                            :disabled="draftPolygon.length < 3 || lockOverlays">
+                        <i class="bi bi-check2 me-1"></i>Završi konturu
+                    </button>
+                    <button class="btn btn-sm"
+                            :class="panMode ? 'btn-warning' : 'btn-outline-secondary'"
+                            @click="togglePanMode()">
+                        <i class="bi bi-hand-index me-1"></i>Pomeri prikaz
+                    </button>
+                    <button class="btn btn-sm"
+                            :class="lockOverlays ? 'btn-danger' : 'btn-outline-secondary'"
+                            @click="toggleLockOverlays()">
+                        <i class="bi me-1" :class="lockOverlays ? 'bi-lock-fill' : 'bi-unlock'"></i>
+                        <span x-text="lockOverlays ? 'Откључај' : 'Закључај'"></span>
+                    </button>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Zoom controls">
+                        <button class="btn btn-outline-secondary" @click="zoomOut()"><i class="bi bi-dash-lg"></i></button>
+                        <button class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true" x-text="zoomLabel()"></button>
+                        <button class="btn btn-outline-secondary" @click="zoomIn()"><i class="bi bi-plus-lg"></i></button>
+                        <button class="btn btn-outline-secondary" @click="resetView()"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-canvas-wrap">
+                <div class="planner-status">
+                    <span x-text="statusText"></span>
+                    <span x-text="selectionStatus()"></span>
+                </div>
+                <div class="planner-view-meta">
+                    Točkić miša zumira bez mutnog CSS scale-a, `Shift + drag` ili `Pomeri prikaz` radi pan, `Ctrl/Shift + klik` dodaje ili skida prostor iz selekcije, `Delete` briše selektovane.
+                </div>
+
+                <template x-if="loading">
+                    <div class="planner-empty">
+                        <div class="spinner-border spinner-border-sm me-2"></div>Учитавање editora...
+                    </div>
+                </template>
+
+                <template x-if="!loading">
+                    <div class="space-canvas"
+                         :class="canvasClasses()"
+                         :style="viewportStyle()"
+                         x-ref="planViewport"
+                         @pointerdown="onCanvasPointerDown($event)"
+                         @pointermove="onCanvasPointerMove($event)"
+                         @pointerup="onCanvasPointerUp($event)"
+                         @pointerleave="onCanvasPointerLeave($event)"
+                         @wheel.prevent="onWheelZoom($event)"
+                         @click="onCanvasClick($event)"
+                         @dblclick.prevent="onCanvasDoubleClick($event)"
+                         @auxclick.prevent="onMiddleClick($event)"
+                         @contextmenu.prevent>
+                        <div class="space-stage" x-ref="planStage" :style="stageStyle()">
+                            <img :src="planImageUrl" alt="Основа кота -5,00" x-ref="planImage" @load="handlePlanImageLoad($event)">
+
+                            <!-- Shape overlays (HTML divs instead of SVG for Alpine.js compatibility) -->
+                            <template x-for="space in viewFilteredSpaces()" :key="'shape-' + space.id">
+                                <div class="space-shape-div"
+                                     :class="shapeClasses(space)"
+                                     :style="shapeDivStyle(space) + (lockOverlays ? 'pointer-events:none;' : '')"
+                                     @pointerdown.stop="startSpaceDrag(space, $event)"
+                                     @click.stop="selectSpace(space.id, $event)"
+                                     @mouseenter="showHoverTooltip(space, $event)"
+                                     @mouseleave="hideHoverTooltip()"
+                                     @mousemove="moveHoverTooltip(space, $event)">
+                                    <template x-if="isSelected(space.id) && selectedCount === 1 && space.shape === 'rect'">
+                                        <div>
+                                            <div class="space-resize-handle se" @pointerdown.stop="startRectResize(space, $event, 'se')"></div>
+                                            <div class="space-resize-handle sw" @pointerdown.stop="startRectResize(space, $event, 'sw')"></div>
+                                            <div class="space-resize-handle ne" @pointerdown.stop="startRectResize(space, $event, 'ne')"></div>
+                                            <div class="space-resize-handle nw" @pointerdown.stop="startRectResize(space, $event, 'nw')"></div>
+                                            <div class="space-resize-handle n" @pointerdown.stop="startRectResize(space, $event, 'n')"></div>
+                                            <div class="space-resize-handle s" @pointerdown.stop="startRectResize(space, $event, 's')"></div>
+                                            <div class="space-resize-handle e" @pointerdown.stop="startRectResize(space, $event, 'e')"></div>
+                                            <div class="space-resize-handle w" @pointerdown.stop="startRectResize(space, $event, 'w')"></div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <!-- Fullscreen hover tooltip -->
+                            <div class="space-hover-tooltip"
+                                 x-show="isFullscreen && hoverTooltip.visible"
+                                 x-cloak
+                                 :style="`left:${hoverTooltip.x}%;top:${hoverTooltip.y}%`">
+                                <div class="tooltip-title" x-text="hoverTooltip.name"></div>
+                                <div class="tooltip-type" x-show="hoverTooltip.type" x-text="hoverTooltip.type"></div>
+                                <div class="tooltip-area" x-show="hoverTooltip.area" x-text="hoverTooltip.area"></div>
+                                <template x-for="row in hoverTooltip.rows" :key="row.label">
+                                    <div class="tooltip-row">
+                                        <span class="tooltip-label" x-text="row.label"></span>
+                                        <span class="tooltip-value" x-text="row.value"></span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <template x-for="(vtx, vtxIdx) in polygonVertices()" :key="vtx.key">
+                                <div class="space-vertex-div"
+                                     :style="`left:${vtx.x}%;top:${vtx.y}%`"
+                                     @pointerdown.stop="startVertexDrag(spaceById(vtx.spaceId), vtx.idx, $event)"></div>
+                            </template>
+
+                            <!-- Draft rect overlay -->
+                            <template x-if="draftRect">
+                                <div class="space-draft-div"
+                                     :style="`left:${draftRect.x}%;top:${draftRect.y}%;width:${draftRect.width}%;height:${draftRect.height}%`"></div>
+                            </template>
+
+                            <!-- Draft polygon overlay -->
+                            <template x-if="draftPolygon.length > 0">
+                                <div class="space-draft-div"
+                                     :style="draftPolygonDivStyle()"></div>
+                            </template>
+                            <template x-for="(pt, idx) in draftPolygon" :key="'draftpt-' + idx">
+                                <div class="space-vertex-div draft"
+                                     :style="`left:${pt.x}%;top:${pt.y}%`"></div>
+                            </template>
+
+                            <template x-for="space in viewFilteredSpaces()" :key="'label-' + space.id">
+                                <button type="button"
+                                        class="space-label"
+                                        :class="{ selected: isSelected(space.id) }"
+                                        :style="spaceLabelStyle(space) + (drawingMode || lockOverlays ? 'pointer-events:none;' : '')"
+                                        @click.stop="selectSpace(space.id, $event)"
+                                        x-text="spaceTitle(space)"></button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <aside class="space-sidebar">
+            <div class="space-sidebar-scroll">
+                <section class="space-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h5 class="mb-0"><i class="bi bi-door-open me-1"></i>Просторије</h5>
+                        <button class="btn btn-sm btn-outline-secondary" @click="toggleDrawMode('polygon')" title="Нови простор" style="padding:0.1rem 0.3rem;font-size:0.65rem;">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="room-search-wrap mb-2">
+                        <i class="bi bi-search"></i>
+                        <input class="room-search-input" placeholder="Претражи просторије..." x-model="roomSearchQuery">
+                    </div>
+
+                    <div class="space-list" style="flex: 1; min-height: 0;">
+                        <template x-for="space in filteredRoomList()" :key="'list-' + space.id">
+                            <div class="space-list-item" :class="{ active: isSelected(space.id) }" @click="selectSpace(space.id, $event)">
+                                <div class="space-list-item-title">
+                                    <span x-text="spaceTitle(space)"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="filteredRoomList().length === 0">
+                            <div class="planner-empty">
+                                <template x-if="roomSearchQuery">
+                                    <span>Нема просторија за претрагу "<span x-text="roomSearchQuery"></span>".</span>
+                                </template>
+                                <template x-if="!roomSearchQuery">
+                                    <span>Нема просторија у овом приказу.</span>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                </section>
+            </div>
+        </aside>
+
+        <!-- Room detail - third column -->
+        <template x-if="selectedSpace">
+            <aside class="space-detail-aside">
+                <div class="space-detail-scroll">
+                    <div class="space-detail-top">
+                        <h5 class="mb-0" x-text="selectedSpace.name || 'Без назива'"></h5>
+                        <div class="room-detail-actions">
+                            <button class="btn btn-outline-secondary btn-sm" @click="duplicateSelectedSpace()" title="Дуплирај">
+                                <i class="bi bi-copy"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" @click="deleteSelectedSpaces()" title="Обриши">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="room-detail-grid">
+                        <div>
+                            <label>Назив простора</label>
+                            <input class="form-control form-control-sm" x-model="selectedSpace.name" @input="spaceChanged()" @focus="setActiveField('name')">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <div style="flex: 1;">
+                                <label>Тип простора</label>
+                                <select class="form-select form-select-sm" x-model="selectedSpace.room_type" @change="applyRoomTypeDefaults(); spaceChanged()" @focus="setActiveField('room_type')">
+                                    <option value="">Изабери тип</option>
+                                    <template x-for="(config, key) in roomLibrary" :key="'dtype-' + key">
+                                        <option :value="key" x-text="config.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div style="width: 90px;">
+                                <label>m²</label>
+                                <input type="number" step="0.1" min="0" class="form-control form-control-sm" x-model.number="selectedSpace.area_m2" @input="spaceChanged()">
+                            </div>
+                        </div>
+                        <div>
+                            <label><i class="bi bi-person-badge me-1"></i>Одговорни кустос</label>
+                            <select class="form-select form-select-sm" x-model="selectedSpace.specs.curator" @change="spaceChanged()">
+                                <option value="">— без кустоса —</option>
+                                <template x-for="c in curators" :key="c.email">
+                                    <option :value="c.name" x-text="c.name + (c.position ? ' (' + c.position + ')' : '')"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Намена простора</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.purpose" @input="spaceChanged()" @focus="setActiveField('purpose')"></textarea>
+                        </div>
+                        <div>
+                            <label>Материјали пода</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.floor_materials" @input="spaceChanged()" @focus="setActiveField('floor_materials')"></textarea>
+                        </div>
+                        <div>
+                            <label>Материјали зидова</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.wall_materials" @input="spaceChanged()" @focus="setActiveField('wall_materials')"></textarea>
+                        </div>
+                        <div>
+                            <label>Вентилација и HVAC</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.ventilation" @input="spaceChanged()" @focus="setActiveField('ventilation')"></textarea>
+                        </div>
+                        <div>
+                            <label>Опрема</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.equipment" @input="spaceChanged()" @focus="setActiveField('equipment')"></textarea>
+                        </div>
+                        <div>
+                            <label>Инсталације</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.utilities" @input="spaceChanged()" @focus="setActiveField('utilities')"></textarea>
+                        </div>
+                        <div>
+                            <label>Напомене</label>
+                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.notes" @input="spaceChanged()" @focus="setActiveField('notes')"></textarea>
+                        </div>
+                        <template x-if="selectedSpace.shape !== 'polygon'">
+                            <div class="room-detail-geo">
+                                <div>
+                                    <label>X %</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.x" @input="normalizeSelectedGeometry(); spaceChanged()">
+                                </div>
+                                <div>
+                                    <label>Y %</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.y" @input="normalizeSelectedGeometry(); spaceChanged()">
+                                </div>
+                                <div>
+                                    <label>Ширина %</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.width" @input="normalizeSelectedGeometry(); spaceChanged()">
+                                </div>
+                                <div>
+                                    <label>Висина %</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.height" @input="normalizeSelectedGeometry(); spaceChanged()">
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="selectedSpace.shape === 'polygon'">
+                            <div class="small text-muted">
+                                Полигон: <span x-text="selectedSpace.points.length"></span> тачака · <span x-text="geometrySummary(selectedSpace)"></span>
+                            </div>
+                        </template>
+
+                        <!-- Collapsible term suggestions -->
+                        <div>
+                            <button class="room-terms-toggle" @click="showTerms = !showTerms" type="button">
+                                <i class="bi" :class="showTerms ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                                <span>Предлози термина</span>
+                                <span x-show="activeFieldKey" class="text-muted">(<span x-text="activeFieldLabel()"></span>)</span>
+                            </button>
+                            <template x-if="showTerms">
+                                <div>
+                                    <input class="form-control form-control-sm mb-2" placeholder="Претражи термине..." x-model="termQuery">
+                                    <template x-for="group in visibleTermGroups()" :key="group.key">
+                                        <div class="term-group">
+                                            <div class="term-group-title" x-text="group.label"></div>
+                                            <div class="term-chips">
+                                                <template x-for="term in group.terms" :key="group.key + term">
+                                                    <button type="button" class="term-chip" @click="applySuggestedTerm(group.key, term)" x-text="term"></button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </template>
+
+        <template x-if="!selectedSpace && selectedCount > 1">
+            <aside class="space-detail-aside">
+                <div class="space-detail-scroll">
+                    <div class="planner-summary">
+                        Селектовано <strong x-text="selectedCount"></strong> простора.
+                        <button class="btn btn-outline-danger btn-sm mt-2 d-block" @click="deleteSelectedSpaces()">
+                            <i class="bi bi-trash me-1"></i>Обриши селектоване
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </template>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function spacePlanner() {
+    return {
+        loading: true,
+        saving: false,
+        drawingMode: '',
+        panMode: false,
+        lockOverlays: false,
+        isFullscreen: false,
+        planImageUrl: '',
+        defaultPlanImageUrl: '',
+        planImageSize: { width: 10630, height: 1684 },
+        defaultPlanImageSize: { width: 10630, height: 1684 },
+        planViews: [],
+        activeViewKey: 'depot',
+        previousViewKey: 'depot',
+        zoom: 1,
+        minZoom: 1,
+        maxZoom: 5,
+        panX: 0,
+        panY: 0,
+        spaces: [],
+        roomLibrary: {},
+        commonTerms: {},
+        curators: [],
+        detectedSpaces: [],
+        depotDetectedSpaces: [],
+        selectedIds: [],
+        primarySelectedId: null,
+        draftRect: null,
+        draftPolygon: [],
+        pointerState: null,
+        autosaveTimer: null,
+        statusText: 'Нема промена.',
+        termQuery: '',
+        roomSearchQuery: '',
+        showTerms: false,
+        activeFieldKey: '',
+        fullscreenHandler: null,
+        suppressCanvasClick: false,
+        hoverTooltip: { visible: false, x: 0, y: 0, name: '', type: '', area: '', rows: [] },
+        freePan: null,
+        edgePanTimer: null,
+
+        async init() {
+            this.fullscreenHandler = () => {
+                this.isFullscreen = document.fullscreenElement === this.$refs.fullscreenHost;
+                this.$nextTick(() => this.resetView());
+            };
+            document.addEventListener('fullscreenchange', this.fullscreenHandler);
+            await this.load();
+        },
+
+        async load() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/projekti/space-planner');
+                const data = await response.json();
+                if (data.success) {
+                    this.planImageUrl = data.plan_image_url;
+                    this.defaultPlanImageUrl = data.plan_image_url;
+                    this.planImageSize = data.plan_image_size || this.planImageSize;
+                    this.defaultPlanImageSize = { ...this.planImageSize };
+                    this.planViews = data.plan_views || [];
+                    const savedView = data.state?.last_active_view;
+                    if (savedView && this.planViews.some(view => view.key === savedView)) {
+                        this.activeViewKey = savedView;
+                    } else {
+                        this.activeViewKey = this.planViews.some(view => view.key === 'depot') ? 'depot' : (this.planViews[0]?.key || 'depot');
+                    }
+                    this.previousViewKey = this.activeViewKey;
+                    // Apply plan image for restored view
+                    const restoredView = this.planViews.find(v => v.key === this.activeViewKey);
+                    if (restoredView?.plan_image_url) {
+                        this.planImageUrl = restoredView.plan_image_url;
+                        this.planImageSize = restoredView.plan_image_size || this.defaultPlanImageSize;
+                    }
+                    this.roomLibrary = data.room_library || {};
+                    this.commonTerms = data.common_terms || {};
+                    this.curators = data.curators || [];
+                    this.detectedSpaces = (data.detected_spaces || []).map(space => this.normalizeSpace(space));
+                    this.depotDetectedSpaces = (data.depot_detected_spaces || []).map(space => this.normalizeSpace(space));
+                    this.spaces = (data.state?.spaces || []).map(space => this.normalizeSpace(space));
+                    // Debug logging
+                    const depotLoaded = this.spaces.filter(s => (s.id || '').startsWith('depot-'));
+                    const sampleLoaded = depotLoaded.slice(0, 3).map(s => `${s.id}(${s.x},${s.y})`);
+                    console.log(`[SpacePlanner] LOAD: ${this.spaces.length} spaces, view=${this.activeViewKey}, samples: ${sampleLoaded.join(', ')}`);
+                    if (this.spaces[0]) {
+                        this.selectedIds = [this.spaces[0].id];
+                        this.primarySelectedId = this.spaces[0].id;
+                    }
+                    this.statusText = data.state?.last_updated_at
+                        ? `Последње чување: ${this.formatTimestamp(data.state.last_updated_at)}`
+                        : 'План је спреман за уређивање.';
+                } else {
+                    this.statusText = data.message || 'Грешка при учитавању editora.';
+                }
+            } catch (error) {
+                this.statusText = 'Грешка при учитавању editora.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        destroy() {
+            if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+            if (this.fullscreenHandler) {
+                document.removeEventListener('fullscreenchange', this.fullscreenHandler);
+            }
+        },
+
+        get selectedCount() {
+            return this.selectedIds.length;
+        },
+
+        get selectedSpace() {
+            if (this.selectedIds.length !== 1) return null;
+            return this.spaces.find(space => space.id === this.selectedIds[0]) || null;
+        },
+
+        activeView() {
+            return this.planViews.find(view => view.key === this.activeViewKey) || { key: 'depot', x: 0, y: 0, width: 100, height: 100 };
+        },
+
+        viewFilteredSpaces() {
+            if (this.activeViewKey === 'depot') {
+                return this.spaces.filter(s => (s.id || '').startsWith('depot-'));
+            }
+            return this.spaces.filter(s => !(s.id || '').startsWith('depot-'));
+        },
+
+        filteredRoomList() {
+            let list = this.viewFilteredSpaces();
+            const q = (this.roomSearchQuery || '').trim().toLowerCase();
+            if (q) {
+                list = list.filter(s => {
+                    const name = (s.name || '').toLowerCase();
+                    const purpose = (s.specs?.purpose || '').toLowerCase();
+                    const type = (this.roomTypeLabel(s.room_type) || '').toLowerCase();
+                    return name.includes(q) || purpose.includes(q) || type.includes(q);
+                });
+            }
+            return list;
+        },
+
+        normalizeSpace(space) {
+            const normalized = {
+                id: space.id || `space-${Date.now()}`,
+                name: space.name || '',
+                room_type: space.room_type || '',
+                shape: space.shape === 'polygon' ? 'polygon' : 'rect',
+                points: Array.isArray(space.points)
+                    ? space.points
+                        .map(point => ({
+                            x: this.clampPercent(point?.x),
+                            y: this.clampPercent(point?.y),
+                        }))
+                        .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+                    : [],
+                x: this.clampPercent(space.x),
+                y: this.clampPercent(space.y),
+                width: this.clampPercent(space.width, 8),
+                height: this.clampPercent(space.height, 6),
+                area_m2: parseFloat(space.area_m2) || 0,
+                specs: {
+                    curator: space.specs?.curator || '',
+                    purpose: space.specs?.purpose || '',
+                    floor_materials: space.specs?.floor_materials || '',
+                    wall_materials: space.specs?.wall_materials || '',
+                    ventilation: space.specs?.ventilation || '',
+                    equipment: space.specs?.equipment || '',
+                    utilities: space.specs?.utilities || '',
+                    notes: space.specs?.notes || '',
+                },
+            };
+            return this.updateSpaceBounds(normalized);
+        },
+
+        clampPercent(value, fallback = 0) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return fallback;
+            return Math.max(0, Math.min(100, Math.round(num * 1000) / 1000));
+        },
+
+        updateSpaceBounds(space) {
+            if (space.shape === 'polygon' && Array.isArray(space.points) && space.points.length >= 3) {
+                const xs = space.points.map(point => point.x);
+                const ys = space.points.map(point => point.y);
+                space.x = this.clampPercent(Math.min(...xs));
+                space.y = this.clampPercent(Math.min(...ys));
+                space.width = Math.max(0.1, this.clampPercent(Math.max(...xs) - space.x, 0.1));
+                space.height = Math.max(0.1, this.clampPercent(Math.max(...ys) - space.y, 0.1));
+            } else {
+                space.shape = 'rect';
+                space.points = [];
+                space.x = this.clampPercent(space.x);
+                space.y = this.clampPercent(space.y);
+                space.width = Math.max(1, Math.min(this.clampPercent(space.width, 8), 100 - space.x));
+                space.height = Math.max(1, Math.min(this.clampPercent(space.height, 6), 100 - space.y));
+            }
+            return space;
+        },
+
+        geometrySummary(space) {
+            return `X ${space.x.toFixed(1)}%, Y ${space.y.toFixed(1)}%, W ${space.width.toFixed(1)}%, H ${space.height.toFixed(1)}%`;
+        },
+
+        selectionStatus() {
+            if (this.selectedCount === 0) return 'Нема селекције';
+            if (this.selectedCount === 1 && this.selectedSpace) {
+                return `Изабрано: ${this.spaceTitle(this.selectedSpace)}`;
+            }
+            return `Изабрано ${this.selectedCount} простора`;
+        },
+
+        spaceTitle(space) {
+            const title = space.name || this.roomTypeLabel(space.room_type) || 'Нови простор';
+            return space.area_m2 ? `${title} (${space.area_m2} m²)` : title;
+        },
+
+        roomTypeLabel(key) {
+            return this.roomLibrary[key]?.label || '';
+        },
+
+        truncate(text, length) {
+            if (!text || text.length <= length) return text || '';
+            return text.slice(0, length - 1) + '…';
+        },
+
+        isSelected(id) {
+            return this.selectedIds.includes(id);
+        },
+
+        spaceById(id) {
+            return this.spaces.find(space => space.id === id) || null;
+        },
+
+        showHoverTooltip(space, event) {
+            if (!this.isFullscreen) return;
+            const specLabels = [
+                ['Кустос', space.specs?.curator],
+                ['Намена', space.specs?.purpose],
+                ['Под', space.specs?.floor_materials],
+                ['Зидови', space.specs?.wall_materials],
+                ['Вентил.', space.specs?.ventilation],
+                ['Опрема', space.specs?.equipment],
+                ['Инст.', space.specs?.utilities],
+            ];
+            const rows = specLabels
+                .filter(([, val]) => val && val.trim())
+                .map(([label, val]) => ({
+                    label,
+                    value: val.length > 80 ? val.slice(0, 77) + '…' : val,
+                }));
+            this.hoverTooltip = {
+                visible: true,
+                x: space.x + space.width / 2,
+                y: space.y,
+                name: space.name || 'Нови простор',
+                type: this.roomTypeLabel(space.room_type),
+                area: space.area_m2 ? `${space.area_m2} m²` : '',
+                rows,
+            };
+        },
+
+        moveHoverTooltip(space, event) {
+            if (!this.isFullscreen || !this.hoverTooltip.visible) return;
+            const pt = this.relativePoint(event);
+            this.hoverTooltip.x = pt.x;
+            this.hoverTooltip.y = space.y;
+        },
+
+        hideHoverTooltip() {
+            this.hoverTooltip.visible = false;
+        },
+
+        autoFillAreaFromAnnotations(space) {
+            const view = this.activeView();
+            if (!view.area_annotations || !view.area_annotations.length) return;
+            const sx = space.x, sy = space.y;
+            const sx2 = sx + space.width, sy2 = sy + space.height;
+            for (const ann of view.area_annotations) {
+                if (ann.x >= sx && ann.x <= sx2 && ann.y >= sy && ann.y <= sy2) {
+                    space.area_m2 = ann.area_m2;
+                    if (ann.name && !space.name) {
+                        space.name = ann.name;
+                    }
+                    this.statusText = `${ann.name || ann.label}: ${ann.area_m2} m² аутоматски додато.`;
+                    return;
+                }
+            }
+        },
+
+        canvasClasses() {
+            return {
+                'is-drawing': !!this.drawingMode,
+                'is-pannable': this.lockOverlays || this.panMode || this.zoom > 1.01,
+                'is-panning': this.pointerState?.mode === 'pan',
+            };
+        },
+
+        viewportStyle() {
+            return this.isFullscreen ? 'height: calc(100vh - 220px); min-height: 620px;' : 'height: min(72vh, 760px);';
+        },
+
+        defaultZoomForCurrentView() {
+            return 1.35;
+        },
+
+        stageGeometry() {
+            const viewport = this.$refs.planViewport;
+            const viewportWidth = viewport?.clientWidth || 1200;
+            const viewportHeight = viewport?.clientHeight || 640;
+            const activeView = this.activeView();
+            const widthFactor = Math.max(0.08, activeView.width / 100);
+            const width = (viewportWidth / widthFactor) * this.zoom;
+            const height = width * (this.planImageSize.height / this.planImageSize.width);
+            const baseLeft = -((activeView.x / 100) * width);
+            const baseTop = -((activeView.y / 100) * height);
+            return {
+                width,
+                height,
+                viewportWidth,
+                viewportHeight,
+                baseLeft,
+                baseTop,
+                left: baseLeft + this.panX,
+                top: baseTop + this.panY,
+            };
+        },
+
+        stageStyle() {
+            const geom = this.stageGeometry();
+            return `left:${geom.left}px;top:${geom.top}px;width:${geom.width}px;height:${geom.height}px;`;
+        },
+
+        zoomLabel() {
+            return `${Math.round(this.zoom * 100)}%`;
+        },
+
+        switchView(key) {
+            const view = this.planViews.find(v => v.key === key);
+            if (!view) return;
+            this.activeViewKey = key;
+            this.previousViewKey = key;
+            if (view.plan_image_url) {
+                this.planImageUrl = view.plan_image_url;
+                this.planImageSize = view.plan_image_size || this.defaultPlanImageSize;
+            } else {
+                this.planImageUrl = this.defaultPlanImageUrl;
+                this.planImageSize = this.defaultPlanImageSize;
+            }
+            if (key === 'depot' && this.depotDetectedSpaces.length > 0) {
+                const hasDepot = this.spaces.some(s => (s.id || '').startsWith('depot-'));
+                console.log(`[SpacePlanner] switchView('depot'): hasDepot=${hasDepot}, totalSpaces=${this.spaces.length}`);
+                if (!hasDepot) {
+                    console.warn(`[SpacePlanner] NO DEPOT SPACES FOUND — loading ${this.depotDetectedSpaces.length} defaults`);
+                    this.spaces = [...this.spaces, ...this.depotDetectedSpaces.map(s => this.normalizeSpace(JSON.parse(JSON.stringify(s))))];
+                    this.statusText = `${this.depotDetectedSpaces.length} просторија аутоматски учитано на плану депоа.`;
+                    this.queueAutosave();
+                }
+            }
+            this.roomSearchQuery = '';
+            this.resetView();
+            this.$nextTick(() => {
+                const viewRooms = this.viewFilteredSpaces();
+                if (viewRooms.length > 0 && !viewRooms.some(s => this.isSelected(s.id))) {
+                    this.selectedIds = [viewRooms[0].id];
+                    this.primarySelectedId = viewRooms[0].id;
+                }
+            });
+        },
+
+        async toggleFullscreen() {
+            if (!this.$refs.fullscreenHost) return;
+            if (document.fullscreenElement === this.$refs.fullscreenHost) {
+                await document.exitFullscreen();
+                return;
+            }
+            await this.$refs.fullscreenHost.requestFullscreen();
+        },
+
+        handlePlanImageLoad(event) {
+            if (event?.target?.naturalWidth && event?.target?.naturalHeight) {
+                this.planImageSize = {
+                    width: event.target.naturalWidth,
+                    height: event.target.naturalHeight,
+                };
+            }
+            this.$nextTick(() => this.resetView());
+        },
+
+        resetView() {
+            this.zoom = this.defaultZoomForCurrentView();
+            this.panX = 0;
+            this.panY = 0;
+            this.$nextTick(() => this.clampPan());
+        },
+
+        setZoom(nextZoom, anchorEvent = null) {
+            const bounded = Math.max(this.minZoom, Math.min(this.maxZoom, Math.round(nextZoom * 100) / 100));
+            if (Math.abs(bounded - this.zoom) < 0.001) return;
+            if (!this.$refs.planViewport) {
+                this.zoom = bounded;
+                return;
+            }
+
+            const currentGeom = this.stageGeometry();
+            const viewportRect = this.$refs.planViewport.getBoundingClientRect();
+            const anchorX = anchorEvent ? (anchorEvent.clientX - viewportRect.left) : (currentGeom.viewportWidth / 2);
+            const anchorY = anchorEvent ? (anchorEvent.clientY - viewportRect.top) : (currentGeom.viewportHeight / 2);
+            const percentX = ((anchorX - currentGeom.left) / currentGeom.width) * 100;
+            const percentY = ((anchorY - currentGeom.top) / currentGeom.height) * 100;
+
+            this.zoom = bounded;
+            const nextGeom = this.stageGeometry();
+            const newLeft = anchorX - (percentX / 100) * nextGeom.width;
+            const newTop = anchorY - (percentY / 100) * nextGeom.height;
+            this.panX = newLeft - nextGeom.baseLeft;
+            this.panY = newTop - nextGeom.baseTop;
+            this.clampPan();
+            this.statusText = `Приказ плана: ${this.zoomLabel()}.`;
+        },
+
+        zoomIn() {
+            this.setZoom(this.zoom + 0.25);
+        },
+
+        zoomOut() {
+            this.setZoom(this.zoom - 0.25);
+        },
+
+        onWheelZoom(event) {
+            const delta = event.deltaY > 0 ? -0.18 : 0.18;
+            this.setZoom(this.zoom + delta, event);
+        },
+
+        clampPan() {
+            if (!this.$refs.planViewport) return;
+            const geom = this.stageGeometry();
+            let left = geom.left;
+            let top = geom.top;
+
+            if (geom.width <= geom.viewportWidth) {
+                left = (geom.viewportWidth - geom.width) / 2;
+            } else {
+                const minLeft = geom.viewportWidth - geom.width;
+                left = Math.min(0, Math.max(minLeft, left));
+            }
+
+            if (geom.height <= geom.viewportHeight) {
+                top = (geom.viewportHeight - geom.height) / 2;
+            } else {
+                const minTop = geom.viewportHeight - geom.height;
+                top = Math.min(0, Math.max(minTop, top));
+            }
+
+            this.panX = left - geom.baseLeft;
+            this.panY = top - geom.baseTop;
+        },
+
+        isCanvasBlankTarget(event) {
+            const target = event.target;
+            if (target === this.$refs.planViewport
+                || target === this.$refs.planStage
+                || target === this.$refs.planImage) return true;
+            // In drawing mode, treat any click within the canvas as blank
+            // (shapes and labels have pointer-events:none via CSS)
+            if (this.drawingMode && target?.closest?.('.space-canvas')) return true;
+            // Reject clicks on interactive shape/vertex elements
+            if (target?.closest?.('.space-shape-div') || target?.closest?.('.space-vertex-div')) return false;
+            // Anything else inside the canvas is blank
+            if (target?.closest?.('.space-canvas')) return true;
+            return false;
+        },
+
+        relativePoint(event) {
+            const rect = this.$refs.planStage?.getBoundingClientRect();
+            if (!rect || !rect.width || !rect.height) return { x: 0, y: 0 };
+            return {
+                x: this.clampPercent(((event.clientX - rect.left) / rect.width) * 100),
+                y: this.clampPercent(((event.clientY - rect.top) / rect.height) * 100),
+            };
+        },
+
+        toggleDrawMode(mode) {
+            if (this.lockOverlays) return;
+            if (this.drawingMode === mode) {
+                this.cancelDraft();
+                this.drawingMode = '';
+                this.statusText = 'Режим селекције активан.';
+                return;
+            }
+            this.cancelDraft();
+            this.drawingMode = mode;
+            this.panMode = false;
+            this.statusText = mode === 'polygon'
+                ? 'Режим poligona: klikovima prati konturu prostorije, Enter ili dupli klik završava.'
+                : 'Режим pravougaonika: prevuci preko plana da označiš prostor.';
+        },
+
+        togglePanMode() {
+            this.panMode = !this.panMode;
+            if (this.panMode) {
+                this.drawingMode = '';
+                this.cancelDraft();
+                this.statusText = 'Режим померања: превуци празан део плана за pan.';
+            } else {
+                this.statusText = 'Режим селекције активан.';
+            }
+        },
+
+        toggleLockOverlays() {
+            this.lockOverlays = !this.lockOverlays;
+            if (this.lockOverlays) {
+                this.drawingMode = '';
+                this.cancelDraft();
+                this.clearSelection();
+                this.statusText = 'Преклопи закључани — само зум и померање раде.';
+            } else {
+                this.statusText = 'Преклопи откључани — уређивање активно.';
+            }
+        },
+
+        cancelDraft() {
+            this.draftRect = null;
+            this.draftPolygon = [];
+            this.pointerState = null;
+        },
+
+        onCanvasClick(event) {
+            if (this.suppressCanvasClick) {
+                this.suppressCanvasClick = false;
+                return;
+            }
+            if (this.drawingMode === 'polygon' && this.isCanvasBlankTarget(event)) {
+                this.draftPolygon.push(this.relativePoint(event));
+                this.statusText = `Kontura u toku: ${this.draftPolygon.length} tačaka.`;
+            }
+        },
+
+        onCanvasDoubleClick(event) {
+            if (this.drawingMode === 'polygon' && this.isCanvasBlankTarget(event)) {
+                this.finishPolygonDraft();
+            } else {
+                this.resetView();
+            }
+        },
+
+        finishPolygonDraft() {
+            if (this.draftPolygon.length < 3) return;
+            const nextSpace = this.normalizeSpace({
+                id: `space-${Date.now()}`,
+                shape: 'polygon',
+                points: this.draftPolygon,
+                specs: {},
+            });
+            this.autoFillAreaFromAnnotations(nextSpace);
+            this.spaces.push(nextSpace);
+            this.selectedIds = [nextSpace.id];
+            this.primarySelectedId = nextSpace.id;
+            this.draftPolygon = [];
+            this.drawingMode = '';
+            this.statusText = nextSpace.area_m2
+                ? `Нови poligon: ${nextSpace.area_m2} m² аутоматски препознато.`
+                : 'Нови poligon je dodat. Po potrebi pomeri tačke da prati linije prostorije.';
+            this.queueAutosave();
+        },
+
+        selectSpace(id, event = null) {
+            if (this.lockOverlays) return;
+            const multi = !!event && (event.ctrlKey || event.metaKey || event.shiftKey);
+            if (multi) {
+                if (this.selectedIds.includes(id)) {
+                    this.selectedIds = this.selectedIds.filter(currentId => currentId !== id);
+                } else {
+                    this.selectedIds = [...this.selectedIds, id];
+                }
+                this.primarySelectedId = id;
+            } else {
+                this.selectedIds = [id];
+                this.primarySelectedId = id;
+                if (!this.drawingMode) {
+                    this.panMode = false;
+                }
+            }
+            this.statusText = this.selectionStatus();
+        },
+
+        clearSelection() {
+            this.selectedIds = [];
+            this.primarySelectedId = null;
+        },
+
+        onCanvasPointerDown(event) {
+            // Middle mouse button — always start pan regardless of mode
+            if (event.button === 1) {
+                event.preventDefault();
+                this._startPan(event);
+                return;
+            }
+
+            // If free-panning is active (click-to-grab in fullscreen), stop it on click
+            if (this.freePan) {
+                this._stopFreePan();
+                this.suppressCanvasClick = true;
+                return;
+            }
+
+            // Rect drawing mode — start drag-to-draw
+            if (this.drawingMode === 'rect' && this.isCanvasBlankTarget(event)) {
+                const point = this.relativePoint(event);
+                this.pointerState = { mode: 'draw-rect', startX: point.x, startY: point.y };
+                this.draftRect = { x: point.x, y: point.y, width: 0, height: 0 };
+                return;
+            }
+
+            // Polygon drawing mode — do NOT start pan; clicks are handled in onCanvasClick
+            if (this.drawingMode === 'polygon' && this.isCanvasBlankTarget(event)) {
+                return;
+            }
+
+            // Lock mode or pan mode in fullscreen: click-to-grab (toggle free pan on/off)
+            if (this.isFullscreen && (this.lockOverlays || this.panMode) && this.isCanvasBlankTarget(event)) {
+                this._startFreePan(event);
+                return;
+            }
+
+            // Lock mode, pan mode, or zoom > 1 with Shift — hold-to-drag
+            if (this.isCanvasBlankTarget(event) && (this.lockOverlays || this.panMode || event.shiftKey || (this.zoom > 1.01 && !this.drawingMode))) {
+                this._startPan(event);
+                return;
+            }
+
+            if (this.isCanvasBlankTarget(event)) {
+                this.clearSelection();
+            }
+        },
+
+        _startPan(event) {
+            this.pointerState = {
+                mode: 'pan',
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+                originPanX: this.panX,
+                originPanY: this.panY,
+                moved: false,
+                clearSelectionOnTap: !this.panMode && !event.shiftKey && !this.drawingMode,
+            };
+        },
+
+        _startFreePan(event) {
+            this.freePan = {
+                lastClientX: event.clientX,
+                lastClientY: event.clientY,
+            };
+            this.$refs.planViewport.style.cursor = 'grabbing';
+            this.statusText = 'Слободно померање — кликни поново да зауставиш.';
+        },
+
+        _stopFreePan() {
+            this.freePan = null;
+            this.$refs.planViewport.style.cursor = '';
+            this.statusText = `Приказ плана: ${this.zoomLabel()}.`;
+        },
+
+        onMiddleClick(event) {
+            // Prevent default middle-click behavior (auto-scroll, open in new tab)
+            event.preventDefault();
+        },
+
+        onCanvasPointerLeave(event) {
+            // Stop free-pan when pointer leaves the canvas
+            if (this.freePan) {
+                this._stopFreePan();
+            }
+            // Also handle regular pointer-up logic for held drags
+            if (this.pointerState) {
+                this.onCanvasPointerUp();
+            }
+        },
+
+        onCanvasPointerMove(event) {
+            // Free-pan mode: move canvas as mouse moves (no button held)
+            if (this.freePan) {
+                const deltaX = event.clientX - this.freePan.lastClientX;
+                const deltaY = event.clientY - this.freePan.lastClientY;
+                this.freePan.lastClientX = event.clientX;
+                this.freePan.lastClientY = event.clientY;
+                this.panX += deltaX;
+                this.panY += deltaY;
+                this.clampPan();
+                return;
+            }
+
+            if (!this.pointerState) return;
+            const point = this.relativePoint(event);
+            if (this.pointerState.mode === 'draw-rect') {
+                const x = Math.min(this.pointerState.startX, point.x);
+                const y = Math.min(this.pointerState.startY, point.y);
+                const width = Math.abs(point.x - this.pointerState.startX);
+                const height = Math.abs(point.y - this.pointerState.startY);
+                this.draftRect = { x, y, width, height };
+                return;
+            }
+
+            if (this.pointerState.mode === 'pan') {
+                const deltaX = event.clientX - this.pointerState.startClientX;
+                const deltaY = event.clientY - this.pointerState.startClientY;
+                if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                    this.pointerState.moved = true;
+                }
+                this.panX = this.pointerState.originPanX + deltaX;
+                this.panY = this.pointerState.originPanY + deltaY;
+                this.clampPan();
+                return;
+            }
+
+            if (this.pointerState.mode === 'move-space') {
+                const deltaX = point.x - this.pointerState.startPoint.x;
+                const deltaY = point.y - this.pointerState.startPoint.y;
+                this.pointerState.targets.forEach((target) => {
+                    const space = this.spaceById(target.id);
+                    if (!space) return;
+                    if (target.shape === 'polygon') {
+                        space.points = target.points.map((originalPoint) => ({
+                            x: this.clampPercent(originalPoint.x + deltaX),
+                            y: this.clampPercent(originalPoint.y + deltaY),
+                        }));
+                    } else {
+                        space.x = this.clampPercent(target.x + deltaX);
+                        space.y = this.clampPercent(target.y + deltaY);
+                    }
+                    this.updateSpaceBounds(space);
+                });
+                this.pointerState.moved = true;
+                return;
+            }
+
+            if (this.pointerState.mode === 'resize-rect' && this.selectedSpace) {
+                const ps = this.pointerState;
+                const dx = point.x - ps.startPoint.x;
+                const dy = point.y - ps.startPoint.y;
+                const corner = ps.corner;
+                let x = ps.startX, y = ps.startY, w = ps.startWidth, h = ps.startHeight;
+
+                if (corner.includes('e')) { w = Math.max(1, w + dx); }
+                if (corner.includes('s')) { h = Math.max(1, h + dy); }
+                if (corner.includes('w')) { x = x + dx; w = Math.max(1, w - dx); }
+                if (corner.includes('n')) { y = y + dy; h = Math.max(1, h - dy); }
+
+                x = Math.max(0, x);
+                y = Math.max(0, y);
+                w = Math.min(w, 100 - x);
+                h = Math.min(h, 100 - y);
+
+                this.selectedSpace.x = x;
+                this.selectedSpace.y = y;
+                this.selectedSpace.width = w;
+                this.selectedSpace.height = h;
+                this.pointerState.moved = true;
+                return;
+            }
+
+            if (this.pointerState.mode === 'move-vertex' && this.selectedSpace?.shape === 'polygon') {
+                const index = this.pointerState.vertexIndex;
+                if (this.selectedSpace.points[index]) {
+                    this.selectedSpace.points[index] = point;
+                    this.updateSpaceBounds(this.selectedSpace);
+                    this.pointerState.moved = true;
+                }
+            }
+        },
+
+        onCanvasPointerUp() {
+            if (!this.pointerState) return;
+            if (this.pointerState.mode === 'draw-rect' && this.draftRect && this.draftRect.width >= 1 && this.draftRect.height >= 1) {
+                const nextSpace = this.normalizeSpace({
+                    id: `space-${Date.now()}`,
+                    shape: 'rect',
+                    x: this.draftRect.x,
+                    y: this.draftRect.y,
+                    width: this.draftRect.width,
+                    height: this.draftRect.height,
+                    specs: {},
+                });
+                this.autoFillAreaFromAnnotations(nextSpace);
+                this.spaces.push(nextSpace);
+                this.selectedIds = [nextSpace.id];
+                this.primarySelectedId = nextSpace.id;
+                this.drawingMode = '';
+                this.statusText = nextSpace.area_m2
+                    ? `Нови prostor: ${nextSpace.area_m2} m² аутоматски препознато.`
+                    : 'Нови prostor je dodat. Za preciznije praćenje zidova koristi poligon.';
+                this.queueAutosave();
+            } else if (this.pointerState.mode === 'pan') {
+                if (!this.pointerState.moved && this.pointerState.clearSelectionOnTap) {
+                    this.clearSelection();
+                }
+                this.suppressCanvasClick = this.pointerState.moved;
+                this.statusText = `Приказ плана: ${this.zoomLabel()}.`;
+            } else if (['move-space', 'resize-rect', 'move-vertex'].includes(this.pointerState.mode) && this.pointerState.moved) {
+                this.suppressCanvasClick = true;
+                if (this.selectedSpace && !this.selectedSpace.area_m2) {
+                    this.autoFillAreaFromAnnotations(this.selectedSpace);
+                }
+                this.spaceChanged();
+            }
+            this.pointerState = null;
+            this.draftRect = null;
+        },
+
+        startSpaceDrag(space, event) {
+            if (this.lockOverlays) return;
+            this.hideHoverTooltip();
+            if (!this.isSelected(space.id)) {
+                this.selectSpace(space.id, event);
+            }
+            const targetIds = this.isSelected(space.id) ? this.selectedIds : [space.id];
+            this.pointerState = {
+                mode: 'move-space',
+                moved: false,
+                startPoint: this.relativePoint(event),
+                targets: targetIds.map((id) => {
+                    const current = this.spaceById(id);
+                    return current?.shape === 'polygon'
+                        ? { id, shape: 'polygon', points: current.points.map(point => ({ ...point })) }
+                        : { id, shape: 'rect', x: current?.x || 0, y: current?.y || 0 };
+                }).filter(Boolean),
+            };
+        },
+
+        startRectResize(space, event, corner) {
+            if (this.lockOverlays) return;
+            this.selectSpace(space.id, event);
+            this.pointerState = {
+                mode: 'resize-rect',
+                moved: false,
+                corner: corner || 'se',
+                startX: space.x,
+                startY: space.y,
+                startWidth: space.width,
+                startHeight: space.height,
+                startPoint: this.relativePoint(event),
+            };
+        },
+
+        startVertexDrag(space, index, event) {
+            if (this.lockOverlays) return;
+            this.selectSpace(space.id, event);
+            this.pointerState = { mode: 'move-vertex', vertexIndex: index, moved: false };
+        },
+
+        deleteSelectedSpaces() {
+            if (this.selectedCount === 0) return;
+            const selectedSet = new Set(this.selectedIds);
+            // Prevent accidental deletion of auto-detected depot/auto spaces
+            const protectedIds = [...selectedSet].filter(id => id.startsWith('depot-') || id.startsWith('auto-'));
+            if (protectedIds.length > 0) {
+                const unprotected = [...selectedSet].filter(id => !id.startsWith('depot-') && !id.startsWith('auto-'));
+                if (unprotected.length === 0) {
+                    this.statusText = 'Аутоматски препознати простори се не могу обрисати. Можете их померати и мењати величину.';
+                    return;
+                }
+                // Only delete unprotected spaces
+                this.spaces = this.spaces.filter(space => !unprotected.includes(space.id));
+                this.statusText = `Обрисано ${unprotected.length} простор(а). ${protectedIds.length} аутоматских простор(а) задржано.`;
+            } else {
+                this.spaces = this.spaces.filter(space => !selectedSet.has(space.id));
+                this.statusText = 'Селекција је обрисана.';
+            }
+            this.clearSelection();
+            this.queueAutosave();
+        },
+
+        duplicateSelectedSpace() {
+            if (!this.selectedSpace) return;
+            const copy = this.normalizeSpace(JSON.parse(JSON.stringify(this.selectedSpace)));
+            copy.id = `space-${Date.now()}`;
+            copy.name = copy.name ? `${copy.name} копија` : '';
+            if (copy.shape === 'polygon') {
+                copy.points = copy.points.map(point => ({
+                    x: this.clampPercent(point.x + 1.2),
+                    y: this.clampPercent(point.y + 1.2),
+                }));
+            } else {
+                copy.x = Math.min(copy.x + 1.5, 98 - copy.width);
+                copy.y = Math.min(copy.y + 1.5, 98 - copy.height);
+            }
+            this.updateSpaceBounds(copy);
+            this.spaces.push(copy);
+            this.selectedIds = [copy.id];
+            this.primarySelectedId = copy.id;
+            this.statusText = 'Простор је дуплиран.';
+            this.queueAutosave();
+        },
+
+        normalizeSelectedGeometry() {
+            if (!this.selectedSpace || this.selectedSpace.shape === 'polygon') return;
+            this.selectedSpace.x = Math.min(this.clampPercent(this.selectedSpace.x), 100);
+            this.selectedSpace.y = Math.min(this.clampPercent(this.selectedSpace.y), 100);
+            this.selectedSpace.width = Math.max(1, Math.min(this.clampPercent(this.selectedSpace.width, 8), 100 - this.selectedSpace.x));
+            this.selectedSpace.height = Math.max(1, Math.min(this.clampPercent(this.selectedSpace.height, 6), 100 - this.selectedSpace.y));
+        },
+
+        syncDetectedSpaces() {
+            if (!this.detectedSpaces.length) {
+                this.statusText = 'Нема доступних аутоматски препознатих простора.';
+                return;
+            }
+            const manualSpaces = this.spaces.filter(space => !(space.id || '').startsWith('auto-'));
+            const existingAutoById = Object.fromEntries(
+                this.spaces
+                    .filter(space => (space.id || '').startsWith('auto-'))
+                    .map(space => [space.id, space])
+            );
+            const syncedAutoSpaces = this.detectedSpaces.map((space) => {
+                const existing = existingAutoById[space.id];
+                if (!existing) {
+                    return this.normalizeSpace(space);
+                }
+                const merged = this.normalizeSpace(space);
+                merged.name = existing.name || merged.name;
+                merged.room_type = existing.room_type || merged.room_type;
+                merged.specs = {
+                    ...merged.specs,
+                    ...(existing.specs || {}),
+                };
+                return merged;
+            });
+            this.spaces = [...manualSpaces, ...syncedAutoSpaces];
+            this.selectedIds = [];
+            this.primarySelectedId = null;
+            this.statusText = `Освежено ${syncedAutoSpaces.length} аутоматски препознатих простора према high-res основи.`;
+            this.queueAutosave();
+        },
+
+        shapeClasses(space) {
+            return {
+                selected: this.isSelected(space.id),
+                'auto-shape': (space.id || '').startsWith('auto-'),
+            };
+        },
+
+        polygonPointsAttr(space) {
+            return (space.points || []).map(point => `${point.x},${point.y}`).join(' ');
+        },
+
+        polygonVertices() {
+            if (this.selectedIds.length !== 1) return [];
+            const space = this.selectedSpace;
+            if (!space || space.shape !== 'polygon' || !space.points) return [];
+            return space.points.map((pt, idx) => ({
+                key: space.id + '-pt-' + idx,
+                spaceId: space.id,
+                idx,
+                x: pt.x,
+                y: pt.y,
+            }));
+        },
+
+        shapeDivStyle(space) {
+            if (space.shape === 'polygon' && space.points && space.points.length >= 3) {
+                const xs = space.points.map(p => p.x);
+                const ys = space.points.map(p => p.y);
+                const minX = Math.min(...xs);
+                const minY = Math.min(...ys);
+                const maxX = Math.max(...xs);
+                const maxY = Math.max(...ys);
+                const clipPoints = space.points.map(p => {
+                    const cx = maxX > minX ? ((p.x - minX) / (maxX - minX)) * 100 : 50;
+                    const cy = maxY > minY ? ((p.y - minY) / (maxY - minY)) * 100 : 50;
+                    return `${cx}% ${cy}%`;
+                }).join(', ');
+                return `left:${minX}%;top:${minY}%;width:${maxX - minX}%;height:${maxY - minY}%;clip-path:polygon(${clipPoints});`;
+            }
+            return `left:${space.x}%;top:${space.y}%;width:${space.width}%;height:${space.height}%;`;
+        },
+
+        draftPolygonDivStyle() {
+            if (this.draftPolygon.length < 2) return 'display:none;';
+            const xs = this.draftPolygon.map(p => p.x);
+            const ys = this.draftPolygon.map(p => p.y);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const maxX = Math.max(...xs);
+            const maxY = Math.max(...ys);
+            const w = Math.max(maxX - minX, 0.5);
+            const h = Math.max(maxY - minY, 0.5);
+            const clipPoints = this.draftPolygon.map(p => {
+                const cx = w > 0 ? ((p.x - minX) / w) * 100 : 50;
+                const cy = h > 0 ? ((p.y - minY) / h) * 100 : 50;
+                return `${cx}% ${cy}%`;
+            }).join(', ');
+            return `left:${minX}%;top:${minY}%;width:${w}%;height:${h}%;clip-path:polygon(${clipPoints});`;
+        },
+
+        spaceLabelStyle(space) {
+            const top = Math.max(1, space.y + 0.5);
+            const left = Math.min(98, space.x + 0.4);
+            return `left:${left}%;top:${top}%;`;
+        },
+
+        applyRoomTypeDefaults() {
+            if (!this.selectedSpace || !this.selectedSpace.room_type) return;
+            const template = this.roomLibrary[this.selectedSpace.room_type];
+            if (!template) return;
+            if (!this.selectedSpace.name) {
+                this.selectedSpace.name = template.label;
+            }
+            const suggestions = template.suggestions || {};
+            ['purpose', 'floor_materials', 'wall_materials', 'ventilation', 'equipment', 'utilities'].forEach((field) => {
+                if (!this.selectedSpace.specs[field] && Array.isArray(suggestions[field]) && suggestions[field][0]) {
+                    this.selectedSpace.specs[field] = suggestions[field][0];
+                }
+            });
+        },
+
+        setActiveField(fieldKey) {
+            this.activeFieldKey = fieldKey;
+        },
+
+        activeFieldLabel() {
+            const labels = {
+                name: 'назив',
+                room_type: 'тип простора',
+                purpose: 'намена',
+                floor_materials: 'материјали пода',
+                wall_materials: 'материјали зидова',
+                ventilation: 'вентилација',
+                equipment: 'опрема',
+                utilities: 'utilities',
+                notes: 'напомене',
+            };
+            return labels[this.activeFieldKey] || this.activeFieldKey || '';
+        },
+
+        visibleTermGroups() {
+            if (!this.selectedSpace) return [];
+            const query = this.termQuery.trim().toLowerCase();
+            const template = this.roomLibrary[this.selectedSpace.room_type] || {};
+            const templateSuggestions = template.suggestions || {};
+            const groups = [];
+            const labels = {
+                purpose: 'Намена',
+                floor_materials: 'Подови',
+                wall_materials: 'Зидови',
+                ventilation: 'Вентилација',
+                equipment: 'Опрема',
+                utilities: 'Инсталације',
+            };
+            Object.keys(labels).forEach((key) => {
+                const merged = [
+                    ...(templateSuggestions[key] || []),
+                    ...(this.commonTerms[key] || []),
+                ];
+                const uniqueTerms = [...new Set(merged)];
+                const filtered = query
+                    ? uniqueTerms.filter(term => term.toLowerCase().includes(query))
+                    : uniqueTerms;
+                if (filtered.length) {
+                    groups.push({ key, label: labels[key], terms: filtered });
+                }
+            });
+            return groups;
+        },
+
+        applySuggestedTerm(fieldKey, term) {
+            if (!this.selectedSpace) return;
+            const target = this.activeFieldKey && this.selectedSpace.specs[this.activeFieldKey] !== undefined
+                ? this.activeFieldKey
+                : fieldKey;
+            const current = this.selectedSpace.specs[target] || '';
+            const trimmed = current.trim();
+            if (!trimmed) {
+                this.selectedSpace.specs[target] = term;
+            } else if (!trimmed.toLowerCase().includes(term.toLowerCase())) {
+                this.selectedSpace.specs[target] = `${trimmed}\n• ${term}`;
+            }
+            this.activeFieldKey = target;
+            this.spaceChanged();
+        },
+
+        spaceChanged() {
+            if (this.selectedSpace?.shape !== 'polygon') {
+                this.normalizeSelectedGeometry();
+            }
+            this.queueAutosave();
+            this.statusText = 'Има несачуваних измена...';
+        },
+
+        queueAutosave() {
+            if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+            this.autosaveTimer = setTimeout(() => this.saveNow(), 900);
+        },
+
+        async saveNow() {
+            if (this.saving) return;
+            this.saving = true;
+            try {
+                // Log positions being sent so we can debug persistence issues
+                const depotSpaces = this.spaces.filter(s => (s.id || '').startsWith('depot-'));
+                const samplePositions = depotSpaces.slice(0, 3).map(s => `${s.id}(${s.x},${s.y})`);
+                console.log(`[SpacePlanner] SAVE: ${this.spaces.length} spaces, view=${this.activeViewKey}, samples: ${samplePositions.join(', ')}`);
+
+                const response = await secureFetch('/api/projekti/space-planner', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ spaces: this.spaces, last_active_view: this.activeViewKey }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const returnedDepot = (data.state?.spaces || []).filter(s => (s.id || '').startsWith('depot-'));
+                    const returnedSample = returnedDepot.slice(0, 3).map(s => `${s.id}(${s.x},${s.y})`);
+                    console.log(`[SpacePlanner] SAVE OK: returned ${(data.state?.spaces || []).length} spaces, samples: ${returnedSample.join(', ')}`);
+
+                    this.spaces = (data.state?.spaces || []).map(space => this.normalizeSpace(space));
+                    this.selectedIds = this.selectedIds.filter(id => this.spaces.some(space => space.id === id));
+                    if (this.selectedIds.length === 0 && this.spaces[0]) {
+                        this.selectedIds = [this.spaces[0].id];
+                        this.primarySelectedId = this.spaces[0].id;
+                    }
+                    this.statusText = `Сачувано: ${this.formatTimestamp(data.state?.last_updated_at)}`;
+                } else {
+                    console.error(`[SpacePlanner] SAVE FAILED: ${data.message}`);
+                    this.statusText = data.message || 'Грешка при чувању.';
+                }
+            } catch (error) {
+                console.error('[SpacePlanner] SAVE ERROR:', error);
+                this.statusText = 'Грешка при чувању.';
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        formatTimestamp(value) {
+            if (!value) return '';
+            try {
+                return new Date(value).toLocaleString('sr-RS', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            } catch (error) {
+                return value;
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

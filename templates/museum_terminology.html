@@ -1,0 +1,803 @@
+{% extends "base.html" %}
+
+{% block title %}Музејска терминологија - Речник стручних појмова{% endblock %}
+
+{% block content %}
+<div x-data="terminologyApp()" x-cloak class="container-main fade-in">
+
+    <!-- Header -->
+    <div class="page-header header-info mb-4">
+        <div class="page-header-content">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="h2 mb-2">
+                        <i class="bi bi-book-half me-2"></i>
+                        Музејска терминологија
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Свеобухватан речник стручних термина према ICOM стандардима и националном законодавству
+                    </p>
+                    <div class="d-flex gap-3 mt-3">
+                        <span class="badge bg-white text-dark">
+                            <i class="bi bi-bookmark-fill me-1"></i>
+                            <span x-text="totalTerms"></span> термина
+                        </span>
+                        <span class="badge bg-white text-dark">
+                            <i class="bi bi-folder-fill me-1"></i>
+                            <span x-text="Object.keys(categories).length"></span> категорија
+                        </span>
+                        <span class="badge bg-white text-dark">
+                            <i class="bi bi-calendar-check me-1"></i>
+                            ICOM 2022
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-none d-md-block">
+                        <i class="bi bi-journal-bookmark" style="font-size: 5rem; opacity: 0.2;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card shadow-sm mb-4" style="border-radius: 16px;">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute" style="left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        <input type="text"
+                               class="form-control form-control-lg ps-5"
+                               style="border-radius: 12px;"
+                               placeholder="Претражите термине..."
+                               x-model="searchQuery"
+                               @input="filterTerms()">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm"
+                                :class="selectedCategory === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                                @click="selectCategory('all')">
+                            <i class="bi bi-grid me-1"></i>Све
+                        </button>
+                        <template x-for="(cat, key) in categories" :key="key">
+                            <button class="btn btn-sm"
+                                    :class="selectedCategory === key ? 'btn-primary' : 'btn-outline-secondary'"
+                                    @click="selectCategory(key)">
+                                <i class="bi me-1" :class="cat.icon"></i>
+                                <span x-text="cat.name"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3" x-show="searchQuery || selectedCategory !== 'all'">
+                <small class="text-muted">
+                    <i class="bi bi-funnel me-1"></i>
+                    Приказано <strong x-text="filteredTerms.length"></strong> од <span x-text="totalTerms"></span> термина
+                    <template x-if="searchQuery">
+                        <span> за "<strong x-text="searchQuery"></strong>"</span>
+                    </template>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- ICOM Definition Banner -->
+    <div class="card mb-4 border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px;">
+        <div class="card-body p-4 text-white">
+            <div class="row align-items-center">
+                <div class="col-md-1 text-center d-none d-md-block">
+                    <i class="bi bi-building" style="font-size: 3rem; opacity: 0.8;"></i>
+                </div>
+                <div class="col-md-11">
+                    <h5 class="mb-2">
+                        <i class="bi bi-quote me-2"></i>
+                        ICOM Дефиниција музеја (2022)
+                    </h5>
+                    <p class="mb-2" style="font-style: italic;">
+                        „Музеј је непрофитна, трајна институција у служби друштва која истражује, сабира, чува,
+                        интерпретира и излаже материјалну и нематеријалну баштину. Отворени за јавност, приступачни
+                        и инклузивни музеји потичу различитост и одрживост. Музеји делују и комуницирају етично,
+                        професионално и у сарадњи са заједницама, нудећи разноврсна искуства за едукацију, уживање,
+                        промишљање и размену знања."
+                    </p>
+                    <small class="opacity-75">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Усвојено на 26. Генералној конференцији ICOM-а у Прагу, 24. августа 2022. године (92.41% гласова)
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms Grid -->
+    <div class="row g-4">
+        <template x-for="term in filteredTerms" :key="term.id">
+            <div class="col-12">
+                <div class="card term-card h-100" style="border-radius: 16px; transition: all 0.3s ease;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <span class="badge badge-soft-primary mb-2" x-text="categories[term.category]?.name || term.category"></span>
+                                <h4 class="mb-1">
+                                    <span x-text="term.termSr"></span>
+                                    <small class="text-muted" x-text="'(' + term.termEn + ')'"></small>
+                                </h4>
+                                <template x-if="term.termLat">
+                                    <small class="text-muted d-block" x-text="'Lat: ' + term.termLat"></small>
+                                </template>
+                            </div>
+                            <div class="term-icon" :style="'background: linear-gradient(135deg, ' + (categories[term.category]?.color || '#667eea') + ' 0%, ' + (categories[term.category]?.colorDark || '#764ba2') + ' 100%)'">
+                                <i class="bi" :class="categories[term.category]?.icon || 'bi-book'"></i>
+                            </div>
+                        </div>
+
+                        <div class="term-content">
+                            <p class="mb-3" x-html="term.definition"></p>
+
+                            <template x-if="term.significance">
+                                <div class="mb-3">
+                                    <strong class="text-primary"><i class="bi bi-lightbulb me-1"></i>Значај:</strong>
+                                    <p class="mb-0 mt-1" x-text="term.significance"></p>
+                                </div>
+                            </template>
+
+                            <template x-if="term.example">
+                                <div class="alert alert-light mb-0" style="border-radius: 10px;">
+                                    <i class="bi bi-chat-quote me-2 text-muted"></i>
+                                    <strong>Пример:</strong> <span x-text="term.example"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="term.legal">
+                                <div class="mt-3 p-3 bg-light" style="border-radius: 10px;">
+                                    <small class="text-muted">
+                                        <i class="bi bi-file-earmark-text me-1"></i>
+                                        <strong>Правни основ:</strong> <span x-text="term.legal"></span>
+                                    </small>
+                                </div>
+                            </template>
+
+                            <template x-if="term.related && term.related.length > 0">
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-link-45deg me-1"></i>Повезани термини:
+                                        <template x-for="rel in term.related" :key="rel">
+                                            <a href="#" class="badge bg-light text-dark me-1" @click.prevent="searchQuery = rel; filterTerms()" x-text="rel"></a>
+                                        </template>
+                                    </small>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Empty State -->
+    <template x-if="filteredTerms.length === 0">
+        <div class="empty-state-modern">
+            <div class="empty-state-icon">
+                <i class="bi bi-search"></i>
+            </div>
+            <h5 class="empty-state-title">Нема резултата</h5>
+            <p class="empty-state-text">Покушајте са другим термином или изаберите другу категорију.</p>
+            <button class="btn btn-primary" @click="searchQuery = ''; selectedCategory = 'all'; filterTerms()">
+                <i class="bi bi-arrow-counterclockwise me-2"></i>Прикажи све термине
+            </button>
+        </div>
+    </template>
+
+    <!-- References Section -->
+    <div class="card mt-5" style="border-radius: 16px;">
+        <div class="card-header bg-dark text-white" style="border-radius: 16px 16px 0 0;">
+            <h5 class="mb-0">
+                <i class="bi bi-journal-bookmark me-2"></i>
+                Извори и референце
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <h6 class="text-primary"><i class="bi bi-globe me-2"></i>Међународни стандарди</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2"><a href="https://icom.museum/en/resources/standards-guidelines/museum-definition/" target="_blank" class="text-decoration-none">ICOM Museum Definition (2022)</a></li>
+                        <li class="mb-2"><a href="http://www.icom-croatia.hr/baza-znanja/eticki-kodeks/" target="_blank" class="text-decoration-none">ICOM Етички кодекс</a></li>
+                        <li class="mb-2">ICZN - International Code of Zoological Nomenclature</li>
+                        <li class="mb-2">ICN - International Code of Nomenclature (Botany)</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-primary"><i class="bi bi-file-earmark-text me-2"></i>Законодавство</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">Закон о музејској делатности Републике Србије</li>
+                        <li class="mb-2">Zakon o muzejima Republike Hrvatske</li>
+                        <li class="mb-2">Pravilnik o stručnim muzejskim zvanjima</li>
+                        <li class="mb-2">Pravilnik o vođenju dokumentacije o muzejskoj građi</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-primary"><i class="bi bi-book me-2"></i>Теоријска литература</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">Ivo Maroević: Uvod u muzeologiju (1993)</li>
+                        <li class="mb-2">Tomislav Šola: Prema totalnom muzeju</li>
+                        <li class="mb-2">CIDOC - Documentation Standards</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.term-card {
+    border: 1px solid var(--border-color);
+}
+.term-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--museum-primary);
+}
+.term-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.term-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+</style>
+
+<script>
+function terminologyApp() {
+    return {
+        searchQuery: '',
+        selectedCategory: 'all',
+        filteredTerms: [],
+
+        categories: {
+            'icom': { name: 'ICOM Стандарди', icon: 'bi-building', color: '#667eea', colorDark: '#764ba2' },
+            'profession': { name: 'Стручна звања', icon: 'bi-person-badge', color: '#f59e0b', colorDark: '#d97706' },
+            'collection': { name: 'Управљање збиркама', icon: 'bi-archive', color: '#10b981', colorDark: '#059669' },
+            'documentation': { name: 'Документација', icon: 'bi-file-earmark-text', color: '#3b82f6', colorDark: '#2563eb' },
+            'ethics': { name: 'Етика', icon: 'bi-shield-check', color: '#8b5cf6', colorDark: '#7c3aed' },
+            'taxonomy': { name: 'Таксономија', icon: 'bi-diagram-3', color: '#2d6a4f', colorDark: '#1b4332' },
+            'conservation': { name: 'Конзервација', icon: 'bi-tools', color: '#ef4444', colorDark: '#dc2626' },
+            'theory': { name: 'Теорија музеологије', icon: 'bi-lightbulb', color: '#06b6d4', colorDark: '#0891b2' }
+        },
+
+        terms: [
+            // ICOM Standards
+            {
+                id: 1,
+                category: 'icom',
+                termSr: 'Инклузивност',
+                termEn: 'Inclusivity',
+                definition: 'Принцип према којем музеј активно укључује маргинализоване групе и демократизује простор. Према новој ICOM дефиницији (2022), инклузивност није само оперативни циљ већ <strong>конститутивни елемент</strong> саме дефиниције музеја.',
+                significance: 'Музеј који није инклузиван губи део свог есенцијалног идентитета. Подразумева проактивно укључивање свих друштвених група.',
+                example: 'Програми за особе са инвалидитетом, вишејезичне изложбе, бесплатни улаз за угрожене групе.',
+                related: ['Приступачност', 'Партиципативност']
+            },
+            {
+                id: 2,
+                category: 'icom',
+                termSr: 'Приступачност',
+                termEn: 'Accessibility',
+                definition: 'Способност музеја да омогући приступ свим посетиоцима без обзира на физичке, сензорне, когнитивне или економске баријере. Укључује физичку, дигиталну и интелектуалну приступачност.',
+                significance: 'Новом ICOM дефиницијом постала је конститутивни елемент музеја, а не само препорука.',
+                example: 'Рампе за инвалидска колица, аудио водичи, текстови на Брајевом писму, онлајн колекције.',
+                related: ['Инклузивност', 'Универзални дизајн']
+            },
+            {
+                id: 3,
+                category: 'icom',
+                termSr: 'Одрживост',
+                termEn: 'Sustainability',
+                definition: 'По први пут у ICOM дефиницији (2022), еколошка, економска и друштвена одрживост постају део дефиниције музеја. Музеји се препознају као кључни актери у борби против климатских промена.',
+                significance: 'Музеји имају одговорност да промовишу циљеве одрживог развоја и смање свој еколошки отисак.',
+                example: 'Енергетски ефикасне зграде, дигитализација уместо физичког транспорта, едукација о екологији.',
+                legal: 'UN Agenda 2030, Циљеви одрживог развоја (SDGs)',
+                related: ['Зелена музеологија', 'Еколошка одговорност']
+            },
+            {
+                id: 4,
+                category: 'icom',
+                termSr: 'Нематеријална баштина',
+                termEn: 'Intangible Heritage',
+                definition: 'Традиције, усмена предања, извођачке уметности, друштвене праксе, ритуали, знања и вештине које заједнице препознају као део своје културне баштине. Равноправно позиционирана уз материјалну баштину у ICOM дефиницији.',
+                significance: 'Формализује обавезу музеја да развијају методологије за очување оралних традиција и друштвених пракси.',
+                example: 'Документовање народних песама, снимање занатских техника, архивирање усмених историја.',
+                legal: 'UNESCO Конвенција о нематеријалној баштини (2003)',
+                related: ['Материјална баштина', 'Живо наслеђе']
+            },
+            {
+                id: 5,
+                category: 'icom',
+                termSr: 'Партиципативност',
+                termEn: 'Participation of Communities',
+                definition: 'Принцип према којем заједница није само конзумент већ активни учесник у креирању значења и управљању баштином. Означава крај ере "музеја као храма".',
+                significance: 'Нова парадигма налаже да се заједница укључи у све аспекте музејског рада - од планирања изложби до интерпретације предмета.',
+                example: 'Грађанска наука, заједничко курирање изложби, орална историја са локалним заједницама.',
+                related: ['Инклузивност', 'Размена знања']
+            },
+            {
+                id: 6,
+                category: 'icom',
+                termSr: 'Размена знања',
+                termEn: 'Knowledge Sharing',
+                definition: 'Двосмерна комуникација између музеја и публике, за разлику од традиционалне једносмерне едукације. Признаје да посетиоци и заједнице такође поседују релевантна знања.',
+                significance: 'Трансформише музеј из ауторитативног предавача у партнера за дијалог.',
+                example: 'Радионице где посетиоци деле своја искуства, crowd-sourcing идентификације предмета.',
+                related: ['Партиципативност', 'Музејска едукација']
+            },
+
+            // Professional Titles
+            {
+                id: 10,
+                category: 'profession',
+                termSr: 'Кустос',
+                termEn: 'Curator',
+                definition: 'Стручњак са високом стручном спремом (дипломски студиј) одговоран за истраживање, сабирање и научну обраду музејске грађе. Примарно оријентисан на збирку и материјални/нематеријални садржај.',
+                significance: 'Кустос је аутор изложби и гарант научне веродостојности музејске презентације.',
+                example: 'Кустос геолошке збирке истражује нове налазе минерала и планира њихово укључивање у сталну поставку.',
+                legal: 'Pravilnik o stručnim muzejskim zvanjima',
+                related: ['Виши кустос', 'Музејски саветник', 'Музејски педагог']
+            },
+            {
+                id: 11,
+                category: 'profession',
+                termSr: 'Виши кустос',
+                termEn: 'Senior Curator',
+                definition: 'Стручно звање које се стиче након минимум 5 година рада у звању кустоса и одговарајућег броја бодова кроз стручни рад (изложбе, публикације, научни скупови).',
+                significance: 'Потврђује напредовање у струци и признаје значајан допринос музејском раду.',
+                legal: 'Pravilnik o stručnim muzejskim zvanjima',
+                related: ['Кустос', 'Музејски саветник']
+            },
+            {
+                id: 12,
+                category: 'profession',
+                termSr: 'Музејски саветник',
+                termEn: 'Museum Advisor',
+                definition: 'Највише стручно звање у музејској струци. Подразумева менторски ауторитет, значајан допринос струци на националном/међународном нивоу и опсежан опус радова.',
+                significance: 'Музејски саветници су лидери струке и менторирају млађе колеге.',
+                legal: 'Pravilnik o stručnim muzejskim zvanjima',
+                related: ['Виши кустос', 'Кустос']
+            },
+            {
+                id: 13,
+                category: 'profession',
+                termSr: 'Музејски педагог',
+                termEn: 'Museum Educator',
+                definition: 'Стручњак са ВСС (хуманистички/педагошки смер) одговоран за интерпретацију грађе, едукацију публике и рад са посетиоцима. Примарно оријентисан на корисника.',
+                significance: 'Мост између музејске грађе и посетилаца, осигурава да се знање преноси на приступачан начин.',
+                example: 'Музејски педагог осмишљава радионице за школску децу о праисторијским животињама.',
+                legal: 'Pravilnik o stručnim muzejskim zvanjima',
+                related: ['Кустос', 'Музејска едукација']
+            },
+            {
+                id: 14,
+                category: 'profession',
+                termSr: 'Музејски документариста',
+                termEn: 'Museum Documentalist',
+                definition: 'Стручњак одговоран за управљање информационим системима, вођење инвентара, дигитализацију и стандардизацију метаподатака.',
+                significance: 'Обезбеђује да су сви подаци о музејској грађи тачни, ажурни и доступни за истраживање.',
+                example: 'Унос података о новим примерцима у базу, дигитализација старих инвентарних књига.',
+                related: ['Инвентаризација', 'Дигитализација']
+            },
+            {
+                id: 15,
+                category: 'profession',
+                termSr: 'Конзерватор-рестауратор',
+                termEn: 'Conservator-Restorer',
+                definition: 'Стручњак са ВСС (студиј конзервације) одговоран за директну заштиту материјала, хемијско-физичке захвате и стабилизацију предмета.',
+                significance: 'Гарантује физички интегритет музејске грађе за будуће генерације.',
+                example: 'Конзервација фосилног материјала, стабилизација старих хербаријских примерака.',
+                related: ['Превентивна конзервација', 'Рестаурација']
+            },
+            {
+                id: 16,
+                category: 'profession',
+                termSr: 'Музејски техничар',
+                termEn: 'Museum Technician',
+                definition: 'Звање које захтева средњу стручну спрему (ССС). Улога обухвата техничку манипулацију предметима, израду амбалаже, постављање изложби и превентивну заштиту.',
+                significance: 'Обезбеђује сигурно руковање и транспорт музејских предмета.',
+                legal: 'Pravilnik o stručnim muzejskim zvanjima',
+                related: ['Препаратор']
+            },
+            {
+                id: 17,
+                category: 'profession',
+                termSr: 'Препаратор',
+                termEn: 'Preparator',
+                definition: 'Специфично звање, често у природњачким музејима, за таксидермију или техничку обраду примерака. Разликује се од конзерватора по нивоу сложености захвата.',
+                significance: 'Кључан за припрему природњачких примерака за излагање и истраживање.',
+                example: 'Припрема дермопластичних препарата птица, монтажа скелета.',
+                related: ['Таксидермија', 'Конзервација']
+            },
+
+            // Collection Management
+            {
+                id: 20,
+                category: 'collection',
+                termSr: 'Аквизиција',
+                termEn: 'Acquisition',
+                definition: 'Ширy појам који обухвата процес стицања музејских предмета (куповина, донација, теренско истраживање). Захтева проверу дужне пажње (due diligence) како би се утврдило етичко порекло.',
+                significance: 'Први корак у изградњи музејске збирке, захтева пажљиву проверу провенијенције.',
+                example: 'Музеј аквизира колекцију минерала од приватног сакупљача.',
+                related: ['Акцесија', 'Провенијенција', 'Дужна пажња']
+            },
+            {
+                id: 21,
+                category: 'collection',
+                termSr: 'Акцесија',
+                termEn: 'Accession',
+                definition: 'Формални правни акт којим предмет постаје део музејског фундуса и добија статус заштићеног културног добра.',
+                significance: 'Акцесија је тренутак када предмет правно постаје музеалија - добија инвентарни број и правну заштиту.',
+                example: 'Након одлуке стручног већа, примерак се уписује у Књигу улаза и добија инвентарни број.',
+                legal: 'Pravilnik o sadržaju i načinu vođenja dokumentacije o muzejskoj građi',
+                related: ['Аквизиција', 'Инвентаризација', 'Деакцесија']
+            },
+            {
+                id: 22,
+                category: 'collection',
+                termSr: 'Књига улаза',
+                termEn: 'Accession Register',
+                definition: '"Матична књига" музеја. Сваки предмет који физички уђе у музеј (ради процене, изложбе или трајне похране) мора се евидентирати. Садржи податке о власнику, датуму уласка и сврси.',
+                significance: 'Прва линија правне заштите и документовања свих предмета који уђу у музеј.',
+                example: 'Донирана колекција минерала уписује се у Књигу улаза пре детаљне обраде.',
+                legal: 'Pravilnik o sadržaju i načinu vođenja dokumentacije o muzejskoj građi',
+                related: ['Инвентарна књига', 'Акцесија']
+            },
+            {
+                id: 23,
+                category: 'collection',
+                termSr: 'Инвентарна књига',
+                termEn: 'Inventory Book',
+                definition: 'Регистар у који се уписују предмети који се трајно задржавају у музеју. Сваки предмет добија јединствени инвентарни број - непромењива веза између физичког објекта и његових података.',
+                significance: 'Инвентарни број је "лична карта" музејског предмета - омогућава праћење и идентификацију.',
+                example: 'ПМ-ГЕО-2024-0125 (Природњачки музеј, геологија, година, редни број)',
+                legal: 'Pravilnik o sadržaju i načinu vođenja dokumentacije o muzejskoj građi',
+                related: ['Књига улаза', 'Инвентарни број']
+            },
+            {
+                id: 24,
+                category: 'collection',
+                termSr: 'Деакцесија (Излучивање)',
+                termEn: 'Deaccessioning',
+                definition: 'Формални правни поступак којим музејски предмет престаје бити део музејског фундуса и губи статус заштићеног културног добра. Супротност акцесији.',
+                significance: 'Један од најосетљивијих сегмената музејске праксе - ригорозно контролисан због страха од распродаје баштине.',
+                example: 'Предмет који је непоправљиво оштећен или не припада мисији музеја може се излучити.',
+                legal: 'Pravilnik o mjerilima za određivanje vrijednosti muzejske građe i izlučivanju',
+                related: ['Акцесија', 'Отпис', 'Ревизија']
+            },
+            {
+                id: 25,
+                category: 'collection',
+                termSr: 'Ревизија',
+                termEn: 'Inventory Check',
+                definition: 'Законски прописан поступак периодичне провере стања збирки - верификација постојања, стања очуваности и смештаја предмета. Рокови зависе од величине збирке (5-12 година).',
+                significance: 'Неизвршавање ревизије повлачи законске санкције јер угрожава статус културног добра.',
+                example: 'Збирка од 25.000 предмета мора се ревидирати сваких 7 година.',
+                legal: 'Закон о музејској делатности',
+                related: ['Инвентаризација', 'Документација']
+            },
+            {
+                id: 26,
+                category: 'collection',
+                termSr: 'Матичност',
+                termEn: 'Authority/Oversight',
+                definition: 'Систем по којем матични музеј (централна институција за одређену област) стручно надзире и помаже мрежу мањих музеја у региону или по специјализацији.',
+                significance: 'Обезбеђује уједначен ниво стручности и размену знања између музеја.',
+                example: 'Природњачки музеј као матични музеј за природњачке збирке у Србији.',
+                legal: 'Закон о музејској делатности Републике Србије',
+                related: ['Музејска мрежа']
+            },
+
+            // Documentation
+            {
+                id: 30,
+                category: 'documentation',
+                termSr: 'Примарна документација',
+                termEn: 'Primary Documentation',
+                definition: 'Подаци о самом предмету - инвентарна књига, каталози збирки. Основни ниво документационог система.',
+                significance: 'Фундамент за све даље истраживање и рад са музејском грађом.',
+                legal: 'Pravilnik o sadržaju i načinu vođenja dokumentacije o muzejskoj građi',
+                related: ['Секундарна документација', 'Терцијарна документација']
+            },
+            {
+                id: 31,
+                category: 'documentation',
+                termSr: 'Секундарна документација',
+                termEn: 'Secondary Documentation',
+                definition: 'Подаци о активностима музеја везаним за предмете - досијеи изложби, записници о рестаурацији, педагошки програми, хемеротека, фототека.',
+                significance: 'Документује историју предмета у музеју и све интервенције.',
+                legal: 'Pravilnik o sadržaju i načinu vođenja dokumentacije o muzejskoj građi',
+                related: ['Примарна документација', 'Терцијарна документација']
+            },
+            {
+                id: 32,
+                category: 'documentation',
+                termSr: 'Терцијарна документација',
+                termEn: 'Tertiary Documentation',
+                definition: 'Помагала за претраживање - индекси, картотеке, тезауруси, релационе базе података.',
+                significance: 'Омогућава ефикасан приступ информацијама о збиркама.',
+                example: 'Дигитална база података која омогућава претрагу по врсти, локалитету, години.',
+                related: ['Примарна документација', 'Дигитализација']
+            },
+            {
+                id: 33,
+                category: 'documentation',
+                termSr: 'Дигитализација',
+                termEn: 'Digitization',
+                definition: 'Процес креирања дигиталних репрезентација физичких предмета (дигитални сурогати) и структурирање метаподатака за интероперабилност. План дигитализације је постао обавезан документ за јавне музеје.',
+                significance: 'Дигитализација није само скенирање - укључује креирање метаподатака за европске облаке баштине (нпр. Europeana).',
+                example: '3D скенирање фосила, фотографисање хербаријума, OCR старих каталога.',
+                legal: 'Zakon o izmjenama i dopunama Zakona o muzejima',
+                related: ['Дигитални сурогат', 'Метаподаци']
+            },
+            {
+                id: 34,
+                category: 'documentation',
+                termSr: 'Дигитални сурогат',
+                termEn: 'Digital Surrogate',
+                definition: 'Дигитална репрезентација физичког предмета - фотографија, 3D модел, скен документа.',
+                significance: 'Омогућава приступ грађи без физичке манипулације оригиналом.',
+                example: 'Високорезолуцијска фотографија холотипа доступна онлајн истраживачима широм света.',
+                related: ['Дигитализација', 'Born-digital грађа']
+            },
+            {
+                id: 35,
+                category: 'documentation',
+                termSr: 'Born-digital грађа',
+                termEn: 'Born-digital Heritage',
+                definition: 'Грађа која је изворно настала у дигиталном облику - није дигитализована из физичког формата.',
+                significance: 'Захтева посебне стратегије за дугорочно очување (миграције формата, емулације).',
+                example: 'Дигиталне фотографије теренског рада, 3D модели креирани директно из скенера.',
+                related: ['Дигитализација', 'Дигитално очување']
+            },
+
+            // Ethics
+            {
+                id: 40,
+                category: 'ethics',
+                termSr: 'Дужна пажња',
+                termEn: 'Due Diligence',
+                definition: 'Императив провере порекла предмета. Музеј не сме набавити предмет ако постоји сумња да је украден, илегално ископан или извезен из земље порекла.',
+                significance: 'Брана против илегалне трговине уметнинама и културним добрима.',
+                example: 'Провера документације о власништву, консултација са базама украдених предмета (INTERPOL).',
+                legal: 'ICOM Етички кодекс',
+                related: ['Провенијенција', 'ICOM Етички кодекс']
+            },
+            {
+                id: 41,
+                category: 'ethics',
+                termSr: 'Провенијенција',
+                termEn: 'Provenance',
+                definition: 'Документована историја власништва и локације предмета од његовог настанка или открића до данас.',
+                significance: 'Кључна за утврђивање легалности и аутентичности предмета.',
+                example: 'Минерал пронађен на локалитету X 1950., у приватној колекцији Y до 1990., донација музеју 2020.',
+                related: ['Дужна пажња', 'Аутентичност']
+            },
+            {
+                id: 42,
+                category: 'ethics',
+                termSr: 'Поверење јавности',
+                termEn: 'Public Trust',
+                definition: 'Принцип према којем музејски делатници нису власници збирки већ "повереници" јавности. Збирке су добро којим управљају у име друштва.',
+                significance: 'Фундаментални етички принцип који спречава злоупотребу музејских ресурса.',
+                legal: 'ICOM Етички кодекс',
+                related: ['Непрофитност', 'Етички кодекс']
+            },
+            {
+                id: 43,
+                category: 'ethics',
+                termSr: 'Сукоб интереса',
+                termEn: 'Conflict of Interest',
+                definition: 'Ситуација где приватни интерес музејског делатника може утицати на професионалне одлуке. ICOM кодекс строго регулише приватне колекције кустоса и трговину уметнинама.',
+                significance: 'Спречава ситуације где би лични интерес надвладао јавну дужност заштите баштине.',
+                example: 'Кустос не сме купити предмет који је одбио за музејску збирку.',
+                legal: 'ICOM Етички кодекс',
+                related: ['Поверење јавности', 'Етички кодекс']
+            },
+            {
+                id: 44,
+                category: 'ethics',
+                termSr: 'Непрофитност',
+                termEn: 'Non-profit Status',
+                definition: 'Не значи да музеј не сме остваривати приход (улазнице, сувенири), већ да се сав вишак прихода мора реинвестирати у програмску делатност и заштиту грађе.',
+                significance: 'Разликује музеј од комерцијалних галерија и приватних колекција.',
+                example: 'Приход од изложбе се користи за конзервацију збирки, не за исплату власницима.',
+                legal: 'ICOM дефиниција музеја (2022)',
+                related: ['Поверење јавности', 'ICOM дефиниција']
+            },
+
+            // Taxonomy
+            {
+                id: 50,
+                category: 'taxonomy',
+                termSr: 'Холотип',
+                termEn: 'Holotype',
+                definition: 'Један примерак који је аутор изабрао или назначио као носилац имена врсте при њеном првом описивању. Најважнији референтни примерак за врсту.',
+                significance: 'Служи као стандард са којим се упоређују сви будући примерци. Чува се под посебним условима.',
+                example: 'Научник открије нову врсту инсекта - један примерак означава као холотип у публикацији.',
+                legal: 'ICZN (зоологија), ICN (ботаника), ICNP (прокариоти)',
+                related: ['Паратип', 'Лектотип', 'Неотип', 'Типска серија']
+            },
+            {
+                id: 51,
+                category: 'taxonomy',
+                termSr: 'Паратип',
+                termEn: 'Paratype',
+                definition: 'Примерак(ци) наведени у оригиналном опису врсте поред холотипа. Део типске серије.',
+                significance: 'Показују варијабилност унутар врсте и служе као резервни референтни материјал.',
+                example: 'Од 10 примерака у опису, један је холотип, 9 су паратипови.',
+                related: ['Холотип', 'Типска серија']
+            },
+            {
+                id: 52,
+                category: 'taxonomy',
+                termSr: 'Лектотип',
+                termEn: 'Lectotype',
+                definition: 'Примерак изабран из синтипске серије да служи као типски примерак када оригинални холотип није био назначен или је изгубљен.',
+                significance: 'Стабилизује примену имена врсте. Избор лектотипа је формалан таксономски акт који се публикује.',
+                example: 'Врста описана 1850. без холотипа - данашњи истраживач бира један примерак као лектотип.',
+                related: ['Холотип', 'Синтип', 'Неотип']
+            },
+            {
+                id: 53,
+                category: 'taxonomy',
+                termSr: 'Неотип',
+                termEn: 'Neotype',
+                definition: 'Примерак изабран да замени изгубљени или уништени холотип/лектотип. Мора бити са исте локације ако је могуће.',
+                significance: 'Омогућава наставак прецизне таксономске праксе и када је оригинални типски материјал изгубљен.',
+                example: 'Холотип уништен у пожару музеја - назначује се неотип на основу оригиналног описа.',
+                related: ['Холотип', 'Лектотип']
+            },
+            {
+                id: 54,
+                category: 'taxonomy',
+                termSr: 'Типски локалитет',
+                termEn: 'Type Locality',
+                termLat: 'Locus typicus',
+                definition: 'Географска локација где је холотип (или типска серија) прикупљен. Основна референтна тачка за распрострањење врсте.',
+                significance: 'Кључан за разумевање биогеографије и еколошких услова врсте.',
+                example: '"Locus typicus: Сићевачка клисура, Србија, 450м н.в."',
+                related: ['Холотип', 'Тopotип']
+            },
+
+            // Museology Theory
+            {
+                id: 60,
+                category: 'theory',
+                termSr: 'Музеалија',
+                termEn: 'Musealia',
+                definition: 'Предмет након процеса музеализације. Издвајањем из животног контекста и уврштавањем у музејски фонд, предмет губи примарну функцију али добија нову - документацијску и информацијску.',
+                significance: 'Према Иви Мароевићу, музејски предмет постаје "документ стварности" који носи вишеслојне информације о времену, простору и друштву.',
+                example: 'Алат у радионици има употребну функцију; исти алат у музеју постаје документ занатске традиције.',
+                related: ['Музеализација', 'Документ стварности']
+            },
+            {
+                id: 61,
+                category: 'theory',
+                termSr: 'Музеализација',
+                termEn: 'Musealization',
+                definition: 'Процес трансформације предмета у музеалију - издвајање из примарног контекста, придавање новог (документацијског) значења и уклапање у систем музејских вредности.',
+                significance: 'Кључни теоријски концепт који објашњава како "обичан" предмет постаје носилац културног значења.',
+                example: 'Народна ношња престаје бити одећа и постаје документ етнографске баштине.',
+                related: ['Музеалија', 'Контекстуализација']
+            },
+            {
+                id: 62,
+                category: 'theory',
+                termSr: 'Херитологија',
+                termEn: 'Heritology / Mnemosophy',
+                definition: 'Према Томиславу Шоли, интегрална наука о баштини која надилази поделе на музеологију, архивистику и конзервацију. Концепт "Тоталног музеја".',
+                significance: 'Критикује традиционални фетишизам предмета и предлаже холистички приступ очувању људског памћења.',
+                example: 'Уместо раздвајања музејских, архивских и библиотечких збирки - интегрисани центар баштине.',
+                related: ['Тотални музеј', 'Кибернетички музеј']
+            },
+            {
+                id: 63,
+                category: 'theory',
+                termSr: 'Документ стварности',
+                termEn: 'Document of Reality',
+                definition: 'Термин Иве Мароевића за музејски предмет који носи вишеслојне информације о времену, простору и друштву у којем је настао.',
+                significance: 'Наглашава информацијску вредност предмета изнад његове естетске или материјалне вредности.',
+                example: 'Фосил није само лепи примерак - он је документ еволуције, геолошке историје, научне методе.',
+                related: ['Музеалија', 'Информацијска вредност']
+            },
+
+            // Conservation
+            {
+                id: 70,
+                category: 'conservation',
+                termSr: 'Превентивна конзервација',
+                termEn: 'Preventive Conservation',
+                definition: 'Мере за спречавање или успоравање пропадања музејских предмета кроз контролу околине - температуре, влажности, светлости, штеточина.',
+                significance: 'Ефикаснији и јефтинији приступ од интервентне конзервације - спречава штету уместо да је поправља.',
+                example: 'Одржавање стабилне температуре 18-22°C и релативне влажности 45-55% у депоима.',
+                related: ['Интервентна конзервација', 'Микроклима']
+            },
+            {
+                id: 71,
+                category: 'conservation',
+                termSr: 'Интервентна конзервација',
+                termEn: 'Interventive Conservation',
+                definition: 'Директни физички или хемијски третмани на предмету ради заустављања пропадања или стабилизације стања.',
+                significance: 'Захтева високу стручност јер неправилни захвати могу непоправљиво оштетити предмет.',
+                example: 'Консолидација крхког фосила смолом, чишћење корозије са металних предмета.',
+                related: ['Превентивна конзервација', 'Рестаурација']
+            },
+            {
+                id: 72,
+                category: 'conservation',
+                termSr: 'Рестаурација',
+                termEn: 'Restoration',
+                definition: 'Интервенције чији је циљ враћање предмета у одређено историјско стање, укључујући допуне недостајућих делова.',
+                significance: 'Етички осетљива пракса - захтева јасно означавање интервенција и реверзибилност.',
+                example: 'Рекострукција недостајућег дела скелета на основу других примерака исте врсте.',
+                related: ['Конзервација', 'Реверзибилност']
+            },
+            {
+                id: 73,
+                category: 'conservation',
+                termSr: 'Реверзибилност',
+                termEn: 'Reversibility',
+                definition: 'Принцип према којем све интервенције на предмету треба да буду могуће уклонити без оштећења оригинала.',
+                significance: 'Омогућава будућим генерацијама да примене напредније технике конзервације.',
+                example: 'Коришћење лепила која се могу растворити ацетоном уместо трајних епоксида.',
+                related: ['Конзервација', 'Етика конзервације']
+            }
+        ],
+
+        get totalTerms() {
+            return this.terms.length;
+        },
+
+        init() {
+            this.filteredTerms = [...this.terms];
+        },
+
+        selectCategory(category) {
+            this.selectedCategory = category;
+            this.filterTerms();
+        },
+
+        filterTerms() {
+            let result = [...this.terms];
+
+            // Filter by category
+            if (this.selectedCategory !== 'all') {
+                result = result.filter(t => t.category === this.selectedCategory);
+            }
+
+            // Filter by search query
+            if (this.searchQuery.trim()) {
+                const query = this.searchQuery.toLowerCase();
+                result = result.filter(t =>
+                    t.termSr.toLowerCase().includes(query) ||
+                    t.termEn.toLowerCase().includes(query) ||
+                    (t.termLat && t.termLat.toLowerCase().includes(query)) ||
+                    t.definition.toLowerCase().includes(query) ||
+                    (t.example && t.example.toLowerCase().includes(query))
+                );
+            }
+
+            this.filteredTerms = result;
+        }
+    };
+}
+</script>
+{% endblock %}

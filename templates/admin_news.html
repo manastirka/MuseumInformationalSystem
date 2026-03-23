@@ -1,0 +1,731 @@
+{% extends "base.html" %}
+
+{% block title %}Музејске вести - Социјалне мреже{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header with Social Media Links -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-newspaper me-2"></i>
+                                Музејске вести
+                            </h1>
+                            <p class="mb-0 opacity-90">
+                                Вести и објаве о активностима Природњачког музеја
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-end align-items-center gap-3">
+                                <!-- Social Media Links -->
+                                <a href="https://www.facebook.com/prirodnjacki" target="_blank"
+                                   class="btn btn-light btn-lg" title="Facebook страница музеја">
+                                    <i class="bi bi-facebook text-primary"></i>
+                                </a>
+                                <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank"
+                                   class="btn btn-light btn-lg" title="Instagram профил музеја">
+                                    <i class="bi bi-instagram text-danger"></i>
+                                </a>
+                                <a href="https://nhmbeo.rs/" target="_blank"
+                                   class="btn btn-light btn-lg" title="Веб сајт музеја">
+                                    <i class="bi bi-globe text-success"></i>
+                                </a>
+                                <div class="vr bg-white opacity-50 mx-2"></div>
+                                <div class="bg-white bg-opacity-25 rounded p-3 text-center">
+                                    <h2 class="mb-0">{{ total_articles }}</h2>
+                                    <small>Укупно вести</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Social Media Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h5 class="mb-0">
+                                <i class="bi bi-share me-2"></i>
+                                Брзе акције
+                            </h5>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                {% if session.get('user_role') == 'admin' %}
+                                <button class="btn btn-success" onclick="showAddNewsModal()">
+                                    <i class="bi bi-plus-lg me-1"></i>
+                                    Нова вест
+                                </button>
+                                {% endif %}
+                                <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="btn btn-outline-primary">
+                                    <i class="bi bi-facebook me-1"></i>
+                                    Отвори Facebook
+                                </a>
+                                <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-outline-danger">
+                                    <i class="bi bi-instagram me-1"></i>
+                                    Отвори Instagram
+                                </a>
+                                <a href="https://nhmbeo.rs/" target="_blank" class="btn btn-outline-success">
+                                    <i class="bi bi-globe me-1"></i>
+                                    Отвори веб сајт
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <span class="input-group-text bg-light">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="newsSearch" placeholder="Претражите вести по наслову или садржају...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="typeFilter">
+                <option value="">Сви типови</option>
+                <option value="Изложба">Изложбе</option>
+                <option value="Догађај">Догађаји</option>
+                <option value="Објава">Објаве</option>
+                <option value="Предавање">Предавања</option>
+                <option value="Радионица">Радионице</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- News Articles List -->
+    <div class="row" id="newsContainer">
+        {% if articles %}
+            {% for article in articles %}
+            <div class="col-12 mb-4 news-item"
+                 data-title="{{ article.title.lower() }}"
+                 data-description="{{ article.description|lower if article.description else '' }}"
+                 data-type="{{ article.type|default('', true) }}">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-2 text-center">
+                                <div class="bg-light rounded p-3 mb-3 mb-md-0">
+                                    {% if article.type == 'Изложба' %}
+                                    <i class="bi bi-easel" style="font-size: 2.5rem; color: #6f42c1;"></i>
+                                    {% elif article.type == 'Догађај' %}
+                                    <i class="bi bi-calendar-event" style="font-size: 2.5rem; color: #fd7e14;"></i>
+                                    {% elif article.type == 'Предавање' %}
+                                    <i class="bi bi-mic" style="font-size: 2.5rem; color: #20c997;"></i>
+                                    {% elif article.type == 'Радионица' %}
+                                    <i class="bi bi-tools" style="font-size: 2.5rem; color: #0dcaf0;"></i>
+                                    {% else %}
+                                    <i class="bi bi-newspaper" style="font-size: 2.5rem; color: var(--museum-primary);"></i>
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block">
+                                            {% if article.start_date %}
+                                                {{ article.start_date }}
+                                            {% else %}
+                                                Без датума
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <h5 class="card-title mb-2">
+                                    <i class="bi bi-arrow-right-circle text-primary me-2"></i>
+                                    {{ article.title }}
+                                </h5>
+
+                                {% if article.type %}
+                                <span class="badge bg-info mb-2">{{ article.type }}</span>
+                                {% endif %}
+
+                                {% if article.status %}
+                                <span class="badge bg-secondary mb-2">{{ article.status }}</span>
+                                {% endif %}
+
+                                <p class="card-text text-muted mb-3">
+                                    {{ article.description[:300] if article.description else 'Нема описа' }}{% if article.description and article.description|length > 300 %}...{% endif %}
+                                </p>
+
+                                <div class="row g-2 small text-muted">
+                                    {% if article.curator %}
+                                    <div class="col-md-6">
+                                        <i class="bi bi-person me-1"></i>
+                                        <strong>Кустос:</strong> {{ article.curator }}
+                                    </div>
+                                    {% endif %}
+
+                                    {% if article.location %}
+                                    <div class="col-md-6">
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        <strong>Локација:</strong> {{ article.location }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                {% if article.keywords %}
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-tags me-1"></i>
+                                        {{ article.keywords }}
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Share and Actions Column -->
+                            <div class="col-md-3">
+                                <div class="d-flex flex-column gap-2">
+                                    <h6 class="text-muted mb-2">
+                                        <i class="bi bi-share me-1"></i>
+                                        Подели на:
+                                    </h6>
+
+                                    <!-- Share to Facebook -->
+                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ 'https://nhmbeo.rs/' | urlencode }}&quote={{ article.title | urlencode }}"
+                                       target="_blank"
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-facebook me-1"></i>
+                                        Facebook
+                                    </a>
+
+                                    <!-- Copy for Instagram -->
+                                    <button class="btn btn-outline-danger btn-sm"
+                                            onclick="copyForInstagram('{{ article.title }}', '{{ article.description[:200] if article.description else '' }}')">
+                                        <i class="bi bi-instagram me-1"></i>
+                                        Копирај за Instagram
+                                    </button>
+
+                                    <!-- Open Website -->
+                                    {% if article.source_link %}
+                                    <a href="{{ article.source_link }}" target="_blank" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-globe me-1"></i>
+                                        Веб сајт
+                                    </a>
+                                    {% else %}
+                                    <a href="https://nhmbeo.rs/" target="_blank" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-globe me-1"></i>
+                                        Веб сајт
+                                    </a>
+                                    {% endif %}
+
+                                    {% if session.get('user_role') == 'admin' %}
+                                    <hr class="my-2">
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            onclick="editNews({{ article.id if article.id else loop.index }})">
+                                        <i class="bi bi-pencil me-1"></i>
+                                        Измени
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Тренутно нема доступних вести.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div id="noResults" class="alert alert-warning d-none">
+        <i class="bi bi-search me-2"></i>
+        Није пронађена ниједна вест која одговара претрази.
+    </div>
+
+    <!-- Social Media Feeds Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="bi bi-broadcast me-2"></i>
+                Друштвене мреже музеја
+            </h3>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Facebook Feed Embed -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-facebook me-2"></i>
+                        Facebook - Природњачки музеј
+                    </span>
+                    <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="btn btn-sm btn-light">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="fb-page-container" style="min-height: 500px; overflow: hidden;">
+                        <iframe
+                            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fprirodnjacki&tabs=timeline&width=500&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
+                            width="100%"
+                            height="500"
+                            style="border:none; overflow:hidden;"
+                            scrolling="no"
+                            frameborder="0"
+                            allowfullscreen="true"
+                            loading="lazy"
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <a href="https://www.facebook.com/prirodnjacki/events" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-calendar-event me-1"></i>
+                                Догађаји
+                            </a>
+                        </div>
+                        <div class="col-4">
+                            <a href="https://www.facebook.com/prirodnjacki/photos" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-image me-1"></i>
+                                Слике
+                            </a>
+                        </div>
+                        <div class="col-4">
+                            <a href="https://www.facebook.com/prirodnjacki/videos" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-play-circle me-1"></i>
+                                Видео
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instagram Feed -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);">
+                    <span>
+                        <i class="bi bi-instagram me-2"></i>
+                        Instagram - @prirodnjacki_muzej
+                    </span>
+                    <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-sm btn-light">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0" style="min-height: 500px;">
+                    <!-- SnapWidget Instagram Feed -->
+                    <div id="instagram-feed-container" class="h-100">
+                        <!-- SnapWidget Embed Code -->
+                        <script src="https://snapwidget.com/js/snapwidget.js"></script>
+                        <iframe src="https://snapwidget.com/embed/1089057"
+                                class="snapwidget-widget"
+                                allowtransparency="true"
+                                frameborder="0"
+                                scrolling="yes"
+                                style="border:none; overflow:hidden; width:100%; height:500px;"
+                                title="Instagram Feed">
+                        </iframe>
+
+                        <!-- Fallback if widget doesn't load -->
+                        <noscript>
+                            <div class="text-center py-5">
+                                <i class="bi bi-instagram" style="font-size: 3rem; color: #E1306C;"></i>
+                                <p class="mt-3">
+                                    <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-danger">
+                                        Погледај на Instagram
+                                    </a>
+                                </p>
+                            </div>
+                        </noscript>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <a href="https://www.instagram.com/prirodnjacki_muzej/reels/" target="_blank" class="btn btn-outline-danger btn-sm w-100">
+                                <i class="bi bi-play-circle me-1"></i>
+                                Reels
+                            </a>
+                        </div>
+                        <div class="col-4">
+                            <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-outline-danger btn-sm w-100">
+                                <i class="bi bi-grid-3x3 me-1"></i>
+                                Галерија
+                            </a>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="copyInstagramHandle()">
+                                <i class="bi bi-clipboard me-1"></i>
+                                Копирај @
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links Row -->
+    <div class="row mt-4 g-3">
+        <div class="col-md-4">
+            <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="card text-decoration-none h-100 border-primary">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-facebook text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-0 text-primary">Facebook</h6>
+                    <small class="text-muted">@prirodnjacki</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="card text-decoration-none h-100 border-danger">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-instagram text-danger" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-0 text-danger">Instagram</h6>
+                    <small class="text-muted">@prirodnjacki_muzej</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="https://nhmbeo.rs/" target="_blank" class="card text-decoration-none h-100 border-success">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-globe text-success" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-0 text-success">Веб сајт</h6>
+                    <small class="text-muted">nhmbeo.rs</small>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit News Modal -->
+<div class="modal fade" id="newsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="newsModalTitle">
+                    <i class="bi bi-plus-lg me-2"></i>
+                    Нова вест
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newsForm">
+                    <input type="hidden" id="newsId" name="id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Наслов *</label>
+                        <input type="text" class="form-control" id="newsTitle" name="title" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Тип</label>
+                            <select class="form-select" id="newsType" name="type">
+                                <option value="Објава">Објава</option>
+                                <option value="Изложба">Изложба</option>
+                                <option value="Догађај">Догађај</option>
+                                <option value="Предавање">Предавање</option>
+                                <option value="Радионица">Радионица</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Датум</label>
+                            <input type="date" class="form-control" id="newsDate" name="start_date">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Опис *</label>
+                        <textarea class="form-control" id="newsDescription" name="description" rows="5" required></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Кустос/Аутор</label>
+                            <input type="text" class="form-control" id="newsCurator" name="curator">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Локација</label>
+                            <input type="text" class="form-control" id="newsLocation" name="location">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Линк (опционо)</label>
+                        <input type="url" class="form-control" id="newsLink" name="source_link" placeholder="https://...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Кључне речи</label>
+                        <input type="text" class="form-control" id="newsKeywords" name="keywords" placeholder="Одвојене зарезом">
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-share me-1"></i>
+                            Објави на социјалним мрежама
+                        </label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="postFacebook" name="post_facebook">
+                                <label class="form-check-label" for="postFacebook">
+                                    <i class="bi bi-facebook text-primary me-1"></i>
+                                    Facebook
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="postInstagram" name="post_instagram">
+                                <label class="form-check-label" for="postInstagram">
+                                    <i class="bi bi-instagram text-danger me-1"></i>
+                                    Instagram
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="postWebsite" name="post_website">
+                                <label class="form-check-label" for="postWebsite">
+                                    <i class="bi bi-globe text-success me-1"></i>
+                                    Веб сајт
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-success" onclick="saveNews()">
+                    <i class="bi bi-check-lg me-1"></i>
+                    Сачувај
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Success Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="copyToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Успешно копирано</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            Текст је копиран у клипборд. Можете га налепити на Instagram.
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    }
+
+    .btn-lg i {
+        font-size: 1.5rem;
+    }
+
+    .social-link:hover {
+        transform: scale(1.1);
+    }
+
+    /* Instagram gradient icon */
+    .instagram-gradient-icon {
+        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Social card styling */
+    .social-card-facebook .social-icon-wrapper,
+    .social-card-instagram .social-icon-wrapper {
+        display: inline-block;
+        padding: 1.5rem;
+        border-radius: 50%;
+        background: #f8f9fa;
+    }
+
+    .social-card-facebook:hover .social-icon-wrapper {
+        background: #e7f3ff;
+    }
+
+    .social-card-instagram:hover .social-icon-wrapper {
+        background: #fff0f5;
+    }
+</style>
+
+<script>
+    // Search functionality
+    document.getElementById('newsSearch').addEventListener('input', filterNews);
+    document.getElementById('typeFilter').addEventListener('change', filterNews);
+
+    function filterNews() {
+        const searchTerm = document.getElementById('newsSearch').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const newsItems = document.querySelectorAll('.news-item');
+        const noResults = document.getElementById('noResults');
+        let visibleCount = 0;
+
+        newsItems.forEach(item => {
+            const title = item.getAttribute('data-title');
+            const description = item.getAttribute('data-description');
+            const type = item.getAttribute('data-type');
+
+            const matchesSearch = title.includes(searchTerm) || description.includes(searchTerm);
+            const matchesType = !typeFilter || type === typeFilter;
+
+            if (matchesSearch && matchesType) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('d-none');
+        } else {
+            noResults.classList.add('d-none');
+        }
+    }
+
+    // Copy text for Instagram
+    // Copy Instagram handle
+    function copyInstagramHandle() {
+        copyToClipboard('@prirodnjacki_muzej');
+    }
+
+    // Copy Facebook handle
+    function copyFacebookHandle() {
+        copyToClipboard('@prirodnjacki');
+    }
+
+    // Generic copy to clipboard function
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+            toast.show();
+        }).catch(err => {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+            toast.show();
+        });
+    }
+
+    function copyForInstagram(title, description) {
+        const text = `${title}\n\n${description}\n\n#ПриродњачкиМузеј #NaturalHistoryMuseum #Београд #Belgrade #музеј #museum #nhmbeo`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+            toast.show();
+        }).catch(err => {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+            toast.show();
+        });
+    }
+
+    // Show add news modal
+    function showAddNewsModal() {
+        document.getElementById('newsModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Нова вест';
+        document.getElementById('newsForm').reset();
+        document.getElementById('newsId').value = '';
+        document.getElementById('newsDate').value = new Date().toISOString().split('T')[0];
+
+        const modal = new bootstrap.Modal(document.getElementById('newsModal'));
+        modal.show();
+    }
+
+    // Edit news
+    function editNews(id) {
+        document.getElementById('newsModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Измени вест';
+        document.getElementById('newsId').value = id;
+
+        // TODO: Load existing news data via API
+        // For now, just show the modal
+        const modal = new bootstrap.Modal(document.getElementById('newsModal'));
+        modal.show();
+    }
+
+    // Save news
+    function saveNews() {
+        const form = document.getElementById('newsForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        // Add checkbox values
+        data.post_facebook = document.getElementById('postFacebook').checked;
+        data.post_instagram = document.getElementById('postInstagram').checked;
+        data.post_website = document.getElementById('postWebsite').checked;
+
+        secureFetch('/api/news/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Close modal and refresh
+                bootstrap.Modal.getInstance(document.getElementById('newsModal')).hide();
+
+                // Show success and handle social media posting
+                if (data.post_facebook) {
+                    window.open(`https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(data.title + '\n\n' + data.description)}`, '_blank');
+                }
+                if (data.post_instagram) {
+                    copyForInstagram(data.title, data.description);
+                }
+
+                // Reload page to show new article
+                location.reload();
+            } else {
+                alert('Грешка: ' + (result.message || 'Непозната грешка'));
+            }
+        })
+        .catch(error => {
+            alert('Грешка при чувању: ' + error.message);
+        });
+    }
+</script>
+{% endblock %}

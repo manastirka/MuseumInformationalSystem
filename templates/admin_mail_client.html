@@ -1,0 +1,2706 @@
+{% extends "base.html" %}
+{% block title %}Електронска пошта — Природњачки музеј{% endblock %}
+
+{% block content %}
+<div x-data="mailClient()" x-init="init()" class="mail-app" @keydown.escape.window="handleEscape()">
+    <!-- Toolbar -->
+    <div class="mail-toolbar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" @click="openCompose()">
+                <i class="bi bi-pencil-square me-1"></i>Нова порука
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" @click="refreshMessages()" :disabled="syncing">
+                <i class="bi bi-arrow-clockwise me-1" :class="{'spin': syncing}"></i>Освежи
+            </button>
+            <div class="input-group input-group-sm" style="max-width:260px">
+                <input type="text" class="form-control" placeholder="Претрага..." x-model="searchQuery"
+                       @keydown.enter="searchMessages()">
+                <button class="btn btn-outline-secondary" @click="searchMessages()">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <div class="ms-auto">
+                <a href="{{ url_for('mail_settings_page') }}" class="btn btn-outline-secondary btn-sm" title="Подешавања">
+                    <i class="bi bi-gear"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three pane layout -->
+    <div class="mail-layout">
+        <!-- Folder pane -->
+        <div class="mail-folders">
+            <div class="folder-brand">
+                <div class="folder-brand-icon">
+                    <i class="bi bi-envelope-fill"></i>
+                </div>
+                <div class="folder-brand-text">
+                    <div class="folder-brand-title">Пошта</div>
+                    <div class="folder-brand-sub" x-text="folderUnreadTotal + ' непрочитаних'"></div>
+                </div>
+            </div>
+            <template x-if="!settingsConfigured">
+                <div class="p-3 text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <a href="{{ url_for('mail_settings_page') }}">Конфигуришите пошту</a> да бисте почели.
+                </div>
+            </template>
+            <div class="folder-section-label">Фолдери</div>
+            <div class="folder-list">
+                <template x-for="f in folders" :key="f.name">
+                    <div class="folder-item" :class="{'active': currentFolder === f.name}"
+                         @click="selectFolder(f.name)">
+                        <div class="folder-icon-wrap" :class="'folder-icon-' + folderColorClass(f.name)">
+                            <i class="bi" :class="folderIcon(f.name)"></i>
+                        </div>
+                        <span class="folder-name" x-text="folderDisplayName(f.name)"></span>
+                        <span class="folder-badge" x-show="f.unseen > 0" x-text="f.unseen"></span>
+                    </div>
+                </template>
+            </div>
+            <div class="folder-bottom">
+                <a href="{{ url_for('mail_settings_page') }}" class="folder-settings-link">
+                    <i class="bi bi-gear me-1"></i>Подешавања
+                </a>
+            </div>
+        </div>
+
+        <!-- Message list pane -->
+        <div class="mail-list">
+            <!-- Sort bar -->
+            <div class="mail-sort-bar">
+                <template x-for="s in ['date','sender','subject','unread']" :key="s">
+                    <button class="mail-sort-btn" :class="{'active': sortBy === s}" @click="setSort(s)">
+                        <span x-text="sortLabel(s)"></span>
+                        <i class="bi" :class="sortIcon(s)" x-show="sortBy === s"></i>
+                    </button>
+                </template>
+            </div>
+            <!-- Multi-select toolbar -->
+            <div class="multi-select-bar" x-show="multiSelectMode"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 transform -translate-y-2"
+                 x-transition:enter-end="opacity-100 transform translate-y-0">
+                <div class="msel-count" x-text="selectedUids.length + ' изабрано'"></div>
+                <div class="msel-actions">
+                    <button class="msel-btn msel-btn-select" @click="selectAllMessages()" title="Изабери све">
+                        <i class="bi" :class="selectedUids.length === messages.length ? 'bi-dash-square' : 'bi-check2-square'"></i>Све
+                    </button>
+                    <button class="msel-btn msel-btn-delete" :disabled="selectedUids.length === 0" @click="deleteMultiSelected()" title="Обриши">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                    <button class="msel-btn msel-btn-archive" :disabled="selectedUids.length === 0" @click="archiveMultiSelected()" title="Архивирај">
+                        <i class="bi bi-archive"></i>
+                    </button>
+                    <button class="msel-btn msel-btn-cancel" @click="exitMultiSelect()" title="Откажи">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <template x-if="loading && messages.length === 0">
+                <div class="text-center p-4 text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>Учитавање...
+                </div>
+            </template>
+            <template x-if="!loading && messages.length === 0 && settingsConfigured">
+                <div class="text-center p-4 text-muted">
+                    <template x-if="folderWarmupActive">
+                        <div>
+                            <div class="spinner-border spinner-border-sm mb-2"></div>
+                            <div>Учитавам поруке из овог фолдера...</div>
+                        </div>
+                    </template>
+                    <template x-if="!folderWarmupActive">
+                        <div>
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Нема порука у овом фолдеру.
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template x-for="m in messages" :key="m.uid">
+                <div class="message-item" :class="{'unread': !m.is_read, 'active': activeTabUid === m.uid && !multiSelectMode, 'has-tab': m._isOpen, 'multi-selected': multiSelectMode && selectedUids.includes(m.uid)}"
+                     @click="if(_longPressTriggered) { _longPressTriggered = false; return; } multiSelectMode ? toggleMultiSelect(m) : selectMessage(m)"
+                     @contextmenu.prevent="openMessageContextMenu($event, m)"
+                     @mousedown="startLongPress($event, m)"
+                     @mouseup="cancelLongPress()"
+                     @mouseleave="cancelLongPress()"
+                     @touchstart.passive="startLongPress($event, m)"
+                     @touchend="cancelLongPress()"
+                     @touchmove="cancelLongPress()">
+                    <template x-if="multiSelectMode">
+                        <div class="msg-checkbox">
+                            <i class="bi" :class="selectedUids.includes(m.uid) ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                        </div>
+                    </template>
+                    <div class="msg-avatar" x-show="!multiSelectMode" :style="'background:' + m._senderColor">
+                        <span x-text="m._initials"></span>
+                    </div>
+                    <div class="msg-content">
+                        <div class="msg-sender" :style="'color:' + m._senderColor" x-text="m.from_name"></div>
+                        <div class="msg-subject" x-text="m.subject || '(нема наслова)'"></div>
+                    </div>
+                    <div class="msg-date" x-text="m._dateLabel"></div>
+                </div>
+            </template>
+            <!-- Pagination -->
+            <div class="mail-pagination" x-show="totalPages > 1">
+                <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage <= 1"
+                        @click="goPage(currentPage - 1)"><i class="bi bi-chevron-left"></i></button>
+                <span class="small text-muted mx-2" x-text="currentPage + ' / ' + totalPages"></span>
+                <button class="btn btn-sm btn-outline-secondary" :disabled="currentPage >= totalPages"
+                        @click="goPage(currentPage + 1)"><i class="bi bi-chevron-right"></i></button>
+            </div>
+
+            <!-- Message right-click context menu -->
+            <div class="tab-context-menu message-context-menu" x-show="messageContextMenu.visible"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 :style="'left:' + messageContextMenu.x + 'px;top:' + messageContextMenu.y + 'px'"
+                 @click.outside="messageContextMenu.visible = false">
+                <div class="tab-ctx-item" @click="openMessageFromContextMenu()">
+                    <i class="bi bi-envelope-open me-2"></i>Отвори
+                </div>
+                <div class="tab-ctx-item" @click="replyFromContextMenu()">
+                    <i class="bi bi-reply me-2"></i>Одговори
+                </div>
+                <div class="tab-ctx-item" @click="toggleReadFromContextMenu()">
+                    <i class="bi me-2" :class="messageContextMenu.message && messageContextMenu.message.is_read ? 'bi-envelope' : 'bi-envelope-open'"></i>
+                    <span x-text="messageContextMenu.message && messageContextMenu.message.is_read ? 'Означи као непрочитано' : 'Означи као прочитано'"></span>
+                </div>
+                <div class="tab-ctx-divider"></div>
+                <div class="tab-ctx-item" @click="archiveFromContextMenu()">
+                    <i class="bi bi-archive me-2"></i>Архивирај
+                </div>
+                <div class="tab-ctx-item text-danger" @click="deleteFromContextMenu()">
+                    <i class="bi bi-trash me-2"></i>Обриши
+                </div>
+            </div>
+        </div>
+
+        <!-- Reader pane -->
+        <div class="mail-reader">
+            <!-- Tab bar -->
+            <div class="mail-tab-bar" x-show="openTabs.length > 0"
+                 @keydown.window.ctrl.w.prevent="closeTab(activeTabUid)"
+                 @keydown.window.ctrl.tab.prevent="cycleTab(1)"
+                 @keydown.window.ctrl.shift.tab.prevent="cycleTab(-1)">
+                <!-- Scroll left button -->
+                <button class="mail-tab-scroll-btn" x-show="tabsOverflow"
+                        @click="scrollTabs(-120)" title="Помери лево">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <div class="mail-tab-list" x-ref="tabList"
+                     @scroll="checkTabsOverflow()"
+                     @wheel.prevent="$refs.tabList.scrollLeft += $event.deltaY">
+                    <template x-for="(tab, tabIndex) in openTabs" :key="tab.uid">
+                        <div class="mail-tab"
+                             :class="{'active': activeTabUid === tab.uid, 'unread-tab': tab.wasUnread}"
+                             @click="switchTab(tab.uid)"
+                             @auxclick.prevent="if($event.button===1) closeTab(tab.uid)"
+                             @contextmenu.prevent="openTabContextMenu($event, tab.uid)"
+                             :title="tab.from_name + '\n' + (tab.subject || '(нема наслова)') + '\n' + formatDate(tab.date)"
+                             draggable="true"
+                             @dragstart="onTabDragStart($event, tabIndex)"
+                             @dragover.prevent="onTabDragOver($event, tabIndex)"
+                             @drop.prevent="onTabDrop($event, tabIndex)"
+                             @dragend="tabDragIndex = -1">
+                            <span class="mail-tab-indicator" :style="'background:' + avatarColor(tab.from_name)"></span>
+                            <span class="mail-tab-unread-dot" x-show="tab.wasUnread"></span>
+                            <span class="mail-tab-subject" x-text="tab.subject || '(нема наслова)'"></span>
+                            <button class="mail-tab-close" @click.stop="closeTab(tab.uid)" title="Затвори (Ctrl+W)">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <!-- Scroll right button -->
+                <button class="mail-tab-scroll-btn" x-show="tabsOverflow"
+                        @click="scrollTabs(120)" title="Помери десно">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                <!-- Tab count badge -->
+                <span class="mail-tab-count" x-show="openTabs.length > 1"
+                      x-text="openTabs.length" :title="openTabs.length + ' отворених порука'"></span>
+                <button class="mail-tab-close-all" x-show="openTabs.length > 1"
+                        @click="closeAllTabs()" title="Затвори све">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab right-click context menu -->
+            <div class="tab-context-menu" x-show="tabContextMenu.visible"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 :style="'left:' + tabContextMenu.x + 'px;top:' + tabContextMenu.y + 'px'"
+                 @click.outside="tabContextMenu.visible = false">
+                <div class="tab-ctx-item" @click="closeTab(tabContextMenu.uid); tabContextMenu.visible = false">
+                    <i class="bi bi-x me-2"></i>Затвори
+                </div>
+                <div class="tab-ctx-item" @click="closeOtherTabs(tabContextMenu.uid); tabContextMenu.visible = false">
+                    <i class="bi bi-x-circle me-2"></i>Затвори остале
+                </div>
+                <div class="tab-ctx-item" @click="closeTabsToRight(tabContextMenu.uid); tabContextMenu.visible = false">
+                    <i class="bi bi-arrow-right me-2"></i>Затвори десно
+                </div>
+                <div class="tab-ctx-divider"></div>
+                <div class="tab-ctx-item" @click="closeAllTabs(); tabContextMenu.visible = false">
+                    <i class="bi bi-x-lg me-2"></i>Затвори све
+                </div>
+            </div>
+
+            <template x-if="openTabs.length === 0 && !loadingMessage">
+                <div class="reader-empty">
+                    <i class="bi bi-envelope-open fs-1 d-block mb-2"></i>
+                    Изаберите поруку за читање
+                </div>
+            </template>
+            <template x-if="loadingMessage">
+                <div class="reader-empty">
+                    <div class="spinner-border text-primary mb-2"></div>
+                    <span class="text-muted">Учитавам поруку...</span>
+                </div>
+            </template>
+            <template x-if="activeTabMessage && !loadingMessage">
+                <div class="reader-content">
+                    <div class="reader-header">
+                        <div class="reader-headline">
+                            <div class="reader-subject" x-text="activeTabMessage.subject || '(нема наслова)'"></div>
+                            <button type="button"
+                                    class="reader-toggle-btn"
+                                    @click="toggleReaderSection('header')"
+                                    :aria-expanded="isReaderSectionOpen('header')">
+                                <span x-text="isReaderSectionOpen('header') ? 'Смањи заглавље' : 'Прошири заглавље'"></span>
+                                <i class="bi" :class="isReaderSectionOpen('header') ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                            </button>
+                        </div>
+
+                        <div class="reader-sender-row reader-sender-row-compact">
+                            <div class="msg-avatar-lg" :style="'background:' + avatarColor(activeTabMessage.from_name)">
+                                <span x-text="initials(activeTabMessage.from_name)"></span>
+                            </div>
+                            <div class="reader-sender-main">
+                                <div class="reader-sender-info">
+                                    <div class="reader-sender-name">
+                                        <strong :style="'color:' + avatarColor(activeTabMessage.from_name)" x-text="activeTabMessage.from_name"></strong>
+                                        <span class="reader-sender-email" x-text="'<' + activeTabMessage.from_address + '>'"></span>
+                                    </div>
+                                    <div class="reader-sender-meta">
+                                        <span class="reader-meta-chip">
+                                            <i class="bi bi-people"></i>
+                                            <span x-text="recipientCountLabel(activeTabMessage)"></span>
+                                        </span>
+                                        <span class="reader-meta-chip" x-show="(activeTabMessage.attachments || []).length > 0">
+                                            <i class="bi bi-paperclip"></i>
+                                            <span x-text="attachmentCountLabel(activeTabMessage)"></span>
+                                        </span>
+                                        <span class="reader-meta-chip" x-show="(activeTabMessage.links || []).length > 0">
+                                            <i class="bi bi-link-45deg"></i>
+                                            <span x-text="linkCountLabel(activeTabMessage.links)"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="reader-date" x-text="formatDateFull(activeTabMessage.date)"></div>
+                            </div>
+                        </div>
+
+                        <div class="reader-meta-panel" x-show="isReaderSectionOpen('header')">
+                            <div class="reader-panel-row">
+                                <div class="reader-panel-label">Прималац</div>
+                                <div class="reader-panel-value">
+                                    <template x-for="t in (activeTabMessage.to || [])" :key="t.address">
+                                        <span x-text="t.name || t.address" class="me-2"></span>
+                                    </template>
+                                    <span x-show="(activeTabMessage.to || []).length === 0" class="text-muted">Нема прималаца</span>
+                                </div>
+                            </div>
+                            <div class="reader-panel-row" x-show="activeTabMessage.cc && activeTabMessage.cc.length">
+                                <div class="reader-panel-label">CC</div>
+                                <div class="reader-panel-value">
+                                    <template x-for="c in (activeTabMessage.cc || [])" :key="c.address">
+                                        <span x-text="c.name || c.address" class="me-2"></span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="reader-actions">
+                                <button class="btn btn-sm btn-outline-primary" @click="openReply()">
+                                    <i class="bi bi-reply me-1"></i>Одговори
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" @click="openForward()">
+                                    <i class="bi bi-forward me-1"></i>Проследи
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @click="deleteSelected()">
+                                    <i class="bi bi-trash me-1"></i>Обриши
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @click="archiveSelected()">
+                                    <i class="bi bi-archive me-1"></i>Архивирај
+                                </button>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                        <i class="bi bi-folder-symlink me-1"></i>Премести
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <template x-for="f in folders" :key="'mv-'+f.name">
+                                            <li><a class="dropdown-item" href="#"
+                                                   @click.prevent="moveSelected(f.name)"
+                                                   x-text="folderDisplayName(f.name)"></a></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="reader-attachments" x-show="(activeTabMessage.attachments || []).length > 0">
+                                <i class="bi bi-paperclip reader-att-icon"></i>
+                                <template x-for="(att, i) in (activeTabMessage.attachments || [])" :key="i">
+                                    <a :href="'/api/mail/attachment/' + activeTabMessage.uid + '/' + i + '?folder=' + encodeURIComponent(activeTabFolder)"
+                                       :class="att.dangerous ? 'att-chip att-chip-danger' : 'att-chip'"
+                                       @click.prevent="handleAttachmentClick($event, att)"
+                                       download :title="(att.dangerous ? 'Пажња: потенцијално ризичан прилог. ' : 'Преузми ') + att.filename">
+                                        <i class="bi me-1" :class="att.dangerous ? 'bi-exclamation-triangle-fill' : 'bi-download'"></i>
+                                        <span x-text="att.filename"></span>
+                                        <span class="att-chip-size" x-text="formatSize(att.size)"></span>
+                                    </a>
+                                </template>
+                                <a x-show="(activeTabMessage.attachments || []).length > 1"
+                                   :href="'/api/mail/attachments-all/' + activeTabMessage.uid + '?folder=' + encodeURIComponent(activeTabFolder)"
+                                   class="att-chip att-chip-all" download title="Преузми све прилоге (ZIP)"
+                                   @click.prevent="handleAttachmentBundleClick($event)">
+                                    <i class="bi bi-file-zip me-1"></i>Преузми све
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="reader-security-panel reader-collapsible" x-show="activeTabMessage.security && (
+                                activeTabMessage.security.external_sender ||
+                                activeTabMessage.security.reply_to_mismatch ||
+                                (activeTabMessage.security.suspicious_links || []).length > 0 ||
+                                (activeTabMessage.security.dangerous_attachments || []).length > 0
+                            )">
+                            <button type="button"
+                                    class="reader-collapsible-toggle"
+                                    @click="toggleReaderSection('security')"
+                                    :aria-expanded="isReaderSectionOpen('security')">
+                                <div class="reader-collapsible-head">
+                                    <div class="reader-security-title">
+                                        <i class="bi bi-shield-exclamation me-1"></i>Безбедносна упозорења
+                                    </div>
+                                    <div class="reader-collapsible-summary">
+                                        <span :class="'security-score security-score-' + (activeTabMessage.security.risk_level || 'low')"
+                                              x-text="'Ризик ' + (activeTabMessage.security.score || 0) + '/10'"></span>
+                                        <span class="reader-meta-chip"
+                                              x-show="activeTabMessage.security && (activeTabMessage.security.suspicious_links || []).length > 0"
+                                              x-text="(activeTabMessage.security.suspicious_links || []).length + ' линка'"></span>
+                                        <span class="reader-meta-chip"
+                                              x-show="activeTabMessage.security && (activeTabMessage.security.dangerous_attachments || []).length > 0"
+                                              x-text="(activeTabMessage.security.dangerous_attachments || []).length + ' прилога'"></span>
+                                    </div>
+                                </div>
+                                <span class="reader-collapsible-chevron">
+                                    <i class="bi" :class="isReaderSectionOpen('security') ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                </span>
+                            </button>
+                            <div class="reader-collapsible-body" x-show="isReaderSectionOpen('security')">
+                                <div class="reader-security-badges">
+                                    <span class="security-chip security-chip-warning"
+                                          x-show="activeTabMessage.security && activeTabMessage.security.external_sender">
+                                        <i class="bi bi-globe2"></i>Спољни пошиљалац
+                                    </span>
+                                    <span class="security-chip security-chip-danger"
+                                          x-show="activeTabMessage.security && activeTabMessage.security.reply_to_mismatch">
+                                        <i class="bi bi-arrow-left-right"></i>Reply-To се не поклапа
+                                    </span>
+                                    <span class="security-chip security-chip-danger"
+                                          x-show="activeTabMessage.security && (activeTabMessage.security.suspicious_links || []).length > 0">
+                                        <i class="bi bi-link-45deg"></i>
+                                        <span x-text="(activeTabMessage.security.suspicious_links || []).length + ' сумњивих линкова'"></span>
+                                    </span>
+                                    <span class="security-chip security-chip-danger"
+                                          x-show="activeTabMessage.security && (activeTabMessage.security.dangerous_attachments || []).length > 0">
+                                        <i class="bi bi-file-earmark-break"></i>
+                                        <span x-text="(activeTabMessage.security.dangerous_attachments || []).length + ' ризичних прилога'"></span>
+                                    </span>
+                                </div>
+                                <div class="reader-security-note"
+                                     x-show="activeTabMessage.security && activeTabMessage.security.reply_to_mismatch">
+                                    Одговор на ову поруку би ишао на
+                                    <strong x-text="activeTabMessage.security.reply_to_address"></strong>.
+                                </div>
+                                <div class="reader-security-note"
+                                     x-show="activeTabMessage.security && (activeTabMessage.security.suspicious_links || []).length > 0">
+                                    Отварајте линкове само ако домен тачно одговара ономе што очекујете.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="reader-links reader-collapsible" x-show="(activeTabMessage.links || []).length > 0">
+                            <button type="button"
+                                    class="reader-collapsible-toggle"
+                                    @click="toggleReaderSection('links')"
+                                    :aria-expanded="isReaderSectionOpen('links')">
+                                <div class="reader-collapsible-head">
+                                    <div class="reader-links-title">
+                                        <i class="bi bi-link-45deg me-1"></i>Откривени линкови
+                                    </div>
+                                    <div class="reader-collapsible-summary">
+                                        <span class="reader-meta-chip" x-text="linkCountLabel(activeTabMessage.links)"></span>
+                                        <span class="reader-meta-chip"
+                                              x-show="(activeTabMessage.security?.suspicious_links || []).length > 0"
+                                              x-text="(activeTabMessage.security.suspicious_links || []).length + ' сумњивих'"></span>
+                                    </div>
+                                </div>
+                                <span class="reader-collapsible-chevron">
+                                    <i class="bi" :class="isReaderSectionOpen('links') ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                </span>
+                            </button>
+                            <div class="reader-collapsible-body" x-show="isReaderSectionOpen('links')">
+                                <div class="reader-links-list">
+                                    <template x-for="(link, idx) in (activeTabMessage.links || [])" :key="idx">
+                                        <button type="button"
+                                                :class="link.suspicious ? 'link-chip link-chip-danger' : 'link-chip'"
+                                                :title="linkReasonText(link.reasons)"
+                                                @click="confirmOpenLink(link.url)">
+                                            <i class="bi" :class="link.suspicious ? 'bi-shield-exclamation' : 'bi-box-arrow-up-right'"></i>
+                                            <span x-text="link.host || link.label || link.url"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                                <div class="reader-links-note" x-show="activeTabMessage.html_body">
+                                    Линкови у HTML прегледу су онемогућени. Отварајте их само преко ове листе.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Body -->
+                    <div class="reader-body">
+                        <template x-if="activeTabMessage.html_body">
+                            <div class="mail-iframe-shell">
+                                <iframe class="mail-iframe" :srcdoc="activeTabMessage.html_body"
+                                        sandbox=""
+                                        referrerpolicy="no-referrer"></iframe>
+                            </div>
+                        </template>
+                        <template x-if="!activeTabMessage.html_body">
+                            <div class="mail-text-body" x-html="linkifyText(activeTabMessage.text_body)"
+                                 @click="handleBodyLinkClick($event)"></div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Compose Modal -->
+    <div class="modal fade" :class="{'show d-block': composeOpen}" tabindex="-1"
+         x-show="composeOpen" x-transition @click.self="composeOpen = false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil-square me-2"></i>
+                        <span x-text="composeMode === 'reply' ? 'Одговори' : composeMode === 'forward' ? 'Проследи' : 'Нова порука'"></span>
+                    </h5>
+                    <button type="button" class="btn-close" @click="composeOpen = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Прималац</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" x-model="composeTo" placeholder="email@example.com">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @click="openContactPicker('to')" title="Контакти музеја">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">CC</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" x-model="composeCc" placeholder="(опционо)">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @click="openContactPicker('cc')" title="Контакти музеја">
+                                <i class="bi bi-person-lines-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Contact Picker Dropdown -->
+                    <div class="contact-picker" x-show="showContactPicker" x-transition
+                         @click.outside="showContactPicker = false">
+                        <div class="contact-picker-header">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" x-model="contactSearch"
+                                       placeholder="Претражи запослене..." x-ref="contactSearchInput"
+                                       @keydown.escape="showContactPicker = false">
+                            </div>
+                        </div>
+                        <div class="contact-picker-list">
+                            <template x-for="c in filteredContacts" :key="c.email">
+                                <div class="contact-picker-item" @click="pickContact(c)">
+                                    <div class="contact-avatar" :style="'background:' + avatarColor(c.name)">
+                                        <span x-text="initials(c.name)"></span>
+                                    </div>
+                                    <div class="contact-info">
+                                        <div class="contact-name" :style="'color:' + avatarColor(c.name)" x-text="c.name"></div>
+                                        <div class="contact-email" x-text="c.email"></div>
+                                        <div class="contact-dept" x-text="c.department + (c.position ? ' — ' + c.position : '')"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="filteredContacts.length === 0" class="text-center text-muted small p-3">
+                                Нема резултата
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Наслов</label>
+                        <input type="text" class="form-control form-control-sm" x-model="composeSubject">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Порука</label>
+                        <textarea class="form-control" x-model="composeBody" rows="12" style="font-family:monospace;font-size:0.9rem"></textarea>
+                    </div>
+                    <!-- Attachments -->
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Прилози</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    @click="$refs.composeFileInput.click()">
+                                <i class="bi bi-paperclip me-1"></i>Приложи фајл
+                            </button>
+                            <span class="small text-muted" x-show="composeFiles.length > 0"
+                                  x-text="composeFiles.length + ' фајл(ова) — ' + formatSize(composeTotalSize())"></span>
+                        </div>
+                        <input type="file" x-ref="composeFileInput" class="d-none" multiple
+                               @change="onComposeFileSelect($event)">
+                        <div class="mt-2" x-show="composeFiles.length > 0">
+                            <template x-for="(f, i) in composeFiles" :key="i">
+                                <div class="d-inline-flex align-items-center gap-1 me-2 mb-1 badge bg-light text-dark border"
+                                     style="font-size:0.8rem; padding:4px 8px;">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span x-text="f.name"></span>
+                                    <span class="text-muted" x-text="'(' + formatSize(f.size) + ')'"></span>
+                                    <button type="button" class="btn-close btn-close-sm ms-1"
+                                            @click="removeComposeFile(i)" style="font-size:0.6rem;"></button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @click="composeOpen = false">Откажи</button>
+                    <button class="btn btn-primary btn-sm" @click="sendCompose()" :disabled="sending">
+                        <span x-show="!sending"><i class="bi bi-send me-1"></i>Пошаљи</span>
+                        <span x-show="sending"><span class="spinner-border spinner-border-sm me-1"></span>Шаљем...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" x-show="composeOpen" x-transition></div>
+
+    <!-- Toast notification -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+        <div class="toast align-items-center border-0" :class="toastType === 'success' ? 'text-bg-success' : 'text-bg-danger'"
+             x-ref="toast" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" x-text="toastMsg"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Mail App Layout */
+.mail-app {
+    --mail-reader-shell-bg:
+        radial-gradient(circle at top right, rgba(133, 84, 55, 0.1), transparent 30%),
+        radial-gradient(circle at 18% 18%, rgba(255, 247, 228, 0.6), transparent 24%),
+        linear-gradient(180deg, rgba(251, 244, 232, 0.96), rgba(238, 223, 194, 0.95));
+    --mail-reader-paper-bg:
+        linear-gradient(90deg, rgba(107, 67, 39, 0.03), transparent 12%, transparent 88%, rgba(107, 67, 39, 0.03)),
+        linear-gradient(180deg, rgba(255, 247, 228, 0.26), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 241, 229, 0.98));
+    --mail-reader-paper-border: rgba(141, 101, 63, 0.18);
+    --mail-reader-paper-shadow:
+        0 18px 28px rgba(80, 54, 31, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    overflow: hidden;
+    border: 1px solid rgba(126, 93, 62, 0.24);
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 18% 12%, rgba(255, 247, 231, 0.72), transparent 22%),
+        linear-gradient(180deg, rgba(250, 244, 234, 0.96), rgba(234, 220, 192, 0.95));
+    box-shadow:
+        0 20px 38px rgba(66, 38, 20, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(8px);
+}
+
+.mail-toolbar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: linear-gradient(180deg, rgba(251, 246, 238, 0.96), rgba(236, 223, 197, 0.94));
+}
+
+.mail-layout { display: grid; grid-template-columns: clamp(272px, 18vw, 320px) 360px minmax(0, 1fr); flex: 1; overflow: hidden; }
+
+/* Folder pane */
+.mail-folders { border-right: 1px solid rgba(121, 85, 53, 0.2); overflow-y: auto; display: flex; flex-direction: column;
+    background:
+        radial-gradient(circle at 18% 14%, rgba(255, 250, 239, 0.96), transparent 26%),
+        linear-gradient(180deg, rgba(252, 248, 240, 0.98) 0%, rgba(241, 231, 209, 0.98) 100%);
+    box-shadow:
+        inset -1px 0 0 rgba(255, 255, 255, 0.72),
+        inset 0 1px 0 rgba(255, 255, 255, 0.64); }
+
+/* Brand header */
+.folder-brand { display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px;
+    border-bottom: 1px solid rgba(121, 85, 53, 0.12); }
+.folder-brand-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #4e79a7, #3b5f8a); color: #fff; font-size: 1.1rem;
+    box-shadow: 0 3px 10px rgba(78,121,167,0.35); }
+.folder-brand-text { flex: 1; }
+.folder-brand-title { font-size: 1.04rem; font-weight: 800; letter-spacing: -0.25px; color: #2f1c10; }
+.folder-brand-sub { font-size: 0.74rem; color: rgba(70, 45, 28, 0.94); margin-top: 1px; font-weight: 700; }
+
+/* Section label */
+.folder-section-label { padding: 10px 16px 6px; font-size: 0.74rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 1.05px; color: rgba(70, 45, 28, 0.94); opacity: 1; }
+
+/* Folder list */
+.folder-list { flex: 1; padding: 4px 10px 10px; }
+.folder-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer;
+    font-size: 0.92rem; border-radius: 12px; margin-bottom: 6px; transition: all 0.2s ease; position: relative;
+    background: rgba(255, 255, 255, 0.68); border: 1px solid rgba(128, 92, 57, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(89, 58, 35, 0.06); }
+.folder-item:hover { background: rgba(255, 248, 236, 0.98); transform: translateX(2px); border-color: rgba(128, 92, 57, 0.22);
+    box-shadow: 0 8px 18px rgba(89, 58, 35, 0.1); }
+.folder-item.active { background: linear-gradient(180deg, rgba(229, 240, 235, 0.98), rgba(214, 229, 222, 0.96)); font-weight: 700;
+    border-color: rgba(39, 82, 69, 0.24); box-shadow: 0 10px 18px rgba(39, 82, 69, 0.12); }
+.folder-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 4px; height: 60%; border-radius: 0 4px 4px 0; background: var(--bs-primary); }
+
+/* Folder icon circles */
+.folder-icon-wrap { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 0.8rem; flex-shrink: 0; transition: transform 0.2s, box-shadow 0.2s; }
+.folder-item:hover .folder-icon-wrap { transform: scale(1.1); }
+.folder-item.active .folder-icon-wrap { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.folder-icon-blue   { background: rgba(78,121,167,0.15);  color: #4e79a7; }
+.folder-icon-teal   { background: rgba(118,183,178,0.15); color: #2d9e93; }
+.folder-icon-amber  { background: rgba(237,201,72,0.2);   color: #b89b1e; }
+.folder-icon-red    { background: rgba(225,87,89,0.12);   color: #e15759; }
+.folder-icon-orange { background: rgba(242,142,43,0.15);  color: #d97a1e; }
+.folder-icon-purple { background: rgba(176,122,161,0.15); color: #9b5d8b; }
+.folder-icon-gray   { background: rgba(150,150,150,0.1);  color: #888; }
+
+.folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #2f1c10; font-weight: 700;
+    letter-spacing: 0.01em; }
+.folder-item.active .folder-name { color: #163229; }
+
+/* Folder unread badge */
+.folder-badge { min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 700; border-radius: 10px; padding: 0 6px;
+    background: var(--bs-primary); color: #fff; flex-shrink: 0; animation: pulsate 1.5s ease-in-out infinite; }
+
+/* Bottom settings link */
+.folder-bottom { padding: 12px 16px; border-top: 1px solid rgba(121, 85, 53, 0.12); margin-top: auto; }
+.folder-settings-link { display: flex; align-items: center; font-size: 0.84rem; color: rgba(70, 45, 28, 0.94);
+    text-decoration: none; padding: 8px 10px; border-radius: 10px; transition: all 0.2s; font-weight: 700;
+    background: rgba(255, 255, 255, 0.34); border: 1px solid rgba(128, 92, 57, 0.12); }
+.folder-settings-link:hover { background: rgba(255, 251, 244, 0.9); color: var(--bs-body-color); border-color: rgba(128, 92, 57, 0.2); }
+
+/* Sort bar */
+.mail-sort-bar { display: flex; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--bs-border-color);
+    background: linear-gradient(180deg, rgba(251, 246, 238, 0.94), rgba(238, 226, 203, 0.92)); flex-shrink: 0; }
+.mail-sort-btn { display: inline-flex; align-items: center; gap: 3px; padding: 3px 10px; border: none;
+    background: none; font-size: 0.72rem; font-weight: 600; color: var(--bs-secondary-color);
+    border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.mail-sort-btn:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+.mail-sort-btn.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary); }
+.mail-sort-btn i { font-size: 0.7rem; }
+
+/* Message list pane */
+.mail-list { border-right: 1px solid var(--bs-border-color); overflow-y: auto; display: flex; flex-direction: column;
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.94), rgba(241, 231, 211, 0.94)); }
+.message-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--bs-border-color-translucent); cursor: pointer; transition: background 0.15s;
+    background: rgba(255, 252, 248, 0.3); }
+.message-item:hover { background: rgba(208, 181, 128, 0.22); }
+.message-item.active { background: rgba(55, 93, 80, 0.16); border-left: 3px solid var(--bs-primary); }
+.message-item.has-tab:not(.active) { border-left: 3px solid var(--bs-secondary-bg); }
+.message-item.unread .msg-sender, .message-item.unread .msg-subject { font-weight: 700; }
+.message-item.unread .msg-avatar { animation: pulsate 2s ease-in-out infinite; }
+.message-item.multi-selected { background: rgba(55, 93, 80, 0.18); border-left: 3px solid var(--bs-primary); }
+.msg-checkbox { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-size: 1.3rem; color: var(--bs-primary); transition: transform 0.15s; }
+.message-item.multi-selected .msg-checkbox { transform: scale(1.15); }
+
+/* Multi-select bar */
+.multi-select-bar { display: flex; align-items: center; padding: 5px 6px; flex-shrink: 0; gap: 4px;
+    background: linear-gradient(135deg, rgba(22, 50, 41, 0.92), rgba(55, 93, 80, 0.88));
+    border-bottom: 2px solid rgba(208, 181, 128, 0.4); overflow: hidden; box-sizing: border-box; width: 100%; }
+.msel-count { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.92); letter-spacing: 0.02em;
+    white-space: nowrap; flex-shrink: 0; }
+.msel-actions { display: flex; gap: 2px; flex: 1; justify-content: flex-end; min-width: 0; flex-wrap: wrap; }
+.msel-btn { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px; font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.88); white-space: nowrap; }
+.msel-btn:hover { background: rgba(255,255,255,0.18); color: #fff; transform: translateY(-1px); }
+.msel-btn:disabled { opacity: 0.35; pointer-events: none; }
+.msel-btn i { font-size: 0.74rem; }
+.msel-btn-delete { border-color: rgba(220, 53, 69, 0.4); }
+.msel-btn-delete:hover { background: rgba(220, 53, 69, 0.5); border-color: rgba(220, 53, 69, 0.6); }
+.msel-btn-cancel { border-color: rgba(255,255,255,0.15); }
+.msel-btn-cancel:hover { background: rgba(255,255,255,0.12); }
+.msel-btn-select { border-color: rgba(208, 181, 128, 0.3); }
+.msel-btn-select:hover { background: rgba(208, 181, 128, 0.25); border-color: rgba(208, 181, 128, 0.5); }
+.msel-btn-archive:hover { background: rgba(255,255,255,0.18); }
+.msg-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.msg-avatar-lg { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem; font-weight: 600; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.msg-content { flex: 1; min-width: 0; }
+.msg-sender { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-subject { font-size: 0.8rem; color: rgba(84, 61, 44, 0.86); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-date { font-size: 0.75rem; color: rgba(98, 74, 56, 0.8); white-space: nowrap; }
+.mail-pagination { padding: 8px; text-align: center; border-top: 1px solid var(--bs-border-color); margin-top: auto;
+    background: linear-gradient(180deg, rgba(250, 244, 233, 0.92), rgba(234, 221, 196, 0.96)); }
+
+/* Reader pane */
+.mail-reader { overflow-y: auto; display: flex; flex-direction: column;
+    background: var(--mail-reader-shell-bg); }
+.reader-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
+    color: rgba(104, 78, 58, 0.88); background: var(--mail-reader-shell-bg); }
+.reader-content { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.reader-header { padding: 16px 20px; border-bottom: 1px solid var(--bs-border-color);
+    display: flex; flex-direction: column; gap: 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 247, 228, 0.16), rgba(255, 247, 228, 0)),
+        linear-gradient(90deg, rgba(107, 67, 39, 0.03), transparent 12%, transparent 88%, rgba(107, 67, 39, 0.03)),
+        linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(242, 230, 208, 0.95)); }
+
+/* Subject */
+.reader-subject { font-size: 1.1rem; font-weight: 700; line-height: 1.35;
+    word-break: break-word; }
+.reader-headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.reader-toggle-btn { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border-radius: 999px;
+    border: 1px solid rgba(136, 98, 61, 0.18); background: rgba(255, 249, 239, 0.82); color: #6b4327;
+    font-size: 0.74rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+.reader-toggle-btn:hover { background: rgba(255, 252, 246, 0.96); border-color: rgba(136, 98, 61, 0.28); }
+
+/* Sender row */
+.reader-sender-row { display: flex; align-items: flex-start; gap: 12px; }
+.reader-sender-main { flex: 1; min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.reader-sender-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.reader-sender-name { font-size: 0.88rem; line-height: 1.4; }
+.reader-sender-email { color: rgba(98, 74, 56, 0.84); font-size: 0.82rem; margin-left: 4px; }
+.reader-date { font-size: 0.78rem; color: rgba(98, 74, 56, 0.84); white-space: nowrap;
+    flex-shrink: 0; margin-top: 2px; }
+.reader-sender-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.reader-meta-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid rgba(136, 98, 61, 0.16); background: rgba(255, 252, 246, 0.9); color: rgba(91, 58, 36, 0.94);
+    font-size: 0.74rem; font-weight: 700; }
+.reader-meta-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
+    background: rgba(255, 248, 235, 0.78); border: 1px solid rgba(136, 98, 61, 0.14); border-radius: 14px; }
+.reader-panel-row { display: flex; align-items: flex-start; gap: 12px; }
+.reader-panel-label { min-width: 72px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em;
+    text-transform: uppercase; color: rgba(98, 74, 56, 0.76); padding-top: 2px; }
+.reader-panel-value { flex: 1; min-width: 0; font-size: 0.82rem; line-height: 1.55; color: rgba(73, 49, 31, 0.94); }
+
+.reader-collapsible { display: flex; flex-direction: column; gap: 10px; }
+.reader-collapsible-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0; border: 0; background: transparent; color: inherit; text-align: left; width: 100%; cursor: pointer; }
+.reader-collapsible-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.reader-collapsible-summary { display: flex; flex-wrap: wrap; gap: 6px; }
+.reader-collapsible-chevron { display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.42); color: rgba(98, 74, 56, 0.92);
+    border: 1px solid rgba(136, 98, 61, 0.12); flex-shrink: 0; }
+.reader-collapsible-toggle:hover .reader-collapsible-chevron {
+    background: rgba(255, 255, 255, 0.62);
+    border-color: rgba(136, 98, 61, 0.22);
+}
+.reader-collapsible-body { display: flex; flex-direction: column; gap: 8px; }
+
+.reader-security-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+    border-radius: 12px; background: linear-gradient(180deg, rgba(255, 243, 214, 0.92), rgba(255, 236, 201, 0.92));
+    border: 1px solid rgba(178, 121, 36, 0.22); }
+.reader-security-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reader-security-title { font-size: 0.82rem; font-weight: 700; color: #7a4a1e; }
+.reader-security-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.security-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+    font-size: 0.76rem; font-weight: 700; border: 1px solid transparent; }
+.security-score { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px;
+    font-size: 0.74rem; font-weight: 800; white-space: nowrap; border: 1px solid transparent; }
+.security-score-low { background: rgba(25, 135, 84, 0.12); color: #1f6b49; border-color: rgba(25, 135, 84, 0.18); }
+.security-score-medium { background: rgba(255, 193, 7, 0.16); color: #865900; border-color: rgba(196, 137, 0, 0.26); }
+.security-score-high { background: rgba(220, 53, 69, 0.14); color: #8a2132; border-color: rgba(176, 41, 57, 0.24); }
+.security-chip-warning { background: rgba(255, 193, 7, 0.14); color: #8a5b00; border-color: rgba(196, 137, 0, 0.26); }
+.security-chip-danger { background: rgba(220, 53, 69, 0.12); color: #8a2132; border-color: rgba(176, 41, 57, 0.22); }
+.reader-security-note { font-size: 0.78rem; color: rgba(102, 64, 35, 0.88); }
+
+/* Actions toolbar */
+.reader-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.reader-actions .btn { font-size: 0.82rem; padding: 4px 10px; }
+
+/* Attachments row */
+.reader-attachments { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 8px 12px; background: rgba(255, 248, 235, 0.82); border-radius: 10px;
+    border: 1px solid rgba(136, 98, 61, 0.16); }
+.reader-att-icon { font-size: 0.9rem; color: rgba(98, 74, 56, 0.84); flex-shrink: 0; }
+.att-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    font-size: 0.8rem; text-decoration: none; border-radius: 6px;
+    background: rgba(255, 251, 244, 0.88); border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color); cursor: pointer; transition: all 0.15s; }
+.att-chip:hover { background: var(--bs-primary-bg-subtle); border-color: var(--bs-primary);
+    color: var(--bs-body-color); }
+.att-chip-size { color: var(--bs-secondary-color); font-size: 0.72rem; margin-left: 2px; }
+.att-chip-danger { background: rgba(255, 232, 233, 0.96); border-color: rgba(176, 41, 57, 0.26); color: #8a2132; }
+.att-chip-danger:hover { background: rgba(255, 223, 226, 0.98); border-color: rgba(176, 41, 57, 0.34); color: #8a2132; }
+.att-chip-all { background: var(--bs-primary); border-color: var(--bs-primary);
+    color: #fff; font-weight: 600; }
+.att-chip-all:hover { background: var(--bs-primary); opacity: 0.85; color: #fff; }
+
+.reader-links { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px;
+    background: rgba(255, 248, 235, 0.72); border-radius: 10px; border: 1px solid rgba(136, 98, 61, 0.14); }
+.reader-links-title { font-size: 0.82rem; font-weight: 700; color: rgba(98, 74, 56, 0.9); }
+.reader-links-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.link-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid rgba(136, 98, 61, 0.16); background: rgba(255, 255, 255, 0.92); color: #5b3a24;
+    font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.link-chip:hover { transform: translateY(-1px); background: rgba(255, 252, 246, 0.98); border-color: rgba(136, 98, 61, 0.24); }
+.link-chip-danger { background: rgba(255, 232, 233, 0.96); border-color: rgba(176, 41, 57, 0.26); color: #8a2132; }
+.link-chip-danger:hover { background: rgba(255, 223, 226, 0.98); border-color: rgba(176, 41, 57, 0.34); }
+.reader-links-note { font-size: 0.76rem; color: rgba(98, 74, 56, 0.82); }
+
+/* Tab bar */
+.mail-tab-bar { display: flex; align-items: stretch; border-bottom: 1px solid var(--bs-border-color);
+    background: linear-gradient(180deg, rgba(236, 223, 197, 0.92), rgba(226, 209, 180, 0.96)); flex-shrink: 0; overflow: hidden; min-height: 40px; }
+.mail-tab-list { display: flex; flex: 1; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: thin; padding: 4px 2px 0; gap: 2px; align-items: flex-end; }
+.mail-tab-list::-webkit-scrollbar { height: 3px; }
+.mail-tab-list::-webkit-scrollbar-thumb { background: var(--bs-secondary-bg); border-radius: 3px; }
+.mail-tab { display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 0;
+    min-width: 120px; max-width: 240px; font-size: 0.84rem;
+    border: 1px solid transparent; border-bottom: none;
+    border-radius: 8px 8px 0 0; transition: all 0.15s; flex-shrink: 0; position: relative;
+    background: transparent; }
+.mail-tab:hover { background: rgba(255, 250, 244, 0.92); border-color: var(--bs-border-color-translucent); }
+.mail-tab.active { background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(245, 236, 220, 0.98)); border-color: var(--bs-border-color);
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.05); z-index: 1; }
+.mail-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+    height: 2px; background: rgba(248, 239, 224, 0.98); }
+.mail-tab-indicator { width: 4px; height: 20px; flex-shrink: 0; border-radius: 2px;
+    margin-left: 2px; }
+.mail-tab-subject { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 500; line-height: 1.3; }
+.mail-tab-close { display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border: none; background: none; border-radius: 5px;
+    font-size: 0.8rem; color: var(--bs-secondary-color); opacity: 0.5;
+    cursor: pointer; flex-shrink: 0; padding: 0; transition: all 0.15s; }
+.mail-tab:hover .mail-tab-close,
+.mail-tab.active .mail-tab-close { opacity: 1; }
+.mail-tab-close:hover { background: var(--bs-danger-bg-subtle); color: var(--bs-danger); opacity: 1; }
+.mail-tab-close-all { display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border: none; background: none; border-radius: 6px;
+    font-size: 0.72rem; color: var(--bs-secondary-color); cursor: pointer;
+    flex-shrink: 0; margin: auto 6px; transition: all 0.15s; }
+.mail-tab-close-all:hover { background: var(--bs-danger-bg-subtle); color: var(--bs-danger); }
+
+/* Tab scroll buttons */
+.mail-tab-scroll-btn { display: flex; align-items: center; justify-content: center;
+    width: 26px; border: none; background: none; border-radius: 0;
+    font-size: 0.78rem; color: var(--bs-secondary-color); cursor: pointer;
+    flex-shrink: 0; padding: 0; transition: all 0.15s; }
+.mail-tab-scroll-btn:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
+
+/* Tab count badge */
+.mail-tab-count { display: flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 20px; font-size: 0.68rem; font-weight: 700;
+    border-radius: 10px; padding: 0 6px; background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color); flex-shrink: 0; margin: auto 2px; }
+
+/* Tab unread dot */
+.mail-tab-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bs-primary);
+    flex-shrink: 0; animation: pulsate 2s ease-in-out infinite; }
+
+/* Tab drag state */
+.mail-tab.drag-over-left { border-left: 2px solid var(--bs-primary) !important; }
+.mail-tab.drag-over-right { border-right: 2px solid var(--bs-primary) !important; }
+.mail-tab[draggable="true"] { cursor: grab; }
+.mail-tab[draggable="true"]:active { cursor: grabbing; opacity: 0.7; }
+
+/* Unread tab subtle indicator */
+.mail-tab.unread-tab .mail-tab-subject { font-weight: 700; }
+
+/* Tab context menu */
+.tab-context-menu { position: fixed; z-index: 10000; background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(238, 223, 193, 0.96)); border: 1px solid var(--bs-border-color);
+    border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 4px 0; min-width: 180px; }
+.message-context-menu { min-width: 220px; }
+.tab-ctx-item { display: flex; align-items: center; padding: 7px 14px; font-size: 0.82rem; cursor: pointer;
+    transition: background 0.12s; color: var(--bs-body-color); }
+.tab-ctx-item:hover { background: var(--bs-primary-bg-subtle); }
+.tab-ctx-item i { font-size: 0.78rem; color: var(--bs-secondary-color); width: 16px; text-align: center; }
+.tab-ctx-item.text-danger i { color: inherit; }
+.tab-ctx-divider { height: 1px; background: var(--bs-border-color); margin: 4px 8px; }
+
+.reader-body { position: relative; flex: 1; padding: 18px; overflow: auto; background: var(--mail-reader-shell-bg); }
+.reader-body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(107, 67, 39, 0.04), transparent 10%, transparent 90%, rgba(107, 67, 39, 0.04)),
+        linear-gradient(180deg, rgba(255, 246, 225, 0.16), transparent 18%);
+    pointer-events: none;
+}
+.mail-iframe-shell,
+.mail-text-body {
+    position: relative;
+    z-index: 1;
+    min-height: 100%;
+    border: 1px solid var(--mail-reader-paper-border);
+    border-radius: 20px;
+    background: var(--mail-reader-paper-bg);
+    box-shadow: var(--mail-reader-paper-shadow);
+}
+.mail-iframe-shell {
+    display: flex;
+    padding: 14px;
+    overflow: hidden;
+}
+.mail-iframe { width: 100%; min-height: 100%; flex: 1; border: none; border-radius: 15px; background: rgba(255, 255, 255, 0.98);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); }
+.mail-text-body { padding: 26px 28px; margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 0.95rem;
+    line-height: 1.7; color: #4a311f; }
+
+/* Contact Picker */
+.contact-picker { background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(238, 223, 193, 0.96)); border: 1px solid var(--bs-border-color); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); margin-bottom: 8px; overflow: hidden; }
+.contact-picker-header { padding: 8px; border-bottom: 1px solid var(--bs-border-color); }
+.contact-picker-list { max-height: 250px; overflow-y: auto; }
+.contact-picker-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--bs-border-color-translucent); }
+.contact-picker-item:hover { background: var(--bs-primary-bg-subtle); }
+.contact-picker-item:last-child { border-bottom: none; }
+.contact-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.contact-info { flex: 1; min-width: 0; }
+.contact-name { font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-email { font-size: 0.75rem; color: rgba(98, 74, 56, 0.84); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-dept { font-size: 0.68rem; color: rgba(98, 74, 56, 0.78); opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Pulsate animation */
+@keyframes pulsate {
+    0%   { transform: scale(1);   opacity: 1; }
+    50%  { transform: scale(1.15); opacity: 0.7; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes pulsate-glow {
+    0%   { box-shadow: 0 0 0 0 currentColor; }
+    50%  { box-shadow: 0 0 6px 2px currentColor; }
+    100% { box-shadow: 0 0 0 0 currentColor; }
+}
+
+/* Spin animation */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+/* Responsive: collapse to single pane on small screens */
+@media (max-width: 991px) {
+    .mail-layout { grid-template-columns: 1fr; }
+    .mail-folders { display: none; }
+    .mail-list { max-height: 40vh; }
+}
+@media (max-width: 767px) {
+    .mail-layout { grid-template-columns: 1fr; }
+    .mail-folders { display: none; }
+    .reader-actions { font-size: 0.75rem; }
+    .reader-headline,
+    .reader-sender-main,
+    .reader-panel-row { flex-direction: column; }
+    .reader-toggle-btn,
+    .reader-date { align-self: flex-start; }
+    .reader-body { padding: 12px; }
+    .mail-iframe-shell { padding: 10px; }
+    .mail-text-body { padding: 20px 18px; }
+}
+@media (min-width: 992px) {
+    .mail-folders { min-width: 240px; }
+}
+
+/* ───── Dark mode adjustments ───── */
+
+/* Mail iframe: invert HTML emails and set dark background */
+[data-bs-theme="dark"] .mail-iframe {
+    filter: invert(1) hue-rotate(180deg);
+    background: #1e2125;
+}
+
+[data-bs-theme="dark"] .mail-app {
+    --mail-reader-shell-bg:
+        radial-gradient(circle at top right, rgba(122, 82, 56, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(39, 33, 29, 0.98), rgba(22, 18, 16, 0.98));
+    --mail-reader-paper-bg:
+        linear-gradient(90deg, rgba(214, 187, 149, 0.03), transparent 10%, transparent 90%, rgba(214, 187, 149, 0.03)),
+        linear-gradient(180deg, rgba(255, 227, 173, 0.04), rgba(255, 227, 173, 0)),
+        linear-gradient(180deg, rgba(35, 29, 26, 0.98), rgba(26, 22, 20, 0.98));
+    --mail-reader-paper-border: rgba(118, 90, 67, 0.36);
+    --mail-reader-paper-shadow:
+        0 20px 34px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    border-color: rgba(96, 75, 56, 0.36);
+    background:
+        linear-gradient(180deg, rgba(33, 28, 24, 0.98), rgba(20, 17, 15, 0.98));
+    box-shadow:
+        0 24px 42px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .mail-toolbar {
+    background: linear-gradient(180deg, rgba(42, 35, 30, 0.96), rgba(27, 22, 19, 0.98));
+}
+
+/* Plain text body needs explicit dark treatment */
+[data-bs-theme="dark"] .mail-text-body {
+    background: var(--mail-reader-paper-bg);
+    color: var(--bs-body-color);
+}
+
+/* Reader pane background */
+[data-bs-theme="dark"] .mail-list {
+    background: linear-gradient(180deg, rgba(29, 25, 22, 0.98), rgba(18, 15, 13, 0.98));
+}
+
+[data-bs-theme="dark"] .mail-reader {
+    background: var(--mail-reader-shell-bg);
+}
+
+[data-bs-theme="dark"] .reader-body {
+    background: var(--mail-reader-shell-bg);
+}
+[data-bs-theme="dark"] .reader-header {
+    background:
+        linear-gradient(180deg, rgba(255, 227, 173, 0.04), rgba(255, 227, 173, 0)),
+        linear-gradient(180deg, rgba(38, 31, 27, 0.98), rgba(24, 20, 18, 0.96));
+}
+[data-bs-theme="dark"] .reader-toggle-btn,
+[data-bs-theme="dark"] .reader-meta-chip,
+[data-bs-theme="dark"] .reader-collapsible-chevron {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(247, 236, 214, 0.94);
+}
+[data-bs-theme="dark"] .reader-toggle-btn:hover,
+[data-bs-theme="dark"] .reader-collapsible-toggle:hover .reader-collapsible-chevron {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.16);
+}
+[data-bs-theme="dark"] .reader-meta-panel {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .reader-panel-label {
+    color: rgba(224, 206, 173, 0.76);
+}
+[data-bs-theme="dark"] .reader-panel-value,
+[data-bs-theme="dark"] .reader-sender-email,
+[data-bs-theme="dark"] .reader-date {
+    color: rgba(247, 236, 214, 0.84);
+}
+
+[data-bs-theme="dark"] .reader-empty {
+    background: var(--mail-reader-shell-bg);
+}
+
+/* Avatars: slightly reduce glow intensity */
+[data-bs-theme="dark"] .msg-avatar,
+[data-bs-theme="dark"] .msg-avatar-lg,
+[data-bs-theme="dark"] .contact-avatar { opacity: 0.92; }
+
+/* Folder pane gradient */
+[data-bs-theme="dark"] .mail-folders {
+    background:
+        radial-gradient(circle at 18% 14%, rgba(255, 222, 173, 0.06), transparent 24%),
+        linear-gradient(180deg, rgba(34, 29, 25, 0.99) 0%, rgba(22, 19, 17, 0.99) 100%);
+    border-right-color: rgba(214, 187, 149, 0.12);
+    box-shadow:
+        inset -1px 0 0 rgba(255, 255, 255, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+[data-bs-theme="dark"] .folder-brand-title,
+[data-bs-theme="dark"] .folder-name,
+[data-bs-theme="dark"] .folder-settings-link {
+    color: rgba(247, 236, 214, 0.98);
+}
+
+[data-bs-theme="dark"] .folder-brand-sub,
+[data-bs-theme="dark"] .folder-section-label {
+    color: rgba(231, 214, 184, 0.9);
+}
+
+/* Folder brand icon — subtler gradient + softer shadow */
+[data-bs-theme="dark"] .folder-brand-icon {
+    background: linear-gradient(135deg, #3d6b9b, #2d4f73);
+    box-shadow: 0 3px 10px rgba(78,121,167,0.2);
+}
+
+/* Folder icon colors — brighter for dark backgrounds */
+[data-bs-theme="dark"] .folder-icon-blue   { background: rgba(78,121,167,0.25);  color: #7ab3e0; }
+[data-bs-theme="dark"] .folder-icon-teal   { background: rgba(118,183,178,0.2);  color: #5dd4cb; }
+[data-bs-theme="dark"] .folder-icon-amber  { background: rgba(237,201,72,0.2);   color: #e8d05e; }
+[data-bs-theme="dark"] .folder-icon-red    { background: rgba(225,87,89,0.2);    color: #f28082; }
+[data-bs-theme="dark"] .folder-icon-orange { background: rgba(242,142,43,0.2);   color: #f5aa5c; }
+[data-bs-theme="dark"] .folder-icon-purple { background: rgba(176,122,161,0.2);  color: #cc9fbb; }
+[data-bs-theme="dark"] .folder-icon-gray   { background: rgba(160,160,160,0.15); color: #b0b0b0; }
+
+/* Folder icon wrap base & active shadow */
+[data-bs-theme="dark"] .folder-icon-wrap { opacity: 0.95; }
+[data-bs-theme="dark"] .folder-item.active .folder-icon-wrap {
+    box-shadow: 0 2px 8px rgba(255,255,255,0.08);
+}
+
+/* Folder hover & active backgrounds */
+[data-bs-theme="dark"] .folder-item:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(214, 187, 149, 0.16);
+}
+[data-bs-theme="dark"] .folder-item.active {
+    background: linear-gradient(180deg, rgba(38, 78, 66, 0.94), rgba(29, 58, 49, 0.98));
+    border-color: rgba(184, 226, 212, 0.2);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
+}
+[data-bs-theme="dark"] .folder-item {
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+[data-bs-theme="dark"] .folder-item.active .folder-name {
+    color: #e7f7f1;
+}
+[data-bs-theme="dark"] .folder-bottom {
+    border-top-color: rgba(214, 187, 149, 0.1);
+}
+[data-bs-theme="dark"] .folder-settings-link {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Folder settings link */
+[data-bs-theme="dark"] .folder-settings-link:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+/* Sort bar */
+[data-bs-theme="dark"] .mail-sort-bar {
+    background: linear-gradient(180deg, rgba(37, 31, 27, 0.98), rgba(23, 19, 17, 0.98));
+}
+[data-bs-theme="dark"] .mail-sort-btn:hover {
+    background: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .mail-sort-btn.active {
+    background: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* Message list items */
+[data-bs-theme="dark"] .message-item:hover {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+}
+[data-bs-theme="dark"] .message-item.active {
+    background: rgba(var(--bs-primary-rgb), 0.16);
+}
+
+[data-bs-theme="dark"] .message-item {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+/* Attachment chips dark mode */
+[data-bs-theme="dark"] .att-chip {
+    background: rgba(255,255,255,0.06);
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .att-chip:hover {
+    background: rgba(var(--bs-primary-rgb), 0.2);
+    border-color: rgba(var(--bs-primary-rgb), 0.4);
+}
+[data-bs-theme="dark"] .att-chip-danger,
+[data-bs-theme="dark"] .link-chip-danger {
+    background: rgba(220,53,69,0.16);
+    border-color: rgba(220,53,69,0.26);
+    color: #ffb8c0;
+}
+[data-bs-theme="dark"] .att-chip-danger:hover,
+[data-bs-theme="dark"] .link-chip-danger:hover {
+    background: rgba(220,53,69,0.22);
+    border-color: rgba(220,53,69,0.34);
+}
+[data-bs-theme="dark"] .reader-attachments {
+    background: rgba(255,255,255,0.04);
+}
+[data-bs-theme="dark"] .reader-security-panel {
+    background: linear-gradient(180deg, rgba(90, 57, 25, 0.3), rgba(60, 34, 19, 0.34));
+    border-color: rgba(199, 153, 79, 0.2);
+}
+[data-bs-theme="dark"] .reader-security-title,
+[data-bs-theme="dark"] .reader-security-note,
+[data-bs-theme="dark"] .reader-links-title,
+[data-bs-theme="dark"] .reader-links-note {
+    color: rgba(242, 224, 189, 0.94);
+}
+[data-bs-theme="dark"] .security-score-low {
+    background: rgba(25, 135, 84, 0.18);
+    border-color: rgba(25, 135, 84, 0.28);
+    color: #9de0be;
+}
+[data-bs-theme="dark"] .security-score-medium {
+    background: rgba(255, 193, 7, 0.18);
+    border-color: rgba(255, 193, 7, 0.28);
+    color: #f0d27c;
+}
+[data-bs-theme="dark"] .security-score-high {
+    background: rgba(220,53,69,0.18);
+    border-color: rgba(220,53,69,0.28);
+    color: #ffb8c0;
+}
+[data-bs-theme="dark"] .reader-links {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .link-chip {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(247, 236, 214, 0.98);
+}
+[data-bs-theme="dark"] .link-chip:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+[data-bs-theme="dark"] .mail-iframe {
+    background: rgba(18, 18, 18, 0.98);
+}
+
+/* Compose modal file badges (bg-light text-dark border) */
+[data-bs-theme="dark"] .badge.bg-light.text-dark {
+    background: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme="dark"] .badge.bg-light.text-dark .text-muted {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Contact picker — deeper shadow for dark bg */
+[data-bs-theme="dark"] .contact-picker {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border-color: var(--bs-border-color);
+}
+
+/* Tab bar dark mode */
+[data-bs-theme="dark"] .mail-tab-bar {
+    background: linear-gradient(180deg, rgba(36, 30, 26, 0.98), rgba(23, 19, 17, 0.98));
+}
+[data-bs-theme="dark"] .mail-tab:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .mail-tab.active {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.2);
+}
+[data-bs-theme="dark"] .mail-tab.active::after {
+    background: var(--bs-body-bg);
+}
+[data-bs-theme="dark"] .mail-tab-close:hover {
+    background: rgba(220,53,69,0.2);
+}
+[data-bs-theme="dark"] .mail-tab-close-all:hover {
+    background: rgba(220,53,69,0.2);
+}
+[data-bs-theme="dark"] .mail-tab-scroll-btn:hover {
+    background: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .mail-tab-count {
+    background: rgba(255,255,255,0.1);
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .tab-context-menu {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .tab-ctx-item:hover {
+    background: rgba(var(--bs-primary-rgb), 0.15);
+}
+
+/* Pulsate-glow: reduce intensity in dark mode */
+[data-bs-theme="dark"] .msg-avatar,
+[data-bs-theme="dark"] .msg-avatar-lg,
+[data-bs-theme="dark"] .contact-avatar {
+    animation-name: pulsate-glow-dark;
+}
+@keyframes pulsate-glow-dark {
+    0%   { box-shadow: 0 0 0 0 transparent; }
+    50%  { box-shadow: 0 0 5px 1px rgba(255,255,255,0.15); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mailClient() {
+    return {
+        // State
+        folders: [],
+        folderUnreadTotal: 0,
+        messages: [],
+        selectedMessage: null,
+        selectedUid: null,
+        multiSelectMode: false,
+        selectedUids: [],
+        _longPressTimer: null,
+        _longPressTriggered: false,
+        currentFolder: 'INBOX',
+        currentPage: 1,
+        totalPages: 1,
+        loading: false,
+        settingsConfigured: true,
+        searchQuery: '',
+        messageCache: {},
+        loadingMessage: false,
+
+        // Tabs
+        openTabs: [],       // [{uid, folder, subject, from_name, date, wasUnread, message}]
+        openTabKeys: {},
+        activeTabUid: null,
+        maxTabs: 20,
+        tabsOverflow: false,
+        tabDragIndex: -1,
+        tabContextMenu: { visible: false, x: 0, y: 0, uid: null },
+        messageContextMenu: { visible: false, x: 0, y: 0, message: null },
+
+        // Sort
+        sortBy: 'date',
+        sortDir: 'desc',
+
+        // Compose
+        composeOpen: false,
+        composeMode: 'new',
+        composeTo: '',
+        composeCc: '',
+        composeSubject: '',
+        composeBody: '',
+        composeFiles: [],
+        sending: false,
+
+        // Contacts
+        contacts: [],
+        contactsLoaded: false,
+        contactSearch: '',
+        showContactPicker: false,
+        contactTarget: 'to',  // 'to' or 'cc'
+
+        // Toast
+        toastMsg: '',
+        toastType: 'success',
+
+        // Sync
+        syncing: false,
+        _pollInterval: null,
+        _syncTimer: null,
+        _tabsRestored: false,
+        _loadToken: 0,
+        folderWarmupPoll: null,
+        folderWarmupActive: false,
+
+        readerSectionDefaults() {
+            return {
+                header: false,
+                security: false,
+                links: false,
+            };
+        },
+
+        createReaderSections(existing = null) {
+            return {
+                ...this.readerSectionDefaults(),
+                ...(existing || {}),
+            };
+        },
+
+        createTabEntry({ uid, folder, subject, from_name, date, wasUnread = false, message = null, readerSections = null }) {
+            return {
+                uid,
+                folder,
+                subject,
+                from_name,
+                date,
+                wasUnread,
+                message,
+                readerSections: this.createReaderSections(readerSections),
+            };
+        },
+
+        init() {
+            // Restore tabs FIRST, before any async work
+            this.restoreTabState();
+            this._tabsRestored = true;
+
+            this.loadInit();
+            this.loadContacts();
+
+            // Re-read cached data every 3 min (bg thread keeps cache fresh)
+            this._pollInterval = setInterval(() => this.pollRefresh(), 180000);
+            // Check tab overflow on window resize
+            this._resizeObserver = new ResizeObserver(() => this.checkTabsOverflow());
+            this.$nextTick(() => {
+                if (this.$refs.tabList) this._resizeObserver.observe(this.$refs.tabList);
+            });
+
+            // Save tab state before leaving page (navigation, refresh, close)
+            this._beforeUnload = () => this.saveTabState();
+            window.addEventListener('beforeunload', this._beforeUnload);
+
+            // Handle browser back/forward cache (bfcache)
+            this._pageShow = (e) => {
+                if (e.persisted) {
+                    this._tabsRestored = false;
+                    this.restoreTabState();
+                    this._tabsRestored = true;
+                }
+            };
+            window.addEventListener('pageshow', this._pageShow);
+        },
+
+        async loadContacts() {
+            try {
+                const r = await fetch('/api/mail/contacts');
+                const d = await r.json();
+                if (d.success) {
+                    this.contacts = d.contacts;
+                    this.contactsLoaded = true;
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        get filteredContacts() {
+            if (!this.contactSearch.trim()) return this.contacts;
+            const q = this.contactSearch.toLowerCase();
+            return this.contacts.filter(c =>
+                c.name.toLowerCase().includes(q) ||
+                c.email.toLowerCase().includes(q) ||
+                c.department.toLowerCase().includes(q)
+            );
+        },
+
+        async fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } finally {
+                clearTimeout(timer);
+            }
+        },
+
+        handleEscape() {
+            if (this.multiSelectMode) {
+                this.exitMultiSelect();
+                return;
+            }
+            this.composeOpen = false;
+            this.showContactPicker = false;
+            this.tabContextMenu.visible = false;
+            this.messageContextMenu.visible = false;
+        },
+
+        clearFolderWarmupPoll() {
+            if (this.folderWarmupPoll) {
+                clearTimeout(this.folderWarmupPoll);
+                this.folderWarmupPoll = null;
+            }
+            this.folderWarmupActive = false;
+        },
+
+        scheduleFolderWarmup(folder, attempt = 0) {
+            this.clearFolderWarmupPoll();
+            if (this.currentFolder !== folder) return;
+            if (attempt >= 20) return;
+            this.folderWarmupActive = true;
+            this.folderWarmupPoll = setTimeout(async () => {
+                if (this.currentFolder !== folder) return;
+                await this.loadMessages();
+                if (this.currentFolder !== folder) return;
+                const stillEmpty = this.messages.length === 0;
+                const stillLoading = this.loading;
+                if (stillEmpty || stillLoading) {
+                    this.scheduleFolderWarmup(folder, attempt + 1);
+                } else {
+                    this.folderWarmupActive = false;
+                }
+            }, attempt < 5 ? 700 : 1200);
+        },
+
+        startLongPress(event, message) {
+            if (this.multiSelectMode) return;
+            this._longPressTriggered = false;
+            this._longPressTimer = setTimeout(() => {
+                this._longPressTriggered = true;
+                this.enterMultiSelect(message);
+                if (navigator.vibrate) navigator.vibrate(50);
+            }, 500);
+        },
+
+        cancelLongPress() {
+            if (this._longPressTimer) {
+                clearTimeout(this._longPressTimer);
+                this._longPressTimer = null;
+            }
+        },
+
+        enterMultiSelect(message) {
+            this.multiSelectMode = true;
+            this.selectedUids = [message.uid];
+        },
+
+        exitMultiSelect() {
+            this.multiSelectMode = false;
+            this.selectedUids = [];
+        },
+
+        toggleMultiSelect(message) {
+            const idx = this.selectedUids.indexOf(message.uid);
+            if (idx === -1) {
+                this.selectedUids.push(message.uid);
+            } else {
+                this.selectedUids.splice(idx, 1);
+            }
+            if (this.selectedUids.length === 0) {
+                this.exitMultiSelect();
+            }
+        },
+
+        selectAllMessages() {
+            if (this.selectedUids.length === this.messages.length) {
+                this.selectedUids = [];
+            } else {
+                this.selectedUids = this.messages.map(m => m.uid);
+            }
+        },
+
+        async deleteMultiSelected() {
+            if (this.selectedUids.length === 0) return;
+            const uids = [...this.selectedUids];
+            const folder = this.currentFolder;
+            const uidSet = new Set(uids);
+            for (const uid of uids) {
+                this.closeMessageTab(uid, folder);
+                delete this.messageCache[`${folder}:${uid}`];
+            }
+            this.messages = this.messages.filter(m => !uidSet.has(m.uid));
+            this.exitMultiSelect();
+            this.showToast(`Обрисано ${uids.length} порука.`, 'success');
+            for (const uid of uids) {
+                secureFetch('/api/mail/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ uid, folder })
+                }).catch(() => {});
+            }
+        },
+
+        async archiveMultiSelected() {
+            if (this.selectedUids.length === 0) return;
+            const archiveFolder = this.findFolderByKind('archive');
+            if (!archiveFolder) {
+                this.showToast('Архивски фолдер није пронађен.', 'danger');
+                return;
+            }
+            const uids = [...this.selectedUids];
+            const folder = this.currentFolder;
+            let archived = 0;
+            for (const uid of uids) {
+                try {
+                    const r = await secureFetch('/api/mail/move', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ uid, src_folder: folder, dst_folder: archiveFolder })
+                    });
+                    const d = await r.json();
+                    if (d.success) {
+                        this.closeMessageTab(uid, folder);
+                        delete this.messageCache[`${folder}:${uid}`];
+                        archived++;
+                    }
+                } catch (e) { /* continue */ }
+            }
+            this.exitMultiSelect();
+            await this.loadInit();
+            this.showToast(`Архивирано ${archived} порука.`, 'success');
+        },
+
+        setFolders(folders) {
+            this.folders = [...(folders || [])].sort((left, right) => this.compareFolders(left, right));
+            this.folderUnreadTotal = this.folders.reduce((sum, folder) => sum + (folder.unseen || 0), 0);
+        },
+
+        compareFolders(left, right) {
+            const leftName = (left?.name || '').trim();
+            const rightName = (right?.name || '').trim();
+            const leftRank = this.folderSortRank(leftName);
+            const rightRank = this.folderSortRank(rightName);
+            if (leftRank !== rightRank) {
+                return leftRank - rightRank;
+            }
+            return this.folderDisplayName(leftName).localeCompare(
+                this.folderDisplayName(rightName),
+                'sr',
+                { sensitivity: 'base' }
+            );
+        },
+
+        folderSortRank(name) {
+            const n = (name || '').toLowerCase();
+            if (n === 'inbox' || n.includes('inbox') || n.includes('пристиг')) return 0;
+            if (n.includes('sent') || n.includes('послат')) return 1;
+            if (n.includes('draft') || n.includes('нацрт')) return 2;
+            if (n.includes('archive') || n.includes('архив')) return 3;
+            if (n.includes('spam') || n.includes('junk') || n.includes('нежељ')) return 4;
+            if (n.includes('trash') || n.includes('deleted') || n.includes('смеће') || n.includes('smece')) return 5;
+            return 100;
+        },
+
+        normalizeMessage(message, folder = this.currentFolder) {
+            const fromName = message.from_name || message.from_address || '';
+            const tabKey = `${folder}:${message.uid}`;
+            return {
+                ...message,
+                _senderColor: this.avatarColor(fromName),
+                _initials: this.initials(fromName),
+                _dateLabel: this.formatDate(message.date),
+                _isOpen: !!this.openTabKeys[tabKey],
+            };
+        },
+
+        setMessages(messages, folder = this.currentFolder) {
+            this.messages = (messages || []).map(message => this.normalizeMessage(message, folder));
+        },
+
+        refreshVisibleMessages() {
+            this.messages = this.messages.map(message => this.normalizeMessage(message, this.currentFolder));
+        },
+
+        rebuildOpenTabKeys() {
+            const next = {};
+            for (const tab of this.openTabs) {
+                next[`${tab.folder}:${tab.uid}`] = true;
+            }
+            this.openTabKeys = next;
+            if (this.messages.length > 0) {
+                this.refreshVisibleMessages();
+            }
+        },
+
+        findCurrentMessage(uid) {
+            return this.messages.find(message => message.uid === uid) || null;
+        },
+
+        openContactPicker(target) {
+            this.contactTarget = target;
+            this.contactSearch = '';
+            this.showContactPicker = true;
+            this.$nextTick(() => {
+                if (this.$refs.contactSearchInput) this.$refs.contactSearchInput.focus();
+            });
+        },
+
+        pickContact(contact) {
+            const field = this.contactTarget === 'cc' ? 'composeCc' : 'composeTo';
+            const current = this[field].trim();
+            if (current && !current.endsWith(',')) {
+                this[field] = current + ', ' + contact.email;
+            } else {
+                this[field] = current + contact.email;
+            }
+            this.showContactPicker = false;
+        },
+
+        async loadInit() {
+            const token = ++this._loadToken;
+            const folder = this.currentFolder;
+            const page = this.currentPage;
+            const search = this.searchQuery.trim();
+            this.loading = true;
+            try {
+                let url = `/api/mail/init?folder=${encodeURIComponent(folder)}&page=${page}`;
+                url += `&sort=${encodeURIComponent(this.sortBy)}&dir=${encodeURIComponent(this.sortDir)}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                const r = await this.fetchWithTimeout(url);
+                const d = await r.json();
+                if (token !== this._loadToken) return;
+                if (d.success) {
+                    this.setFolders(d.folders);
+                    this.setMessages(d.messages, folder);
+                    this.totalPages = d.pages;
+                    this.settingsConfigured = true;
+                    if (folder === this.currentFolder && this.messages.length === 0) {
+                        this.scheduleFolderWarmup(folder);
+                    } else if (folder === this.currentFolder) {
+                        this.clearFolderWarmupPoll();
+                    }
+                } else {
+                    this.settingsConfigured = false;
+                }
+            } catch (e) {
+                if (token === this._loadToken) {
+                    this.settingsConfigured = true;
+                    if (folder === this.currentFolder) {
+                        this.scheduleFolderWarmup(folder);
+                    }
+                }
+            } finally {
+                if (token === this._loadToken) {
+                    this.loading = false;
+                }
+            }
+        },
+
+        async loadMessages() {
+            const token = ++this._loadToken;
+            const folder = this.currentFolder;
+            const page = this.currentPage;
+            const search = this.searchQuery.trim();
+            try {
+                let url = `/api/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}`;
+                url += `&sort=${this.sortBy}&dir=${this.sortDir}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                const r = await this.fetchWithTimeout(url);
+                const d = await r.json();
+                if (token !== this._loadToken) return;
+                if (d.success) {
+                    this.setMessages(d.messages, folder);
+                    this.totalPages = d.pages;
+                }
+            } catch (e) { /* ignore */ }
+        },
+
+        refreshMessages() {
+            if (this.syncing) return;
+            this.syncing = true;
+            // Safety: force spinner off after 4 seconds no matter what
+            if (this._syncTimer) clearTimeout(this._syncTimer);
+            this._syncTimer = setTimeout(() => { this.syncing = false; }, 4000);
+            // Fire sync (non-blocking on server), then reload cache
+            secureFetch('/api/mail/sync', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ folder: this.currentFolder })
+            }).catch(() => {});
+            // Show cached data now, reload fresh data after delay
+            this.loadInit().finally(() => { this.syncing = false; });
+            setTimeout(() => this.loadInit(), 3000);
+        },
+
+        syncFolderInBackground(folder) {
+            secureFetch('/api/mail/sync', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ folder })
+            }).catch(() => {});
+        },
+
+        pollRefresh() {
+            if (document.hidden) return;
+            this.loadInit();
+        },
+
+        setSort(field) {
+            if (this.sortBy === field) {
+                this.sortDir = this.sortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                this.sortBy = field;
+                this.sortDir = field === 'sender' || field === 'subject' ? 'asc' : 'desc';
+            }
+            this.currentPage = 1;
+            this.loadMessages();
+        },
+
+        sortLabel(field) {
+            const labels = { date: 'Датум', sender: 'Пошиљалац', subject: 'Наслов', unread: 'Непрочитане' };
+            return labels[field] || field;
+        },
+
+        sortIcon(field) {
+            if (this.sortBy !== field) return 'bi-dash';
+            return this.sortDir === 'asc' ? 'bi-sort-up' : 'bi-sort-down';
+        },
+
+        selectFolder(name) {
+            this.clearFolderWarmupPoll();
+            this.currentFolder = name;
+            this.currentPage = 1;
+            this.selectedUid = null;
+            this.searchQuery = '';
+            this.multiSelectMode = false;
+            this.selectedUids = [];
+            this.messageContextMenu.visible = false;
+            this.loadMessages();
+            this.syncFolderInBackground(name);
+            this.scheduleFolderWarmup(name);
+        },
+
+        async selectMessage(m) {
+            this.selectedUid = m.uid;
+            // Check if tab already open
+            const existing = this.openTabs.find(t => t.uid === m.uid && t.folder === this.currentFolder);
+            if (existing) {
+                this.activeTabUid = m.uid;
+                this.selectedMessage = existing.message;
+                this.scrollToActiveTab();
+                return;
+            }
+            // Enforce tab limit
+            if (this.openTabs.length >= this.maxTabs) {
+                // Close oldest non-active tab
+                const oldest = this.openTabs.find(t => t.uid !== this.activeTabUid);
+                if (oldest) this.closeTab(oldest.uid);
+                else {
+                    this.showToast(`Максимум ${this.maxTabs} отворених порука.`, 'danger');
+                    return;
+                }
+            }
+            const wasUnread = !m.is_read;
+            const cacheKey = this.currentFolder + ':' + m.uid;
+            if (this.messageCache[cacheKey]) {
+                const msg = this.messageCache[cacheKey];
+                this.openTabs.push(this.createTabEntry({
+                    uid: m.uid,
+                    folder: this.currentFolder,
+                    subject: m.subject,
+                    from_name: m.from_name,
+                    date: m.date,
+                    wasUnread,
+                    message: msg
+                }));
+                this.rebuildOpenTabKeys();
+                this.activeTabUid = m.uid;
+                this.selectedMessage = msg;
+                m.is_read = true;
+                Object.assign(m, this.normalizeMessage(m, this.currentFolder));
+                this.saveTabState();
+                this.$nextTick(() => { this.checkTabsOverflow(); this.scrollToActiveTab(); });
+                return;
+            }
+            this.loadingMessage = true;
+            this.selectedMessage = null;
+            this.activeTabUid = m.uid;
+            try {
+                const r = await fetch(`/api/mail/message/${m.uid}?folder=${encodeURIComponent(this.currentFolder)}`);
+                const d = await r.json();
+                if (d.success) {
+                    this.messageCache[cacheKey] = d.message;
+                    this.openTabs.push(this.createTabEntry({
+                        uid: m.uid,
+                        folder: this.currentFolder,
+                        subject: d.message.subject || m.subject,
+                        from_name: d.message.from_name || m.from_name,
+                        date: d.message.date || m.date,
+                        wasUnread,
+                        message: d.message
+                    }));
+                    this.rebuildOpenTabKeys();
+                    this.selectedMessage = d.message;
+                    m.is_read = true;
+                    Object.assign(m, this.normalizeMessage(m, this.currentFolder));
+                    this.saveTabState();
+                    this.$nextTick(() => { this.checkTabsOverflow(); this.scrollToActiveTab(); });
+                }
+            } catch (e) { /* ignore */ }
+            this.loadingMessage = false;
+        },
+
+        get activeTabMessage() {
+            if (!this.activeTabUid) return null;
+            const tab = this.openTabs.find(t => t.uid === this.activeTabUid);
+            return (tab && tab.message) ? tab.message : null;
+        },
+
+        get activeTab() {
+            if (!this.activeTabUid) return null;
+            return this.openTabs.find(t => t.uid === this.activeTabUid) || null;
+        },
+
+        get activeTabFolder() {
+            if (!this.activeTabUid) return this.currentFolder;
+            const tab = this.openTabs.find(t => t.uid === this.activeTabUid);
+            return tab ? tab.folder : this.currentFolder;
+        },
+
+        isReaderSectionOpen(section) {
+            return !!(this.activeTab && this.activeTab.readerSections && this.activeTab.readerSections[section]);
+        },
+
+        toggleReaderSection(section) {
+            if (!this.activeTab) return;
+            this.activeTab.readerSections = this.createReaderSections(this.activeTab.readerSections);
+            this.activeTab.readerSections[section] = !this.activeTab.readerSections[section];
+            this.saveTabState();
+        },
+
+        switchTab(uid) {
+            this.activeTabUid = uid;
+            const tab = this.openTabs.find(t => t.uid === uid);
+            if (tab) {
+                if (tab.message) {
+                    this.selectedMessage = tab.message;
+                    this.selectedUid = uid;
+                } else {
+                    // Restored tab without body — load it
+                    this.loadRestoredTab(uid);
+                }
+                // Mark tab as read once viewed
+                tab.wasUnread = false;
+            }
+            this.tabContextMenu.visible = false;
+            this.messageContextMenu.visible = false;
+            this.saveTabState();
+            this.scrollToActiveTab();
+        },
+
+        closeTab(uid) {
+            if (!uid) return;
+            const idx = this.openTabs.findIndex(t => t.uid === uid);
+            if (idx === -1) return;
+            this.openTabs.splice(idx, 1);
+            if (this.activeTabUid === uid) {
+                if (this.openTabs.length === 0) {
+                    this.activeTabUid = null;
+                    this.selectedMessage = null;
+                    this.selectedUid = null;
+                } else {
+                    const newIdx = Math.min(idx, this.openTabs.length - 1);
+                    this.activeTabUid = this.openTabs[newIdx].uid;
+                    this.selectedMessage = this.openTabs[newIdx].message;
+                    this.selectedUid = this.openTabs[newIdx].uid;
+                }
+            }
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+            this.$nextTick(() => this.checkTabsOverflow());
+        },
+
+        closeMessageTab(uid, folder) {
+            const idx = this.openTabs.findIndex(tab => tab.uid === uid && tab.folder === folder);
+            if (idx === -1) return;
+            const isActiveTarget = this.activeTabUid === uid && this.activeTabFolder === folder;
+            this.openTabs.splice(idx, 1);
+            if (isActiveTarget) {
+                if (this.openTabs.length === 0) {
+                    this.activeTabUid = null;
+                    this.selectedMessage = null;
+                    this.selectedUid = null;
+                } else {
+                    const newIdx = Math.min(idx, this.openTabs.length - 1);
+                    this.activeTabUid = this.openTabs[newIdx].uid;
+                    this.selectedMessage = this.openTabs[newIdx].message;
+                    this.selectedUid = this.openTabs[newIdx].uid;
+                }
+            }
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+            this.$nextTick(() => this.checkTabsOverflow());
+        },
+
+        closeOtherTabs(uid) {
+            const keep = this.openTabs.find(t => t.uid === uid);
+            if (!keep) return;
+            this.openTabs = [keep];
+            this.activeTabUid = uid;
+            this.selectedMessage = keep.message;
+            this.selectedUid = uid;
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+            this.$nextTick(() => this.checkTabsOverflow());
+        },
+
+        closeTabsToRight(uid) {
+            const idx = this.openTabs.findIndex(t => t.uid === uid);
+            if (idx === -1) return;
+            const removed = this.openTabs.splice(idx + 1);
+            // If active tab was removed, switch to the clicked tab
+            if (removed.some(t => t.uid === this.activeTabUid)) {
+                this.activeTabUid = uid;
+                const tab = this.openTabs.find(t => t.uid === uid);
+                if (tab) {
+                    this.selectedMessage = tab.message;
+                    this.selectedUid = uid;
+                }
+            }
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+            this.$nextTick(() => this.checkTabsOverflow());
+        },
+
+        closeAllTabs() {
+            this.openTabs = [];
+            this.activeTabUid = null;
+            this.selectedMessage = null;
+            this.selectedUid = null;
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+            this.$nextTick(() => this.checkTabsOverflow());
+        },
+
+        cycleTab(direction) {
+            if (this.openTabs.length <= 1) return;
+            const idx = this.openTabs.findIndex(t => t.uid === this.activeTabUid);
+            let newIdx = idx + direction;
+            if (newIdx < 0) newIdx = this.openTabs.length - 1;
+            if (newIdx >= this.openTabs.length) newIdx = 0;
+            this.switchTab(this.openTabs[newIdx].uid);
+        },
+
+        // Tab context menu
+        openTabContextMenu(event, uid) {
+            this.messageContextMenu.visible = false;
+            this.tabContextMenu = {
+                visible: true,
+                x: event.clientX,
+                y: event.clientY,
+                uid: uid
+            };
+        },
+
+        // Tab overflow scrolling
+        checkTabsOverflow() {
+            const el = this.$refs.tabList;
+            if (!el) { this.tabsOverflow = false; return; }
+            this.tabsOverflow = el.scrollWidth > el.clientWidth + 4;
+        },
+
+        scrollTabs(delta) {
+            const el = this.$refs.tabList;
+            if (el) el.scrollBy({ left: delta, behavior: 'smooth' });
+        },
+
+        scrollToActiveTab() {
+            this.$nextTick(() => {
+                const el = this.$refs.tabList;
+                if (!el) return;
+                const active = el.querySelector('.mail-tab.active');
+                if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+            });
+        },
+
+        // Tab drag-and-drop reorder
+        onTabDragStart(event, index) {
+            this.tabDragIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', index);
+        },
+
+        onTabDragOver(event, index) {
+            if (this.tabDragIndex === -1 || this.tabDragIndex === index) return;
+            event.dataTransfer.dropEffect = 'move';
+        },
+
+        onTabDrop(event, toIndex) {
+            const fromIndex = this.tabDragIndex;
+            if (fromIndex === -1 || fromIndex === toIndex) return;
+            const tab = this.openTabs.splice(fromIndex, 1)[0];
+            this.openTabs.splice(toIndex, 0, tab);
+            this.tabDragIndex = -1;
+            this.rebuildOpenTabKeys();
+            this.saveTabState();
+        },
+
+        // Persist tab state across page loads
+        saveTabState() {
+            // Don't save empty state before restore has completed
+            if (!this._tabsRestored) return;
+            try {
+                const state = this.openTabs.map(t => ({
+                    uid: t.uid, folder: t.folder, subject: t.subject,
+                    from_name: t.from_name, date: t.date,
+                    readerSections: this.createReaderSections(t.readerSections)
+                }));
+                localStorage.setItem('mail_open_tabs', JSON.stringify(state));
+                localStorage.setItem('mail_active_tab', this.activeTabUid || '');
+            } catch (e) { /* storage full or disabled */ }
+        },
+
+        restoreTabState() {
+            try {
+                const raw = localStorage.getItem('mail_open_tabs');
+                const activeUid = localStorage.getItem('mail_active_tab');
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                if (!Array.isArray(saved) || saved.length === 0) return;
+
+                // Avoid duplicate restoration — skip if tabs already loaded
+                if (this.openTabs.length > 0) return;
+
+                // Restore tab stubs — validate each entry has required fields
+                for (const t of saved) {
+                    if (!t.uid || !t.folder) continue;
+                    this.openTabs.push(this.createTabEntry({
+                        uid: t.uid,
+                        folder: t.folder,
+                        subject: t.subject || '(нема наслова)',
+                        from_name: t.from_name || '',
+                        date: t.date || '',
+                        wasUnread: false,
+                        message: null,
+                        readerSections: t.readerSections
+                    }));
+                }
+
+                if (this.openTabs.length === 0) return;
+                this.rebuildOpenTabKeys();
+
+                // Restore active tab — fall back to first tab if saved active is gone
+                if (activeUid && this.openTabs.some(t => t.uid === activeUid)) {
+                    this.activeTabUid = activeUid;
+                } else {
+                    this.activeTabUid = this.openTabs[0].uid;
+                }
+                // Load the active tab's message content
+                this.loadRestoredTab(this.activeTabUid);
+
+                this.$nextTick(() => this.checkTabsOverflow());
+            } catch (e) { /* ignore corrupt state */ }
+        },
+
+        async loadRestoredTab(uid) {
+            const tab = this.openTabs.find(t => t.uid === uid);
+            if (!tab || tab.message) return;
+            const cacheKey = tab.folder + ':' + uid;
+            if (this.messageCache[cacheKey]) {
+                tab.message = this.messageCache[cacheKey];
+                this.selectedMessage = tab.message;
+                this.selectedUid = uid;
+                return;
+            }
+            this.loadingMessage = true;
+            try {
+                const r = await fetch(`/api/mail/message/${uid}?folder=${encodeURIComponent(tab.folder)}`);
+                const d = await r.json();
+                if (d.success) {
+                    this.messageCache[cacheKey] = d.message;
+                    tab.message = d.message;
+                    tab.subject = d.message.subject || tab.subject;
+                    tab.from_name = d.message.from_name || tab.from_name;
+                    if (this.activeTabUid === uid) {
+                        this.selectedMessage = d.message;
+                        this.selectedUid = uid;
+                    }
+                }
+            } catch (e) { /* ignore */ }
+            this.loadingMessage = false;
+        },
+
+        openMessageContextMenu(event, message) {
+            this.tabContextMenu.visible = false;
+            this.selectedUid = message.uid;
+            this.messageContextMenu = {
+                visible: true,
+                x: event.clientX,
+                y: event.clientY,
+                message: { ...message, folder: this.currentFolder }
+            };
+        },
+
+        closeMessageContextMenu() {
+            this.messageContextMenu.visible = false;
+        },
+
+        async openMessageFromContextMenu() {
+            const message = this.messageContextMenu.message;
+            this.closeMessageContextMenu();
+            if (!message) return;
+            const row = this.findCurrentMessage(message.uid);
+            if (row) {
+                await this.selectMessage(row);
+            }
+        },
+
+        async replyFromContextMenu() {
+            await this.openMessageFromContextMenu();
+            if (this.activeTabMessage) {
+                this.openReply();
+            }
+        },
+
+        async toggleReadFromContextMenu() {
+            const message = this.messageContextMenu.message;
+            this.closeMessageContextMenu();
+            if (!message) return;
+            await this.setReadState(message.uid, message.folder || this.currentFolder, !message.is_read);
+        },
+
+        async archiveFromContextMenu() {
+            const message = this.messageContextMenu.message;
+            this.closeMessageContextMenu();
+            if (!message) return;
+            await this.archiveMessage(message.uid, message.folder || this.currentFolder);
+        },
+
+        async deleteFromContextMenu() {
+            const message = this.messageContextMenu.message;
+            this.closeMessageContextMenu();
+            if (!message) return;
+            await this.deleteMessage(message.uid, message.folder || this.currentFolder);
+        },
+
+        searchMessages() {
+            this.currentPage = 1;
+            this.loadMessages();
+        },
+
+        goPage(p) {
+            this.currentPage = p;
+            this.loadMessages();
+        },
+
+        // Compose
+        openCompose() {
+            this.composeMode = 'new';
+            this.composeTo = '';
+            this.composeCc = '';
+            this.composeSubject = '';
+            this.composeBody = '';
+            this.composeFiles = [];
+            this.composeOpen = true;
+        },
+
+        openReply() {
+            const msg = this.activeTabMessage;
+            if (!msg) return;
+            this.composeMode = 'reply';
+            this.composeTo = msg.from_address;
+            this.composeCc = '';
+            this.composeFiles = [];
+            const subj = msg.subject || '';
+            this.composeSubject = subj.startsWith('Re:') ? subj : 'Re: ' + subj;
+            const date = this.formatDateFull(msg.date);
+            const from = msg.from_name || msg.from_address;
+            const origBody = msg.text_body || '(HTML порука)';
+            this.composeBody = `\n\n--- Оригинална порука ---\nДатум: ${date}\nОд: ${from}\n\n${origBody}`;
+            this.composeOpen = true;
+        },
+
+        openForward() {
+            const msg = this.activeTabMessage;
+            if (!msg) return;
+            this.composeMode = 'forward';
+            this.composeTo = '';
+            this.composeCc = '';
+            this.composeFiles = [];
+            const subj = msg.subject || '';
+            this.composeSubject = subj.startsWith('Fwd:') ? subj : 'Fwd: ' + subj;
+            const date = this.formatDateFull(msg.date);
+            const from = msg.from_name || msg.from_address;
+            const origBody = msg.text_body || '(HTML порука)';
+            this.composeBody = `\n\n--- Прослеђена порука ---\nДатум: ${date}\nОд: ${from}\nНаслов: ${msg.subject}\n\n${origBody}`;
+            this.composeOpen = true;
+        },
+
+        onComposeFileSelect(event) {
+            const files = Array.from(event.target.files || []);
+            for (const f of files) {
+                this.composeFiles.push(f);
+            }
+            event.target.value = '';
+        },
+
+        removeComposeFile(index) {
+            this.composeFiles.splice(index, 1);
+        },
+
+        composeTotalSize() {
+            return this.composeFiles.reduce((sum, f) => sum + f.size, 0);
+        },
+
+        async sendCompose() {
+            if (!this.composeTo.trim()) {
+                this.showToast('Унесите адресу примаоца.', 'danger');
+                return;
+            }
+            if (this.composeTotalSize() > 25 * 1024 * 1024) {
+                this.showToast('Прилози су превелики (макс. 25MB укупно).', 'danger');
+                return;
+            }
+            this.sending = true;
+            try {
+                let r;
+                if (this.composeFiles.length > 0) {
+                    const formData = new FormData();
+                    formData.append('to', this.composeTo);
+                    formData.append('cc', this.composeCc);
+                    formData.append('subject', this.composeSubject);
+                    formData.append('body', this.composeBody);
+                    for (const f of this.composeFiles) {
+                        formData.append('attachments', f);
+                    }
+                    r = await fetch('/api/mail/send', {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': CSRF_TOKEN},
+                        body: formData
+                    });
+                } else {
+                    r = await secureFetch('/api/mail/send', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            to: this.composeTo,
+                            cc: this.composeCc,
+                            subject: this.composeSubject,
+                            body: this.composeBody
+                        })
+                    });
+                }
+                const d = await r.json();
+                if (d.success) {
+                    this.showToast('Порука је послата.', 'success');
+                    this.composeOpen = false;
+                    this.composeFiles = [];
+                } else {
+                    this.showToast(d.message || 'Грешка при слању.', 'danger');
+                }
+            } catch (e) {
+                this.showToast('Грешка при слању.', 'danger');
+            }
+            this.sending = false;
+        },
+
+        async deleteSelected() {
+            if (!this.activeTabUid) return;
+            await this.deleteMessage(this.activeTabUid, this.activeTabFolder);
+        },
+
+        async archiveSelected() {
+            if (!this.activeTabUid) return;
+            await this.archiveMessage(this.activeTabUid, this.activeTabFolder);
+        },
+
+        async moveSelected(dstFolder) {
+            if (!this.activeTabUid) return;
+            await this.moveMessage(this.activeTabUid, this.activeTabFolder, dstFolder);
+        },
+
+        async deleteMessage(uid, folder) {
+            if (!uid) return;
+            this.closeMessageTab(uid, folder);
+            delete this.messageCache[`${folder}:${uid}`];
+            this.messages = this.messages.filter(m => !(m.uid === uid && (m.folder || this.currentFolder) === folder));
+            const fi = this.folders.find(f => f.name === folder);
+            if (fi && fi.unseen > 0) fi.unseen = Math.max(0, fi.unseen - 1);
+            this.showToast('Порука је обрисана.', 'success');
+            secureFetch('/api/mail/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid, folder })
+            }).catch(() => {});
+        },
+
+        async moveMessage(uid, srcFolder, dstFolder, successMessage = 'Порука је премештена.') {
+            if (!uid || !dstFolder || dstFolder === srcFolder) return;
+            try {
+                const r = await secureFetch('/api/mail/move', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        uid: uid,
+                        src_folder: srcFolder,
+                        dst_folder: dstFolder
+                    })
+                });
+                const d = await r.json();
+                if (d.success) {
+                    this.closeMessageTab(uid, srcFolder);
+                    delete this.messageCache[`${srcFolder}:${uid}`];
+                    await this.loadInit();
+                    this.showToast(successMessage, 'success');
+                } else {
+                    this.showToast(d.message || 'Грешка при премештању.', 'danger');
+                }
+            } catch (e) {
+                this.showToast('Грешка при премештању.', 'danger');
+            }
+        },
+
+        async setReadState(uid, folder, isRead) {
+            if (!uid) return;
+            try {
+                const r = await secureFetch('/api/mail/read-state', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ uid, folder, is_read: isRead })
+                });
+                const d = await r.json();
+                if (!d.success) {
+                    this.showToast(d.message || 'Грешка при промени статуса.', 'danger');
+                    return;
+                }
+
+                const row = this.findCurrentMessage(uid);
+                if (row) {
+                    row.is_read = isRead;
+                    Object.assign(row, this.normalizeMessage(row, folder));
+                }
+
+                const cacheKey = `${folder}:${uid}`;
+                if (this.messageCache[cacheKey]) {
+                    this.messageCache[cacheKey].is_read = isRead;
+                }
+
+                const tab = this.openTabs.find(item => item.uid === uid && item.folder === folder);
+                if (tab) {
+                    tab.wasUnread = !isRead;
+                }
+
+                const folderRow = this.folders.find(item => item.name === folder);
+                if (folderRow) {
+                    const delta = isRead ? -1 : 1;
+                    folderRow.unseen = Math.max(0, (folderRow.unseen || 0) + delta);
+                    this.folderUnreadTotal = this.folders.reduce((sum, item) => sum + (item.unseen || 0), 0);
+                }
+
+                this.showToast(isRead ? 'Порука је означена као прочитана.' : 'Порука је означена као непрочитана.', 'success');
+            } catch (e) {
+                this.showToast('Грешка при промени статуса.', 'danger');
+            }
+        },
+
+        findFolderByKind(kind) {
+            const patterns = {
+                archive: [/^archive$/i, /archive/i, /архив/i],
+                trash: [/^trash$/i, /trash/i, /deleted/i, /смеће/i, /smece/i],
+            };
+            const matchers = patterns[kind] || [];
+            const folder = this.folders.find(item => matchers.some(pattern => pattern.test(item.name)));
+            return folder ? folder.name : null;
+        },
+
+        async archiveMessage(uid, folder) {
+            const archiveFolder = this.findFolderByKind('archive');
+            if (!archiveFolder) {
+                this.showToast('Архивски фолдер није пронађен.', 'danger');
+                return;
+            }
+            await this.moveMessage(uid, folder, archiveFolder, 'Порука је архивирана.');
+        },
+
+        // Helpers
+        folderIcon(name) {
+            const n = name.toLowerCase();
+            if (n === 'inbox' || n.includes('inbox')) return 'bi-inbox-fill';
+            if (n.includes('sent') || n.includes('послат')) return 'bi-send-fill';
+            if (n.includes('draft') || n.includes('нацрт')) return 'bi-pencil-fill';
+            if (n.includes('trash') || n.includes('смеће') || n.includes('deleted')) return 'bi-trash-fill';
+            if (n.includes('spam') || n.includes('junk')) return 'bi-exclamation-triangle-fill';
+            if (n.includes('archive') || n.includes('архив')) return 'bi-archive-fill';
+            return 'bi-folder-fill';
+        },
+
+        folderColorClass(name) {
+            const n = name.toLowerCase();
+            if (n === 'inbox' || n.includes('inbox')) return 'blue';
+            if (n.includes('sent') || n.includes('послат')) return 'teal';
+            if (n.includes('draft') || n.includes('нацрт')) return 'amber';
+            if (n.includes('trash') || n.includes('смеће') || n.includes('deleted')) return 'red';
+            if (n.includes('spam') || n.includes('junk')) return 'orange';
+            if (n.includes('archive') || n.includes('архив')) return 'purple';
+            return 'gray';
+        },
+
+        folderDisplayName(name) {
+            const map = {
+                'INBOX': 'Пристигле',
+                'Sent': 'Послате',
+                'Drafts': 'Нацрти',
+                'Trash': 'Смеће',
+                'Junk': 'Нежељена',
+                'Spam': 'Нежељена',
+                'Archive': 'Архива',
+            };
+            return map[name] || name;
+        },
+
+        initials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name.substring(0, 2).toUpperCase();
+        },
+
+        avatarColor(name) {
+            if (!name) return '#6c757d';
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            const colors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+            return colors[Math.abs(hash) % colors.length];
+        },
+
+        formatDate(iso) {
+            if (!iso) return '';
+            try {
+                const d = new Date(iso);
+                const now = new Date();
+                if (d.toDateString() === now.toDateString()) {
+                    return d.toLocaleTimeString('sr-RS', {hour: '2-digit', minute: '2-digit'});
+                }
+                return d.toLocaleDateString('sr-RS', {day: '2-digit', month: '2-digit'});
+            } catch (e) { return iso; }
+        },
+
+        formatDateFull(iso) {
+            if (!iso) return '';
+            try {
+                return new Date(iso).toLocaleString('sr-RS', {
+                    day: '2-digit', month: 'long', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch (e) { return iso; }
+        },
+
+        formatSize(bytes) {
+            if (!bytes) return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        },
+
+        recipientCountLabel(message) {
+            const toCount = Array.isArray(message?.to) ? message.to.length : 0;
+            const ccCount = Array.isArray(message?.cc) ? message.cc.length : 0;
+            return `Примаоци ${toCount + ccCount}`;
+        },
+
+        attachmentCountLabel(message) {
+            const count = Array.isArray(message?.attachments) ? message.attachments.length : 0;
+            return `Прилози ${count}`;
+        },
+
+        linkCountLabel(links) {
+            const count = Array.isArray(links) ? links.length : 0;
+            return `Линкови ${count}`;
+        },
+
+        handleBodyLinkClick(event) {
+            const link = event.target.closest('a.mail-safe-link');
+            if (!link) return;
+            event.preventDefault();
+            const encoded = link.getAttribute('data-link');
+            if (!encoded) return;
+            this.confirmOpenLink(decodeURIComponent(encoded));
+        },
+
+        confirmOpenLink(url) {
+            if (!url) return;
+            let host = url;
+            try {
+                const parsed = new URL(url);
+                host = parsed.hostname || parsed.protocol;
+            } catch (e) { /* keep raw url */ }
+
+            const ok = window.confirm(
+                `Отварате спољни линк.\n\nДомен: ${host}\n\nURL:\n${url}\n\nОтвори у новом прозору?`
+            );
+            if (ok) {
+                window.open(url, '_blank', 'noopener,noreferrer');
+            }
+        },
+
+        linkReasonText(reasons) {
+            if (!Array.isArray(reasons) || reasons.length === 0) {
+                return 'Линк није означен као сумњив.';
+            }
+            const labels = {
+                unsupported_scheme: 'Неподржана шема линка',
+                ip_host: 'Линк користи IP адресу уместо домена',
+                punycode_host: 'Домен садржи punycode',
+                external_login_page: 'Линк личи на спољну страницу за пријаву',
+                internal_sender_external_link: 'Интерни пошиљалац води на спољни домен',
+                insecure_http: 'Линк није HTTPS',
+                label_domain_mismatch: 'Текст линка и стварни домен се не поклапају',
+            };
+            return reasons.map(reason => labels[reason] || reason).join(' • ');
+        },
+
+        handleAttachmentClick(event, attachment) {
+            const link = event.currentTarget;
+            if (!link) return;
+            const url = link.href;
+            if (!url) return;
+            if (!attachment || !attachment.dangerous) {
+                window.location.href = url;
+                return;
+            }
+            const ok = window.confirm(
+                `Овај прилог је означен као потенцијално ризичан.\n\nФајл: ${attachment.filename || 'непознато'}\n\nПреузети ипак?`
+            );
+            if (ok) {
+                window.location.href = url;
+            }
+        },
+
+        handleAttachmentBundleClick(event) {
+            const link = event.currentTarget;
+            if (!link) return;
+            const url = link.href;
+            if (!url) return;
+            const dangerous = (this.activeTabMessage?.security?.dangerous_attachments || []).length;
+            if (dangerous > 0) {
+                const ok = window.confirm(
+                    `Ова порука садржи ${dangerous} ризичних прилога.\n\nПреузети ZIP пакет ипак?`
+                );
+                if (!ok) return;
+            }
+            window.location.href = url;
+        },
+
+        linkifyText(text) {
+            if (!text) return '';
+            // Escape HTML first, then convert URLs to clickable links
+            const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return escaped.replace(/(https?:\/\/[^\s<]+)/g, (match) => {
+                const clean = match.replace(/[).,;!?]+$/, '');
+                const encoded = encodeURIComponent(clean);
+                return `<a href="#" class="mail-safe-link" data-link="${encoded}" rel="nofollow">${clean}</a>`;
+            });
+        },
+
+        showToast(msg, type) {
+            this.toastMsg = msg;
+            this.toastType = type;
+            const el = this.$refs.toast;
+            if (el) {
+                const t = bootstrap.Toast.getOrCreateInstance(el);
+                t.show();
+            }
+        },
+
+        destroy() {
+            // Save tab state one last time on teardown
+            this.saveTabState();
+            this.clearFolderWarmupPoll();
+            if (this._pollInterval) clearInterval(this._pollInterval);
+            if (this._syncTimer) clearTimeout(this._syncTimer);
+            if (this._resizeObserver) this._resizeObserver.disconnect();
+            if (this._beforeUnload) window.removeEventListener('beforeunload', this._beforeUnload);
+            if (this._pageShow) window.removeEventListener('pageshow', this._pageShow);
+        }
+    }
+}
+</script>
+{% endblock %}

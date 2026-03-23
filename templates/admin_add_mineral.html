@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}{% if edit_mode %}Измени минерал{% else %}Додај минерал{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+.form-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+
+[data-theme="dark"] .form-section {
+    background: #2d3748;
+    border-color: #4a5568;
+}
+
+.form-section-title {
+    font-weight: 600;
+    color: #2d6a4f;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #2d6a4f;
+}
+
+[data-theme="dark"] .form-section-title {
+    color: #68d391;
+    border-bottom-color: #68d391;
+}
+
+.page-header {
+    background: linear-gradient(135deg, #1a5f3c 0%, #2d8659 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.page-header h2 {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #2d6a4f;
+    box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.15);
+}
+
+.image-manager-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.9rem;
+}
+
+.image-manager-card {
+    border: 1px solid #d8e2dc;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.image-manager-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    background: #edf2f7;
+}
+
+.image-manager-body {
+    padding: 0.75rem;
+}
+
+.image-manager-caption {
+    font-size: 0.78rem;
+    color: #6b7280;
+    min-height: 2.2rem;
+}
+
+[data-theme="dark"] .image-manager-card {
+    background: #1f2937;
+    border-color: #4b5563;
+}
+</style>
+
+<div class="container-fluid px-4 mt-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2>
+                    <i class="bi {% if edit_mode %}bi-pencil-square{% else %}bi-plus-circle{% endif %} me-2"></i>
+                    {% if edit_mode %}Измени минерал{% else %}Додај нови минерал{% endif %}
+                </h2>
+                <p class="mb-0 opacity-75">
+                    {% if edit_mode %}
+                    Ажурирајте податке о минералу
+                    {% else %}
+                    Унесите податке о новом минералу у збирку
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left me-1"></i>Назад на збирку
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{% if edit_mode %}{{ url_for('edit_mineral', mineral_id=mineral_id) }}{% else %}{{ url_for('add_mineral') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-6">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-info-circle me-2"></i>Основни подаци
+                    </h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="inventory_number" class="form-label">Инвентарни број</label>
+                            <div class="input-group">
+                                <span class="input-group-text">M</span>
+                                <input type="text" class="form-control" id="inventory_number" name="inventory_number"
+                                       value="{{ mineral_data.inventory_number or next_inventory_number }}"
+                                       placeholder="нпр. 12345">
+                            </div>
+                            {% if next_inventory_number and not edit_mode %}
+                            <small class="text-muted">Следећи слободан број: {{ next_inventory_number }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="quantity" class="form-label">Количина</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity"
+                                   value="{{ mineral_data.quantity or 1 }}" min="1">
+                        </div>
+
+                        <div class="col-12">
+                            <label for="item_name" class="form-label required-field">Назив минерала</label>
+                            <input type="text" class="form-control" id="item_name" name="item_name"
+                                   value="{{ mineral_data.item_name or '' }}"
+                                   placeholder="нпр. Кварц, Пирит, Калцит..." required>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="card_locality" class="form-label">Локалитет</label>
+                            <input type="text" class="form-control" id="card_locality" name="card_locality"
+                                   value="{{ mineral_data.card_locality or '' }}"
+                                   placeholder="нпр. Авала, Копаоник, Ртањ...">
+                        </div>
+
+                        <div class="col-12">
+                            <label for="storage_location" class="form-label">Где се налази (локација у депоу)</label>
+                            <input type="text" class="form-control" id="storage_location" name="storage_location"
+                                   value="{{ mineral_data.storage_location or '' }}"
+                                   placeholder="нпр. Кутија 45, Витрина 3...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acquisition Information -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-cart-check me-2"></i>Подаци о набавци
+                    </h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="acquisition_method" class="form-label">Начин набављања</label>
+                            <select class="form-select" id="acquisition_method" name="acquisition_method">
+                                <option value="">-- Изаберите --</option>
+                                <option value="поклон" {% if mineral_data.acquisition_method == 'поклон' %}selected{% endif %}>Поклон</option>
+                                <option value="куповина" {% if mineral_data.acquisition_method == 'куповина' %}selected{% endif %}>Куповина</option>
+                                <option value="размена" {% if mineral_data.acquisition_method == 'размена' %}selected{% endif %}>Размена</option>
+                                <option value="теренски рад" {% if mineral_data.acquisition_method == 'теренски рад' %}selected{% endif %}>Теренски рад</option>
+                                <option value="легат" {% if mineral_data.acquisition_method == 'легат' %}selected{% endif %}>Легат</option>
+                                <option value="непознато" {% if mineral_data.acquisition_method == 'непознато' %}selected{% endif %}>Непознато</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="acquisition_date" class="form-label">Датум набављања</label>
+                            <input type="date" class="form-control" id="acquisition_date" name="acquisition_date"
+                                   value="{{ mineral_data.acquisition_date or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label for="donor" class="form-label">Легатор / Нашао</label>
+                            <input type="text" class="form-control" id="donor" name="donor"
+                                   value="{{ mineral_data.donor or '' }}"
+                                   placeholder="Име особе или институције">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-6">
+                <!-- Identification -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-search me-2"></i>Идентификација
+                    </h5>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="identifier" class="form-label">Идентификовао</label>
+                            <input type="text" class="form-control" id="identifier" name="identifier"
+                                   value="{{ mineral_data.identifier or '' }}"
+                                   placeholder="Име особе која је идентификовала минерал">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="input_date" class="form-label">Датум уноса</label>
+                            <input type="date" class="form-control" id="input_date" name="input_date"
+                                   value="{{ mineral_data.input_date or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="bibliography_flag" name="bibliography_flag"
+                                       {% if mineral_data.bibliography_flag %}checked{% endif %}>
+                                <label class="form-check-label" for="bibliography_flag">
+                                    У библиографији
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description & Notes -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-card-text me-2"></i>Опис и напомене
+                    </h5>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="description" class="form-label">Опис</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Детаљан опис минерала...">{{ mineral_data.description or '' }}</textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="comments" class="form-label">Коментари / Напомене</label>
+                            <textarea class="form-control" id="comments" name="comments" rows="3"
+                                      placeholder="Додатне напомене...">{{ mineral_data.comments or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                {% if edit_mode %}
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-images me-2"></i>Слике
+                    </h5>
+                    {% if mineral_images %}
+                    <div class="image-manager-grid">
+                        {% for image in mineral_images %}
+                        <div class="image-manager-card">
+                            <a href="{{ url_for('get_image_by_id', image_id=image.image_id, size='original') }}" target="_blank" rel="noopener">
+                                <img src="{{ url_for('get_image_by_id', image_id=image.image_id, size='small') }}"
+                                     alt="{{ image.description or ('Слика ' ~ loop.index) }}">
+                            </a>
+                            <div class="image-manager-body">
+                                <div class="image-manager-caption mb-2">
+                                    {{ image.description or image.original_filename or 'Без описа' }}
+                                </div>
+                                <button type="submit"
+                                        class="btn btn-outline-danger btn-sm w-100"
+                                        form="delete-image-{{ image.image_id }}"
+                                        onclick="return confirm('Да ли сте сигурни да желите да обришете ову слику?')">
+                                    <i class="bi bi-trash me-1"></i>Обриши слику
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-light border mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Овај минерал тренутно нема сачуване слике.
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if edit_mode %}
+                <!-- Metadata (edit mode only) -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-clock-history me-2"></i>Метаподаци
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="input_by" class="form-label">Унео у базу</label>
+                            <input type="text" class="form-control" id="input_by" name="input_by"
+                                   value="{{ mineral_data.input_by or '' }}" readonly>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-5">
+            <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1"></i>Откажи
+            </a>
+
+            <div class="d-flex gap-2">
+                {% if edit_mode %}
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash me-1"></i>Обриши
+                </button>
+                {% endif %}
+
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-lg me-1"></i>
+                    {% if edit_mode %}Сачувај измене{% else %}Додај минерал{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {% if edit_mode and mineral_images %}
+        {% for image in mineral_images %}
+        <form id="delete-image-{{ image.image_id }}"
+              method="POST"
+              action="{{ url_for('delete_mineral_image', mineral_id=mineral_id, image_id=image.image_id) }}"
+              class="d-none">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        </form>
+        {% endfor %}
+    {% endif %}
+</div>
+
+{% if edit_mode %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h6 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Потврда брисања
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Да ли сте сигурни да желите да обришете овај минерал?</p>
+                <p class="mb-0 text-muted"><small>Ова акција се не може поништити.</small></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                <form method="POST" action="{{ url_for('delete_mineral', mineral_id=mineral_id) }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Обриши
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Администрација радних листи - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Администрација радних листи
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Потпуно интегрисан систем за управљање радним листама запослених
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-file-earmark-text" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center border-primary">
+                <div class="card-body">
+                    <i class="bi bi-file-earmark-text" style="font-size: 2.5rem; color: var(--museum-primary);"></i>
+                    <h5 class="mt-3 mb-0">Извештаји</h5>
+                    <p class="text-muted small mb-0">Преглед свих радних листи</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center border-info">
+                <div class="card-body">
+                    <i class="bi bi-clock-history" style="font-size: 2.5rem; color: var(--museum-info);"></i>
+                    <h5 class="mt-3 mb-0">Захтеви</h5>
+                    <p class="text-muted small mb-0">Одобравање измена</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <i class="bi bi-graph-up" style="font-size: 2.5rem; color: var(--museum-danger);"></i>
+                    <h5 class="mt-3 mb-0">Аналитика</h5>
+                    <p class="text-muted small mb-0">Статистика система</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Admin Functions -->
+    <div class="row g-4">
+        <!-- Reports Section -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        Извештаји и верификација
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Преглед свих радних листи, верификација извештаја и извоз докумената.
+                    </p>
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Извештаји радних листи
+                        </a>
+                        <div class="alert alert-info mb-0" style="font-size: 0.9rem;">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Функције:</strong> Преглед, верификација, закључавање, извоз у Word
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approval Requests -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>
+                        Захтеви за одобрење
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Преглед и обрада захтева запослених за измену верификованих листи.
+                    </p>
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('admin_timesheet_pending') }}" class="btn btn-info btn-lg">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Захтеви за одобрење
+                        </a>
+                        <div class="alert alert-info mb-0" style="font-size: 0.9rem;">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Функције:</strong> Одобравање, одбијање, напомене
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Dashboard -->
+        <div class="col-lg-12">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up me-2"></i>
+                        Аналитика и статистика
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Детаљна аналитика рада запослених, одељења и укупна статистика система.
+                    </p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('admin_timesheet_analytics') }}" class="btn btn-danger btn-lg">
+                            <i class="bi bi-graph-up me-2"></i>
+                            Аналитика система
+                        </a>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="alert alert-light mb-0 text-center">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Графички прегледи
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-light mb-0 text-center">
+                                <i class="bi bi-calendar3 me-2"></i>
+                                Месечни извештаји
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-light mb-0 text-center">
+                                <i class="bi bi-building me-2"></i>
+                                Анализа по одељењима
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="bi bi-lightning me-2"></i>
+                        Брзе акције
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <a href="{{ url_for('timesheet_app') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-pencil me-1"></i>
+                                Моја радна листа
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-gear me-1"></i>
+                                Администрациони панел
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-house me-1"></i>
+                                Почетна
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="alert alert-success border-0">
+                <i class="bi bi-check-circle me-2"></i>
+                <strong>Систем интегрисан:</strong> Све функције радних листи су потпуно интегрисане у главни музејски систем.
+                Користи PostgreSQL базу података са јединственом аутентификацијом.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

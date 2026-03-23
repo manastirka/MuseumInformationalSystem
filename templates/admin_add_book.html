@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Додај књигу - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-book-half me-2"></i>
+                                Додај нову књигу у библиотеку
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Унос нове књиге у музејску библиотеку
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-journal-plus" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-light p-3 rounded">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('dashboard') }}" class="text-decoration-none">
+                            <i class="bi bi-house me-1"></i>Почетна
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('admin_panel') }}" class="text-decoration-none">
+                            <i class="bi bi-gear me-1"></i>Администрација
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('library_database') }}" class="text-decoration-none">
+                            <i class="bi bi-collection me-1"></i>База библиотеке
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <i class="bi bi-book-half me-1"></i>Додај књигу
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add Book Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-journal-plus me-2"></i>
+                        Основни подаци о књизи
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="addBookForm" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <!-- Title -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="title" class="form-label">
+                                    <i class="bi bi-type text-info me-1"></i>
+                                    Назив књиге <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="title" name="title" required>
+                                <div class="invalid-feedback">Молимо унесите назив књиге.</div>
+                            </div>
+                        </div>
+
+                        <!-- Author -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="author" class="form-label">
+                                    <i class="bi bi-person text-info me-1"></i>
+                                    Аутор <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="author" name="author" required>
+                                <div class="invalid-feedback">Молимо унесите аутора књиге.</div>
+                            </div>
+                        </div>
+
+                        <!-- ISBN and Year -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="isbn" class="form-label">
+                                    <i class="bi bi-upc text-info me-1"></i>
+                                    ISBN
+                                </label>
+                                <input type="text" class="form-control" id="isbn" name="isbn"
+                                       placeholder="978-86-123-4567-8">
+                                <div class="form-text">Опционо - ISBN број књиге</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="year" class="form-label">
+                                    <i class="bi bi-calendar text-info me-1"></i>
+                                    Година издања
+                                </label>
+                                <input type="number" class="form-control" id="year" name="year"
+                                       min="1800" max="2024" placeholder="2024">
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="category" class="form-label">
+                                    <i class="bi bi-tag text-info me-1"></i>
+                                    Категорија <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="">Изаберите категорију...</option>
+                                    <option value="Геологија">Геологија</option>
+                                    <option value="Минералогија">Минералогија</option>
+                                    <option value="Палеонтологија">Палеонтологија</option>
+                                    <option value="Биологија">Биологија</option>
+                                    <option value="Ботаника">Ботаника</option>
+                                    <option value="Зоологија">Зоологија</option>
+                                    <option value="Екологија">Екологија</option>
+                                    <option value="Методологија">Методологија</option>
+                                    <option value="Образовање">Образовање</option>
+                                    <option value="Историја природних наука">Историја природних наука</option>
+                                    <option value="Остало">Остало</option>
+                                </select>
+                                <div class="invalid-feedback">Молимо изаберите категорију књиге.</div>
+                            </div>
+                        </div>
+
+                        <!-- Location -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="location" class="form-label">
+                                    <i class="bi bi-geo-alt text-info me-1"></i>
+                                    Локација у библиотеци <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="location" name="location"
+                                       placeholder="Полица А1-15" required>
+                                <div class="invalid-feedback">Молимо унесите локацију књиге у библиотеци.</div>
+                                <div class="form-text">Пример: Полица А1-15, Орман Б2-3, итд.</div>
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="status" class="form-label">
+                                    <i class="bi bi-check-circle text-info me-1"></i>
+                                    Статус
+                                </label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="доступна" selected>Доступна</option>
+                                    <option value="позајмљена">Позајмљена</option>
+                                    <option value="у обради">У обради</option>
+                                    <option value="повезана">Повезана</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="pages" class="form-label">
+                                    <i class="bi bi-file-earmark-text text-info me-1"></i>
+                                    Број страна
+                                </label>
+                                <input type="number" class="form-control" id="pages" name="pages"
+                                       min="1" placeholder="450">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="publisher" class="form-label">
+                                    <i class="bi bi-building text-info me-1"></i>
+                                    Издавач
+                                </label>
+                                <input type="text" class="form-control" id="publisher" name="publisher"
+                                       placeholder="Геолошки завод Србије">
+                            </div>
+                        </div>
+
+                        <!-- Language -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="language" class="form-label">
+                                    <i class="bi bi-translate text-info me-1"></i>
+                                    Језик
+                                </label>
+                                <select class="form-select" id="language" name="language">
+                                    <option value="српски" selected>Српски</option>
+                                    <option value="енглески">Енглески</option>
+                                    <option value="немачки">Немачки</option>
+                                    <option value="француски">Француски</option>
+                                    <option value="руски">Руски</option>
+                                    <option value="остали">Остали</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-card-text text-info me-1"></i>
+                                    Опис књиге
+                                </label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="3" placeholder="Кратак опис садржаја књиге..."></textarea>
+                                <div class="form-text">Опционо - кратак опис садржаја или важности књиге</div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('library_database') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-left me-2"></i>Назад на библиотеку
+                                    </a>
+                                    <button type="submit" class="btn btn-info">
+                                        <i class="bi bi-plus-circle me-2"></i>Додај књигу
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="row mt-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-info">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-info me-2"></i>
+                        Информације о уносу књига
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-info">Обавезна поља:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check text-success me-1"></i> Назив књиге</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Аутор</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Категорија</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Локација</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Категорије књига:</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Геологија и минералогија</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Биологија и екологија</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Палеонтологија</li>
+                                <li><i class="bi bi-arrow-right text-muted me-1"></i> Образовне публикације</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    const form = document.getElementById('addBookForm');
+
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+})();
+
+// Auto-format ISBN
+document.getElementById('isbn').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^\d]/g, '');
+    if (value.length >= 3) {
+        value = value.substring(0,3) + '-' + value.substring(3);
+    }
+    if (value.length >= 6) {
+        value = value.substring(0,6) + '-' + value.substring(6);
+    }
+    if (value.length >= 10) {
+        value = value.substring(0,10) + '-' + value.substring(10);
+    }
+    if (value.length >= 14) {
+        value = value.substring(0,14) + '-' + value.substring(14);
+    }
+    e.target.value = value;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1034 @@
+{% extends "base.html" %}
+
+{% block title %}База прстеновања птица - Администрација{% endblock %}
+
+{% block content %}
+<!-- Leaflet CSS and JS for maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <img src="{{ url_for('static', filename='images/bird_ringing_logo.jpg') }}"
+                                 alt="Serbian Bird Ringing Scheme Logo"
+                                 class="img-fluid rounded"
+                                 style="max-height: 120px; width: auto; background-color: white; padding: 8px;">
+                        </div>
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-egg me-2"></i>
+                                База прстеновања птица
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Комплетна евиденција прстенованих птица - Орнитолошка збирка
+                            </p>
+                            <p class="mb-0 opacity-75 small mt-1">
+                                <i class="bi bi-person-badge me-1"></i>
+                                Одговорна особа: Вук Попић (vuk.popic@nhmbeo.rs)
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('add_bird_ringing') }}" class="btn btn-light mb-3">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                Додај нови запис
+                            </a>
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ "{:,}".format(total_count).replace(',', '.') }}</h2>
+                                <small>Записа</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-files" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ "{:,}".format(stats.total_records).replace(',', '.') }}</h5>
+                    <p class="text-muted mb-0 small">Укупно записа</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-egg" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ stats.unique_species }}</h5>
+                    <p class="text-muted mb-0 small">Врста птица</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-geo-alt" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ stats.unique_locations }}</h5>
+                    <p class="text-muted mb-0 small">Локација</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-people" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ stats.unique_ringers }}</h5>
+                    <p class="text-muted mb-0 small">Прстеновача</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Statistics -->
+    <div class="row g-4 mb-4">
+        <!-- Top Species -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Топ 10 врста</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for item in stats.top_species[:10] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <small class="text-truncate">{{ item.species }}</small>
+                            <span class="badge bg-success rounded-pill">{{ item.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Locations -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Топ 10 локација</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for item in stats.top_locations[:10] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <small class="text-truncate">{{ item.location }}</small>
+                            <span class="badge bg-info rounded-pill">{{ item.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Ringers -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-person-badge me-2"></i>Топ 10 прстеновача</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for item in stats.top_ringers[:10] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <small class="text-truncate">{{ item.ringer }}</small>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ item.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-funnel me-2"></i>
+                            Филтери и претрага
+                        </h5>
+                        <a href="{{ url_for('add_bird_ringing') }}" class="btn btn-success">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            Додај запис
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('bird_ringing_database_view') }}" class="row g-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="col-md-3">
+                            <label class="form-label small">Претрага</label>
+                            <input type="text" class="form-control" name="search" value="{{ search }}" placeholder="Врста, локација, прстеновач...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Врста</label>
+                            <select class="form-select" name="species">
+                                <option value="">Све врсте</option>
+                                {% for species in all_species %}
+                                <option value="{{ species }}" {% if species == species_filter %}selected{% endif %}>{{ species }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Локација</label>
+                            <select class="form-select" name="location">
+                                <option value="">Све локације</option>
+                                {% for location in all_locations %}
+                                <option value="{{ location }}" {% if location == location_filter %}selected{% endif %}>{{ location }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Прстеновач</label>
+                            <select class="form-select" name="ringer">
+                                <option value="">Сви прстеновачи</option>
+                                {% for ringer in all_ringers %}
+                                <option value="{{ ringer }}" {% if ringer == ringer_filter %}selected{% endif %}>{{ ringer }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">Година</label>
+                            <select class="form-select" name="year">
+                                <option value="">Све</option>
+                                {% for year in all_years[:30] %}
+                                <option value="{{ year }}" {% if year|string == year_filter %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="bi bi-search"></i> Филтрирај
+                            </button>
+                            <a href="{{ url_for('bird_ringing_database_view') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="bi bi-table me-2"></i>
+                                Записи (страна {{ current_page }} од {{ total_pages }})
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="{{ url_for('add_bird_ringing') }}" class="btn btn-sm btn-success me-2">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                Додај
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#columnSelectorModal">
+                                <i class="bi bi-layout-three-columns me-1"></i>
+                                Колоне
+                            </button>
+                            <span class="text-muted">Укупно: {{ "{:,}".format(total_count).replace(',', '.') }} записа</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if records %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0" id="birdRingingTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th data-column="ring_number" class="sortable" data-sort="ring_number">
+                                        Прстен <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="species" class="sortable" data-sort="species">
+                                        Врста <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="location" class="sortable" data-sort="location">
+                                        Локација <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="date" class="sortable" data-sort="date">
+                                        Датум <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="time" class="column-optional sortable" data-sort="time">
+                                        Време <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="age" class="column-optional sortable" data-sort="age">
+                                        Старост <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="sex" class="column-optional sortable" data-sort="sex">
+                                        Пол <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="ringer" class="sortable" data-sort="ringer">
+                                        Прстеновач <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="status" class="column-optional sortable" data-sort="status">
+                                        Статус <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="catching_method" class="column-optional sortable" data-sort="catching_method">
+                                        Хватање <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="wing_length" class="column-optional sortable" data-sort="wing_length">
+                                        Крило <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="mass" class="column-optional sortable" data-sort="mass">
+                                        Маса <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th data-column="coordinates" class="column-optional sortable" data-sort="coordinates">
+                                        Координате <i class="bi bi-arrow-down-up sort-icon"></i>
+                                    </th>
+                                    <th>Слика</th>
+                                    <th>Детаљи</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <td data-column="ring_number" data-sort-value="{{ record.ring_number or '' }}"><code>{{ record.ring_number or 'N/A' }}</code></td>
+                                    <td data-column="species" data-sort-value="{{ record.species or '' }}"><em>{{ record.species or 'N/A' }}</em></td>
+                                    <td data-column="location" data-sort-value="{{ record.location or '' }}">{{ record.location or 'N/A' }}</td>
+                                    <td data-column="date" data-sort-value="{{ record.date or '' }}">{{ record.date or 'N/A' }}</td>
+                                    <td data-column="time" class="column-optional" data-sort-value="{{ record.time or '' }}">{{ record.time or '-' }}</td>
+                                    <td data-column="age" class="column-optional" data-sort-value="{{ record.age if record.age is not none else '' }}">{{ record.age if record.age is not none else '-' }}</td>
+                                    <td data-column="sex" class="column-optional" data-sort-value="{{ record.sex or '' }}">
+                                        {% if record.sex == 'M' %}
+                                        <i class="bi bi-gender-male text-primary" title="Мужјак"></i>
+                                        {% elif record.sex == 'F' %}
+                                        <i class="bi bi-gender-female text-danger" title="Женка"></i>
+                                        {% elif record.sex == 'U' %}
+                                        <i class="bi bi-question-circle text-secondary" title="Непознато"></i>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td data-column="ringer" data-sort-value="{{ record.ringer or '' }}">{{ record.ringer or 'N/A' }}</td>
+                                    <td data-column="status" class="column-optional" data-sort-value="{{ record.status or '' }}">
+                                        {% if record.status %}
+                                        <span class="badge bg-secondary">{{ record.status }}</span>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td data-column="catching_method" class="column-optional" data-sort-value="{{ record.catching_method or '' }}">{{ record.catching_method or '-' }}</td>
+                                    <td data-column="wing_length" class="column-optional" data-sort-value="{{ record.wing_length or '' }}">{{ record.wing_length or '-' }}</td>
+                                    <td data-column="mass" class="column-optional" data-sort-value="{{ record.mass or '' }}">{{ record.mass or '-' }}</td>
+                                    <td data-column="coordinates" class="column-optional coordinates-cell" data-sort-value="{{ record.coordinates or '' }}" data-coords="{{ record.coordinates or '' }}" style="cursor: {{ 'pointer' if record.coordinates else 'default' }};">
+                                        {% if record.coordinates %}
+                                        <span class="text-primary">
+                                            <i class="bi bi-geo-alt-fill me-1"></i>{{ record.coordinates }}
+                                        </span>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="openImageModal('bird_ringing', 'bird_record', '{{ record.id }}', '{{ record.species }} - {{ record.ring_number }}')" title="Слике">
+                                            <i class="bi bi-camera"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('bird_ringing_record_detail', record_id=record.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if total_pages > 1 %}
+                    <div class="card-footer">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center mb-0">
+                                <!-- Previous -->
+                                <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('bird_ringing_database_view', page=current_page-1, search=search, species=species_filter, location=location_filter, ringer=ringer_filter, year=year_filter) }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+
+                                <!-- Page numbers -->
+                                {% set start_page = [1, current_page - 2]|max %}
+                                {% set end_page = [total_pages, current_page + 2]|min %}
+
+                                {% if start_page > 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('bird_ringing_database_view', page=1, search=search, species=species_filter, location=location_filter, ringer=ringer_filter, year=year_filter) }}">1</a>
+                                </li>
+                                {% if start_page > 2 %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                                {% endif %}
+
+                                {% for page in range(start_page, end_page + 1) %}
+                                <li class="page-item {% if page == current_page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('bird_ringing_database_view', page=page, search=search, species=species_filter, location=location_filter, ringer=ringer_filter, year=year_filter) }}">{{ page }}</a>
+                                </li>
+                                {% endfor %}
+
+                                {% if end_page < total_pages %}
+                                {% if end_page < total_pages - 1 %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('bird_ringing_database_view', page=total_pages, search=search, species=species_filter, location=location_filter, ringer=ringer_filter, year=year_filter) }}">{{ total_pages }}</a>
+                                </li>
+                                {% endif %}
+
+                                <!-- Next -->
+                                <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('bird_ringing_database_view', page=current_page+1, search=search, species=species_filter, location=location_filter, ringer=ringer_filter, year=year_filter) }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                        <p class="text-muted mt-3">Нема записа који одговарају задатим критеријумима</p>
+                        <a href="{{ url_for('bird_ringing_database_view') }}" class="btn btn-primary mt-2">
+                            Ресетуј филтере
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Map Modal -->
+<div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalLabel">
+                    <i class="bi bi-geo-alt-fill me-2"></i>
+                    Локација на мапи
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="mapContainer" style="height: 500px; width: 100%; background-color: #f8f9fa; position: relative;">
+                    <div id="mapLoading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Учитавање...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Учитавање мапе...</p>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p class="mb-1"><strong>Координате:</strong> <span id="mapCoordinates"></span></p>
+                    <p class="mb-0"><strong>Локалитет:</strong> <span id="mapLocation"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="openInGoogleMaps" href="#" target="_blank" class="btn btn-primary me-2">
+                    <i class="bi bi-map me-1"></i>
+                    Отвори у Google Maps
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Column Selector Modal -->
+<div class="modal fade" id="columnSelectorModal" tabindex="-1" aria-labelledby="columnSelectorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="columnSelectorModalLabel">
+                    <i class="bi bi-layout-three-columns me-2"></i>
+                    Избор колона за приказ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Означите колоне које желите да видите у табели:</p>
+
+                <div class="mb-3">
+                    <h6 class="text-muted small">Основне колоне (увек приказане):</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Прстен
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Врста
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Локација
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Датум
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Прстеновач
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label text-muted">
+                            Детаљи
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="text-muted small">Опционе колоне:</h6>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="time" id="col_time">
+                        <label class="form-check-label" for="col_time">
+                            Време
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="age" id="col_age">
+                        <label class="form-check-label" for="col_age">
+                            Старост
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="sex" id="col_sex">
+                        <label class="form-check-label" for="col_sex">
+                            Пол
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="status" id="col_status">
+                        <label class="form-check-label" for="col_status">
+                            Статус
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="catching_method" id="col_catching_method">
+                        <label class="form-check-label" for="col_catching_method">
+                            Начин хватања
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="wing_length" id="col_wing_length">
+                        <label class="form-check-label" for="col_wing_length">
+                            Дужина крила
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="mass" id="col_mass">
+                        <label class="form-check-label" for="col_mass">
+                            Маса
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input column-toggle" type="checkbox" value="coordinates" id="col_coordinates">
+                        <label class="form-check-label" for="col_coordinates">
+                            Координате
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="resetColumnsBtn">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>
+                    Ресетуј
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Примени
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Column visibility management
+(function() {
+    const STORAGE_KEY = 'birdRingingTableColumns';
+
+    // Default columns to show (in addition to required columns)
+    const defaultColumns = ['time', 'age', 'sex', 'status'];
+
+    // Get column preferences from localStorage
+    function getColumnPreferences() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : defaultColumns;
+    }
+
+    // Save column preferences to localStorage
+    function saveColumnPreferences(columns) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
+    }
+
+    // Update table column visibility
+    function updateTableColumns() {
+        const preferences = getColumnPreferences();
+
+        // Hide all optional columns first
+        document.querySelectorAll('.column-optional').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // Show selected columns
+        preferences.forEach(columnName => {
+            document.querySelectorAll(`[data-column="${columnName}"]`).forEach(el => {
+                el.style.display = '';
+            });
+        });
+    }
+
+    // Update checkbox states
+    function updateCheckboxes() {
+        const preferences = getColumnPreferences();
+
+        document.querySelectorAll('.column-toggle').forEach(checkbox => {
+            checkbox.checked = preferences.includes(checkbox.value);
+        });
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTableColumns();
+        updateCheckboxes();
+
+        // Listen to checkbox changes
+        document.querySelectorAll('.column-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const preferences = getColumnPreferences();
+
+                if (this.checked) {
+                    if (!preferences.includes(this.value)) {
+                        preferences.push(this.value);
+                    }
+                } else {
+                    const index = preferences.indexOf(this.value);
+                    if (index > -1) {
+                        preferences.splice(index, 1);
+                    }
+                }
+
+                saveColumnPreferences(preferences);
+                updateTableColumns();
+            });
+        });
+
+        // Reset button
+        document.getElementById('resetColumnsBtn')?.addEventListener('click', function() {
+            saveColumnPreferences(defaultColumns);
+            updateCheckboxes();
+            updateTableColumns();
+        });
+    });
+})();
+
+// Table sorting functionality
+(function() {
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+
+    // Get the index of a column considering visible/hidden columns
+    function getColumnIndex(columnName) {
+        const headers = document.querySelectorAll('#birdRingingTable thead th');
+        for (let i = 0; i < headers.length; i++) {
+            if (headers[i].getAttribute('data-column') === columnName) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Sort table by column
+    function sortTable(columnName, direction) {
+        const tbody = document.querySelector('#birdRingingTable tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        const columnIndex = getColumnIndex(columnName);
+        if (columnIndex === -1) return;
+
+        rows.sort((a, b) => {
+            const cellA = a.cells[columnIndex];
+            const cellB = b.cells[columnIndex];
+
+            if (!cellA || !cellB) return 0;
+
+            // Use data-sort-value if available, otherwise use text content
+            let valueA = cellA.getAttribute('data-sort-value') || cellA.textContent.trim();
+            let valueB = cellB.getAttribute('data-sort-value') || cellB.textContent.trim();
+
+            // Handle empty values
+            if (valueA === 'N/A' || valueA === '-' || valueA === '') valueA = '';
+            if (valueB === 'N/A' || valueB === '-' || valueB === '') valueB = '';
+
+            // Empty values go to the end
+            if (valueA === '' && valueB !== '') return 1;
+            if (valueA !== '' && valueB === '') return -1;
+            if (valueA === '' && valueB === '') return 0;
+
+            // Try to parse as numbers for numeric columns
+            const numA = parseFloat(valueA);
+            const numB = parseFloat(valueB);
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return direction === 'asc' ? numA - numB : numB - numA;
+            }
+
+            // String comparison with Serbian locale
+            if (direction === 'asc') {
+                return valueA.localeCompare(valueB, 'sr');
+            } else {
+                return valueB.localeCompare(valueA, 'sr');
+            }
+        });
+
+        // Re-append rows in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // Update sort icons
+    function updateSortIcons(columnName, direction) {
+        // Reset all icons
+        document.querySelectorAll('.sortable .sort-icon').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up sort-icon';
+        });
+
+        // Set active icon
+        const activeHeader = document.querySelector(`.sortable[data-sort="${columnName}"]`);
+        if (activeHeader) {
+            const icon = activeHeader.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = direction === 'asc' ? 'bi bi-arrow-up sort-icon active' : 'bi bi-arrow-down sort-icon active';
+            }
+        }
+    }
+
+    // Initialize sorting
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', function() {
+                const columnName = this.getAttribute('data-sort');
+
+                // Toggle direction if clicking same column
+                if (currentSortColumn === columnName) {
+                    currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortColumn = columnName;
+                    currentSortDirection = 'asc';
+                }
+
+                sortTable(columnName, currentSortDirection);
+                updateSortIcons(columnName, currentSortDirection);
+            });
+        });
+    });
+})();
+
+// Map functionality for GPS coordinates
+(function() {
+    let map = null;
+    let marker = null;
+
+    // Parse coordinates from various formats
+    function parseCoordinates(coordString) {
+        if (!coordString || coordString === '-') return null;
+
+        // Remove any extra spaces
+        coordString = coordString.trim();
+
+        // Try to match common formats:
+        // 1. "44.8125, 20.4612" or "44.8125,20.4612"
+        // 2. "44.8125 20.4612"
+        // 3. "N 44.8125 E 20.4612"
+
+        // Remove N, S, E, W indicators
+        coordString = coordString.replace(/[NSEW]/gi, '').trim();
+
+        // Split by comma, semicolon, or space
+        const parts = coordString.split(/[,;\s]+/).filter(p => p.length > 0);
+
+        if (parts.length >= 2) {
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                // Validate coordinate ranges
+                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    return { lat, lng };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Initialize map
+    function initMap(lat, lng) {
+        // Show loading spinner
+        const loadingDiv = document.getElementById('mapLoading');
+        if (loadingDiv) {
+            loadingDiv.style.display = 'block';
+        }
+
+        // Clear existing map if any
+        if (map) {
+            map.remove();
+            map = null;
+        }
+
+        try {
+            // Create map
+            map = L.map('mapContainer').setView([lat, lng], 13);
+
+            // Add OpenStreetMap tiles
+            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Hide loading spinner when tiles are loaded
+            tileLayer.on('load', function() {
+                if (loadingDiv) {
+                    loadingDiv.style.display = 'none';
+                }
+            });
+
+            // Add marker
+            marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(`<b>Локација прстеновања</b><br>Координате: ${lat}, ${lng}`).openPopup();
+
+            // Hide loading after a timeout as fallback
+            setTimeout(() => {
+                if (loadingDiv) {
+                    loadingDiv.style.display = 'none';
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            if (loadingDiv) {
+                loadingDiv.innerHTML = '<p class="text-danger">Грешка при учитавању мапе</p>';
+            }
+        }
+    }
+
+    // Store coordinates for later initialization
+    let pendingCoordinates = null;
+
+    // Show map modal
+    function showMapModal(coords, location) {
+        const coordinates = parseCoordinates(coords);
+
+        if (!coordinates) {
+            alert('Координате нису валидне или нису у исправном формату.');
+            return;
+        }
+
+        const { lat, lng } = coordinates;
+        pendingCoordinates = { lat, lng };
+
+        // Update modal content
+        document.getElementById('mapCoordinates').textContent = `${lat}, ${lng}`;
+        document.getElementById('mapLocation').textContent = location || 'Непознато';
+
+        // Update Google Maps link
+        const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        document.getElementById('openInGoogleMaps').href = googleMapsUrl;
+
+        // Show modal
+        const mapModalElement = document.getElementById('mapModal');
+        const mapModal = new bootstrap.Modal(mapModalElement);
+        mapModal.show();
+    }
+
+    // Add click handlers to coordinate cells
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.coordinates-cell').forEach(cell => {
+            const coords = cell.getAttribute('data-coords');
+
+            if (coords && coords !== '-' && coords !== '') {
+                cell.addEventListener('click', function() {
+                    // Get the location from the same row
+                    const row = this.closest('tr');
+                    const locationCell = row.querySelector('[data-column="location"]');
+                    const location = locationCell ? locationCell.textContent.trim() : '';
+
+                    showMapModal(coords, location);
+                });
+
+                // Add hover effect
+                cell.style.cursor = 'pointer';
+                cell.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e7f3ff';
+                });
+                cell.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+            }
+        });
+
+        // Initialize map when modal is fully shown
+        const mapModalElement = document.getElementById('mapModal');
+        if (mapModalElement) {
+            mapModalElement.addEventListener('shown.bs.modal', function() {
+                if (pendingCoordinates) {
+                    // Reset loading indicator
+                    const loadingDiv = document.getElementById('mapLoading');
+                    if (loadingDiv) {
+                        loadingDiv.style.display = 'block';
+                        loadingDiv.innerHTML = `
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Учитавање...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Учитавање мапе...</p>
+                        `;
+                    }
+
+                    // Initialize map
+                    initMap(pendingCoordinates.lat, pendingCoordinates.lng);
+
+                    // Give the map a moment to render, then adjust size
+                    setTimeout(() => {
+                        if (map) {
+                            map.invalidateSize();
+                        }
+                    }, 100);
+                }
+            });
+
+            // Clean up when modal is hidden
+            mapModalElement.addEventListener('hidden.bs.modal', function() {
+                if (map) {
+                    map.remove();
+                    map = null;
+                }
+                pendingCoordinates = null;
+            });
+        }
+    });
+})();
+</script>
+
+<style>
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table-responsive {
+    max-height: 600px;
+}
+
+.table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.5rem;
+}
+
+.sortable:hover {
+    background-color: #e9ecef !important;
+}
+
+.sort-icon {
+    font-size: 0.75rem;
+    color: #6c757d;
+    opacity: 0.5;
+    margin-left: 0.25rem;
+}
+
+.sortable:hover .sort-icon {
+    opacity: 0.8;
+}
+
+.sort-icon.active {
+    opacity: 1;
+    color: var(--museum-primary);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.coordinates-cell {
+    transition: background-color 0.2s ease;
+}
+
+.coordinates-cell:hover {
+    background-color: #e7f3ff !important;
+}
+
+.coordinates-cell .text-primary {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+#mapContainer {
+    border-radius: 0.5rem;
+    border: 2px solid #dee2e6;
+}
+</style>
+{% include '_image_upload_modal.html' %}
+{% endblock %}

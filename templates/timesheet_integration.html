@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Систем за радне листе{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                Систем за радне листе
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Управљање радним листама запослених музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <i class="bi bi-clock-history" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Options -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-window me-2"></i>
+                        Приступ систему радних листи
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Систем за радне листе ради као засебна апликација са комплетним функционалностима.
+                    </p>
+
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>Приступ:</strong><br>
+                        Већ сте пријављени као: <strong>{{ user_name }}</strong><br>
+                        <small class="text-muted">{{ user_email }}</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('timesheet_entry') }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-pencil-square me-2"></i>
+                            Унос радне листе
+                        </a>
+                        <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-primary">
+                            <i class="bi bi-calendar-check me-2"></i>
+                            Преглед радних листи
+                        </a>
+                        {% if user_role == 'admin' %}
+                        <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-gear me-2"></i>
+                            Администрација
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check me-2"></i>
+                        Функционалности система
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Унос радних листи по месецима
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Аутоматско израчунавање радних дана
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Обележавање викенда и празника
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Категорије рада (у музеју, ван музеја, одмор)
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Генерисање Word докумената
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Извештаји и аналитика
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Управљање запосленима (администратор)
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if timesheet_data %}
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Последњи месечни преглед
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if timesheet_data.month_summary %}
+                    <p class="text-muted mb-3">
+                        Период:
+                        <strong>{{ timesheet_data.month_summary.month }}/{{ timesheet_data.month_summary.year }}</strong>
+                        &middot; извештаја:
+                        <strong>{{ timesheet_data.month_summary.totals.reports_count }}</strong>
+                    </p>
+                    <div class="row">
+                        {% for key, label in timesheet_labels.items() %}
+                        <div class="col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-light text-dark me-2">{{ label }}</span>
+                                <span class="fw-semibold">{{ '%.2f'|format(timesheet_data.month_summary.totals[key]) }} h</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Нема података за приказ.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Недавни извештаји</h5>
+                        <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-sm btn-outline-primary">
+                            Администрација
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Запослени</th>
+                                    <th>Период</th>
+                                    <th class="text-end">Укупно</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in timesheet_data.recent_reports %}
+                                <tr>
+                                    <td>{{ report.employee_name }}</td>
+                                    <td>{{ report.month }}/{{ report.year }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(report.total_hours) }} h</td>
+                                </tr>
+                                {% endfor %}
+                                {% if not timesheet_data.recent_reports %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">Нема доступних извештаја.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Instructions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-book me-2"></i>
+                        Упутство за коришћење
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Преглед радних листи:</h6>
+                            <ol>
+                                <li>Кликните на "Преглед радних листи"</li>
+                                <li>Прегледајте све радне листе у систему</li>
+                                <li>Филтрирајте по месецу, години и запосленом</li>
+                                <li>Отворите детаље појединачних извештаја</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Администратори:</h6>
+                            <ol>
+                                <li>Приступ свим радним листама</li>
+                                <li>Преглед статистике и сумарних извештаја</li>
+                                <li>Филтрирање и претрага</li>
+                                <li>Извоз података (у развоју)</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Напомена:</strong> Систем радних листи је интегрисан у главну апликацију.
+                        Сви подаци су сачувани у PostgreSQL бази података.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Timesheet system integrated into main application - no separate port needed
+console.log('Timesheet system integrated into main application');
+</script>
+
+<style>
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+/* Dark Mode Styles */
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 110, 253, 0.2) !important;
+    border-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(255, 193, 7, 0.2) !important;
+    border-color: #ffc107 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6,
+[data-theme="dark"] p, [data-theme="dark"] span, [data-theme="dark"] label {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .card-body,
+[data-theme="dark"] .card-header {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+    color: #ffffff !important;
+}
+</style>
+{% endblock %}

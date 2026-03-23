@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Природњачки музеј{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-currency-exchange me-2"></i>
+                                {{ page_title }}
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Управљање финансијским захтевима
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#newRequestModal">
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Нови захтев
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-ul me-2"></i>
+                    Листа финансијских захтева
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Модул за финансијске захтеве је у припреми. Ускоро ће бити доступан.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Бр.</th>
+                                    <th>Датум</th>
+                                    <th>Опис</th>
+                                    <th>Износ</th>
+                                    <th>Статус</th>
+                                    <th>Акције</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 mt-2">Нема финансијских захтева</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal fade" id="newRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-lg me-2"></i>
+                    Нови финансијски захтев
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="requestForm">
+                    <div class="mb-3">
+                        <label class="form-label">Опис захтева *</label>
+                        <textarea class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Износ (РСД) *</label>
+                            <input type="number" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Категорија</label>
+                            <select class="form-select">
+                                <option>Путни трошкови</option>
+                                <option>Материјал</option>
+                                <option>Услуге</option>
+                                <option>Опрема</option>
+                                <option>Остало</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Напомена</label>
+                        <textarea class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-success">
+                    <i class="bi bi-check-lg me-1"></i>
+                    Поднеси захтев
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

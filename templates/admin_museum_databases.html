@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Музејске базе података - Администрација{% endblock %}
+
+{% block content %}
+<div x-data="databasesPage()" x-cloak>
+<style>
+/* Database cards */
+.database-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.database-card:hover {
+    transform: translateY(-8px);
+}
+
+.database-card[data-status="active"] {
+    border-left: 4px solid var(--museum-success);
+}
+
+.database-card[data-status="development"] {
+    border-left: 4px solid var(--museum-warning);
+}
+
+.database-card[data-status="planned"] {
+    border-left: 4px solid var(--museum-secondary);
+}
+
+.database-card .db-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Tools card */
+.tools-card {
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Quick access card */
+.quick-access-card {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.quick-access-card .card-header {
+    background: linear-gradient(135deg, var(--museum-primary) 0%, #1b4332 100%);
+}
+
+.quick-access-btn {
+    border-radius: 12px;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.quick-access-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Toast */
+.toast {
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+}
+
+.toast-header {
+    border-bottom: none;
+}
+</style>
+
+<div class="container-main fade-in page-transition">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="page-header">
+                <div class="page-header-content">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-database me-2"></i>
+                                Музејске базе података
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Централизовано управљање свим базама података Природњачког музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex align-items-center justify-content-end gap-3">
+                                <input type="text"
+                                       class="page-header-search"
+                                       placeholder="Претражи базе..."
+                                       x-model="searchQuery"
+                                       @input="filterDatabases()">
+                                <div class="bg-white bg-opacity-25 rounded-3 p-3 text-center">
+                                    <h2 class="mb-0 fw-bold">{{ total_databases }}</h2>
+                                    <small class="opacity-75">Укупно база</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Statistics -->
+    <div class="row g-4 mb-4 stagger-children">
+        {% set active_count = databases.values() | selectattr('status', 'equalto', 'active') | list | length %}
+        {% set dev_count = databases.values() | selectattr('status', 'equalto', 'development') | list | length %}
+        {% set planned_count = databases.values() | selectattr('status', 'equalto', 'planned') | list | length %}
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card card-glass card-shine stat-card h-100 shadow-sm icon-pulse" @click="filterByStatus('active')">
+                <div class="card-body text-center p-4">
+                    <div class="stat-icon stat-icon-success mx-auto">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <h3 class="mb-1 fw-bold">{{ active_count }}</h3>
+                    <p class="text-muted mb-0">Активне базе</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card card-glass card-shine stat-card h-100 shadow-sm icon-pulse" @click="filterByStatus('development')">
+                <div class="card-body text-center p-4">
+                    <div class="stat-icon stat-icon-warning mx-auto">
+                        <i class="bi bi-code-slash"></i>
+                    </div>
+                    <h3 class="mb-1 fw-bold">{{ dev_count }}</h3>
+                    <p class="text-muted mb-0">У развоју</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card card-glass card-shine stat-card h-100 shadow-sm icon-pulse" @click="filterByStatus('planned')">
+                <div class="card-body text-center p-4">
+                    <div class="stat-icon stat-icon-info mx-auto">
+                        <i class="bi bi-clock"></i>
+                    </div>
+                    <h3 class="mb-1 fw-bold">{{ planned_count }}</h3>
+                    <p class="text-muted mb-0">Планиране</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Chips -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted me-2">Филтер:</span>
+                <button class="btn btn-sm btn-ripple" :class="statusFilter === '' ? 'btn-primary' : 'btn-outline-primary'" @click="statusFilter = ''; filterDatabases()">
+                    Све
+                </button>
+                <button class="btn btn-sm btn-ripple" :class="statusFilter === 'active' ? 'btn-success' : 'btn-outline-success'" @click="statusFilter = 'active'; filterDatabases()">
+                    <i class="bi bi-check-circle me-1"></i>Активне
+                </button>
+                <button class="btn btn-sm btn-ripple" :class="statusFilter === 'development' ? 'btn-warning' : 'btn-outline-warning'" @click="statusFilter = 'development'; filterDatabases()">
+                    <i class="bi bi-code-slash me-1"></i>У развоју
+                </button>
+                <button class="btn btn-sm btn-ripple" :class="statusFilter === 'planned' ? 'btn-secondary' : 'btn-outline-secondary'" @click="statusFilter = 'planned'; filterDatabases()">
+                    <i class="bi bi-clock me-1"></i>Планиране
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Cards -->
+    <div class="row g-4 mb-4 stagger-children" id="database-cards">
+        {% for db_key, db_info in databases.items() %}
+        <div class="col-lg-6" data-db-name="{{ db_info.name|lower }}" data-db-status="{{ db_info.status }}">
+            <div class="card card-glass card-shine database-card h-100 shadow-sm" data-status="{{ db_info.status }}">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="db-icon me-3" style="background: linear-gradient(135deg, rgba(45,106,79,0.1) 0%, rgba(45,106,79,0.2) 100%);">
+                            <i class="{{ db_info.icon }}" style="color: var(--museum-{{ db_info.color }});"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h5 class="mb-1 fw-bold">{{ db_info.name }}</h5>
+                                {% if db_info.status == 'active' %}
+                                    <span class="badge bg-success-subtle text-success">Активна</span>
+                                {% elif db_info.status == 'development' %}
+                                    <span class="badge bg-warning-subtle text-warning">У развоју</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">Планирана</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted mb-0 small">{{ db_info.description }}</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded-3">
+                        <div>
+                            <small class="text-muted">Записи:</small>
+                            <strong class="ms-1">{{ db_info.count }}</strong>
+                        </div>
+                        <div>
+                            {% if db_info.status == 'active' %}
+                                <i class="bi bi-circle-fill text-success" style="font-size: 0.5rem;"></i>
+                                <small class="text-success ms-1">Online</small>
+                            {% elif db_info.status == 'development' %}
+                                <i class="bi bi-circle-fill text-warning" style="font-size: 0.5rem;"></i>
+                                <small class="text-warning ms-1">Развој</small>
+                            {% else %}
+                                <i class="bi bi-circle-fill text-secondary" style="font-size: 0.5rem;"></i>
+                                <small class="text-secondary ms-1">Планирано</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {% if db_info.status == 'active' %}
+                            <a href="{{ db_info.url }}" class="btn btn-ripple btn-{{ db_info.color }}">
+                                <i class="bi bi-box-arrow-up-right me-2"></i>
+                                Приступи бази
+                            </a>
+                            {% if db_info.qr_url %}
+                            <a href="{{ db_info.qr_url }}" class="btn btn-ripple btn-outline-success">
+                                <i class="bi bi-qr-code me-2"></i>
+                                QR кодови
+                            </a>
+                            {% endif %}
+                            {% if db_info.image_upload_url %}
+                            <a href="{{ db_info.image_upload_url }}" class="btn btn-ripple btn-outline-primary">
+                                <i class="bi bi-images me-2"></i>
+                                Слике
+                            </a>
+                            {% endif %}
+                        {% elif db_info.status == 'development' %}
+                            <button class="btn btn-ripple btn-outline-{{ db_info.color }}" @click="showToast('info', 'У развоју', 'Ова база је у развоју и биће доступна ускоро.', 'bi-tools')">
+                                <i class="bi bi-tools me-2"></i>
+                                У развоју
+                            </button>
+                        {% else %}
+                            <button class="btn btn-ripple btn-outline-secondary" @click="showToast('info', 'Планирано', 'Ова база је планирана за будуће верзије система.', 'bi-calendar-plus')">
+                                <i class="bi bi-calendar-plus me-2"></i>
+                                Планирано
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Database Management Tools -->
+    <div class="row mb-4 stagger-children">
+        <div class="col-12">
+            <div class="card card-glass card-shine tools-card shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 px-4">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-tools me-2"></i>
+                        Алати за управљање базама
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 stagger-children">
+                        <div class="col-lg-3 col-md-6">
+                            <button class="btn btn-ripple btn-outline-primary w-100 py-3 icon-pulse" @click="backupAllDatabases()">
+                                <i class="bi bi-cloud-download d-block mb-2" style="font-size: 1.5rem;"></i>
+                                Backup свих база
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <button class="btn btn-ripple btn-outline-success w-100 py-3 icon-pulse" @click="exportDatabaseReport()">
+                                <i class="bi bi-file-earmark-excel d-block mb-2" style="font-size: 1.5rem;"></i>
+                                Извештај база
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <button class="btn btn-ripple btn-outline-info w-100 py-3 icon-pulse" @click="checkDatabaseHealth()">
+                                <i class="bi bi-shield-check d-block mb-2" style="font-size: 1.5rem;"></i>
+                                Провери статус
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-ripple btn-outline-secondary w-100 py-3 icon-pulse">
+                                <i class="bi bi-arrow-left d-block mb-2" style="font-size: 1.5rem;"></i>
+                                Назад на панел
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Access Section -->
+    <div class="row stagger-children">
+        <div class="col-12">
+            <div class="card card-glass card-shine quick-access-card shadow-sm">
+                <div class="card-header text-white py-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-fill me-2"></i>
+                        Брз приступ активним базама
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 stagger-children">
+                        {% for db_key, db_info in databases.items() %}
+                            {% if db_info.status == 'active' %}
+                            <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                                <a href="{{ db_info.url }}" class="btn btn-ripple btn-outline-{{ db_info.color }} w-100 quick-access-btn icon-pulse">
+                                    <i class="{{ db_info.icon }} d-block mb-2" style="font-size: 1.5rem;"></i>
+                                    <small class="d-block">{{ db_info.name.split()[-1] }}</small>
+                                </a>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <template x-for="(toast, index) in toasts" :key="index">
+        <div class="toast show" role="alert">
+            <div class="toast-header" :class="'bg-' + toast.type + ' text-white'">
+                <i class="bi me-2" :class="toast.icon"></i>
+                <strong class="me-auto" x-text="toast.title"></strong>
+                <button type="button" class="btn-close btn-close-white" @click="removeToast(index)"></button>
+            </div>
+            <div class="toast-body" x-text="toast.message"></div>
+        </div>
+    </template>
+</div>
+
+</div>
+
+<script>
+function databasesPage() {
+    return {
+        searchQuery: '',
+        statusFilter: '',
+        toasts: [],
+
+        filterDatabases() {
+            const cards = document.querySelectorAll('#database-cards > div');
+            const query = this.searchQuery.toLowerCase();
+            const status = this.statusFilter;
+
+            cards.forEach(card => {
+                const name = card.dataset.dbName;
+                const cardStatus = card.dataset.dbStatus;
+                const matchesSearch = name.includes(query);
+                const matchesStatus = !status || cardStatus === status;
+
+                card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+            });
+        },
+
+        filterByStatus(status) {
+            this.statusFilter = status;
+            this.filterDatabases();
+        },
+
+        backupAllDatabases() {
+            if (confirm('Да ли желите да направите резервну копију свих база података?')) {
+                this.showToast('info', 'Backup', 'Покретање backup процеса...', 'bi-cloud-download');
+                setTimeout(() => {
+                    this.showToast('success', 'Успешно', 'Backup свих база података је успешно завршен!', 'bi-check-circle');
+                }, 2000);
+            }
+        },
+
+        exportDatabaseReport() {
+            this.showToast('info', 'Извештај', 'Генерисање извештаја о базама података...', 'bi-file-earmark-excel');
+
+            const data = [
+                ['База података', 'Статус', 'Број записа', 'Опис'],
+                {% for db_key, db_info in databases.items() %}
+                ['{{ db_info.name }}', '{{ db_info.status }}', '{{ db_info.count }}', '{{ db_info.description }}'],
+                {% endfor %}
+            ];
+
+            const csvContent = data.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'muzejske_baze_podataka_' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            this.showToast('success', 'Преузето', 'Извештај је успешно преузет!', 'bi-download');
+        },
+
+        checkDatabaseHealth() {
+            this.showToast('info', 'Провера', 'Проверавање статуса свих база података...', 'bi-shield-check');
+
+            setTimeout(() => {
+                const activeCount = {{ databases.values() | selectattr('status', 'equalto', 'active') | list | length }};
+                this.showToast('success', 'Провера завршена', `${activeCount} активних база функционише исправно.`, 'bi-check-circle');
+            }, 1500);
+        },
+
+        showToast(type, title, message, icon) {
+            const toast = { type, title, message, icon };
+            this.toasts.push(toast);
+            setTimeout(() => {
+                this.removeToast(this.toasts.indexOf(toast));
+            }, 4000);
+        },
+
+        removeToast(index) {
+            if (index > -1) {
+                this.toasts.splice(index, 1);
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>{{ specimen.get(title_field, 'Примерак') }} - {{ collection_name }}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --museum-primary: #2c5f7c;
+            --museum-secondary: #8b4513;
+            --museum-accent: #d4af37;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .mobile-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--museum-primary) 0%, #1a3a4f 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .header .museum-name {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .qr-badge {
+            display: inline-block;
+            background: var(--museum-accent);
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .specimen-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        .specimen-content {
+            padding: 20px;
+        }
+
+        .specimen-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--museum-primary);
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+
+        .catalog-badge {
+            display: inline-block;
+            background: var(--museum-primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        /* Card Mode */
+        .field-card {
+            background: #f8f9fa;
+            border-left: 4px solid var(--museum-primary);
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .field-card:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .field-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .field-value {
+            font-size: 1.1rem;
+            color: #212529;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        /* Table Mode */
+        .field-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        .field-table tr {
+            background: #f8f9fa;
+        }
+
+        .field-table td {
+            padding: 12px 15px;
+            border: none;
+        }
+
+        .field-table td:first-child {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.9rem;
+            width: 40%;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .field-table td:last-child {
+            color: #212529;
+            font-size: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Full Mode */
+        .full-detail {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .section-divider {
+            border: 0;
+            height: 2px;
+            background: linear-gradient(to right, var(--museum-primary), transparent);
+            margin: 30px 0;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 3px solid var(--museum-primary);
+            margin-top: 30px;
+        }
+
+        .footer-logo {
+            font-size: 2rem;
+            color: var(--museum-primary);
+            margin-bottom: 10px;
+        }
+
+        .footer-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .action-buttons {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            position: sticky;
+            bottom: 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+            padding: 12px;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 576px) {
+            .specimen-title {
+                font-size: 1.4rem;
+            }
+
+            .field-value {
+                font-size: 1rem;
+            }
+
+            .field-table td:first-child {
+                font-size: 0.8rem;
+            }
+
+            .specimen-image {
+                max-height: 300px;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--museum-primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Success animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Header -->
+        <div class="header fade-in">
+            <i class="bi bi-bank2 mb-2" style="font-size: 2.5rem;"></i>
+            <h1>{{ collection_name }}</h1>
+            <div class="museum-name">Природњачки музеј у Београду</div>
+            <div class="qr-badge">
+                <i class="bi bi-qr-code-scan"></i> QR Скениран примерак
+            </div>
+        </div>
+
+        <!-- Specimen Image -->
+        {% if show_image %}
+        <div class="fade-in" style="animation-delay: 0.2s;">
+            <img src="{{ image_url }}" alt="{{ specimen.get(title_field, 'Примерак') }}" class="specimen-image"
+                 onerror="this.src='/static/images/placeholder_specimen.png'">
+        </div>
+        {% endif %}
+
+        <!-- Specimen Content -->
+        <div class="specimen-content fade-in" style="animation-delay: 0.4s;">
+            <!-- Title -->
+            <div class="specimen-title">
+                {{ specimen.get(title_field, 'Примерак без назива') }}
+            </div>
+
+            <!-- Catalog Number -->
+            {% if catalog_number %}
+            <div class="catalog-badge">
+                <i class="bi bi-tag-fill me-2"></i>{{ catalog_number }}
+            </div>
+            {% endif %}
+
+            <!-- Display Mode: Card -->
+            {% if display_mode == 'card' %}
+                {% for field_id, field_value in displayed_fields.items() %}
+                    {% if field_value and field_value != '' and field_value != 'None' %}
+                    <div class="field-card">
+                        <div class="field-label">{{ field_labels.get(field_id, field_id) }}</div>
+                        <div class="field-value">{{ field_value }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
+            <!-- Display Mode: Table -->
+            {% elif display_mode == 'table' %}
+                <table class="field-table">
+                    {% for field_id, field_value in displayed_fields.items() %}
+                        {% if field_value and field_value != '' and field_value != 'None' %}
+                        <tr>
+                            <td>{{ field_labels.get(field_id, field_id) }}</td>
+                            <td>{{ field_value }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </table>
+
+            <!-- Display Mode: Full -->
+            {% elif display_mode == 'full' %}
+                {% for field_id, field_value in displayed_fields.items() %}
+                    {% if field_value and field_value != '' and field_value != 'None' %}
+                    <div class="full-detail">
+                        <div class="field-label">{{ field_labels.get(field_id, field_id) }}</div>
+                        <div class="field-value">{{ field_value }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+
+            <!-- Empty state -->
+            {% if not displayed_fields or displayed_fields|length == 0 %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Нема података за приказ</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Section Divider -->
+        <hr class="section-divider">
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-logo">
+                <i class="bi bi-bank2"></i>
+            </div>
+            <div class="footer-text">
+                <strong>Природњачки музеј у Београду</strong><br>
+                Његошева 51, 11000 Београд<br>
+                <a href="https://nhmbeo.rs" style="color: var(--museum-primary);">nhmbeo.rs</a>
+            </div>
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-qr-code"></i> Скенирано: {{ scan_time }}
+                </small>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="{{ collection_url }}" class="btn btn-outline-primary">
+                <i class="bi bi-grid-3x3-gap"></i> Све примерке
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="bi bi-printer"></i> Штампај
+            </button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Print styles -->
+    <style media="print">
+        .action-buttons {
+            display: none !important;
+        }
+
+        .header {
+            background: white !important;
+            color: black !important;
+        }
+
+        body {
+            background: white !important;
+        }
+
+        .mobile-container {
+            box-shadow: none !important;
+        }
+    </style>
+</body>
+</html>

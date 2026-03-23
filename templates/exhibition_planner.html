@@ -1,0 +1,2127 @@
+{% extends "base.html" %}
+
+{% block title %}Планирање изложби - Природњачки музеј{% endblock %}
+
+{% block content %}
+<div x-data="exhibitionPlanner()" x-cloak class="container-main fade-in">
+
+    <!-- Header -->
+    <div class="page-header mb-4" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        <div class="page-header-content">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="h2 mb-2">
+                        <i class="bi bi-easel me-2"></i>
+                        Планирање изложби
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Алат за идејно и техничко планирање музејских изложби према ICOM стандардима
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light btn-lg" @click="showNewExhibitionModal = true">
+                        <i class="bi bi-plus-lg me-2"></i>
+                        Нова изложба
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 h-100" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 16px;">
+                <div class="card-body text-white text-center">
+                    <i class="bi bi-clipboard-check" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-0" x-text="exhibitions.filter(e => e.status === 'planning').length">0</h3>
+                    <small class="opacity-75">У планирању</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 16px;">
+                <div class="card-body text-white text-center">
+                    <i class="bi bi-tools" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-0" x-text="exhibitions.filter(e => e.status === 'preparation').length">0</h3>
+                    <small class="opacity-75">У припреми</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 16px;">
+                <div class="card-body text-white text-center">
+                    <i class="bi bi-eye" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-0" x-text="exhibitions.filter(e => e.status === 'active').length">0</h3>
+                    <small class="opacity-75">Активне</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 h-100" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); border-radius: 16px;">
+                <div class="card-body text-white text-center">
+                    <i class="bi bi-archive" style="font-size: 2rem;"></i>
+                    <h3 class="mt-2 mb-0" x-text="exhibitions.filter(e => e.status === 'completed').length">0</h3>
+                    <small class="opacity-75">Завршене</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <div class="card shadow-sm" style="border-radius: 20px;">
+        <div class="card-header bg-white" style="border-radius: 20px 20px 0 0;">
+            <ul class="nav nav-pills" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link" :class="{ 'active': activeTab === 'list' }" @click="activeTab = 'list'">
+                        <i class="bi bi-list-ul me-2"></i>Листа изложби
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" :class="{ 'active': activeTab === 'guide' }" @click="activeTab = 'guide'">
+                        <i class="bi bi-book me-2"></i>Водич за планирање
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" :class="{ 'active': activeTab === 'checklist' }" @click="activeTab = 'checklist'">
+                        <i class="bi bi-check2-square me-2"></i>Чеклиста
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" :class="{ 'active': activeTab === 'templates' }" @click="activeTab = 'templates'">
+                        <i class="bi bi-file-earmark-text me-2"></i>Шаблони
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Exhibition List Tab -->
+            <div x-show="activeTab === 'list'">
+                <!-- Loading State -->
+                <div x-show="loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Учитавање...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Учитавање изложби...</p>
+                </div>
+
+                <template x-if="!loading && exhibitions.length === 0">
+                    <div class="empty-state-modern">
+                        <div class="empty-state-icon">
+                            <i class="bi bi-easel"></i>
+                        </div>
+                        <h5 class="empty-state-title">Нема планираних изложби</h5>
+                        <p class="empty-state-text">Кликните на "Нова изложба" да започнете планирање.</p>
+                        <button class="btn btn-primary" @click="showNewExhibitionModal = true">
+                            <i class="bi bi-plus-lg me-2"></i>Креирај прву изложбу
+                        </button>
+                    </div>
+                </template>
+
+                <template x-if="!loading && exhibitions.length > 0">
+                    <div class="row g-4">
+                        <template x-for="exhibition in exhibitions" :key="exhibition.id">
+                            <div class="col-md-6">
+                                <div class="card h-100 exhibition-card" style="border-radius: 16px;" :class="{'border-primary': exhibition.is_owner}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-3">
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <span class="badge" :class="getStatusBadgeClass(exhibition.status)" x-text="getStatusLabel(exhibition.status)"></span>
+                                                <span class="badge bg-primary-subtle text-primary" x-show="exhibition.is_owner">
+                                                    <i class="bi bi-star-fill me-1"></i>Моја
+                                                </span>
+                                            </div>
+                                            <!-- Only show actions if owner or admin/direktor -->
+                                            <div class="dropdown" x-show="exhibition.is_owner || canSeeAll">
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" @click.stop>
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="selectExhibition(exhibition)"><i class="bi bi-pencil me-2"></i>Измени</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="updateStatus(exhibition, 'planning')"><i class="bi bi-clipboard text-primary me-2"></i>У планирању</a></li>
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="updateStatus(exhibition, 'preparation')"><i class="bi bi-tools text-warning me-2"></i>У припреми</a></li>
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="updateStatus(exhibition, 'active')"><i class="bi bi-eye text-success me-2"></i>Активна</a></li>
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="updateStatus(exhibition, 'completed')"><i class="bi bi-check-circle text-secondary me-2"></i>Завршена</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item text-danger" href="#" @click.prevent="confirmDelete(exhibition)"><i class="bi bi-trash me-2"></i>Обриши</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <h5 class="mb-2" x-text="exhibition.name" style="cursor: pointer;" @click="exhibition.is_owner || canSeeAll ? selectExhibition(exhibition) : null"></h5>
+                                        <p class="text-muted small mb-3" x-text="exhibition.description || 'Нема описа'"></p>
+                                        <div class="mb-2" x-show="exhibition.curator">
+                                            <small class="text-muted">
+                                                <i class="bi bi-person me-1"></i>
+                                                <span x-text="exhibition.curator"></span>
+                                            </small>
+                                        </div>
+                                        <!-- Show creator info for admin/direktor -->
+                                        <div class="mb-2" x-show="canSeeAll && exhibition.created_by_name && !exhibition.is_owner">
+                                            <small class="text-info">
+                                                <i class="bi bi-person-badge me-1"></i>
+                                                Креирао: <span x-text="exhibition.created_by_name"></span>
+                                            </small>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar me-1"></i>
+                                                <span x-text="exhibition.startDate || 'Датум није одређен'"></span>
+                                            </small>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <small class="text-muted" x-text="exhibition.progress + '%'"></small>
+                                                <div class="progress" style="width: 80px; height: 8px;">
+                                                    <div class="progress-bar" :class="{'bg-success': exhibition.progress >= 80, 'bg-warning': exhibition.progress >= 50 && exhibition.progress < 80}" :style="'width: ' + exhibition.progress + '%'"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 d-flex gap-2">
+                                            <span class="badge bg-dark" x-show="exhibition.type === 'permanent'"><i class="bi bi-building me-1"></i>Стална</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Planning Guide Tab -->
+            <div x-show="activeTab === 'guide'">
+                <div class="row g-4">
+                    <!-- 1. Conceptual Planning -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="guide-step-number">1</div>
+                                    <h4 class="mb-0 ms-3">Идејно планирање</h4>
+                                </div>
+
+                                <div class="row g-4 mt-2">
+                                    <div class="col-md-6">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-primary"><i class="bi bi-chat-quote me-2"></i>Наратив и порука</h6>
+                                                <p class="small text-muted mb-2">Дефинишите кључну поруку и причу коју изложба треба да пренесе посетиоцима.</p>
+                                                <ul class="small mb-0">
+                                                    <li>Главна тема изложбе</li>
+                                                    <li>Подтеме и секције</li>
+                                                    <li>Едукативни циљеви</li>
+                                                    <li>Циљна публика</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-primary"><i class="bi bi-collection me-2"></i>Избор експоната</h6>
+                                                <p class="small text-muted mb-2">Одаберите предмете који најбоље илуструју наратив.</p>
+                                                <ul class="small mb-0">
+                                                    <li>Кључни експонати ("highlight" предмети)</li>
+                                                    <li>Пратећи материјал</li>
+                                                    <li>Илустрације и модели</li>
+                                                    <li>Интерактивни елементи</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Design & Scenography -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="guide-step-number" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">2</div>
+                                    <h4 class="mb-0 ms-3">Дизајн и сценографија</h4>
+                                </div>
+
+                                <div class="row g-4 mt-2">
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-primary"><i class="bi bi-arrows-move me-2"></i>Просторни распоред</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Линеарна vs. мрежна структура</li>
+                                                    <li>Путања посетилаца</li>
+                                                    <li>Фокусне тачке</li>
+                                                    <li>Зоне одмора</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-primary"><i class="bi bi-palette me-2"></i>Визуелни идентитет</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Колор шема</li>
+                                                    <li>Типографија</li>
+                                                    <li>Графички елементи</li>
+                                                    <li>Сигнализација</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-primary"><i class="bi bi-lightbulb me-2"></i>Осветљење</h6>
+                                                <ul class="small mb-0">
+                                                    <li>LED расвета (UV/IR заштита)</li>
+                                                    <li>Амбијентално vs. фокусирано</li>
+                                                    <li>50-100 лукса за органске материјале</li>
+                                                    <li>Шински системи за флексибилност</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Technical Realization -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="guide-step-number" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">3</div>
+                                    <h4 class="mb-0 ms-3">Техничка реализација</h4>
+                                </div>
+
+                                <div class="row g-4 mt-2">
+                                    <div class="col-md-3">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-success"><i class="bi bi-box me-2"></i>Витрине</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Каљено стакло</li>
+                                                    <li>Дихтунзи за микроклиму</li>
+                                                    <li>Силика гел</li>
+                                                    <li>Сигурносне браве</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-success"><i class="bi bi-shield-check me-2"></i>Безбедност</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Аларми и камере</li>
+                                                    <li>Држачи и постоља</li>
+                                                    <li>Конзерваторски преглед</li>
+                                                    <li>Превентивне мере</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-success"><i class="bi bi-truck me-2"></i>Транспорт</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Климатизована возила</li>
+                                                    <li>Заштитна амбалажа</li>
+                                                    <li>Процена ризика</li>
+                                                    <li>Куририрање</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-success"><i class="bi bi-wrench me-2"></i>Монтажа</h6>
+                                                <ul class="small mb-0">
+                                                    <li>Модуларни зидови</li>
+                                                    <li>Постаменти и држачи</li>
+                                                    <li>Тестирање система</li>
+                                                    <li>Завршна подешавања</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Digital Technologies -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="guide-step-number" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">4</div>
+                                    <h4 class="mb-0 ms-3">Дигиталне технологије</h4>
+                                </div>
+
+                                <div class="row g-4 mt-2">
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-info"><i class="bi bi-display me-2"></i>Интерактивни екрани</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Touch-screen монитори, дигиталне мапе, мултимедијалне презентације,
+                                                    видео-пројекције и анимације природних процеса.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-info"><i class="bi bi-headset-vr me-2"></i>AR/VR искуства</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Аугментована и виртуелна реалност за имерзивна искуства -
+                                                    путовање у прошлост, реконструкције изумрлих врста.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100" style="border-radius: 12px;">
+                                            <div class="card-body">
+                                                <h6 class="text-info"><i class="bi bi-phone me-2"></i>Мобилне апликације</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Аудио-туре, додатни AR садржаји, игре за децу,
+                                                    виртуелне туре за онлајн посетиоце.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Team -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="guide-step-number" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">5</div>
+                                    <h4 class="mb-0 ms-3">Тим и сарадња</h4>
+                                </div>
+
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Улога</th>
+                                                <th>Одговорности</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong><i class="bi bi-person-badge text-primary me-2"></i>Кустос</strong></td>
+                                                <td>Аутор концепта, научни садржај, одабир експоната</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong><i class="bi bi-shield-check text-success me-2"></i>Конзерватор</strong></td>
+                                                <td>Процена стања предмета, услови изlagања, превентивна заштита</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong><i class="bi bi-palette text-info me-2"></i>Дизајнер/Сценограф</strong></td>
+                                                <td>Визуелни идентитет, просторни распоред, графички дизајн</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong><i class="bi bi-tools text-warning me-2"></i>Техничар/Препаратор</strong></td>
+                                                <td>Израда носача, монтажа, препарирање примерака</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong><i class="bi bi-mortarboard text-danger me-2"></i>Музејски педагог</strong></td>
+                                                <td>Едукативни програми, вођења, радионице, материјали за посетиоце</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checklist Tab -->
+            <div x-show="activeTab === 'checklist'">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-header bg-primary text-white" style="border-radius: 16px 16px 0 0;">
+                                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Идејна фаза</h6>
+                            </div>
+                            <div class="card-body">
+                                <template x-for="(item, index) in checklist.conceptual" :key="'c'+index">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" :id="'concept_'+index" x-model="item.checked">
+                                        <label class="form-check-label" :for="'concept_'+index" x-text="item.text"></label>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-header bg-success text-white" style="border-radius: 16px 16px 0 0;">
+                                <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Техничка фаза</h6>
+                            </div>
+                            <div class="card-body">
+                                <template x-for="(item, index) in checklist.technical" :key="'t'+index">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" :id="'tech_'+index" x-model="item.checked">
+                                        <label class="form-check-label" :for="'tech_'+index" x-text="item.text"></label>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-header bg-warning text-dark" style="border-radius: 16px 16px 0 0;">
+                                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Координација тима</h6>
+                            </div>
+                            <div class="card-body">
+                                <template x-for="(item, index) in checklist.team" :key="'tm'+index">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" :id="'team_'+index" x-model="item.checked">
+                                        <label class="form-check-label" :for="'team_'+index" x-text="item.text"></label>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-header bg-info text-white" style="border-radius: 16px 16px 0 0;">
+                                <h6 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Пре отварања</h6>
+                            </div>
+                            <div class="card-body">
+                                <template x-for="(item, index) in checklist.opening" :key="'o'+index">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" :id="'open_'+index" x-model="item.checked">
+                                        <label class="form-check-label" :for="'open_'+index" x-text="item.text"></label>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Templates Tab -->
+            <div x-show="activeTab === 'templates'" x-data="{ expandedTemplate: null }">
+                <!-- Sinopsis Info Banner with Wizard Button -->
+                <div class="alert border-0 mb-4" style="border-radius: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div class="d-flex align-items-center text-white">
+                            <i class="bi bi-magic me-3" style="font-size: 2rem;"></i>
+                            <div>
+                                <strong style="font-size: 1.1rem;">Интерактивна израда синопсиса</strong>
+                                <p class="mb-0 small opacity-75">Водич кроз 6 корака за комплетан синопсис изложбе према упутству Природњачког музеја</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-light btn-lg shadow-sm" @click="showWizard = true" style="border-radius: 12px;">
+                            <i class="bi bi-play-circle me-2"></i>Покрени израду
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- 1. Interpretive Plan -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Интерпретативни план</h6>
+                                        <p class="small text-muted mb-0">Наратив, теме и едукативни циљеви</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" @click="expandedTemplate = expandedTemplate === 'interpret' ? null : 'interpret'">
+                                        <i class="bi" :class="expandedTemplate === 'interpret' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'interpret'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Према упутству за синопсис:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li><strong>Зашто?</strong> - Сажето и концизно образложење идеје</li>
+                                        <li><strong>Карактер</strong> - Ботаничка/зоолошка/минералошка/палеонтолошка/интердисциплинарна</li>
+                                        <li><strong>Циљ</strong> - Прецизни циљеви који се постижу</li>
+                                        <li><strong>Значај</strong> - Музеолошки, културни, едукативни, научни</li>
+                                        <li><strong>Коме је намењена?</strong> - Циљна публика</li>
+                                        <li><strong>Структура изложбе</strong> - Основне целине са циљевима</li>
+                                    </ul>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-primary-subtle text-primary">Обавезно</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Specimen List -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-clipboard-data"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Листа експоната</h6>
+                                        <p class="small text-muted mb-0">Евиденција експоната и стања</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-success" @click="expandedTemplate = expandedTemplate === 'specimens' ? null : 'specimens'">
+                                        <i class="bi" :class="expandedTemplate === 'specimens' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'specimens'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Средства реализације:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li><strong>Експонати</strong> - Биолошки, геолошки, артефакти</li>
+                                        <li><strong>Фотографије</strong> - Оригиналне, преузете, сврха</li>
+                                        <li><strong>Цртежи, карте</strong> - Са наменом</li>
+                                        <li><strong>Текстови</strong> - Наслови целина, легенде, етикете</li>
+                                        <li><strong>Мултимедија</strong> - PowerPoint, научно-популарни филмови</li>
+                                    </ul>
+                                    <p class="small text-muted mb-2"><strong>Припрема материјала:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Сакупљање на терену</li>
+                                        <li>Позајмица из других збирки</li>
+                                        <li>Поправка и израда мулажа</li>
+                                    </ul>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-success-subtle text-success">Обавезно</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Budget Plan -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-calculator"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Буџетски план</h6>
+                                        <p class="small text-muted mb-0">Трошкови по категоријама</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning" @click="expandedTemplate = expandedTemplate === 'budget' ? null : 'budget'">
+                                        <i class="bi" :class="expandedTemplate === 'budget' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'budget'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Финансијска средства:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Сигурни или потенцијални извори финансирања</li>
+                                        <li>Прелиминарна цена реализације</li>
+                                    </ul>
+                                    <p class="small text-muted mb-2"><strong>Спецификација трошкова:</strong></p>
+                                    <table class="table table-sm small mb-3">
+                                        <thead class="table-light">
+                                            <tr><th>Категорија</th><th>Опис</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td>1</td><td>Набавка материјала (дневнице + путни трошкови)</td></tr>
+                                            <tr><td>2</td><td>Осигурање за позајмљене предмете</td></tr>
+                                            <tr><td>3</td><td>Израда мулажа (материјал + рад)</td></tr>
+                                            <tr><td>4</td><td>Набавка недостајућих стакала</td></tr>
+                                            <tr><td>5</td><td>Штампа (каталог, постер, позивнице)</td></tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-warning-subtle text-warning">Обавезно</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Timeline -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-calendar3"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Временски план</h6>
+                                        <p class="small text-muted mb-0">Гантограм активности</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="expandedTemplate = expandedTemplate === 'timeline' ? null : 'timeline'">
+                                        <i class="bi" :class="expandedTemplate === 'timeline' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'timeline'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Прелиминарна динамика:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Израда конкретне конципцијске листе експоната</li>
+                                        <li>Набавка/израда адекватног мобилијара</li>
+                                        <li>Набавка и припрема материјала за излагање</li>
+                                        <li>Обезбеђивање осталих средстава (фото, карте)</li>
+                                        <li>Уговарање сарадње са стручњацима</li>
+                                        <li>Израда прелиминарног пројекта</li>
+                                        <li>Прелом и припрема каталога за штампу</li>
+                                    </ul>
+                                    <p class="small text-muted mb-0"><em>Навести хронолошки, са проценом времена трајања од израде концепције до отварања.</em></p>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <span class="badge bg-secondary-subtle text-secondary">Препоручено</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Conservation Report -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Конзерваторски извештај</h6>
+                                        <p class="small text-muted mb-0">Процена стања експоната</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" @click="expandedTemplate = expandedTemplate === 'conservation' ? null : 'conservation'">
+                                        <i class="bi" :class="expandedTemplate === 'conservation' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'conservation'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Услови реализације:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li><strong>Опрема</strong> - Стандардна/нестандардна</li>
+                                        <li>Витрине, панои, постаменти</li>
+                                        <li>Електронска мултимедијална средства</li>
+                                        <li>Одговарајућа расвета</li>
+                                    </ul>
+                                    <p class="small text-muted mb-2"><strong>Припрема експоната:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Сарадња са конзерваторима и препараторима</li>
+                                        <li>Поправка постојећих примерака</li>
+                                        <li>Израда нових мулажа</li>
+                                        <li>Позајмица из других институција</li>
+                                    </ul>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-danger-subtle text-danger">Обавезно</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Team Plan -->
+                    <div class="col-md-6">
+                        <div class="card h-100" style="border-radius: 16px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="template-icon me-3" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); width: 50px; height: 50px; font-size: 1.25rem;">
+                                        <i class="bi bi-people"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">План тима</h6>
+                                        <p class="small text-muted mb-0">Задужења и одговорности</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-info" @click="expandedTemplate = expandedTemplate === 'team' ? null : 'team'">
+                                        <i class="bi" :class="expandedTemplate === 'team' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                    </button>
+                                </div>
+                                <div x-show="expandedTemplate === 'team'" x-collapse class="border-top pt-3 mt-2">
+                                    <p class="small text-muted mb-2"><strong>Основни подаци:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li><strong>Аутор(и)</strong> - Главни аутор концепције</li>
+                                        <li><strong>Сарадници</strong> - Сви учесници у реализацији</li>
+                                        <li><strong>Реализација</strong> - Природњачки музеј и/или партнери</li>
+                                    </ul>
+                                    <p class="small text-muted mb-2"><strong>Уговарање сарадње:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Стручњаци из Музеја (навести профил)</li>
+                                        <li>Спољни стручњаци (ког профила и зашто)</li>
+                                        <li>Професионални дизајнери</li>
+                                        <li>Конзерватори и препаратори</li>
+                                    </ul>
+                                    <p class="small text-muted mb-2"><strong>Пратеће манифестације:</strong></p>
+                                    <ul class="small mb-3">
+                                        <li>Радионице, предавања, семинари, презентације</li>
+                                    </ul>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-info-subtle text-info">Обавезно</span>
+                                        <span class="badge bg-info-subtle text-info">СИНОПСИС</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Catalog Section -->
+                <div class="card mt-4 border-0 bg-light" style="border-radius: 16px;">
+                    <div class="card-body">
+                        <h6 class="mb-3"><i class="bi bi-book text-primary me-2"></i>Каталог и публикације</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="small text-muted mb-2"><strong>Каталог изложбе:</strong></p>
+                                <ul class="small mb-0">
+                                    <li>Концепција каталога</li>
+                                    <li>Структура и наслови поглавља</li>
+                                    <li>Карактер и планирани садржај текстова</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="small text-muted mb-2"><strong>Штампани материјал:</strong></p>
+                                <ul class="small mb-0">
+                                    <li>Постер изложбе</li>
+                                    <li>Позивница за отварање</li>
+                                    <li>Информативни текстови за медије</li>
+                                    <li>Специјалне тематске публикације</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Examples Section -->
+    <div class="card mt-4" style="border-radius: 20px;">
+        <div class="card-header bg-dark text-white" style="border-radius: 20px 20px 0 0;">
+            <h5 class="mb-0"><i class="bi bi-star me-2"></i>Примери из праксе</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Музеј</th>
+                            <th>Изложба</th>
+                            <th>Кључне одлике</th>
+                            <th>Година</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Природњачки музеј, Београд</strong></td>
+                            <td>Природа и језик</td>
+                            <td><span class="badge bg-primary me-1">Интердисциплинарна</span><span class="badge bg-success">8800+ посетилаца</span></td>
+                            <td>2023</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Natural History Museum, London</strong></td>
+                            <td>Visions of Nature</td>
+                            <td><span class="badge bg-info me-1">MR/HoloLens</span><span class="badge bg-warning text-dark">Имерзивно</span></td>
+                            <td>2024</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AMNH, New York</strong></td>
+                            <td>T. rex: Ultimate Predator</td>
+                            <td><span class="badge bg-danger me-1">VR</span><span class="badge bg-secondary">Аниматроника</span></td>
+                            <td>2019</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Smithsonian NMNH</strong></td>
+                            <td>Deep Time</td>
+                            <td><span class="badge bg-success me-1">$110M буџет</span><span class="badge bg-primary">700 фосила</span></td>
+                            <td>2019</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Exhibition Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showNewExhibitionModal }" tabindex="-1" x-show="showNewExhibitionModal" @click.self="showNewExhibitionModal = false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 20px;">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Нова изложба</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="showNewExhibitionModal = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form @submit.prevent="createExhibition()">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Назив изложбе *</label>
+                                <input type="text" class="form-control" x-model="newExhibition.name" required placeholder="нпр. Свет минерала Србије">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип изложбе</label>
+                                <select class="form-select" x-model="newExhibition.type">
+                                    <option value="temporary">Привремена</option>
+                                    <option value="permanent">Стална</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Кратак опис</label>
+                                <textarea class="form-control" rows="3" x-model="newExhibition.description" placeholder="Опишите главну тему и циљеве изложбе..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Планирани почетак</label>
+                                <input type="date" class="form-control" x-model="newExhibition.startDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Планирани завршетак</label>
+                                <input type="date" class="form-control" x-model="newExhibition.endDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Одговорни кустос</label>
+                                <input type="text" class="form-control" x-model="newExhibition.curator" placeholder="Име и презиме">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Процењени буџет (РСД)</label>
+                                <input type="number" class="form-control" x-model="newExhibition.budget" placeholder="нпр. 500000">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showNewExhibitionModal = false">Откажи</button>
+                    <button type="button" class="btn btn-warning" @click="createExhibition()" :disabled="saving">
+                        <span x-show="!saving"><i class="bi bi-check-lg me-2"></i>Креирај изложбу</span>
+                        <span x-show="saving"><span class="spinner-border spinner-border-sm me-2"></span>Чување...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" x-show="showNewExhibitionModal" @click="showNewExhibitionModal = false"></div>
+
+    <!-- Edit Exhibition Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showEditModal }" tabindex="-1" x-show="showEditModal" @click.self="showEditModal = false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 20px;">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Измени изложбу</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="showEditModal = false"></button>
+                </div>
+                <div class="modal-body p-4" x-show="selectedExhibition">
+                    <form @submit.prevent="updateExhibition(selectedExhibition, selectedExhibition); showEditModal = false;">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Назив изложбе *</label>
+                                <input type="text" class="form-control" x-model="selectedExhibition.name" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип изложбе</label>
+                                <select class="form-select" x-model="selectedExhibition.type">
+                                    <option value="temporary">Привремена</option>
+                                    <option value="permanent">Стална</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Кратак опис</label>
+                                <textarea class="form-control" rows="3" x-model="selectedExhibition.description"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Планирани почетак</label>
+                                <input type="date" class="form-control" x-model="selectedExhibition.startDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Планирани завршетак</label>
+                                <input type="date" class="form-control" x-model="selectedExhibition.endDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Одговорни кустос</label>
+                                <input type="text" class="form-control" x-model="selectedExhibition.curator">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Процењени буџет (РСД)</label>
+                                <input type="number" class="form-control" x-model="selectedExhibition.budget">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Статус</label>
+                                <select class="form-select" x-model="selectedExhibition.status">
+                                    <option value="planning">У планирању</option>
+                                    <option value="preparation">У припреми</option>
+                                    <option value="active">Активна</option>
+                                    <option value="completed">Завршена</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Напредак (%)</label>
+                                <input type="range" class="form-range" min="0" max="100" step="5" x-model="selectedExhibition.progress">
+                                <small class="text-muted" x-text="selectedExhibition.progress + '%'"></small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showEditModal = false">Откажи</button>
+                    <button type="button" class="btn btn-primary" @click="updateExhibition(selectedExhibition, {name: selectedExhibition.name, type: selectedExhibition.type, description: selectedExhibition.description, startDate: selectedExhibition.startDate, endDate: selectedExhibition.endDate, curator: selectedExhibition.curator, budget: selectedExhibition.budget, status: selectedExhibition.status, progress: selectedExhibition.progress}); showEditModal = false;">
+                        <i class="bi bi-check-lg me-2"></i>Сачувај измене
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" x-show="showEditModal" @click="showEditModal = false"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showDeleteConfirm }" tabindex="-1" x-show="showDeleteConfirm" @click.self="showDeleteConfirm = false">
+        <div class="modal-dialog">
+            <div class="modal-content" style="border-radius: 20px;">
+                <div class="modal-header text-white bg-danger" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Потврда брисања</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="showDeleteConfirm = false"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <i class="bi bi-trash text-danger" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Да ли сте сигурни?</h5>
+                    <p class="text-muted" x-show="selectedExhibition">
+                        Изложба "<span x-text="selectedExhibition?.name"></span>" ће бити трајно обрисана.
+                    </p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" @click="showDeleteConfirm = false">Откажи</button>
+                    <button type="button" class="btn btn-danger" @click="deleteExhibition(selectedExhibition)">
+                        <i class="bi bi-trash me-2"></i>Обриши
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" x-show="showDeleteConfirm" @click="showDeleteConfirm = false"></div>
+
+    <!-- Interactive Wizard Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showWizard }" tabindex="-1" x-show="showWizard" @keydown.escape="showWizard = false" style="overflow-y: auto;">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content" style="border-radius: 20px;">
+                <!-- Wizard Header -->
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px 20px 0 0;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-magic me-3" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <h5 class="modal-title mb-0">Интерактивна израда синопсиса</h5>
+                            <small class="opacity-75">Корак <span x-text="wizardStep"></span> од 6</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @click="showWizard = false"></button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="px-4 pt-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <template x-for="step in 6" :key="step">
+                            <div class="text-center flex-fill">
+                                <div class="wizard-step-dot mx-auto mb-1"
+                                     :class="{'active': wizardStep === step, 'completed': wizardStep > step}"
+                                     @click="wizardStep = step">
+                                    <span x-show="wizardStep <= step" x-text="step"></span>
+                                    <i class="bi bi-check" x-show="wizardStep > step"></i>
+                                </div>
+                                <small class="text-muted d-none d-md-block" x-text="wizardStepNames[step-1]" style="font-size: 0.7rem;"></small>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" :style="'width: ' + ((wizardStep - 1) / 5 * 100) + '%'" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                    </div>
+                </div>
+
+                <div class="modal-body p-4">
+                    <!-- Step 1: Interpretive Plan -->
+                    <div x-show="wizardStep === 1" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Интерпретативни план</h5>
+                                <small class="text-muted">Наратив, циљеви и значај изложбе</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Назив изложбе *</label>
+                                <input type="text" class="form-control form-control-lg" x-model="wizardData.title" placeholder="нпр. Свет минерала Србије">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Карактер</label>
+                                <select class="form-select form-select-lg" x-model="wizardData.character">
+                                    <option value="">Изаберите...</option>
+                                    <option value="botanical">Ботаничка</option>
+                                    <option value="zoological">Зоолошка</option>
+                                    <option value="mineralogical">Минералошка</option>
+                                    <option value="paleontological">Палеонтолошка</option>
+                                    <option value="interdisciplinary">Интердисциплинарна</option>
+                                    <option value="alternative">Алтернативна</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Зашто? (образложење идеје) *</label>
+                                <textarea class="form-control" rows="3" x-model="wizardData.why" placeholder="Сажето и концизно образложење идеје и разлога за изложбу..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Циљеви изложбе</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.goals" placeholder="Наведите прецизне циљеве који се изложбом постижу..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Значај - Музеолошки</label>
+                                <input type="text" class="form-control" x-model="wizardData.significance_museum" placeholder="У чему се огледа музеолошки значај?">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Значај - Едукативни</label>
+                                <input type="text" class="form-control" x-model="wizardData.significance_educational" placeholder="Едукативни аспекти изложбе">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Значај - Научни</label>
+                                <input type="text" class="form-control" x-model="wizardData.significance_scientific" placeholder="Научни допринос">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Значај - Културни</label>
+                                <input type="text" class="form-control" x-model="wizardData.significance_cultural" placeholder="Културни значај">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Коме је намењена? (циљна публика)</label>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.audience_general" id="aud1">
+                                            <label class="form-check-label" for="aud1">Општа јавност</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.audience_students" id="aud2">
+                                            <label class="form-check-label" for="aud2">Ученици/студенти</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.audience_scientists" id="aud3">
+                                            <label class="form-check-label" for="aud3">Научна заједница</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.audience_children" id="aud4">
+                                            <label class="form-check-label" for="aud4">Деца</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.audience_special" id="aud5">
+                                            <label class="form-check-label" for="aud5">Особе са инвалидитетом</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Структура изложбе (основне целине)</label>
+                                <textarea class="form-control" rows="3" x-model="wizardData.structure" placeholder="Опишите основне целине изложбе и шта свака целина показује..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Specimen List -->
+                    <div x-show="wizardStep === 2" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                <i class="bi bi-clipboard-data"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Листа експоната</h5>
+                                <small class="text-muted">Средства реализације и материјали</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Експонати (категорије)</label>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.exhibits_biological" id="exp1">
+                                            <label class="form-check-label" for="exp1">Биолошки</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.exhibits_geological" id="exp2">
+                                            <label class="form-check-label" for="exp2">Геолошки</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.exhibits_artifacts" id="exp3">
+                                            <label class="form-check-label" for="exp3">Артефакти</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.exhibits_models" id="exp4">
+                                            <label class="form-check-label" for="exp4">Модели/мулаже</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <textarea class="form-control" rows="2" x-model="wizardData.exhibits_description" placeholder="Детаљнији опис планираних експоната..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Фотографије</label>
+                                <select class="form-select" x-model="wizardData.photos_type">
+                                    <option value="">Изаберите тип...</option>
+                                    <option value="original">Оригиналне наменски снимљене</option>
+                                    <option value="borrowed">Преузете из архива</option>
+                                    <option value="mixed">Комбинација</option>
+                                </select>
+                                <textarea class="form-control mt-2" rows="2" x-model="wizardData.photos_description" placeholder="Сврха и опис фотографија..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Цртежи и карте</label>
+                                <textarea class="form-control" rows="4" x-model="wizardData.drawings" placeholder="Опишите потребне цртеже, карте и илустрације..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Текстови на изложби</label>
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.texts_titles" id="txt1">
+                                            <label class="form-check-label" for="txt1">Наслови целина</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.texts_legends" id="txt2">
+                                            <label class="form-check-label" for="txt2">Легенде</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.texts_labels" id="txt3">
+                                            <label class="form-check-label" for="txt3">Етикете</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.texts_info" id="txt4">
+                                            <label class="form-check-label" for="txt4">Информативни панои</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Мултимедијалне презентације</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.multimedia" placeholder="PowerPoint презентације, научно-популарни филмови, интерактивни садржаји..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Budget Plan -->
+                    <div x-show="wizardStep === 3" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                                <i class="bi bi-calculator"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Буџетски план</h5>
+                                <small class="text-muted">Финансијска средства и трошкови</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Извори финансирања</label>
+                                <textarea class="form-control" rows="3" x-model="wizardData.funding_sources" placeholder="Наведите сигурне или потенцијалне изворе финансирања..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Укупни процењени буџет (РСД)</label>
+                                <input type="number" class="form-control form-control-lg" x-model="wizardData.total_budget" placeholder="нпр. 500000">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Спецификација трошкова</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Категорија</th>
+                                                <th style="width: 200px;">Износ (РСД)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Набавка материјала (дневнице + путни трошкови)</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_materials"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Осигурање за позајмљене предмете</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_insurance"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Израда мулажа (материјал + рад)</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_models"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Набавка витрина и опреме</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_equipment"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Штампа (каталог, постер, позивнице)</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_printing"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Дизајн и припрема за штампу</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_design"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Остали трошкови</td>
+                                                <td><input type="number" class="form-control form-control-sm" x-model="wizardData.cost_other"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Потенцијални спонзори/финансијери</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.sponsors" placeholder="Наведите потенцијалне спонзоре и партнере..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Timeline -->
+                    <div x-show="wizardStep === 4" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                <i class="bi bi-calendar3"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Временски план</h5>
+                                <small class="text-muted">Динамика реализације и рокови</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Место одржавања</label>
+                                <input type="text" class="form-control" x-model="wizardData.location" placeholder="нпр. Галерија Музеја">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Планирани датум отварања</label>
+                                <input type="date" class="form-control" x-model="wizardData.opening_date">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Трајање изложбе</label>
+                                <input type="text" class="form-control" x-model="wizardData.duration" placeholder="нпр. 3 месеца">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Прелиминарна динамика послова</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Фаза/Активност</th>
+                                                <th style="width: 150px;">Почетак</th>
+                                                <th style="width: 150px;">Завршетак</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Израда концепције и листе експоната</td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase1_start"></td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase1_end"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Набавка и припрема материјала</td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase2_start"></td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase2_end"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Израда мобилијара и опреме</td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase3_start"></td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase3_end"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Дизајн и припрема каталога</td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase4_start"></td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase4_end"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Монтажа изложбе</td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase5_start"></td>
+                                                <td><input type="date" class="form-control form-control-sm" x-model="wizardData.phase5_end"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Conservation -->
+                    <div x-show="wizardStep === 5" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Конзерваторски захтеви</h5>
+                                <small class="text-muted">Опрема, услови и припрема експоната</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Тип опреме</label>
+                                <select class="form-select" x-model="wizardData.equipment_type">
+                                    <option value="">Изаберите...</option>
+                                    <option value="standard">Стандардна</option>
+                                    <option value="custom">Нестандардна/наменска</option>
+                                    <option value="mixed">Комбинација</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Расвета</label>
+                                <select class="form-select" x-model="wizardData.lighting">
+                                    <option value="">Изаберите...</option>
+                                    <option value="led">LED расвета</option>
+                                    <option value="standard">Стандардна</option>
+                                    <option value="specialized">Специјализована (UV заштита)</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Потребна опрема</label>
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.equip_vitrines" id="eq1">
+                                            <label class="form-check-label" for="eq1">Витрине</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.equip_panels" id="eq2">
+                                            <label class="form-check-label" for="eq2">Панои</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.equip_pedestals" id="eq3">
+                                            <label class="form-check-label" for="eq3">Постаменти</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.equip_multimedia" id="eq4">
+                                            <label class="form-check-label" for="eq4">Мултимедија</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Припрема експоната</label>
+                                <textarea class="form-control" rows="3" x-model="wizardData.preparation" placeholder="Опишите потребне конзерваторске и препараторске радове..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Позајмице из других институција</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.loans" placeholder="Наведите институције од којих се планирају позајмице..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Специјални услови чувања</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.storage_conditions" placeholder="Температура, влажност, осветљење..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 6: Team Plan -->
+                    <div x-show="wizardStep === 6" x-transition>
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="wizard-step-icon me-3" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">План тима</h5>
+                                <small class="text-muted">Аутори, сарадници и пратеће активности</small>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Аутор(и) концепције *</label>
+                                <input type="text" class="form-control" x-model="wizardData.authors" placeholder="Име и презиме главног аутора">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Реализација</label>
+                                <input type="text" class="form-control" x-model="wizardData.realization" placeholder="Природњачки музеј и/или партнери">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Сарадници</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.collaborators" placeholder="Наведите све учеснике у реализацији..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Стручњаци из Музеја</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.internal_experts" placeholder="Профил и имена стручњака из Музеја..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Спољни сарадници</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.external_experts" placeholder="Профил и имена спољних стручњака..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Каталог изложбе</label>
+                                <textarea class="form-control" rows="2" x-model="wizardData.catalog" placeholder="Концепција каталога, структура, наслови поглавља..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Пратеће манифестације</label>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.events_workshops" id="ev1">
+                                            <label class="form-check-label" for="ev1">Радионице</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.events_lectures" id="ev2">
+                                            <label class="form-check-label" for="ev2">Предавања</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.events_seminars" id="ev3">
+                                            <label class="form-check-label" for="ev3">Семинари</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" x-model="wizardData.events_guided" id="ev4">
+                                            <label class="form-check-label" for="ev4">Вођења</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <textarea class="form-control" rows="2" x-model="wizardData.events_description" placeholder="Детаљнији опис планираних манифестација..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Summary Preview -->
+                        <div class="alert alert-success mt-4" style="border-radius: 12px;">
+                            <h6 class="mb-2"><i class="bi bi-check-circle me-2"></i>Спремни сте за креирање синопсиса!</h6>
+                            <p class="mb-0 small">Кликните "Сачувај синопсис" да креирате изложбу у систему. Моћи ћете да је накнадно мењате и допуњавате.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer with navigation -->
+                <div class="modal-footer d-flex justify-content-between" style="border-radius: 0 0 20px 20px;">
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" @click="showWizard = false">
+                            <i class="bi bi-x-lg me-1"></i>Откажи
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" x-show="wizardStep > 1" @click="wizardStep--">
+                            <i class="bi bi-arrow-left me-1"></i>Претходно
+                        </button>
+                        <button type="button" class="btn btn-primary" x-show="wizardStep < 6" @click="wizardStep++">
+                            Следеће<i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                        <button type="button" class="btn btn-success btn-lg" x-show="wizardStep === 6" @click="saveWizard()" :disabled="savingWizard">
+                            <span x-show="!savingWizard"><i class="bi bi-check-lg me-2"></i>Сачувај синопсис</span>
+                            <span x-show="savingWizard"><span class="spinner-border spinner-border-sm me-2"></span>Чување...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show" x-show="showWizard" @click="showWizard = false"></div>
+
+</div>
+
+<style>
+.guide-step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.template-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto;
+}
+
+.template-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.exhibition-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--museum-primary);
+}
+
+.nav-pills .nav-link {
+    border-radius: 10px;
+    color: var(--text-secondary);
+    padding: 0.75rem 1.25rem;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+/* Wizard Styles */
+.wizard-step-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.wizard-step-dot.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.wizard-step-dot.completed {
+    background: #10b981;
+    color: white;
+}
+
+.wizard-step-dot:hover:not(.active) {
+    background: #cbd5e1;
+}
+
+.wizard-step-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+}
+</style>
+
+<script>
+function exhibitionPlanner() {
+    return {
+        activeTab: 'guide',
+        showNewExhibitionModal: false,
+        showEditModal: false,
+        showDeleteConfirm: false,
+        showWizard: false,
+        wizardStep: 1,
+        savingWizard: false,
+        wizardStepNames: ['План', 'Експонати', 'Буџет', 'Време', 'Услови', 'Тим'],
+        wizardData: {
+            // Step 1: Interpretive Plan
+            title: '',
+            character: '',
+            why: '',
+            goals: '',
+            significance_museum: '',
+            significance_educational: '',
+            significance_scientific: '',
+            significance_cultural: '',
+            audience_general: false,
+            audience_students: false,
+            audience_scientists: false,
+            audience_children: false,
+            audience_special: false,
+            structure: '',
+            // Step 2: Specimen List
+            exhibits_biological: false,
+            exhibits_geological: false,
+            exhibits_artifacts: false,
+            exhibits_models: false,
+            exhibits_description: '',
+            photos_type: '',
+            photos_description: '',
+            drawings: '',
+            texts_titles: false,
+            texts_legends: false,
+            texts_labels: false,
+            texts_info: false,
+            multimedia: '',
+            // Step 3: Budget
+            funding_sources: '',
+            total_budget: '',
+            cost_materials: '',
+            cost_insurance: '',
+            cost_models: '',
+            cost_equipment: '',
+            cost_printing: '',
+            cost_design: '',
+            cost_other: '',
+            sponsors: '',
+            // Step 4: Timeline
+            location: '',
+            opening_date: '',
+            duration: '',
+            phase1_start: '', phase1_end: '',
+            phase2_start: '', phase2_end: '',
+            phase3_start: '', phase3_end: '',
+            phase4_start: '', phase4_end: '',
+            phase5_start: '', phase5_end: '',
+            // Step 5: Conservation
+            equipment_type: '',
+            lighting: '',
+            equip_vitrines: false,
+            equip_panels: false,
+            equip_pedestals: false,
+            equip_multimedia: false,
+            preparation: '',
+            loans: '',
+            storage_conditions: '',
+            // Step 6: Team
+            authors: '',
+            realization: '',
+            collaborators: '',
+            internal_experts: '',
+            external_experts: '',
+            catalog: '',
+            events_workshops: false,
+            events_lectures: false,
+            events_seminars: false,
+            events_guided: false,
+            events_description: ''
+        },
+        loading: false,
+        saving: false,
+        exhibitions: [],
+        selectedExhibition: null,
+        userRole: '',
+        canSeeAll: false,
+        newExhibition: {
+            name: '',
+            type: 'temporary',
+            description: '',
+            startDate: '',
+            endDate: '',
+            curator: '',
+            budget: ''
+        },
+        checklist: {
+            conceptual: [
+                { text: 'Дефинисана главна тема и наратив', checked: false },
+                { text: 'Идентификоване подтеме и секције', checked: false },
+                { text: 'Одређена циљна публика', checked: false },
+                { text: 'Дефинисани едукативни циљеви', checked: false },
+                { text: 'Израђен интерпретативни план', checked: false },
+                { text: 'Одабрани кључни експонати', checked: false },
+                { text: 'Проверена доступност експоната', checked: false },
+                { text: 'Припремљени текстови за паное', checked: false }
+            ],
+            technical: [
+                { text: 'Направљен просторни распоред', checked: false },
+                { text: 'Дефинисана путања посетилаца', checked: false },
+                { text: 'Планирано осветљење', checked: false },
+                { text: 'Наручене/припремљене витрине', checked: false },
+                { text: 'Израђени постаменти и држачи', checked: false },
+                { text: 'Планирана безбедност експоната', checked: false },
+                { text: 'Организован транспорт', checked: false },
+                { text: 'Тестирана мултимедија', checked: false }
+            ],
+            team: [
+                { text: 'Формиран пројектни тим', checked: false },
+                { text: 'Дефинисане улоге и одговорности', checked: false },
+                { text: 'Ангажовани спољни сарадници', checked: false },
+                { text: 'Конзерватор прегледао експонате', checked: false },
+                { text: 'Дизајнер израдио визуелни идентитет', checked: false },
+                { text: 'Едукатор припремио програме', checked: false }
+            ],
+            opening: [
+                { text: 'Завршена монтажа', checked: false },
+                { text: 'Тестирано осветљење', checked: false },
+                { text: 'Проверена сигнализација', checked: false },
+                { text: 'Припремљени промотивни материјали', checked: false },
+                { text: 'Обучено особље за вођења', checked: false },
+                { text: 'Организовано отварање', checked: false },
+                { text: 'Позвани медији', checked: false }
+            ]
+        },
+
+        async init() {
+            await this.loadExhibitions();
+        },
+
+        async loadExhibitions() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/exhibitions');
+                const data = await response.json();
+                if (data.success) {
+                    // Store user role info
+                    this.userRole = data.user_role || 'employee';
+                    this.canSeeAll = data.can_see_all || false;
+
+                    this.exhibitions = data.exhibitions.map(e => ({
+                        id: e.id,
+                        name: e.title,
+                        title: e.title,
+                        type: e.exhibition_type || 'temporary',
+                        description: e.description || '',
+                        startDate: e.start_date || '',
+                        endDate: e.end_date || '',
+                        curator: e.curator || '',
+                        budget: e.budget || '',
+                        status: e.status || 'planning',
+                        progress: e.progress || 0,
+                        checklist_data: e.checklist_data || {},
+                        created_at: e.created_at,
+                        created_by_email: e.created_by_email || '',
+                        created_by_name: e.created_by_name || '',
+                        is_owner: e.is_owner || false
+                    }));
+                }
+            } catch (error) {
+                console.error('Error loading exhibitions:', error);
+                this.showNotification('Грешка при учитавању изложби', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async createExhibition() {
+            if (!this.newExhibition.name) return;
+
+            this.saving = true;
+            try {
+                const response = await secureFetch('/api/exhibitions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(this.newExhibition)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await this.loadExhibitions();
+                    this.showNewExhibitionModal = false;
+                    this.resetNewExhibition();
+                    this.showNotification('Изложба је успешно креирана', 'success');
+                } else {
+                    this.showNotification(data.message || 'Грешка при креирању', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating exhibition:', error);
+                this.showNotification('Грешка при креирању изложбе', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async updateExhibition(exhibition, updates) {
+            try {
+                const response = await secureFetch(`/api/exhibitions/${exhibition.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updates)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Update local copy
+                    Object.assign(exhibition, updates);
+                    this.showNotification('Изложба је ажурирана', 'success');
+                } else {
+                    this.showNotification(data.message || 'Грешка при ажурирању', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating exhibition:', error);
+                this.showNotification('Грешка при ажурирању', 'error');
+            }
+        },
+
+        async deleteExhibition(exhibition) {
+            try {
+                const response = await secureFetch(`/api/exhibitions/${exhibition.id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    this.exhibitions = this.exhibitions.filter(e => e.id !== exhibition.id);
+                    this.showDeleteConfirm = false;
+                    this.selectedExhibition = null;
+                    this.showNotification('Изложба је обрисана', 'success');
+                } else {
+                    this.showNotification(data.message || 'Грешка при брисању', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting exhibition:', error);
+                this.showNotification('Грешка при брисању', 'error');
+            }
+        },
+
+        async updateStatus(exhibition, newStatus) {
+            await this.updateExhibition(exhibition, { status: newStatus });
+        },
+
+        resetNewExhibition() {
+            this.newExhibition = {
+                name: '',
+                type: 'temporary',
+                description: '',
+                startDate: '',
+                endDate: '',
+                curator: '',
+                budget: ''
+            };
+        },
+
+        selectExhibition(exhibition) {
+            this.selectedExhibition = exhibition;
+            this.showEditModal = true;
+        },
+
+        confirmDelete(exhibition) {
+            this.selectedExhibition = exhibition;
+            this.showDeleteConfirm = true;
+        },
+
+        showNotification(message, type = 'info') {
+            // Use existing notification system if available
+            if (typeof showToast === 'function') {
+                showToast(message, type);
+            } else {
+                console.log(`[${type}] ${message}`);
+            }
+        },
+
+        getStatusBadgeClass(status) {
+            const classes = {
+                'planning': 'bg-primary',
+                'preparation': 'bg-warning text-dark',
+                'active': 'bg-success',
+                'completed': 'bg-secondary',
+                'планирана': 'bg-primary',
+                'у припреми': 'bg-warning text-dark',
+                'активна': 'bg-success',
+                'завршена': 'bg-secondary'
+            };
+            return classes[status] || 'bg-secondary';
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                'planning': 'У планирању',
+                'preparation': 'У припреми',
+                'active': 'Активна',
+                'completed': 'Завршена',
+                'планирана': 'У планирању',
+                'у припреми': 'У припреми',
+                'активна': 'Активна',
+                'завршена': 'Завршена'
+            };
+            return labels[status] || status;
+        },
+
+        async saveWizard() {
+            if (!this.wizardData.title) {
+                this.showNotification('Назив изложбе је обавезан', 'error');
+                this.wizardStep = 1;
+                return;
+            }
+
+            this.savingWizard = true;
+            try {
+                // Build synopsis data object
+                const synopsisData = {
+                    // Basic info
+                    character: this.wizardData.character,
+                    why: this.wizardData.why,
+                    goals: this.wizardData.goals,
+                    significance: {
+                        museum: this.wizardData.significance_museum,
+                        educational: this.wizardData.significance_educational,
+                        scientific: this.wizardData.significance_scientific,
+                        cultural: this.wizardData.significance_cultural
+                    },
+                    audience: {
+                        general: this.wizardData.audience_general,
+                        students: this.wizardData.audience_students,
+                        scientists: this.wizardData.audience_scientists,
+                        children: this.wizardData.audience_children,
+                        special: this.wizardData.audience_special
+                    },
+                    structure: this.wizardData.structure,
+                    // Exhibits
+                    exhibits: {
+                        biological: this.wizardData.exhibits_biological,
+                        geological: this.wizardData.exhibits_geological,
+                        artifacts: this.wizardData.exhibits_artifacts,
+                        models: this.wizardData.exhibits_models,
+                        description: this.wizardData.exhibits_description
+                    },
+                    photos: {
+                        type: this.wizardData.photos_type,
+                        description: this.wizardData.photos_description
+                    },
+                    drawings: this.wizardData.drawings,
+                    texts: {
+                        titles: this.wizardData.texts_titles,
+                        legends: this.wizardData.texts_legends,
+                        labels: this.wizardData.texts_labels,
+                        info: this.wizardData.texts_info
+                    },
+                    multimedia: this.wizardData.multimedia,
+                    // Budget
+                    funding_sources: this.wizardData.funding_sources,
+                    costs: {
+                        materials: this.wizardData.cost_materials,
+                        insurance: this.wizardData.cost_insurance,
+                        models: this.wizardData.cost_models,
+                        equipment: this.wizardData.cost_equipment,
+                        printing: this.wizardData.cost_printing,
+                        design: this.wizardData.cost_design,
+                        other: this.wizardData.cost_other
+                    },
+                    sponsors: this.wizardData.sponsors,
+                    // Timeline
+                    duration: this.wizardData.duration,
+                    phases: {
+                        phase1: { start: this.wizardData.phase1_start, end: this.wizardData.phase1_end },
+                        phase2: { start: this.wizardData.phase2_start, end: this.wizardData.phase2_end },
+                        phase3: { start: this.wizardData.phase3_start, end: this.wizardData.phase3_end },
+                        phase4: { start: this.wizardData.phase4_start, end: this.wizardData.phase4_end },
+                        phase5: { start: this.wizardData.phase5_start, end: this.wizardData.phase5_end }
+                    },
+                    // Conservation
+                    equipment: {
+                        type: this.wizardData.equipment_type,
+                        lighting: this.wizardData.lighting,
+                        vitrines: this.wizardData.equip_vitrines,
+                        panels: this.wizardData.equip_panels,
+                        pedestals: this.wizardData.equip_pedestals,
+                        multimedia: this.wizardData.equip_multimedia
+                    },
+                    preparation: this.wizardData.preparation,
+                    loans: this.wizardData.loans,
+                    storage_conditions: this.wizardData.storage_conditions,
+                    // Team
+                    realization: this.wizardData.realization,
+                    collaborators: this.wizardData.collaborators,
+                    internal_experts: this.wizardData.internal_experts,
+                    external_experts: this.wizardData.external_experts,
+                    catalog: this.wizardData.catalog,
+                    events: {
+                        workshops: this.wizardData.events_workshops,
+                        lectures: this.wizardData.events_lectures,
+                        seminars: this.wizardData.events_seminars,
+                        guided: this.wizardData.events_guided,
+                        description: this.wizardData.events_description
+                    }
+                };
+
+                // Create exhibition with synopsis data
+                const response = await secureFetch('/api/exhibitions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: this.wizardData.title,
+                        title: this.wizardData.title,
+                        type: this.wizardData.character || 'temporary',
+                        description: this.wizardData.why,
+                        curator: this.wizardData.authors,
+                        location: this.wizardData.location,
+                        startDate: this.wizardData.opening_date,
+                        budget: this.wizardData.total_budget,
+                        status: 'planning',
+                        progress: 0,
+                        checklist_data: synopsisData
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await this.loadExhibitions();
+                    this.showWizard = false;
+                    this.resetWizard();
+                    this.activeTab = 'list';
+                    this.showNotification('Синопсис изложбе је успешно креиран!', 'success');
+                } else {
+                    this.showNotification(data.message || 'Грешка при чувању', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving wizard:', error);
+                this.showNotification('Грешка при чувању синопсиса', 'error');
+            } finally {
+                this.savingWizard = false;
+            }
+        },
+
+        resetWizard() {
+            this.wizardStep = 1;
+            this.wizardData = {
+                title: '', character: '', why: '', goals: '',
+                significance_museum: '', significance_educational: '',
+                significance_scientific: '', significance_cultural: '',
+                audience_general: false, audience_students: false,
+                audience_scientists: false, audience_children: false,
+                audience_special: false, structure: '',
+                exhibits_biological: false, exhibits_geological: false,
+                exhibits_artifacts: false, exhibits_models: false,
+                exhibits_description: '', photos_type: '', photos_description: '',
+                drawings: '', texts_titles: false, texts_legends: false,
+                texts_labels: false, texts_info: false, multimedia: '',
+                funding_sources: '', total_budget: '',
+                cost_materials: '', cost_insurance: '', cost_models: '',
+                cost_equipment: '', cost_printing: '', cost_design: '',
+                cost_other: '', sponsors: '',
+                location: '', opening_date: '', duration: '',
+                phase1_start: '', phase1_end: '', phase2_start: '', phase2_end: '',
+                phase3_start: '', phase3_end: '', phase4_start: '', phase4_end: '',
+                phase5_start: '', phase5_end: '',
+                equipment_type: '', lighting: '',
+                equip_vitrines: false, equip_panels: false,
+                equip_pedestals: false, equip_multimedia: false,
+                preparation: '', loans: '', storage_conditions: '',
+                authors: '', realization: '', collaborators: '',
+                internal_experts: '', external_experts: '', catalog: '',
+                events_workshops: false, events_lectures: false,
+                events_seminars: false, events_guided: false,
+                events_description: ''
+            };
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Радни лист - {{ report.header.employee_name }}{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-secondary text-white">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="bi bi-person-workspace me-2"></i>
+                            {{ report.header.employee_name }}
+                            {% if report.header.status is defined and report.header.status %}
+                                {% if report.header.status == 'APPROVED' %}
+                                    <span class="badge bg-success ms-2">Одобрено</span>
+                                {% elif report.header.status == 'SUBMITTED' %}
+                                    <span class="badge bg-warning text-dark ms-2">Поднето</span>
+                                {% elif report.header.status == 'REJECTED' %}
+                                    <span class="badge bg-danger ms-2">Враћено</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark ms-2">Нацрт</span>
+                                {% endif %}
+                            {% endif %}
+                        </h1>
+                        <p class="mb-0">
+                            Период: {{ month_name }} {{ report.header.year }} &middot;
+                            Организација: {{ report.header.organization_unit or 'N/A' }}
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        {% if report.header.status is defined and report.header.status == 'SUBMITTED' %}
+                        <button type="button" class="btn btn-success" onclick="approveReport({{ report.header.id }})">
+                            <i class="bi bi-check-circle me-1"></i> Одобри
+                        </button>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="bi bi-x-circle me-1"></i> Врати
+                        </button>
+                        {% elif report.header.status is defined and report.header.status == 'APPROVED' %}
+                        <button type="button" class="btn btn-warning" onclick="forceEdit({{ report.header.id }})">
+                            <i class="bi bi-pencil me-1"></i> Врати на измену
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-light">
+                            <i class="bi bi-arrow-left me-1"></i> Назад
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Основне информације</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Организациона јединица:</dt>
+                        <dd class="col-sm-7">{{ report.header.organization_unit or 'N/A' }}</dd>
+                        <dt class="col-sm-5">Радно место:</dt>
+                        <dd class="col-sm-7">{{ report.header.position or 'N/A' }}</dd>
+                        <dt class="col-sm-5">Посебан обим посла:</dt>
+                        <dd class="col-sm-7">{{ report.header.special_scope or '—' }}</dd>
+                        <dt class="col-sm-5">Ванредни послови:</dt>
+                        <dd class="col-sm-7">{{ report.header.extraordinary_tasks or '—' }}</dd>
+                        <dt class="col-sm-5">Налогодавац:</dt>
+                        <dd class="col-sm-7">{{ report.header.approver or '—' }}</dd>
+                        <dt class="col-sm-5">Потпис директора:</dt>
+                        <dd class="col-sm-7">{{ report.header.director_signature or '—' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Сажетак ({{ '%.2f'|format(report.total_hours) }} h)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for key, label in category_labels.items() %}
+                        <div class="col-sm-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-light text-dark me-2">{{ label }}</span>
+                                <span class="fw-semibold">{{ '%.2f'|format(report.category_totals[key]) }} h</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-table me-2"></i>Дневни унос</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Дан</th>
+                        {% for key, label in category_labels.items() %}
+                        <th class="text-end">{{ label }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in report.days %}
+                    <tr>
+                        <td><strong>{{ day.day }}</strong></td>
+                        <td class="text-end">{{ '%.2f'|format(day.work_in_museum) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.work_outside) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.vacation) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.public_holiday) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.paid_leave) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.other_leave) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.sick_lt30) }}</td>
+                        <td class="text-end">{{ '%.2f'|format(day.sick_gte30) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if report.header.rejection_note is defined and report.header.rejection_note %}
+    <div class="card mt-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-chat-text me-2"></i>Напомена о враћању</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ report.header.rejection_note }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Враћање радне листе</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="rejectionNote" class="form-label">Разлог враћања:</label>
+                    <textarea class="form-control" id="rejectionNote" rows="4" placeholder="Унесите разлог враћања радне листе..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-danger" onclick="rejectReport({{ report.header.id }})">
+                    <i class="bi bi-x-circle me-1"></i> Врати на допуну
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function approveReport(reportId) {
+    if (!confirm('Да ли сте сигурни да желите да одобрите ову радну листу?')) return;
+
+    fetch(`/api/timesheet/${reportId}/approve`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    })
+    .catch(() => alert('Грешка при комуникацији са сервером.'));
+}
+
+function rejectReport(reportId) {
+    const note = document.getElementById('rejectionNote').value.trim();
+    if (!note) {
+        alert('Молимо унесите разлог враћања.');
+        return;
+    }
+
+    fetch(`/api/timesheet/${reportId}/reject`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ note: note })
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    })
+    .catch(() => alert('Грешка при комуникацији са сервером.'));
+}
+
+function forceEdit(reportId) {
+    if (!confirm('Да ли сте сигурни да желите да вратите ову радну листу на измену? Статус ће бити промењен у Нацрт.')) return;
+
+    fetch(`/api/timesheet/${reportId}/force-edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    })
+    .catch(() => alert('Грешка при комуникацији са сервером.'));
+}
+</script>
+{% endblock %}

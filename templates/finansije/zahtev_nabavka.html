@@ -1,0 +1,601 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Природњачки музеј{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Print styles */
+    @media print {
+        .sidebar, .navbar, .footer, .no-print, .sidebar-toggle, .content-wrapper {
+            display: none !important;
+            margin-left: 0 !important;
+        }
+
+        body {
+            background: white !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .print-container {
+            margin: 0;
+            padding: 20px;
+            max-width: 100%;
+        }
+
+        .card {
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #000 !important;
+            background: white !important;
+        }
+
+        .print-header {
+            display: block !important;
+        }
+
+        .print-form {
+            page-break-inside: avoid;
+        }
+    }
+
+    .print-header {
+        display: none;
+    }
+
+    .form-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .form-table th, .form-table td {
+        border: 1px solid #dee2e6;
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+
+    .form-table th {
+        background: #f8f9fa;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    .form-table .row-num {
+        width: 40px;
+        text-align: center;
+    }
+
+    .form-table .amount-cell {
+        width: 120px;
+    }
+
+    .form-table .amount-cell input {
+        text-align: right;
+    }
+
+    .form-table input, .form-table textarea {
+        border: none;
+        background: transparent;
+        width: 100%;
+        padding: 0.25rem;
+    }
+
+    .form-table input:focus, .form-table textarea:focus {
+        outline: none;
+        background: #f0f7ff;
+    }
+
+    .signature-box {
+        min-height: 60px;
+        border: 1px solid #dee2e6;
+        background: #fafafa;
+    }
+
+    .total-row {
+        font-weight: bold;
+        background: #e9ecef !important;
+    }
+
+    .museum-logo-small {
+        width: 60px;
+        height: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-main print-container">
+    <!-- Screen Header -->
+    <div class="row mb-4 no-print">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-cart-plus me-2"></i>
+                                {{ page_title }}
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Образац за захтев за набавку / наруџбу
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button class="btn btn-light me-2" onclick="printForm()">
+                                <i class="bi bi-printer me-1"></i>
+                                Штампај
+                            </button>
+                            <button class="btn btn-light me-2" onclick="exportToWord()">
+                                <i class="bi bi-file-earmark-word me-1"></i>
+                                Word
+                            </button>
+                            <button class="btn btn-warning" onclick="saveRequest()">
+                                <i class="bi bi-save me-1"></i>
+                                Сачувај
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Header (only visible when printing) -->
+    <div class="print-header text-center mb-4">
+        <h4 class="text-decoration-underline mb-4">ДИРЕКТОРУ ПРИРОДЊАЧКОГ МУЗЕЈА, БЕОГРАД</h4>
+    </div>
+
+    <!-- Main Form -->
+    <div class="card print-form">
+        <div class="card-body p-4">
+            <!-- Form Header -->
+            <div class="row mb-4">
+                <div class="col-md-2 text-center">
+                    <img src="{{ url_for('static', filename='images/museum-logo.svg') }}" alt="Logo" class="museum-logo-small" onerror="this.style.display='none'">
+                    <div class="mt-2" style="font-size: 2rem;">
+                        <i class="bi bi-bank2 text-primary"></i>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <h3 class="mb-1">ЗАХТЕВ</h3>
+                    <h5 class="text-muted">за набавку / наруџбу</h5>
+                </div>
+                <div class="col-md-5">
+                    <div class="border p-3">
+                        <label class="form-label fw-bold">Датум подношења:</label>
+                        <input type="date" class="form-control" id="datumPodnosenja" value="{{ today }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Applicant and Signature -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">Подносилац захтева:</label>
+                        <input type="text" class="form-control" id="podnosilacZahteva" value="{{ session.get('user_name', '') }}" placeholder="Име и презиме">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">Потпис:</label>
+                        <div class="signature-box mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <div class="table-responsive mb-4">
+                <table class="form-table" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="row-num">Р.бр.</th>
+                            <th rowspan="2" style="min-width: 300px;">Добро / услуга</th>
+                            <th colspan="2">Динара</th>
+                            <th rowspan="2" style="width: 200px;">Примио добро / услугу / средства:</th>
+                        </tr>
+                        <tr>
+                            <th class="amount-cell">Процењено</th>
+                            <th class="amount-cell">Реализовано</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <tr>
+                            <td class="row-num">1.</td>
+                            <td><textarea class="item-description" rows="2" placeholder="Опис добра или услуге..."></textarea></td>
+                            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td><input type="text" class="receiver" placeholder=""></td>
+                        </tr>
+                        <tr>
+                            <td class="row-num">2.</td>
+                            <td><textarea class="item-description" rows="2" placeholder=""></textarea></td>
+                            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td><input type="text" class="receiver" placeholder=""></td>
+                        </tr>
+                        <tr>
+                            <td class="row-num">3.</td>
+                            <td><textarea class="item-description" rows="2" placeholder=""></textarea></td>
+                            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td><input type="text" class="receiver" placeholder=""></td>
+                        </tr>
+                        <tr>
+                            <td class="row-num">4.</td>
+                            <td><textarea class="item-description" rows="2" placeholder=""></textarea></td>
+                            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+                            <td>
+                                <input type="text" class="receiver" placeholder="">
+                                <hr class="my-2">
+                                <small class="text-muted">Датум пријема:</small>
+                                <input type="date" class="receipt-date">
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="2" class="text-end pe-3"><strong>СВЕГА:</strong></td>
+                            <td class="amount-cell text-end"><strong id="totalEstimated">0.00</strong></td>
+                            <td class="amount-cell text-end"><strong id="totalRealized">0.00</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Add Row Button -->
+            <div class="mb-4 no-print">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">
+                    <i class="bi bi-plus-lg me-1"></i>
+                    Додај ред
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLastRow()">
+                    <i class="bi bi-dash-lg me-1"></i>
+                    Уклони ред
+                </button>
+            </div>
+
+            <!-- Activity and Approvals -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">На терет активности:</label>
+                        <select class="form-select" id="teretAktivnosti">
+                            <option value="">Изаберите активност...</option>
+                            <option value="redovna_delatnost">Редовна делатност</option>
+                            <option value="projekat">Пројекат</option>
+                            <option value="izlozba">Изложба</option>
+                            <option value="terenska_aktivnost">Теренска активност</option>
+                            <option value="ostalo">Остало</option>
+                        </select>
+                        <input type="text" class="form-control mt-2" id="teretAktivnostiOpis" placeholder="Додатни опис активности...">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">Сагласан руководилац:</label>
+                        <input type="text" class="form-control" id="saglasanRukovodilac" placeholder="Име и презиме">
+                        <div class="signature-box mt-2" style="min-height: 40px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">Да постоје расположива наменска средства, потврђује шеф рачуноводства:</label>
+                        <input type="text" class="form-control mt-2" id="sefRacunovodstva" placeholder="Име и презиме">
+                        <div class="signature-box mt-2" style="min-height: 40px;"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border p-3 h-100">
+                        <label class="form-label fw-bold">Одобрава набавку / наруџбу, директор:</label>
+                        <input type="text" class="form-control mt-2" id="direktor" placeholder="Име и презиме директора">
+                        <div class="signature-box mt-2" style="min-height: 40px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons (bottom) -->
+    <div class="row mt-4 no-print">
+        <div class="col-12">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Назад
+                </a>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="printForm()">
+                        <i class="bi bi-printer me-1"></i>
+                        Штампај
+                    </button>
+                    <button class="btn btn-outline-success me-2" onclick="exportToWord()">
+                        <i class="bi bi-file-earmark-word me-1"></i>
+                        Извези у Word
+                    </button>
+                    <button class="btn btn-primary" onclick="saveRequest()">
+                        <i class="bi bi-save me-1"></i>
+                        Сачувај захтев
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Requests List -->
+    <div class="row mt-5 no-print">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-ul me-2"></i>
+                    Моји захтеви за набавку
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="requestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Бр.</th>
+                                    <th>Датум</th>
+                                    <th>Опис</th>
+                                    <th>Процењено</th>
+                                    <th>Статус</th>
+                                    <th>Акције</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsBody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 mt-2">Нема сачуваних захтева</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rowCount = 4;
+
+    // Set today's date
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('datumPodnosenja').value = today;
+        loadSavedRequests();
+    });
+
+    // Calculate totals
+    function calculateTotals() {
+        let totalEstimated = 0;
+        let totalRealized = 0;
+
+        document.querySelectorAll('.estimated-amount').forEach(input => {
+            totalEstimated += parseFloat(input.value) || 0;
+        });
+
+        document.querySelectorAll('.realized-amount').forEach(input => {
+            totalRealized += parseFloat(input.value) || 0;
+        });
+
+        document.getElementById('totalEstimated').textContent = totalEstimated.toLocaleString('sr-RS', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('totalRealized').textContent = totalRealized.toLocaleString('sr-RS', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Add new row
+    function addRow() {
+        rowCount++;
+        const tbody = document.getElementById('itemsBody');
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td class="row-num">${rowCount}.</td>
+            <td><textarea class="item-description" rows="2" placeholder=""></textarea></td>
+            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
+            <td><input type="text" class="receiver" placeholder=""></td>
+        `;
+        tbody.appendChild(newRow);
+    }
+
+    // Remove last row
+    function removeLastRow() {
+        if (rowCount > 1) {
+            const tbody = document.getElementById('itemsBody');
+            tbody.removeChild(tbody.lastElementChild);
+            rowCount--;
+            calculateTotals();
+        }
+    }
+
+    // Print form
+    function printForm() {
+        window.print();
+    }
+
+    // Export to Word
+    function exportToWord() {
+        const formData = collectFormData();
+
+        secureFetch('/api/nabavka/export-word', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Грешка при извозу');
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Zahtev_za_nabavku_${formData.datum}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        })
+        .catch(error => {
+            alert('Грешка: ' + error.message);
+        });
+    }
+
+    // Collect form data
+    function collectFormData() {
+        const items = [];
+        document.querySelectorAll('#itemsBody tr').forEach((row, index) => {
+            const description = row.querySelector('.item-description')?.value || '';
+            const estimated = row.querySelector('.estimated-amount')?.value || 0;
+            const realized = row.querySelector('.realized-amount')?.value || 0;
+            const receiver = row.querySelector('.receiver')?.value || '';
+
+            if (description.trim()) {
+                items.push({
+                    rbr: index + 1,
+                    description: description,
+                    estimated: parseFloat(estimated) || 0,
+                    realized: parseFloat(realized) || 0,
+                    receiver: receiver
+                });
+            }
+        });
+
+        return {
+            datum: document.getElementById('datumPodnosenja').value,
+            podnosilac: document.getElementById('podnosilacZahteva').value,
+            items: items,
+            totalEstimated: parseFloat(document.getElementById('totalEstimated').textContent.replace(/\./g, '').replace(',', '.')) || 0,
+            totalRealized: parseFloat(document.getElementById('totalRealized').textContent.replace(/\./g, '').replace(',', '.')) || 0,
+            teretAktivnosti: document.getElementById('teretAktivnosti').value,
+            teretAktivnostiOpis: document.getElementById('teretAktivnostiOpis').value,
+            saglasanRukovodilac: document.getElementById('saglasanRukovodilac').value,
+            sefRacunovodstva: document.getElementById('sefRacunovodstva').value,
+            direktor: document.getElementById('direktor').value
+        };
+    }
+
+    // Save request
+    function saveRequest() {
+        const formData = collectFormData();
+
+        if (!formData.podnosilac.trim()) {
+            alert('Молимо унесите име подносиоца захтева.');
+            return;
+        }
+
+        if (formData.items.length === 0) {
+            alert('Молимо унесите бар једну ставку.');
+            return;
+        }
+
+        secureFetch('/api/nabavka/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Захтев је успешно сачуван!');
+                loadSavedRequests();
+            } else {
+                alert('Грешка: ' + (data.message || 'Непозната грешка'));
+            }
+        })
+        .catch(error => {
+            alert('Грешка при чувању: ' + error.message);
+        });
+    }
+
+    // Load saved requests
+    function loadSavedRequests() {
+        fetch('/api/nabavka/list')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('requestsBody');
+                if (data.success && data.requests && data.requests.length > 0) {
+                    tbody.innerHTML = data.requests.map(req => `
+                        <tr>
+                            <td>${req.id}</td>
+                            <td>${req.datum}</td>
+                            <td>${req.opis}</td>
+                            <td>${parseFloat(req.procenjeno).toLocaleString('sr-RS')} РСД</td>
+                            <td>
+                                <span class="badge bg-${getStatusColor(req.status)}">
+                                    ${getStatusText(req.status)}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="viewRequest(${req.id})">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="exportRequestToWord(${req.id})">
+                                    <i class="bi bi-file-word"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <p class="mb-0 mt-2">Нема сачуваних захтева</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading requests:', error);
+            });
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'pending': 'warning',
+            'approved': 'success',
+            'rejected': 'danger',
+            'completed': 'info'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    function getStatusText(status) {
+        const texts = {
+            'pending': 'На чекању',
+            'approved': 'Одобрено',
+            'rejected': 'Одбијено',
+            'completed': 'Реализовано'
+        };
+        return texts[status] || status;
+    }
+
+    function viewRequest(id) {
+        // TODO: Implement view/edit functionality
+        alert('Функција прегледа ће бити имплементирана.');
+    }
+
+    function exportRequestToWord(id) {
+        window.location.href = `/api/nabavka/export-word/${id}`;
+    }
+</script>
+{% endblock %}

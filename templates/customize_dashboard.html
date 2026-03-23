@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Прилагоди главну таблу - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div x-data="customizeDashboard()" x-cloak>
+<style>
+.customize-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Widget card */
+.widget-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: white;
+}
+
+.widget-card:hover {
+    border-color: var(--museum-primary);
+    background: #f8fafc;
+}
+
+.widget-card.selected {
+    border-color: var(--museum-primary);
+    background: rgba(45, 106, 79, 0.05);
+}
+
+.widget-card .widget-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    transition: transform 0.2s ease;
+}
+
+.widget-card:hover .widget-icon {
+    transform: scale(1.1);
+}
+
+.widget-card .form-check-input {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.widget-card .form-check-input:checked {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+/* Preview card */
+.preview-card {
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.preview-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.preview-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Action buttons */
+.action-btn {
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Toast */
+.toast {
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+}
+
+.toast-header {
+    border-bottom: none;
+}
+
+/* Counter */
+.widget-counter {
+    background: var(--museum-primary);
+    color: white;
+    border-radius: 20px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+</style>
+
+<div class="container-main fade-in">
+    <div class="customize-container">
+        <!-- Header -->
+        <div class="page-header header-info mb-4">
+            <div class="page-header-content">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-1">
+                            <i class="bi bi-sliders me-2"></i>
+                            Прилагоди главну таблу
+                        </h1>
+                        <p class="mb-0 opacity-75">
+                            Изаберите које видгете желите да видите на главној табли
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex align-items-center justify-content-end gap-2">
+                            <span class="text-white-50 small">Изабрано:</span>
+                            <span class="widget-counter" x-text="selectedCount"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card shadow-sm mb-4" style="border-radius: 20px;">
+            <div class="card-header bg-white py-3" style="border-radius: 20px 20px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-check2-square me-2"></i>
+                        Изаберите видгете за приказ
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" @click="selectAll()">
+                            <i class="bi bi-check-all me-1"></i>
+                            Све
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="deselectAll()">
+                            <i class="bi bi-x-lg me-1"></i>
+                            Ништа
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted mb-4">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Кликните на видгет или означите квачицу да га додате на главну таблу.
+                </p>
+
+                <form method="POST" action="{{ url_for('customize_dashboard') }}" id="customizeForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <div class="widget-selection">
+                        {% for module in available_modules %}
+                        <div class="widget-card"
+                             :class="{'selected': selectedWidgets.includes('{{ module.key }}')}"
+                             @click="toggleWidget('{{ module.key }}')">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="widgets"
+                                           value="{{ module.key }}"
+                                           id="widget_{{ module.key }}"
+                                           :checked="selectedWidgets.includes('{{ module.key }}')"
+                                           @click.stop="toggleWidget('{{ module.key }}')">
+                                </div>
+                                <div class="col-auto">
+                                    <div class="widget-icon stat-icon-primary">
+                                        <i class="{{ module.icon }}"></i>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <label class="form-check-label d-block" for="widget_{{ module.key }}">
+                                        <strong>{{ module.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ module.description }}</small>
+                                    </label>
+                                </div>
+                                <div class="col-auto">
+                                    <span class="badge"
+                                          :class="selectedWidgets.includes('{{ module.key }}') ? 'bg-success' : 'bg-secondary'">
+                                        <i class="bi" :class="selectedWidgets.includes('{{ module.key }}') ? 'bi-check' : 'bi-dash'"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="alert alert-info mt-4" style="border-radius: 12px;">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Напомена:</strong> Сви модули остају доступни кроз навигациони мени без обзира на избор видгета на главној табли.
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary action-btn">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Откажи
+                        </a>
+                        <button type="submit" class="btn btn-primary action-btn">
+                            <i class="bi bi-save me-2"></i>
+                            Сачувај подешавања
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="card preview-card shadow-sm" style="border-radius: 20px;">
+            <div class="card-header bg-transparent py-3">
+                <h6 class="mb-0 fw-bold">
+                    <i class="bi bi-eye me-2"></i>
+                    Преглед изабраних видгета
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3" id="preview">
+                    <template x-if="selectedWidgets.length === 0">
+                        <div class="col-12">
+                            <div class="empty-state">
+                                <i class="bi bi-grid empty-state-icon"></i>
+                                <h5>Нема изабраних видгета</h5>
+                                <p class="text-muted mb-0">Изаберите видгете из листе изнад да видите преглед</p>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-for="widget in selectedWidgets" :key="widget">
+                        <div class="col-md-4 col-6">
+                            <div class="preview-item">
+                                <i class="bi d-block mb-2" :class="getWidgetIcon(widget)" style="font-size: 1.5rem; color: var(--museum-primary);"></i>
+                                <small class="fw-medium" x-text="getWidgetName(widget)"></small>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <template x-for="(toast, index) in toasts" :key="index">
+        <div class="toast show" role="alert">
+            <div class="toast-header" :class="'bg-' + toast.type + ' text-white'">
+                <i class="bi me-2" :class="toast.icon"></i>
+                <strong class="me-auto" x-text="toast.title"></strong>
+                <button type="button" class="btn-close btn-close-white" @click="removeToast(index)"></button>
+            </div>
+            <div class="toast-body" x-text="toast.message"></div>
+        </div>
+    </template>
+</div>
+
+</div>
+
+<script>
+function customizeDashboard() {
+    return {
+        selectedWidgets: [{% for key in enabled_widgets %}'{{ key }}',{% endfor %}],
+        toasts: [],
+
+        // Widget data
+        widgetData: {
+            {% for module in available_modules %}
+            '{{ module.key }}': { name: '{{ module.name }}', icon: '{{ module.icon }}' },
+            {% endfor %}
+        },
+
+        get selectedCount() {
+            return this.selectedWidgets.length;
+        },
+
+        toggleWidget(key) {
+            const index = this.selectedWidgets.indexOf(key);
+            if (index > -1) {
+                this.selectedWidgets.splice(index, 1);
+            } else {
+                this.selectedWidgets.push(key);
+            }
+            this.updateFormCheckboxes();
+        },
+
+        selectAll() {
+            this.selectedWidgets = Object.keys(this.widgetData);
+            this.updateFormCheckboxes();
+            this.showToast('success', 'Изабрано', 'Сви видгети су изабрани', 'bi-check-all');
+        },
+
+        deselectAll() {
+            this.selectedWidgets = [];
+            this.updateFormCheckboxes();
+            this.showToast('info', 'Поништено', 'Сви видгети су поништени', 'bi-x-lg');
+        },
+
+        updateFormCheckboxes() {
+            document.querySelectorAll('input[name="widgets"]').forEach(checkbox => {
+                checkbox.checked = this.selectedWidgets.includes(checkbox.value);
+            });
+        },
+
+        getWidgetIcon(key) {
+            return this.widgetData[key]?.icon || 'bi-grid';
+        },
+
+        getWidgetName(key) {
+            return this.widgetData[key]?.name || key;
+        },
+
+        showToast(type, title, message, icon) {
+            const toast = { type, title, message, icon };
+            this.toasts.push(toast);
+            setTimeout(() => {
+                this.removeToast(this.toasts.indexOf(toast));
+            }, 3000);
+        },
+
+        removeToast(index) {
+            if (index > -1) {
+                this.toasts.splice(index, 1);
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

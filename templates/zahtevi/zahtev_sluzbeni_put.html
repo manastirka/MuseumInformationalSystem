@@ -1,0 +1,3101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Природњачки музеј{% endblock %}
+
+{% block content %}
+<style>
+.document-preview {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px;
+    background: white;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.document-preview .header-to {
+    text-align: center;
+    margin-bottom: 30px;
+    font-weight: bold;
+}
+
+.document-preview .body-text {
+    text-align: justify;
+    margin-bottom: 20px;
+}
+
+.document-preview .cost-table {
+    width: 100%;
+    margin: 20px 0;
+    border-collapse: collapse;
+}
+
+.document-preview .cost-table td {
+    padding: 5px 10px;
+    border-bottom: 1px dotted #ccc;
+}
+
+.document-preview .cost-table .total-row {
+    font-weight: bold;
+    border-top: 2px solid #333;
+}
+
+.document-preview .signatures-section {
+    margin-top: 30px;
+}
+
+.document-preview .signature-block {
+    margin-bottom: 20px;
+}
+
+.document-preview .signature-block .label {
+    font-weight: bold;
+}
+
+.document-preview .signature-block .line {
+    border-bottom: 1px solid #333;
+    width: 180px;
+    margin-top: 25px;
+}
+
+.document-preview .director-block {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.document-preview .director-block .line {
+    border-bottom: 1px solid #333;
+    width: 180px;
+    margin: 25px auto 5px auto;
+}
+
+.document-preview .date-block {
+    margin-top: 30px;
+    text-align: left;
+}
+
+.highlight-field {
+    background-color: #fff3cd;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.accommodation-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.accommodation-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.accommodation-card.selected {
+    border-color: #28a745;
+    background-color: #f8fff8;
+}
+
+.accommodation-card .price {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.cost-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dotted #ddd;
+}
+
+.cost-item:last-child {
+    border-bottom: none;
+}
+
+.integration-status {
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.integration-status.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.integration-status.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Google Maps Modal Styles */
+.map-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+}
+
+.map-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-modal-content {
+    background: white;
+    border-radius: 10px;
+    width: 95%;
+    max-width: 1200px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.map-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.map-modal-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.map-container {
+    flex: 1;
+    min-height: 400px;
+}
+
+.map-sidebar {
+    width: 320px;
+    border-left: 1px solid #ddd;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.route-option {
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.route-option:hover {
+    border-color: #007bff;
+    background: #f0f7ff;
+}
+
+.route-option.selected {
+    border-color: #28a745;
+    background: #d4edda;
+}
+
+.route-option .route-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.route-option .route-details {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+}
+
+.route-option .route-via {
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 3px;
+}
+
+.toll-estimate {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ddd;
+    font-size: 0.85em;
+}
+
+@media (max-width: 768px) {
+    .map-modal-body {
+        flex-direction: column;
+    }
+    .map-sidebar {
+        width: 100%;
+        height: 200px;
+        border-left: none;
+        border-top: 1px solid #ddd;
+    }
+}
+</style>
+
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-signpost-2 me-2"></i>
+                                {{ page_title }}
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Планирање и креирање захтева за службени пут са интеграцијама
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Form Column -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Подаци о путовању
+                </div>
+                <div class="card-body">
+                    <form id="tripForm">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Од датума *</label>
+                                <input type="date" class="form-control" id="odDatuma" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">До датума *</label>
+                                <input type="date" class="form-control" id="doDatuma" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Локација *</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="openMapPlanner()" title="Изабери на мапи">
+                                        <i class="bi bi-map me-1"></i>Мапа
+                                    </button>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="checkbox" id="multipleLocations">
+                                        <label class="form-check-label small" for="multipleLocations">Више локација</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="locationsContainer">
+                                <div class="location-entry mb-2" data-index="0">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                                        <input type="text" class="form-control location-input" placeholder="нпр. Стара планина, Ђердап..." required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="addLocationBtn" style="display: none;">
+                                <i class="bi bi-plus-circle me-1"></i>Додај локацију
+                            </button>
+                            <div id="mapDataIndicator" class="mt-2" style="display: none;">
+                                <span class="badge bg-success">
+                                    <i class="bi bi-map me-1"></i>Подаци са Google Maps
+                                </span>
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-2" onclick="clearMapData()">
+                                    <i class="bi bi-x-circle"></i> Поништи
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Циљ теренског рада *</label>
+                            <textarea class="form-control" id="cilj" rows="2" placeholder="Опишите циљ и сврху путовања..." required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Шеф одељења *</label>
+                            <select class="form-select" id="sefOdeljenja" required>
+                                <option value="">Изаберите шефа одељења</option>
+                                {% for head in department_heads %}
+                                <option value="{{ head.name }}">{{ head.name }} ({{ head.role }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <hr>
+
+                        <!-- Vehicle Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-car-front me-1"></i>
+                                Превоз
+                            </label>
+                            <select class="form-select" id="vozilo">
+                                <option value="" data-consumption="10" data-fuel="Бензин">Без превоза</option>
+                                <option value="sopstveni" data-consumption="8" data-fuel="Бензин">Сопствени превоз (приватно возило)</option>
+                                {% for vehicle in vehicles %}
+                                <option value="{{ vehicle.id }}"
+                                        data-type="{{ vehicle.type }}"
+                                        data-consumption="{{ vehicle.fuel_consumption|default(10) }}"
+                                        data-fuel="{{ vehicle.fuel_type|default('Бензин') }}">
+                                    {{ vehicle.name }} - {{ vehicle.registration }} ({{ vehicle.fuel_consumption|default(10) }} L/100km)
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted" id="vehicleInfo">Музејско возило ће бити аутоматски резервисано</small>
+                        </div>
+
+                        <!-- Own Vehicle Settings -->
+                        <div class="mb-3" id="ownVehicleSection" style="display: none;">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label small mb-1">Потрошња</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control" id="ownConsumption" value="8" min="4" max="20" step="0.5">
+                                                <span class="input-group-text">L/100km</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small mb-1">Тип горива</label>
+                                            <select class="form-select form-select-sm" id="ownFuelType">
+                                                <option value="BMB 95">BMB 95 (174 дин/л)</option>
+                                                <option value="BMB 100">BMB 100 (189 дин/л)</option>
+                                                <option value="Евродизел">Евродизел (191 дин/л)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-info-circle me-1"></i>Актуелне цене горива (јануар 2026)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="fuelSection" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Процењена километража</label>
+                                <div class="btn-group btn-group-sm" id="routeCalculationBtns">
+                                    <button type="button" class="btn btn-outline-primary" id="calculateRouteBtn" onclick="calculateRoute()">
+                                        <i class="bi bi-calculator me-1"></i>Израчунај (AI)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" onclick="openMapPlanner()">
+                                        <i class="bi bi-map me-1"></i>Мапа
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="aiDisabledNotice" class="alert alert-info py-1 px-2 small mb-2" style="display: none;">
+                                <i class="bi bi-info-circle me-1"></i>AI калкулација је онемогућена јер користите податке са Google Maps
+                            </div>
+                            <div class="input-group mb-2">
+                                <input type="number" class="form-control" id="kilometraza" placeholder="800">
+                                <span class="input-group-text">км</span>
+                            </div>
+                            <div id="routeInfo" class="small text-muted mb-2"></div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Гориво (<span id="fuelLiters">0</span> л): <strong><span id="fuelCost">0</span></strong> дин.</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Путарина: <strong><span id="tollCost">0</span></strong> дин.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="tollSection" style="display: none;">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="includeToll" checked>
+                                <label class="form-check-label" for="includeToll">
+                                    Укључи путарину у трошкове
+                                </label>
+                            </div>
+                            <small class="text-muted" id="tollRouteInfo"></small>
+
+                            <!-- Toll stations to exclude -->
+                            <div id="tollStationsContainer" class="mt-2" style="display: none;">
+                                <small class="text-muted d-block mb-1">
+                                    <i class="bi bi-signpost-split me-1"></i>
+                                    Искључи наплатне станице (регионални путеви):
+                                </small>
+                                <div id="tollStationsList" class="ps-2">
+                                    <!-- Dynamically populated -->
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="recalculateWithExclusions()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Прерачунај
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Cost Specification -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-cash-stack me-1"></i>
+                                Спецификација трошкова
+                            </label>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="troskoviPrevoza" checked>
+                                <label class="form-check-label" for="troskoviPrevoza">
+                                    Трошкови превоза (гориво + путарина)
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="dnevnica">
+                                <label class="form-check-label" for="dnevnica">
+                                    Дневница
+                                </label>
+                            </div>
+                            <div id="dnevnicaAmount" class="ms-4 mb-2" style="display: none;">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control" id="dnevnicaValue" value="3000">
+                                    <span class="input-group-text">дин/дан</span>
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="smestaj">
+                                <label class="form-check-label" for="smestaj">
+                                    Трошкови смештаја
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Integrations -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-link-45deg me-1"></i>
+                                Интеграције
+                            </label>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="updateTimesheet" checked>
+                                <label class="form-check-label" for="updateTimesheet">
+                                    Ажурирај месечни извештај (рад изван музеја)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Датум документа</label>
+                            <input type="date" class="form-control" id="datumDokumenta">
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100 mb-2" onclick="updatePreview()">
+                            <i class="bi bi-eye me-1"></i>
+                            Ажурирај преглед
+                        </button>
+
+                        <button type="button" class="btn btn-success w-100" onclick="submitTrip()">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Креирај захтев и резервације
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Accommodation Search -->
+            <div class="card mt-3" id="accommodationCard" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-building me-2"></i>
+                    Претрага смештаја
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Број гостију</label>
+                            <input type="number" class="form-control" id="brojGostiju" value="2" min="1" max="10">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Макс. цена/ноћ</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="maxCena" value="5000">
+                                <span class="input-group-text">дин</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-info w-100 mb-3" onclick="searchAccommodation()">
+                        <i class="bi bi-search me-1"></i>
+                        Претражи смештај
+                    </button>
+
+                    <div id="accommodationResults">
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-house" style="font-size: 2rem;"></i>
+                            <p class="mb-0 mt-2 small">Кликните "Претражи смештај" за понуде</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Card -->
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Напомене
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small text-muted">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Возило ће бити аутоматски резервисано
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Дани теренског рада ће бити унети у месечни извештај
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            За смештај одаберите 3 понуде за рачуноводство
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Column -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        Преглед захтева
+                    </span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" id="saveRequestBtn" onclick="saveRequest()">
+                            <i class="bi bi-save me-1"></i>
+                            Сачувај захтев
+                        </button>
+                        <button class="btn btn-success" onclick="printDocument()">
+                            <i class="bi bi-printer me-1"></i>
+                            Штампај
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="printArea">
+                        <div class="document-preview">
+                            <div class="header-to">
+                                Директору Природњачког музеја,
+                            </div>
+
+                            <div class="body-text">
+                                Молим да ми се одобре <span id="previewBrojDana" class="highlight-field">__</span> дана ради одласка на терен у периоду од <span id="previewPeriod" class="highlight-field">__-__.____.____</span> године. Теренски рад ће се обавити на подручју <span id="previewLokacija" class="highlight-field">________________</span>.
+                            </div>
+
+                            <div class="body-text">
+                                Циљ теренског рада је <span id="previewCilj" class="highlight-field">________________</span>.
+                            </div>
+
+                            <div class="body-text" id="troskoviText">
+                                Трошкови превоза падају на терет теренских активности Музеја. <span id="previewDnevnica"></span><span id="previewSmestaj"></span>
+                            </div>
+
+                            <div class="body-text">
+                                <strong>Спецификација трошкова:</strong>
+                            </div>
+
+                            <table class="cost-table" id="costTable">
+                                <tbody>
+                                    <tr id="fuelRow" style="display: none;">
+                                        <td>Трошкови пута (гориво) <span id="previewLitri">__</span> л – укупно <span id="previewKm">__</span> км</td>
+                                        <td style="text-align: right;">= <span id="previewFuelCost">0</span> дин.</td>
+                                    </tr>
+                                    <tr id="dnevnicaRow" style="display: none;">
+                                        <td>Дневнице (<span id="previewDnevnicaDana">__</span> дана x <span id="previewDnevnicaRate">__</span> дин)</td>
+                                        <td style="text-align: right;">= <span id="previewDnevnicaCost">0</span> дин.</td>
+                                    </tr>
+                                    <tr id="tollRow" style="display: none;">
+                                        <td>Путарина (<span id="previewTollRoute">__</span>)</td>
+                                        <td style="text-align: right;">= <span id="previewTollCost">0</span> дин.</td>
+                                    </tr>
+                                    <tr id="smestajRow" style="display: none;">
+                                        <td>Трошкови смештаја (<span id="previewSmestajNoci">__</span> ноћи)</td>
+                                        <td style="text-align: right;">= <span id="previewSmestajCost">0</span> дин.</td>
+                                    </tr>
+                                    <tr class="total-row">
+                                        <td><strong>ТОТАЛ</strong></td>
+                                        <td style="text-align: right;"><strong>= <span id="previewTotal">0</span> дин.</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="signatures-section">
+                                <div class="signature-block">
+                                    <div class="label">Подносилац захтева:</div>
+                                    <div id="previewPodnosilac">{{ user_full_name if user_full_name else '________________' }}</div>
+                                </div>
+
+                                <div class="signature-block">
+                                    <div class="label">Одобрава шеф одељења:</div>
+                                    <div id="previewSef"><span class="highlight-field">________________</span></div>
+                                    <div class="line"></div>
+                                </div>
+
+                                <div class="signature-block">
+                                    <div class="label">Одобрава Шеф рачуноводства:</div>
+                                    <div>Душица Ивић</div>
+                                    <div class="line"></div>
+                                </div>
+
+                                <div class="director-block">
+                                    <div class="label">Одобрава Директор</div>
+                                    <div>Славко Спасић</div>
+                                    <div class="line"></div>
+                                </div>
+                            </div>
+
+                            <div class="date-block">
+                                <span id="previewDatum">__.__.____.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Status -->
+            <div class="card mt-3" id="integrationStatus" style="display: none;">
+                <div class="card-header">
+                    <i class="bi bi-gear me-2"></i>
+                    Статус интеграција
+                </div>
+                <div class="card-body">
+                    <div id="vehicleStatus" class="integration-status pending">
+                        <i class="bi bi-car-front me-2"></i>
+                        <span>Возило: Чека се креирање захтева</span>
+                    </div>
+                    <div id="timesheetStatus" class="integration-status pending mt-2">
+                        <i class="bi bi-calendar-check me-2"></i>
+                        <span>Месечни извештај: Чека се креирање захтева</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Maps Route Planner Modal -->
+<div id="mapModal" class="map-modal">
+    <div class="map-modal-content">
+        <div class="map-modal-header">
+            <h5 class="mb-0">
+                <i class="bi bi-map me-2"></i>
+                Планирање руте на мапи
+            </h5>
+            <div>
+                <span class="badge bg-info me-2" id="mapInstructions">Кликните на мапу да додате локацију</span>
+                <button type="button" class="btn-close" onclick="closeMapPlanner()"></button>
+            </div>
+        </div>
+        <div class="map-modal-body">
+            <div id="routeMap" class="map-container"></div>
+            <div class="map-sidebar">
+                <!-- Locations Section -->
+                <div class="mb-3">
+                    <h6 class="mb-2"><i class="bi bi-geo-alt me-2"></i>Локације</h6>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-success">
+                            <i class="bi bi-circle-fill me-1" style="color: #28a745;"></i>Полазиште:
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control map-location-input" id="mapOrigin" placeholder="Кликните на мапу или унесите...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="setDefaultOrigin()">
+                                <i class="bi bi-house"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Кликните <i class="bi bi-house"></i> за Природњачки музеј</small>
+                    </div>
+
+                    <div id="mapWaypointsContainer" class="mb-2">
+                        <label class="form-label small fw-bold text-primary">
+                            <i class="bi bi-circle-fill me-1" style="color: #007bff;"></i>Међутачке:
+                        </label>
+                        <div id="mapWaypointsList"></div>
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-1" onclick="addWaypointField()">
+                            <i class="bi bi-plus-circle me-1"></i>Додај међутачку
+                        </button>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-danger">
+                            <i class="bi bi-circle-fill me-1" style="color: #dc3545;"></i>Крајња дестинација:
+                        </label>
+                        <input type="text" class="form-control form-control-sm map-location-input" id="mapDestination" placeholder="Кликните на мапу или унесите...">
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Route Options -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="bi bi-signpost-2 me-2"></i>Руте</h6>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="calculateMapRoute()">
+                            <i class="bi bi-search me-1"></i>Прикажи
+                        </button>
+                    </div>
+                    <div id="routeOptions">
+                        <p class="text-muted small">Додајте локације и кликните "Прикажи"</p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Summary -->
+                <div id="routeSummary" class="mb-3" style="display: none;">
+                    <h6 class="mb-2"><i class="bi bi-calculator me-2"></i>Резиме</h6>
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Километража:</span>
+                            <strong id="summaryDistance">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Време вожње:</span>
+                            <strong id="summaryTime">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Toll Selection -->
+                <div id="tollSelectionSection" class="mb-3" style="display: none;">
+                    <h6 class="mb-2">
+                        <i class="bi bi-cash-coin me-2"></i>Путарина (ручни избор)
+                    </h6>
+                    <div id="tollSegmentSelectors" class="small">
+                        <!-- Dynamically populated -->
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between">
+                        <strong>Укупно путарина:</strong>
+                        <strong id="summaryTollTotal" class="text-success">0 дин</strong>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success w-100" onclick="applySelectedRoute()" id="applyRouteBtn" disabled>
+                    <i class="bi bi-check-lg me-1"></i>Примени и пренеси у форму
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_API_KEY if config.GOOGLE_API_KEY else '' }}&libraries=places&callback=initMapCallback" async defer></script>
+
+<script>
+const userFullName = "{{ user_full_name|e }}";
+const memorandumUrl = "{{ url_for('static', filename='images/memorandum.png') }}";
+
+// Fuel prices in Serbia (RSD per liter) - January 2026
+const FUEL_PRICES = {
+    'Бензин': 174,
+    'Дизел': 191,
+    'BMB 95': 174,
+    'BMB 100': 189,
+    'Евродизел': 191
+};
+
+let selectedAccommodations = [];
+let currentRouteData = null;
+let usingGoogleMapsData = false;  // Track if Google Maps data is being used
+
+// Google Maps variables
+let map = null;
+let directionsService = null;
+let directionsRenderers = [];
+let mapRoutes = [];
+let selectedRouteIndex = -1;
+let mapMarkers = [];
+let geocoder = null;
+let activeLocationField = null;
+let waypointCount = 0;
+
+// Serbian toll prices - Official Putevi Srbije rates (Category K1 - passenger vehicles)
+// Prices in RSD from starting point of each highway section
+// To calculate segment price: |price_point_B - price_point_A|
+const TOLL_PRICES = {
+    // === БЕОГРАД (E-75 Југ према Прешеву) ===
+    'BG-South': {
+        name: 'Београд - Југ (Е-75)',
+        stations: [
+            { id: 'bg-beograd', name: 'Београд', price: 0 },
+            { id: 'bg-mali-pozarevac', name: 'Мали Пожаревац', price: 100 },
+            { id: 'bg-umcari', name: 'Умчари', price: 140 },
+            { id: 'bg-vodanj', name: 'Водањ', price: 170 },
+            { id: 'bg-kolari', name: 'Колари', price: 200 },
+            { id: 'bg-smederevo', name: 'Смедерево', price: 230 },
+            { id: 'bg-pozarevac', name: 'Пожаревац', price: 240 },
+            { id: 'bg-velika-plana', name: 'Велика Плана', price: 400 },
+            { id: 'bg-markovac', name: 'Марковац', price: 460 },
+            { id: 'bg-lapovo', name: 'Лапово', price: 500 },
+            { id: 'bg-batocina', name: 'Баточина', price: 520 },
+            { id: 'bg-jagodina', name: 'Јагодина', price: 640 },
+            { id: 'bg-cuprija', name: 'Ћуприја', price: 710 },
+            { id: 'bg-paracin', name: 'Параћин', price: 770 },
+            { id: 'bg-cicevac', name: 'Ћићевац', price: 860 },
+            { id: 'bg-razanj', name: 'Ражањ', price: 900 },
+            { id: 'bg-krusevac-istok', name: 'Крушевац исток', price: 960 },
+            { id: 'bg-krusevac-zapad', name: 'Крушевац запад', price: 970 },
+            { id: 'bg-kosevi', name: 'Кошеви', price: 1000 },
+            { id: 'bg-aleksinacki-rudnici', name: 'Алексиначки рудници', price: 1020 },
+            { id: 'bg-aleksinac', name: 'Алексинац', price: 1050 },
+            { id: 'bg-velika-drenova', name: 'Велика Дренова', price: 1050 },
+            { id: 'bg-trstenik', name: 'Трстеник', price: 1120 },
+            { id: 'bg-nis-jug', name: 'Ниш југ', price: 1180 },
+            { id: 'bg-vrnjacka-banja', name: 'Врњачка Бања', price: 1190 },
+            { id: 'bg-merosina', name: 'Мерошина', price: 1210 },
+            { id: 'bg-vrba', name: 'Врба', price: 1260 },
+            { id: 'bg-doljevac-selo', name: 'Дољевац село', price: 1270 },
+            { id: 'bg-brestovac', name: 'Брестовац', price: 1300 },
+            { id: 'bg-leskovac-centar', name: 'Лесковац центар', price: 1340 },
+            { id: 'bg-leskovac-jug', name: 'Лесковац југ', price: 1430 },
+            { id: 'bg-grdelica', name: 'Грделица', price: 1490 },
+            { id: 'bg-predejane', name: 'Предејане', price: 1580 },
+            { id: 'bg-vladicin-han', name: 'Владичин Хан', price: 1720 },
+            { id: 'bg-vranje', name: 'Врање', price: 1850 },
+            { id: 'bg-bujanovac-sever', name: 'Бујановац север', price: 1920 },
+            { id: 'bg-bujanovac-jug', name: 'Бујановац југ', price: 1940 },
+            { id: 'bg-presevo', name: 'Прешево', price: 2060 }
+        ]
+    },
+    // === БЕОГРАД - СЕВЕР (Е-75 према Суботици) ===
+    'BG-North': {
+        name: 'Београд - Север (Е-75)',
+        stations: [
+            { id: 'sp-beograd', name: 'Београд', price: 0 },
+            { id: 'sp-indjija', name: 'Инђија', price: 100 },
+            { id: 'sp-maradik', name: 'Марадик', price: 120 },
+            { id: 'sp-beska', name: 'Бешка', price: 150 },
+            { id: 'sp-kovilj', name: 'Ковиљ', price: 230 },
+            { id: 'sp-novi-sad', name: 'Нови Сад', price: 340 },
+            { id: 'sp-zmajevo', name: 'Змајево', price: 430 },
+            { id: 'sp-vrbas', name: 'Врбас', price: 500 },
+            { id: 'sp-feketic', name: 'Фекетић', price: 550 },
+            { id: 'sp-backa-topola', name: 'Бачка Топола', price: 670 },
+            { id: 'sp-zednik', name: 'Жедник', price: 730 },
+            { id: 'sp-subotica', name: 'Суботица', price: 850 }
+        ]
+    },
+    // === БЕОГРАД - ШИД (А1 Запад) ===
+    'BG-Sid': {
+        name: 'Београд - Шид (А1)',
+        stations: [
+            { id: 'sid-beograd', name: 'Београд', price: 0 },
+            { id: 'sid-simanovci', name: 'Шимановци', price: 260 },
+            { id: 'sid-pecinci', name: 'Пећинци', price: 190 },
+            { id: 'sid-ruma', name: 'Рума', price: 160 },
+            { id: 'sid-sremska-mitrovica', name: 'Сремска Митровица', price: 120 },
+            { id: 'sid-kuzmin', name: 'Кузмин', price: 60 },
+            { id: 'sid-adasevci', name: 'Адашевци', price: 20 }
+        ]
+    },
+    // === БЕОГРАД - ПОЖЕГА (Милош Велики) ===
+    'BG-Pozega': {
+        name: 'Београд - Пожега (Милош Велики)',
+        stations: [
+            { id: 'ob-beograd', name: 'Београд', price: 0 },
+            { id: 'ob-ub', name: 'Уб', price: 150 },
+            { id: 'ob-lajkovac', name: 'Лајковац', price: 220 },
+            { id: 'ob-ljig', name: 'Љиг', price: 360 },
+            { id: 'ob-takovo', name: 'Таково', price: 540 },
+            { id: 'ob-preljina', name: 'Прељина', price: 640 },
+            { id: 'ob-cacak', name: 'Чачак', price: 720 },
+            { id: 'ob-lucani', name: 'Лучани', price: 860 },
+            { id: 'ob-prilipac', name: 'Прилипац', price: 950 }
+        ]
+    },
+    // === НИШ - ДИМИТРОВГРАД (Е-80) ===
+    'Nis-Dimitrovgrad': {
+        name: 'Ниш - Димитровград (Е-80)',
+        stations: [
+            { id: 'dim-nis-istok', name: 'Ниш исток', price: 0 },
+            { id: 'dim-nis-malca', name: 'Ниш Малча', price: 80 },
+            { id: 'dim-bela-palanka', name: 'Бела Паланка', price: 280 },
+            { id: 'dim-pirot-zapad', name: 'Пирот запад', price: 350 },
+            { id: 'dim-pirot-istok', name: 'Пирот исток', price: 410 },
+            { id: 'dim-dimitrovgrad', name: 'Димитровград', price: 490 }
+        ]
+    }
+};
+
+// Flatten all stations for easy access
+const ALL_TOLL_STATIONS = [];
+Object.values(TOLL_PRICES).forEach(highway => {
+    highway.stations.forEach(station => {
+        ALL_TOLL_STATIONS.push({
+            ...station,
+            highway: highway.name
+        });
+    });
+});
+
+// Route colors for display - transparent blue
+const ROUTE_COLORS = ['#4A90D9', '#4A90D9', '#4A90D9', '#4A90D9'];
+
+// Marker icons
+const MARKER_ICONS = {
+    origin: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+    waypoint: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+    destination: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+};
+
+// Default museum address constant
+const DEFAULT_MUSEUM_ADDRESS = 'Природњачки музеј, Београд';
+
+// Initialize Google Maps callback
+function initMapCallback() {
+    console.log('Google Maps API loaded');
+}
+
+function openMapPlanner() {
+    const modal = document.getElementById('mapModal');
+    modal.classList.add('show');
+
+    // Reset waypoint list and active field
+    document.getElementById('mapWaypointsList').innerHTML = '';
+    waypointCount = 0;
+    activeLocationField = null;
+
+    // Set default origin and destination to Museum
+    document.getElementById('mapOrigin').value = DEFAULT_MUSEUM_ADDRESS;
+    document.getElementById('mapDestination').value = DEFAULT_MUSEUM_ADDRESS;
+
+    // Override with form locations if user has entered them
+    const locations = getLocations();
+    if (locations.length > 0) {
+        // Keep origin as Museum, set field locations as waypoints, destination back to Museum
+        // User's locations become waypoints (intermediate destinations)
+        locations.forEach((loc) => {
+            addWaypointField(loc);
+        });
+    }
+
+    // Initialize map if not already done
+    setTimeout(() => {
+        if (!map) {
+            initializeMap();
+        } else {
+            google.maps.event.trigger(map, 'resize');
+            clearMapMarkers();
+            updateMarkersFromFields();
+        }
+        // Update initial instruction and set museum markers
+        setDefaultOriginMarker();
+        setDefaultDestinationMarker();
+        updateInitialInstruction();
+    }, 100);
+}
+
+// Set default origin marker on map
+function setDefaultOriginMarker() {
+    const originValue = document.getElementById('mapOrigin').value;
+    if (originValue === DEFAULT_MUSEUM_ADDRESS && geocoder) {
+        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                addOrUpdateMarker('origin', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
+                if (map && !document.querySelector('.waypoint-input')?.value) {
+                    map.setCenter(results[0].geometry.location);
+                    map.setZoom(12);
+                }
+            }
+        });
+    }
+}
+
+// Set default destination marker on map
+function setDefaultDestinationMarker() {
+    const destValue = document.getElementById('mapDestination').value;
+    if (destValue === DEFAULT_MUSEUM_ADDRESS && geocoder) {
+        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                addOrUpdateMarker('destination', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
+            }
+        });
+    }
+}
+
+function updateInitialInstruction() {
+    const origin = document.getElementById('mapOrigin').value.trim();
+    const dest = document.getElementById('mapDestination').value.trim();
+
+    if (!origin) {
+        updateInstructions('Кликните на мапу за полазиште или користите 🏠');
+    } else if (!dest) {
+        updateInstructions('Кликните на мапу за дестинацију');
+    } else {
+        updateInstructions('Кликните за међутачку или "Прикажи"');
+    }
+}
+
+function closeMapPlanner() {
+    document.getElementById('mapModal').classList.remove('show');
+}
+
+function initializeMap() {
+    const mapElement = document.getElementById('routeMap');
+
+    // Check if Google Maps API is loaded
+    if (typeof google === 'undefined' || !google.maps) {
+        mapElement.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div class="text-center">
+                    <i class="bi bi-exclamation-triangle display-4 mb-3"></i>
+                    <p>Google Maps API није учитан.<br>Проверите API кључ у подешавањима.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Serbia center coordinates
+    const serbiaCenter = { lat: 44.0165, lng: 21.0059 };
+
+    map = new google.maps.Map(mapElement, {
+        zoom: 7,
+        center: serbiaCenter,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: false
+    });
+
+    directionsService = new google.maps.DirectionsService();
+    geocoder = new google.maps.Geocoder();
+
+    // Click on map to add location
+    map.addListener('click', (event) => {
+        handleMapClick(event.latLng);
+    });
+
+    // Initialize Places Autocomplete for all location inputs
+    initializeAutocomplete('mapOrigin', 'origin');
+    initializeAutocomplete('mapDestination', 'destination');
+
+    // Set focus handlers for location fields
+    document.getElementById('mapOrigin').addEventListener('focus', () => {
+        activeLocationField = 'origin';
+        updateInstructions('Кликните на мапу за полазиште');
+    });
+    document.getElementById('mapDestination').addEventListener('focus', () => {
+        activeLocationField = 'destination';
+        updateInstructions('Кликните на мапу за дестинацију');
+    });
+
+    // Set default origin marker
+    setDefaultOrigin();
+}
+
+function initializeAutocomplete(inputId, type) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: 'rs' },
+        fields: ['place_id', 'geometry', 'name', 'formatted_address']
+    });
+
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry) {
+            addOrUpdateMarker(type, place.geometry.location, place.name || place.formatted_address);
+        }
+    });
+}
+
+function updateInstructions(text) {
+    document.getElementById('mapInstructions').textContent = text;
+}
+
+function handleMapClick(latLng) {
+    // Reverse geocode to get address
+    geocoder.geocode({ location: latLng }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+            const address = results[0].formatted_address;
+            const shortAddress = address.split(',').slice(0, 2).join(',');
+
+            // Check if user focused on a specific field
+            if (activeLocationField === 'origin') {
+                document.getElementById('mapOrigin').value = shortAddress;
+                addOrUpdateMarker('origin', latLng, shortAddress);
+                activeLocationField = null;  // Reset after setting
+                updateInstructions('Кликните на мапу за следећу локацију');
+            } else if (activeLocationField === 'destination') {
+                document.getElementById('mapDestination').value = shortAddress;
+                addOrUpdateMarker('destination', latLng, shortAddress);
+                activeLocationField = null;
+                updateInstructions('Кликните на мапу за међутачку');
+            } else if (activeLocationField && activeLocationField.startsWith('waypoint_')) {
+                const waypointId = activeLocationField;
+                const input = document.getElementById(waypointId);
+                if (input) {
+                    input.value = shortAddress;
+                    addOrUpdateMarker(waypointId, latLng, shortAddress);
+                }
+                activeLocationField = null;
+                updateInstructions('Кликните на мапу за следећу локацију');
+            } else {
+                // Smart auto-assignment: check what's empty and fill in order
+                const originInput = document.getElementById('mapOrigin');
+                const destInput = document.getElementById('mapDestination');
+
+                if (!originInput.value.trim()) {
+                    // Origin empty - set origin
+                    originInput.value = shortAddress;
+                    addOrUpdateMarker('origin', latLng, shortAddress);
+                    updateInstructions('Кликните за дестинацију');
+                } else if (!destInput.value.trim()) {
+                    // Destination empty - set destination
+                    destInput.value = shortAddress;
+                    addOrUpdateMarker('destination', latLng, shortAddress);
+                    updateInstructions('Кликните за међутачку или "Прикажи"');
+                } else {
+                    // Both set - add as waypoint
+                    addWaypointField(shortAddress);
+                    const lastWaypointId = `waypoint_${waypointCount - 1}`;
+                    addOrUpdateMarker(lastWaypointId, latLng, shortAddress);
+                    updateInstructions('Међутачка додата. Кликните за још или "Прикажи"');
+                }
+            }
+        }
+    });
+}
+
+function addOrUpdateMarker(type, position, title) {
+    // Remove existing marker of this type
+    const existingIndex = mapMarkers.findIndex(m => m.type === type);
+    if (existingIndex >= 0) {
+        mapMarkers[existingIndex].marker.setMap(null);
+        mapMarkers.splice(existingIndex, 1);
+    }
+
+    // Determine icon
+    let icon = MARKER_ICONS.waypoint;
+    if (type === 'origin') icon = MARKER_ICONS.origin;
+    else if (type === 'destination') icon = MARKER_ICONS.destination;
+
+    // Create new marker
+    const marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: title,
+        icon: icon,
+        draggable: true,
+        animation: google.maps.Animation.DROP
+    });
+
+    // Handle marker drag
+    marker.addListener('dragend', () => {
+        const newPos = marker.getPosition();
+        geocoder.geocode({ location: newPos }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const address = results[0].formatted_address;
+                const shortAddress = address.split(',').slice(0, 2).join(',');
+                marker.setTitle(shortAddress);
+
+                // Update corresponding input field
+                if (type === 'origin') {
+                    document.getElementById('mapOrigin').value = shortAddress;
+                } else if (type === 'destination') {
+                    document.getElementById('mapDestination').value = shortAddress;
+                } else if (type.startsWith('waypoint_')) {
+                    const input = document.getElementById(type);
+                    if (input) input.value = shortAddress;
+                }
+            }
+        });
+    });
+
+    mapMarkers.push({ type, marker, position });
+
+    // Fit bounds to show all markers
+    if (mapMarkers.length > 1) {
+        const bounds = new google.maps.LatLngBounds();
+        mapMarkers.forEach(m => bounds.extend(m.marker.getPosition()));
+        map.fitBounds(bounds);
+    }
+}
+
+function clearMapMarkers() {
+    mapMarkers.forEach(m => m.marker.setMap(null));
+    mapMarkers = [];
+}
+
+function updateMarkersFromFields() {
+    const origin = document.getElementById('mapOrigin').value;
+    if (origin) {
+        geocodeAndAddMarker(origin, 'origin');
+    }
+
+    const destination = document.getElementById('mapDestination').value;
+    if (destination) {
+        geocodeAndAddMarker(destination, 'destination');
+    }
+
+    document.querySelectorAll('.map-waypoint-input').forEach(input => {
+        if (input.value) {
+            geocodeAndAddMarker(input.value, input.id);
+        }
+    });
+}
+
+function geocodeAndAddMarker(address, type) {
+    geocoder.geocode({ address: address + ', Србија' }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+            addOrUpdateMarker(type, results[0].geometry.location, address);
+        }
+    });
+}
+
+function setDefaultOrigin() {
+    document.getElementById('mapOrigin').value = DEFAULT_MUSEUM_ADDRESS;
+    activeLocationField = null;
+
+    if (geocoder) {
+        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                addOrUpdateMarker('origin', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
+                if (map) map.setCenter(results[0].geometry.location);
+            }
+        });
+    }
+
+    // Update instructions
+    updateInitialInstruction();
+}
+
+function addWaypointField(value = '') {
+    const container = document.getElementById('mapWaypointsList');
+    const waypointId = `waypoint_${waypointCount}`;
+
+    const html = `
+        <div class="input-group input-group-sm mb-1" id="${waypointId}_container">
+            <input type="text" class="form-control map-waypoint-input" id="${waypointId}"
+                   value="${value}" placeholder="Међутачка ${waypointCount + 1}..."
+                   onfocus="setActiveWaypoint('${waypointId}')">
+            <button class="btn btn-outline-danger" type="button" onclick="removeWaypoint('${waypointId}')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+
+    // Initialize autocomplete for new waypoint
+    if (typeof google !== 'undefined' && google.maps) {
+        initializeWaypointAutocomplete(waypointId);
+    }
+
+    waypointCount++;
+
+    // If value provided, add marker
+    if (value && geocoder) {
+        geocoder.geocode({ address: value + ', Србија' }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                addOrUpdateMarker(waypointId, results[0].geometry.location, value);
+            }
+        });
+    }
+}
+
+function initializeWaypointAutocomplete(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: 'rs' },
+        fields: ['place_id', 'geometry', 'name', 'formatted_address']
+    });
+
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry) {
+            addOrUpdateMarker(inputId, place.geometry.location, place.name || place.formatted_address);
+        }
+    });
+}
+
+function setActiveWaypoint(waypointId) {
+    activeLocationField = waypointId;
+    updateInstructions('Кликните на мапу за међутачку');
+}
+
+function removeWaypoint(waypointId) {
+    // Remove marker
+    const markerIndex = mapMarkers.findIndex(m => m.type === waypointId);
+    if (markerIndex >= 0) {
+        mapMarkers[markerIndex].marker.setMap(null);
+        mapMarkers.splice(markerIndex, 1);
+    }
+
+    // Remove input field
+    const container = document.getElementById(`${waypointId}_container`);
+    if (container) container.remove();
+}
+
+function calculateMapRoute() {
+    if (!directionsService) {
+        alert('Google Maps није иницијализован');
+        return;
+    }
+
+    const origin = document.getElementById('mapOrigin').value;
+    const destination = document.getElementById('mapDestination').value;
+
+    if (!origin) {
+        alert('Унесите полазиште');
+        return;
+    }
+    if (!destination) {
+        alert('Унесите дестинацију');
+        return;
+    }
+
+    // Clear previous routes
+    directionsRenderers.forEach(renderer => renderer.setMap(null));
+    directionsRenderers = [];
+    mapRoutes = [];
+    selectedRouteIndex = -1;
+    document.getElementById('applyRouteBtn').disabled = true;
+    document.getElementById('routeSummary').style.display = 'none';
+
+    // Get waypoints
+    const waypoints = [];
+    document.querySelectorAll('.map-waypoint-input').forEach(input => {
+        if (input.value.trim()) {
+            waypoints.push({
+                location: input.value.trim() + ', Србија',
+                stopover: true
+            });
+        }
+    });
+
+    const request = {
+        origin: origin + ', Србија',
+        destination: destination + ', Србија',
+        waypoints: waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: waypoints.length === 0, // Alternatives only without waypoints
+        region: 'rs'
+    };
+
+    document.getElementById('routeOptions').innerHTML = '<p class="text-muted small">Учитавање...</p>';
+
+    directionsService.route(request, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+            mapRoutes = result.routes;
+            displayRouteOptions(result.routes);
+
+            // Clear existing markers when showing route
+            clearMapMarkers();
+
+            // Display all routes on map with different colors
+            result.routes.forEach((route, index) => {
+                const renderer = new google.maps.DirectionsRenderer({
+                    map: map,
+                    directions: result,
+                    routeIndex: index,
+                    polylineOptions: {
+                        strokeColor: ROUTE_COLORS[index % ROUTE_COLORS.length],
+                        strokeOpacity: 0.6,
+                        strokeWeight: 5
+                    },
+                    suppressMarkers: false
+                });
+                directionsRenderers.push(renderer);
+            });
+
+            // Auto-select first route
+            selectRoute(0);
+        } else {
+            document.getElementById('routeOptions').innerHTML = `
+                <div class="alert alert-warning small p-2">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Руте није могуће пронаћи: ${status}
+                </div>
+            `;
+        }
+    });
+}
+
+function displayRouteOptions(routes) {
+    const container = document.getElementById('routeOptions');
+    container.innerHTML = '';
+
+    routes.forEach((route, index) => {
+        const totalDistance = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+        const totalDuration = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0);
+
+        const distanceKm = Math.round(totalDistance / 1000);
+        const durationHours = Math.floor(totalDuration / 3600);
+        const durationMins = Math.round((totalDuration % 3600) / 60);
+
+        const routeHtml = `
+            <div class="route-option" data-index="${index}" onclick="selectRoute(${index})">
+                <div class="route-name">
+                    <span style="color: ${ROUTE_COLORS[index % ROUTE_COLORS.length]}">●</span>
+                    Рута ${index + 1}
+                </div>
+                <div class="route-details">
+                    <i class="bi bi-speedometer2 me-1"></i>${distanceKm} км
+                    <span class="mx-2">|</span>
+                    <i class="bi bi-clock me-1"></i>${durationHours}ч ${durationMins}мин
+                </div>
+                <div class="route-via small">
+                    <i class="bi bi-signpost me-1"></i>${route.summary || 'Главни пут'}
+                </div>
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>${route.legs.length} деоница - изаберите путарину ручно
+                </div>
+            </div>
+        `;
+        container.innerHTML += routeHtml;
+    });
+}
+
+function selectRoute(index) {
+    selectedRouteIndex = index;
+
+    // Update visual selection
+    document.querySelectorAll('.route-option').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+    });
+
+    // Update route opacity on map - transparent blue style
+    directionsRenderers.forEach((renderer, i) => {
+        renderer.setOptions({
+            polylineOptions: {
+                strokeOpacity: 0.6,
+                strokeWeight: 5
+            }
+        });
+    });
+
+    // Update summary - show actual total values (route is already round trip)
+    const route = mapRoutes[index];
+    if (route) {
+        const totalDistance = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+        const totalDuration = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0);
+        const distanceKm = Math.round(totalDistance / 1000);
+        const durationHours = Math.floor(totalDuration / 3600);
+        const durationMins = Math.round((totalDuration % 3600) / 60);
+
+        document.getElementById('summaryDistance').textContent = `${distanceKm} км`;
+        document.getElementById('summaryTime').textContent = `${durationHours}ч ${durationMins}мин`;
+        document.getElementById('routeSummary').style.display = 'block';
+
+        // Build manual toll selectors for each leg
+        buildTollSelectors(route);
+    }
+
+    // Enable apply button
+    document.getElementById('applyRouteBtn').disabled = false;
+}
+
+// Build toll selection - simple two-point selector for segment pricing
+function buildTollSelectors(route) {
+    const container = document.getElementById('tollSegmentSelectors');
+
+    // Build options for all toll stations grouped by highway
+    let stationsHtml = '<option value="0" data-name="">-- Изаберите наплатну станицу --</option>';
+    Object.entries(TOLL_PRICES).forEach(([key, highway]) => {
+        stationsHtml += `<optgroup label="${highway.name}">`;
+        highway.stations.forEach(station => {
+            stationsHtml += `<option value="${station.price}" data-name="${station.name}" data-highway="${highway.name}">${station.name}</option>`;
+        });
+        stationsHtml += '</optgroup>';
+    });
+
+    container.innerHTML = `
+        <div class="toll-segment-selector p-2 bg-light rounded">
+            <div class="small text-muted mb-2">
+                <i class="bi bi-info-circle me-1"></i>
+                Изаберите две наплатне станице на истом аутопуту. Цена = разлика између две тачке.
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small mb-1 fw-bold">Од:</label>
+                    <select class="form-select form-select-sm" id="tollPointFrom" onchange="calculateTollSegment()">
+                        ${stationsHtml}
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label small mb-1 fw-bold">До:</label>
+                    <select class="form-select form-select-sm" id="tollPointTo" onchange="calculateTollSegment()">
+                        ${stationsHtml}
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div id="tollSegmentResult" class="small">
+                    <span class="badge bg-secondary">Путарина: 0 дин</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTollSegment()">
+                    <i class="bi bi-plus-lg me-1"></i>Додај
+                </button>
+            </div>
+        </div>
+        <div id="addedTollSegments" class="mt-2"></div>
+    `;
+
+    document.getElementById('tollSelectionSection').style.display = 'block';
+    window.tollSegments = [];
+    updateTollTotal();
+}
+
+// Calculate toll for selected segment
+function calculateTollSegment() {
+    const fromSelect = document.getElementById('tollPointFrom');
+    const toSelect = document.getElementById('tollPointTo');
+    const resultDiv = document.getElementById('tollSegmentResult');
+
+    const fromPrice = parseInt(fromSelect.value) || 0;
+    const toPrice = parseInt(toSelect.value) || 0;
+    const segmentToll = Math.abs(toPrice - fromPrice);
+
+    const fromName = fromSelect.options[fromSelect.selectedIndex]?.dataset?.name || '';
+    const toName = toSelect.options[toSelect.selectedIndex]?.dataset?.name || '';
+
+    if (fromName && toName && segmentToll > 0) {
+        resultDiv.innerHTML = `<span class="badge bg-info">${fromName} → ${toName}: <strong>${formatNumber(segmentToll)}</strong> дин</span>`;
+    } else {
+        resultDiv.innerHTML = `<span class="badge bg-secondary">Путарина: 0 дин</span>`;
+    }
+
+    return { fromName, toName, toll: segmentToll };
+}
+
+// Add toll segment to list
+function addTollSegment() {
+    const fromSelect = document.getElementById('tollPointFrom');
+    const toSelect = document.getElementById('tollPointTo');
+
+    const fromPrice = parseInt(fromSelect.value) || 0;
+    const toPrice = parseInt(toSelect.value) || 0;
+    const segmentToll = Math.abs(toPrice - fromPrice);
+
+    const fromName = fromSelect.options[fromSelect.selectedIndex]?.dataset?.name || '';
+    const toName = toSelect.options[toSelect.selectedIndex]?.dataset?.name || '';
+
+    if (!fromName || !toName || segmentToll === 0) {
+        return;
+    }
+
+    // Add to list
+    const segmentId = Date.now();
+    window.tollSegments = window.tollSegments || [];
+    window.tollSegments.push({
+        id: segmentId,
+        from: fromName,
+        to: toName,
+        toll: segmentToll
+    });
+
+    // Render added segments
+    renderTollSegments();
+
+    // Reset selectors
+    fromSelect.selectedIndex = 0;
+    toSelect.selectedIndex = 0;
+    calculateTollSegment();
+
+    updateTollTotal();
+}
+
+// Render added toll segments
+function renderTollSegments() {
+    const container = document.getElementById('addedTollSegments');
+    if (!window.tollSegments || window.tollSegments.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    window.tollSegments.forEach(seg => {
+        html += `
+            <div class="d-flex justify-content-between align-items-center p-2 mb-1 bg-white border rounded small">
+                <span><i class="bi bi-signpost-2 me-1 text-primary"></i>${seg.from} → ${seg.to}</span>
+                <span>
+                    <strong>${formatNumber(seg.toll)} дин</strong>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="removeTollSegment(${seg.id})">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// Remove toll segment
+function removeTollSegment(id) {
+    window.tollSegments = window.tollSegments.filter(s => s.id !== id);
+    renderTollSegments();
+    updateTollTotal();
+}
+
+// Calculate total toll from added segments
+function updateTollTotal() {
+    let total = 0;
+    window.selectedTolls = [];
+
+    // Sum all added toll segments
+    if (window.tollSegments && window.tollSegments.length > 0) {
+        window.tollSegments.forEach(seg => {
+            total += seg.toll;
+            window.selectedTolls.push({
+                price: seg.toll,
+                name: `${seg.from} → ${seg.to}`,
+                from: seg.from,
+                to: seg.to
+            });
+        });
+    }
+
+    document.getElementById('summaryTollTotal').textContent = `${formatNumber(total)} дин`;
+
+    return total;
+}
+
+// Get total toll from manual selection (for use in applySelectedRoute)
+function getManualTollTotal() {
+    return updateTollTotal();
+}
+
+function applySelectedRoute() {
+    if (selectedRouteIndex < 0 || !mapRoutes[selectedRouteIndex]) {
+        alert('Прво изаберите руту');
+        return;
+    }
+
+    const route = mapRoutes[selectedRouteIndex];
+
+    // Get manual toll selection
+    const manualTollTotal = getManualTollTotal();
+    const selectedTollStations = window.selectedTolls || [];
+
+    // Get origin from first leg (starting point - should be Museum)
+    const originAddress = route.legs[0].start_address.split(',')[0].trim();
+
+    // Get all leg endpoints - these are the field work locations
+    // Last one should be Museum (return), so we exclude it from field work locations
+    const allEndpoints = route.legs.map(leg => leg.end_address.split(',')[0].trim());
+
+    // Field work locations = all waypoints except the return to museum
+    // Check if last destination is museum (return leg)
+    const lastEndpoint = allEndpoints[allEndpoints.length - 1].toLowerCase();
+    const isReturnToMuseum = lastEndpoint.includes('музеј') || lastEndpoint.includes('muzej');
+
+    // Field work locations exclude origin and final return to museum
+    const fieldWorkLocations = isReturnToMuseum ? allEndpoints.slice(0, -1) : allEndpoints;
+
+    // Update form location fields with field work locations only
+    syncLocationsToForm(fieldWorkLocations);
+
+    // Build segments array - one segment per leg with manual toll
+    const segments = [];
+    let totalDistanceKm = 0;
+
+    route.legs.forEach((leg, idx) => {
+        const legDistance = Math.round(leg.distance.value / 1000);
+        totalDistanceKm += legDistance;
+
+        const isReturnLeg = idx === route.legs.length - 1 && isReturnToMuseum;
+
+        // Find toll for this leg from manual selection
+        const legToll = selectedTollStations.find(t => t.leg == idx);
+
+        segments.push({
+            from: leg.start_address.split(',')[0].trim(),
+            to: leg.end_address.split(',')[0].trim(),
+            distance_km: legDistance,
+            toll_station: legToll ? legToll.name : (isReturnLeg ? 'повратак' : null),
+            toll_cost: legToll ? legToll.price : 0,
+            is_return: isReturnLeg
+        });
+    });
+
+    // Update form kilometraza with total round trip
+    document.getElementById('kilometraza').value = totalDistanceKm;
+
+    // Get toll station names for display
+    const tollStationNames = selectedTollStations.map(t => t.name);
+
+    currentRouteData = {
+        success: true,
+        source: 'GoogleMaps',
+        origin: originAddress,
+        destinations: fieldWorkLocations,
+        destination: fieldWorkLocations.join(' → '),
+        distance_round_trip: totalDistanceKm,
+        toll_stations: tollStationNames,
+        toll_station: tollStationNames.join(', ') || 'без путарине',
+        toll_round_trip: manualTollTotal,
+        route_info: segments.map(s => s.from).concat([segments[segments.length-1].to]).join(' → '),
+        segments: segments
+    };
+
+    // Calculate fuel with manual toll
+    finalizeFuelCalculation(totalDistanceKm, manualTollTotal);
+
+    // Mark that we're using Google Maps data
+    usingGoogleMapsData = true;
+    disableAICalculation();
+
+    // Update display
+    updateRouteDisplay();
+
+    // Close modal
+    closeMapPlanner();
+}
+
+// Calculate return route to Museum and finalize all data
+function calculateReturnToMuseum(fromLocation, toMuseum, outboundKm, tollOutbound) {
+    const museumFullAddress = DEFAULT_MUSEUM_ADDRESS + ', Србија';
+
+    // Use Directions API to get actual return distance
+    if (directionsService) {
+        const request = {
+            origin: fromLocation + ', Србија',
+            destination: museumFullAddress,
+            travelMode: google.maps.TravelMode.DRIVING,
+            region: 'rs'
+        };
+
+        directionsService.route(request, (result, status) => {
+            let returnDistanceKm = 0;
+
+            if (status === google.maps.DirectionsStatus.OK && result.routes[0]) {
+                returnDistanceKm = Math.round(result.routes[0].legs[0].distance.value / 1000);
+            } else {
+                // Fallback: estimate as 80% of outbound (rough estimate)
+                returnDistanceKm = Math.round(outboundKm * 0.8);
+                console.log('Could not calculate return, using estimate:', returnDistanceKm);
+            }
+
+            // Update route data with actual return distance
+            currentRouteData.distance_km_return = returnDistanceKm;
+            currentRouteData.distance_round_trip = outboundKm + returnDistanceKm;
+
+            // Add return segment
+            currentRouteData.segments.push({
+                from: fromLocation,
+                to: 'Природњачки музеј',
+                distance_km: returnDistanceKm,
+                toll_station: 'повратак',
+                toll_cost: tollOutbound,
+                is_return: true
+            });
+
+            // Update form kilometraza
+            document.getElementById('kilometraza').value = outboundKm + returnDistanceKm;
+
+            // Calculate fuel with final distance
+            finalizeFuelCalculation(outboundKm + returnDistanceKm, tollOutbound);
+
+            // Mark that we're using Google Maps data
+            usingGoogleMapsData = true;
+            disableAICalculation();
+
+            // Update display
+            updateRouteDisplay();
+
+            // Close modal
+            closeMapPlanner();
+        });
+    } else {
+        // No directions service - use estimate
+        const returnDistanceKm = Math.round(outboundKm * 0.8);
+        currentRouteData.distance_km_return = returnDistanceKm;
+        currentRouteData.distance_round_trip = outboundKm + returnDistanceKm;
+
+        currentRouteData.segments.push({
+            from: fromLocation,
+            to: 'Природњачки музеј',
+            distance_km: returnDistanceKm,
+            toll_station: 'повратак',
+            toll_cost: tollOutbound,
+            is_return: true
+        });
+
+        document.getElementById('kilometraza').value = outboundKm + returnDistanceKm;
+        finalizeFuelCalculation(outboundKm + returnDistanceKm, tollOutbound);
+
+        usingGoogleMapsData = true;
+        disableAICalculation();
+        updateRouteDisplay();
+        closeMapPlanner();
+    }
+}
+
+// Calculate fuel costs based on total round trip distance
+function finalizeFuelCalculation(totalKm, totalToll) {
+    const vehicleSelect = document.getElementById('vozilo');
+    let fuelConsumption = 10;
+    let fuelType = 'Бензин';
+
+    if (vehicleSelect.value === 'sopstveni') {
+        fuelConsumption = parseFloat(document.getElementById('ownConsumption').value) || 8;
+        fuelType = document.getElementById('ownFuelType').value;
+    } else if (vehicleSelect.value) {
+        const option = vehicleSelect.options[vehicleSelect.selectedIndex];
+        fuelConsumption = parseFloat(option.dataset.consumption) || 10;
+        fuelType = option.dataset.fuel || 'Бензин';
+    }
+
+    const fuelPrice = FUEL_PRICES[fuelType] || 174;
+    const fuelLiters = (totalKm * fuelConsumption) / 100;
+    const fuelCost = Math.round(fuelLiters * fuelPrice);
+
+    currentRouteData.fuel_consumption = fuelConsumption;
+    currentRouteData.fuel_type = fuelType;
+    currentRouteData.fuel_liters = Math.round(fuelLiters * 10) / 10;
+    currentRouteData.fuel_price_per_liter = fuelPrice;
+    currentRouteData.fuel_cost = fuelCost;
+    currentRouteData.total_transport_cost = fuelCost + totalToll;
+}
+
+// Disable AI calculation when Google Maps is used
+function disableAICalculation() {
+    const aiBtn = document.getElementById('calculateRouteBtn');
+    const notice = document.getElementById('aiDisabledNotice');
+    const indicator = document.getElementById('mapDataIndicator');
+
+    if (aiBtn) {
+        aiBtn.disabled = true;
+        aiBtn.classList.remove('btn-outline-primary');
+        aiBtn.classList.add('btn-secondary');
+    }
+    if (notice) {
+        notice.style.display = 'block';
+    }
+    if (indicator) {
+        indicator.style.display = 'block';
+    }
+}
+
+// Clear Google Maps data and re-enable AI calculation
+function clearMapData() {
+    usingGoogleMapsData = false;
+    currentRouteData = null;
+
+    const aiBtn = document.getElementById('calculateRouteBtn');
+    const notice = document.getElementById('aiDisabledNotice');
+    const indicator = document.getElementById('mapDataIndicator');
+
+    if (aiBtn) {
+        aiBtn.disabled = false;
+        aiBtn.classList.remove('btn-secondary');
+        aiBtn.classList.add('btn-outline-primary');
+    }
+    if (notice) {
+        notice.style.display = 'none';
+    }
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+
+    // Clear route display
+    document.getElementById('routeInfo').innerHTML = '';
+    document.getElementById('kilometraza').value = '';
+    document.getElementById('fuelLiters').textContent = '0';
+    document.getElementById('fuelCost').textContent = '0';
+    document.getElementById('tollCost').textContent = '0';
+
+    updatePreview();
+}
+
+// Sync locations from map to form fields
+function syncLocationsToForm(destinations) {
+    // Get the locations container
+    const locationsContainer = document.getElementById('locationsContainer');
+    const multipleLocationsCheckbox = document.getElementById('multipleLocations');
+
+    if (destinations.length === 1) {
+        // Single destination
+        multipleLocationsCheckbox.checked = false;
+        document.getElementById('addLocationBtn').style.display = 'none';
+
+        // Keep only first location entry
+        const entries = locationsContainer.querySelectorAll('.location-entry');
+        entries.forEach((entry, idx) => {
+            if (idx === 0) {
+                entry.querySelector('.location-input').value = destinations[0];
+            } else {
+                entry.remove();
+            }
+        });
+    } else {
+        // Multiple destinations
+        multipleLocationsCheckbox.checked = true;
+        document.getElementById('addLocationBtn').style.display = 'inline-block';
+
+        // Clear existing entries except first
+        const entries = locationsContainer.querySelectorAll('.location-entry');
+        entries.forEach((entry, idx) => {
+            if (idx > 0) entry.remove();
+        });
+
+        // Update first entry
+        const firstEntry = locationsContainer.querySelector('.location-entry');
+        if (firstEntry) {
+            firstEntry.querySelector('.location-input').value = destinations[0];
+        }
+
+        // Add remaining destinations
+        for (let i = 1; i < destinations.length; i++) {
+            addLocationField(destinations[i]);
+        }
+    }
+}
+
+// Add a location field to the form (helper for syncing)
+function addLocationField(value = '') {
+    const container = document.getElementById('locationsContainer');
+    const existingEntries = container.querySelectorAll('.location-entry');
+    const newIndex = existingEntries.length;
+
+    const html = `
+        <div class="location-entry mb-2" data-index="${newIndex}">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                <input type="text" class="form-control location-input" value="${value}" placeholder="Локација ${newIndex + 1}..." required>
+                <button type="button" class="btn btn-outline-danger" onclick="removeLocation(this)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function updateRouteDisplay() {
+    if (!currentRouteData) return;
+
+    // Show fuel and toll sections when we have route data
+    document.getElementById('fuelSection').style.display = 'block';
+    document.getElementById('tollSection').style.display = 'block';
+
+    const routeInfo = document.getElementById('routeInfo');
+    let routeHtml = `<div class="mb-2"><i class="bi bi-check-circle text-success"></i> <strong>Рута са Google Maps</strong></div>`;
+
+    if (currentRouteData.segments && currentRouteData.segments.length > 0) {
+        routeHtml += `<div class="route-segments small">`;
+        routeHtml += `<table class="table table-sm table-borderless mb-1" style="font-size: 0.85em;">`;
+        routeHtml += `<thead><tr><th>Деоница</th><th class="text-end">км</th><th class="text-end">Путарина</th></tr></thead><tbody>`;
+
+        currentRouteData.segments.forEach((seg, idx) => {
+            if (seg.is_return) {
+                routeHtml += `<tr class="text-muted"><td><i class="bi bi-arrow-return-left me-1"></i>${seg.from} → ${seg.to}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${formatNumber(seg.toll_cost)} дин</td></tr>`;
+            } else {
+                const icon = idx === 0 ? 'bi-geo-alt-fill text-danger' : 'bi-geo-alt text-primary';
+                routeHtml += `<tr><td><i class="bi ${icon} me-1"></i>${seg.from} → ${seg.to}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${seg.toll_cost > 0 ? formatNumber(seg.toll_cost) + ' дин' : '-'}</td></tr>`;
+            }
+        });
+
+        routeHtml += `<tr class="fw-bold border-top"><td>УКУПНО (повратно)</td><td class="text-end">${currentRouteData.distance_round_trip} км</td><td class="text-end">${formatNumber(currentRouteData.toll_round_trip)} дин</td></tr>`;
+        routeHtml += `</tbody></table></div>`;
+    }
+
+    routeInfo.innerHTML = routeHtml;
+
+    // Update toll info
+    document.getElementById('tollRouteInfo').innerHTML = currentRouteData.toll_station
+        ? `Наплатне станице: <strong>${currentRouteData.toll_station}</strong>`
+        : 'Без путарине на овој рути';
+    document.getElementById('tollCost').textContent = formatNumber(currentRouteData.toll_round_trip);
+
+    // Update fuel info
+    document.getElementById('fuelLiters').textContent = currentRouteData.fuel_liters;
+    document.getElementById('fuelCost').textContent = formatNumber(currentRouteData.fuel_cost);
+
+    // Update toll stations checkboxes
+    const tollStationsContainer = document.getElementById('tollStationsContainer');
+    const tollStationsList = document.getElementById('tollStationsList');
+    if (currentRouteData.toll_stations && currentRouteData.toll_stations.length > 0) {
+        tollStationsList.innerHTML = '';
+        currentRouteData.toll_stations.forEach((station, idx) => {
+            if (station && station !== 'повратак' && station !== 'Процена') {
+                tollStationsList.innerHTML += `
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input toll-station-exclude" type="checkbox" id="excludeToll${idx}" value="${station}">
+                        <label class="form-check-label small" for="excludeToll${idx}">${station}</label>
+                    </div>
+                `;
+            }
+        });
+        tollStationsContainer.style.display = tollStationsList.innerHTML ? 'block' : 'none';
+    } else {
+        tollStationsContainer.style.display = 'none';
+    }
+
+    updatePreview();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('datumDokumenta').value = today;
+
+    // Auto-update preview on input change
+    document.querySelectorAll('#tripForm input, #tripForm select, #tripForm textarea').forEach(function(el) {
+        el.addEventListener('change', updatePreview);
+        el.addEventListener('input', updatePreview);
+    });
+
+    // Vehicle selection handler
+    document.getElementById('vozilo').addEventListener('change', function() {
+        const fuelSection = document.getElementById('fuelSection');
+        const tollSection = document.getElementById('tollSection');
+        const ownVehicleSection = document.getElementById('ownVehicleSection');
+
+        fuelSection.style.display = this.value ? 'block' : 'none';
+        tollSection.style.display = this.value ? 'block' : 'none';
+
+        // Show/hide own vehicle settings
+        ownVehicleSection.style.display = this.value === 'sopstveni' ? 'block' : 'none';
+
+        // Update vehicle info
+        const option = this.options[this.selectedIndex];
+        let consumption, fuelType;
+
+        if (this.value === 'sopstveni') {
+            consumption = document.getElementById('ownConsumption').value || 8;
+            fuelType = document.getElementById('ownFuelType').options[document.getElementById('ownFuelType').selectedIndex].text;
+            document.getElementById('vehicleInfo').innerHTML =
+                `<i class="bi bi-car-front-fill text-primary"></i> Сопствено возило: <strong>${consumption} L/100km</strong>`;
+        } else if (this.value) {
+            consumption = option.dataset.consumption || 10;
+            fuelType = option.dataset.fuel || 'Бензин';
+            document.getElementById('vehicleInfo').innerHTML =
+                `Потрошња: <strong>${consumption} L/100km</strong> (${fuelType})`;
+        } else {
+            document.getElementById('vehicleInfo').innerHTML = 'Музејско возило ће бити аутоматски резервисано';
+        }
+
+        // Auto-calculate route if location is set
+        if (this.value && document.getElementById('lokacija').value) {
+            calculateRoute();
+        }
+        updatePreview();
+    });
+
+    // Own vehicle settings change handlers
+    document.getElementById('ownConsumption').addEventListener('input', function() {
+        const voziloSelect = document.getElementById('vozilo');
+        if (voziloSelect.value === 'sopstveni') {
+            document.getElementById('vehicleInfo').innerHTML =
+                `<i class="bi bi-car-front-fill text-primary"></i> Сопствено возило: <strong>${this.value} L/100km</strong>`;
+            updatePreview();
+        }
+    });
+
+    document.getElementById('ownFuelType').addEventListener('change', function() {
+        updatePreview();
+    });
+
+    // Multiple locations checkbox handler
+    document.getElementById('multipleLocations').addEventListener('change', function() {
+        document.getElementById('addLocationBtn').style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            // Remove all except first location when unchecked
+            const container = document.getElementById('locationsContainer');
+            const entries = container.querySelectorAll('.location-entry');
+            entries.forEach((entry, index) => {
+                if (index > 0) entry.remove();
+            });
+        }
+        updatePreview();
+    });
+
+    // Add location button handler
+    document.getElementById('addLocationBtn').addEventListener('click', function() {
+        const container = document.getElementById('locationsContainer');
+        const entries = container.querySelectorAll('.location-entry');
+        const newIndex = entries.length;
+
+        const newEntry = document.createElement('div');
+        newEntry.className = 'location-entry mb-2';
+        newEntry.dataset.index = newIndex;
+        newEntry.innerHTML = `
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-geo-alt"></i> ${newIndex + 1}</span>
+                <input type="text" class="form-control location-input" placeholder="Следећа локација...">
+                <button type="button" class="btn btn-outline-danger" onclick="removeLocation(this)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(newEntry);
+
+        // Add event listener to new input
+        const newInput = newEntry.querySelector('.location-input');
+        newInput.addEventListener('blur', function() {
+            if (getLocations().length > 0 && document.getElementById('vozilo').value) {
+                calculateRoute();
+            }
+        });
+        newInput.addEventListener('input', updatePreview);
+    });
+
+    // Location change - auto-calculate route (for first location)
+    document.querySelector('.location-input').addEventListener('blur', function() {
+        if (this.value && document.getElementById('vozilo').value) {
+            calculateRoute();
+        }
+    });
+
+    document.querySelector('.location-input').addEventListener('input', updatePreview);
+
+    // Dnevnica checkbox handler
+    document.getElementById('dnevnica').addEventListener('change', function() {
+        document.getElementById('dnevnicaAmount').style.display = this.checked ? 'block' : 'none';
+        updatePreview();
+    });
+
+    // Smestaj checkbox handler
+    document.getElementById('smestaj').addEventListener('change', function() {
+        document.getElementById('accommodationCard').style.display = this.checked ? 'block' : 'none';
+        updatePreview();
+    });
+
+    // Toll checkbox handler
+    document.getElementById('includeToll').addEventListener('change', updatePreview);
+
+    // Kilometraza change handler
+    document.getElementById('kilometraza').addEventListener('input', updatePreview);
+
+    // Initial preview update
+    updatePreview();
+});
+
+function calculateDays() {
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+
+    if (odDatuma && doDatuma) {
+        const start = new Date(odDatuma);
+        const end = new Date(doDatuma);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return diffDays;
+    }
+    return 0;
+}
+
+function getLocations() {
+    const inputs = document.querySelectorAll('.location-input');
+    const locations = [];
+    inputs.forEach(input => {
+        if (input.value.trim()) {
+            locations.push(input.value.trim());
+        }
+    });
+    return locations;
+}
+
+function getLocationsText() {
+    const locations = getLocations();
+    if (locations.length === 0) return '________________';
+    if (locations.length === 1) return locations[0];
+    return locations.join(' → ');
+}
+
+function removeLocation(btn) {
+    const entry = btn.closest('.location-entry');
+    entry.remove();
+
+    // Renumber remaining locations
+    const entries = document.querySelectorAll('.location-entry');
+    entries.forEach((entry, index) => {
+        const badge = entry.querySelector('.input-group-text');
+        if (badge && index > 0) {
+            badge.innerHTML = `<i class="bi bi-geo-alt"></i> ${index + 1}`;
+        }
+    });
+
+    updatePreview();
+    if (getLocations().length > 0 && document.getElementById('vozilo').value) {
+        calculateRoute();
+    }
+}
+
+function getVehicleData() {
+    const voziloSelect = document.getElementById('vozilo');
+    const option = voziloSelect.options[voziloSelect.selectedIndex];
+
+    // Handle own vehicle (sopstveni prevoz)
+    if (voziloSelect.value === 'sopstveni') {
+        const ownConsumption = parseFloat(document.getElementById('ownConsumption').value) || 8;
+        const ownFuelSelect = document.getElementById('ownFuelType');
+        const ownFuelType = ownFuelSelect.value; // 'BMB 95', 'BMB 100', or 'Евродизел'
+        return {
+            id: 'sopstveni',
+            consumption: ownConsumption,
+            fuelType: ownFuelType
+        };
+    }
+
+    return {
+        id: voziloSelect.value,
+        consumption: parseFloat(option.dataset.consumption) || 10,
+        fuelType: option.dataset.fuel || 'Бензин'
+    };
+}
+
+function calculateFuelCost() {
+    const km = parseInt(document.getElementById('kilometraza').value) || 0;
+    const vehicle = getVehicleData();
+    const fuelPrice = FUEL_PRICES[vehicle.fuelType] || 199;
+    const liters = Math.round((km * 2) * vehicle.consumption / 100 * 10) / 10; // Round trip
+    const cost = Math.round(liters * fuelPrice);
+    return { liters, cost, consumption: vehicle.consumption, fuelType: vehicle.fuelType, fuelPrice };
+}
+
+function calculateRoute() {
+    const locations = getLocations();
+    const vozilo = document.getElementById('vozilo').value;
+
+    if (locations.length === 0) {
+        alert('Молимо унесите локацију');
+        return;
+    }
+
+    const routeInfo = document.getElementById('routeInfo');
+    routeInfo.innerHTML = '<i class="spinner-border spinner-border-sm"></i> Рачунам руту...';
+
+    // Prepare request data - send all destinations
+    const requestData = {
+        destinations: locations,
+        vehicle_id: vozilo || null
+    };
+
+    // Add own vehicle data if applicable
+    if (vozilo === 'sopstveni') {
+        requestData.consumption = parseFloat(document.getElementById('ownConsumption').value) || 8;
+        requestData.fuel_type = document.getElementById('ownFuelType').value;
+    }
+
+    secureFetch('/api/route/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && (data.distance_km_outbound > 0 || data.distance_round_trip > 0)) {
+            currentRouteData = data;
+
+            // Update kilometraza
+            document.getElementById('kilometraza').value = data.distance_round_trip;
+
+            // Build detailed route info with segments
+            let routeHtml = `<div class="mb-2"><i class="bi bi-check-circle text-success"></i> <strong>Рута израчуната</strong></div>`;
+
+            if (data.segments && data.segments.length > 0) {
+                routeHtml += `<div class="route-segments small">`;
+                routeHtml += `<table class="table table-sm table-borderless mb-1" style="font-size: 0.85em;">`;
+                routeHtml += `<thead><tr><th>Деоница</th><th class="text-end">км</th><th class="text-end">Путарина</th></tr></thead><tbody>`;
+
+                data.segments.forEach((seg, idx) => {
+                    if (seg.is_return) {
+                        routeHtml += `<tr class="text-muted"><td><i class="bi bi-arrow-return-left me-1"></i>${seg.from} → ${seg.to}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${formatNumber(seg.toll_cost)} дин</td></tr>`;
+                    } else {
+                        const icon = idx === 0 ? 'bi-geo-alt-fill text-danger' : 'bi-geo-alt text-primary';
+                        const unknownBadge = seg.unknown ? ' <span class="badge bg-warning text-dark">?</span>' : '';
+                        routeHtml += `<tr><td><i class="bi ${icon} me-1"></i>${seg.from} → ${seg.to}${unknownBadge}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${seg.toll_cost > 0 ? formatNumber(seg.toll_cost) + ' дин' : '-'}</td></tr>`;
+                    }
+                });
+
+                routeHtml += `<tr class="fw-bold border-top"><td>УКУПНО (повратно)</td><td class="text-end">${data.distance_round_trip} км</td><td class="text-end">${formatNumber(data.toll_round_trip)} дин</td></tr>`;
+                routeHtml += `</tbody></table></div>`;
+            }
+
+            routeInfo.innerHTML = routeHtml;
+
+            // Update toll info
+            if (data.toll_station) {
+                document.getElementById('tollRouteInfo').innerHTML =
+                    `Наплатне станице: <strong>${data.toll_station}</strong>`;
+                document.getElementById('tollCost').textContent = formatNumber(data.toll_round_trip);
+            } else {
+                document.getElementById('tollRouteInfo').innerHTML = 'Без путарине на овој рути';
+                document.getElementById('tollCost').textContent = '0';
+            }
+
+            // Populate toll stations checkboxes for exclusion
+            const tollStationsContainer = document.getElementById('tollStationsContainer');
+            const tollStationsList = document.getElementById('tollStationsList');
+            if (data.toll_stations && data.toll_stations.length > 0) {
+                tollStationsList.innerHTML = '';
+                data.toll_stations.forEach((station, idx) => {
+                    if (station && station !== 'повратак') {
+                        const checkboxHtml = `
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input toll-station-exclude" type="checkbox" id="excludeToll${idx}" value="${station}">
+                                <label class="form-check-label small" for="excludeToll${idx}">${station}</label>
+                            </div>
+                        `;
+                        tollStationsList.innerHTML += checkboxHtml;
+                    }
+                });
+                tollStationsContainer.style.display = tollStationsList.innerHTML ? 'block' : 'none';
+            } else {
+                tollStationsContainer.style.display = 'none';
+            }
+
+            // Update fuel info
+            document.getElementById('fuelLiters').textContent = data.fuel_liters;
+            document.getElementById('fuelCost').textContent = formatNumber(data.fuel_cost);
+
+            updatePreview();
+        } else if (data.known_destinations) {
+            routeInfo.innerHTML = `<i class="bi bi-exclamation-circle text-warning"></i> ${data.note || 'Унесите километражу ручно'}`;
+            currentRouteData = null;
+        } else {
+            routeInfo.innerHTML = `<i class="bi bi-exclamation-circle text-warning"></i> Дестинација није пронађена. Унесите километражу ручно.`;
+            currentRouteData = null;
+        }
+    })
+    .catch(error => {
+        routeInfo.innerHTML = '<i class="bi bi-x-circle text-danger"></i> Грешка при рачунању руте';
+        currentRouteData = null;
+    });
+}
+
+function recalculateWithExclusions() {
+    // Get excluded toll stations
+    const excludedStations = [];
+    document.querySelectorAll('.toll-station-exclude:checked').forEach(cb => {
+        excludedStations.push(cb.value);
+    });
+
+    if (!currentRouteData) {
+        alert('Прво израчунајте руту');
+        return;
+    }
+
+    // Recalculate tolls locally based on exclusions
+    let newTollOutbound = 0;
+    let newTollReturn = 0;
+
+    if (currentRouteData.segments) {
+        currentRouteData.segments.forEach(seg => {
+            if (seg.toll_station && !excludedStations.includes(seg.toll_station) && seg.toll_station !== 'повратак') {
+                if (seg.is_return) {
+                    newTollReturn += seg.toll_cost || 0;
+                } else {
+                    newTollOutbound += seg.toll_cost || 0;
+                }
+            }
+        });
+    }
+
+    // Update for return trip toll (check if return station is excluded)
+    const returnSeg = currentRouteData.segments?.find(s => s.is_return);
+    if (returnSeg && returnSeg.toll_station && !excludedStations.includes(returnSeg.toll_station) && returnSeg.toll_station !== 'повратак') {
+        newTollReturn = returnSeg.toll_cost || 0;
+    } else if (returnSeg && excludedStations.includes(returnSeg.toll_station)) {
+        newTollReturn = 0;
+    }
+
+    // Calculate new toll round trip (if same stations used both ways)
+    const newTollRoundTrip = newTollOutbound + (newTollReturn || newTollOutbound);
+
+    // Update display
+    document.getElementById('tollCost').textContent = formatNumber(newTollRoundTrip);
+
+    // Update currentRouteData for preview
+    currentRouteData.toll_round_trip = newTollRoundTrip;
+    currentRouteData.toll_outbound = newTollOutbound;
+    currentRouteData.toll_return = newTollReturn || newTollOutbound;
+
+    // Update total transport cost
+    currentRouteData.total_transport_cost = currentRouteData.fuel_cost + newTollRoundTrip;
+
+    // Update excluded stations display
+    const activeStations = (currentRouteData.toll_stations || []).filter(s => s && s !== 'повратак' && !excludedStations.includes(s));
+    if (activeStations.length > 0) {
+        document.getElementById('tollRouteInfo').innerHTML = `Наплатне станице: <strong>${activeStations.join(', ')}</strong>` +
+            (excludedStations.length > 0 ? ` <span class="text-muted small">(искључено: ${excludedStations.join(', ')})</span>` : '');
+    } else {
+        document.getElementById('tollRouteInfo').innerHTML = 'Без путарине (регионални путеви)';
+    }
+
+    // Update route table if exists
+    const routeInfo = document.getElementById('routeInfo');
+    if (routeInfo && currentRouteData.segments) {
+        let routeHtml = `<div class="mb-2"><i class="bi bi-check-circle text-success"></i> <strong>Рута израчуната</strong></div>`;
+        routeHtml += `<div class="route-segments small">`;
+        routeHtml += `<table class="table table-sm table-borderless mb-1" style="font-size: 0.85em;">`;
+        routeHtml += `<thead><tr><th>Деоница</th><th class="text-end">км</th><th class="text-end">Путарина</th></tr></thead><tbody>`;
+
+        currentRouteData.segments.forEach((seg, idx) => {
+            const isExcluded = seg.toll_station && excludedStations.includes(seg.toll_station);
+            const displayToll = isExcluded ? 0 : (seg.toll_cost || 0);
+
+            if (seg.is_return) {
+                routeHtml += `<tr class="text-muted"><td><i class="bi bi-arrow-return-left me-1"></i>${seg.from} → ${seg.to}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${isExcluded ? '<s>' + formatNumber(seg.toll_cost) + '</s> 0' : formatNumber(displayToll)} дин</td></tr>`;
+            } else {
+                const icon = idx === 0 ? 'bi-geo-alt-fill text-danger' : 'bi-geo-alt text-primary';
+                const unknownBadge = seg.unknown ? ' <span class="badge bg-warning text-dark">?</span>' : '';
+                const tollDisplay = displayToll > 0 ? formatNumber(displayToll) + ' дин' : (isExcluded ? '<s>' + formatNumber(seg.toll_cost) + '</s> 0 дин' : '-');
+                routeHtml += `<tr><td><i class="bi ${icon} me-1"></i>${seg.from} → ${seg.to}${unknownBadge}</td><td class="text-end">${seg.distance_km}</td><td class="text-end">${tollDisplay}</td></tr>`;
+            }
+        });
+
+        routeHtml += `<tr class="fw-bold border-top"><td>УКУПНО (повратно)</td><td class="text-end">${currentRouteData.distance_round_trip} км</td><td class="text-end">${formatNumber(newTollRoundTrip)} дин</td></tr>`;
+        routeHtml += `</tbody></table></div>`;
+        routeInfo.innerHTML = routeHtml;
+    }
+
+    updatePreview();
+}
+
+function updatePreview() {
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const lokacija = getLocationsText();
+    const cilj = document.getElementById('cilj').value || '________________';
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value || '________________';
+    const datumDokumenta = document.getElementById('datumDokumenta').value;
+
+    const days = calculateDays();
+
+    // Period format
+    let periodText = '__-__.____.____';
+    if (odDatuma && doDatuma) {
+        const odDate = new Date(odDatuma);
+        const doDate = new Date(doDatuma);
+        const odDay = odDate.getDate();
+        const doDay = doDate.getDate();
+        const month = (doDate.getMonth() + 1).toString().padStart(2, '0');
+        const year = doDate.getFullYear();
+        periodText = odDay + '-' + doDay + '.' + month + '.' + year;
+    }
+
+    // Update preview elements
+    document.getElementById('previewBrojDana').textContent = days || '__';
+    document.getElementById('previewPeriod').textContent = periodText;
+
+    const lokacijaEl = document.getElementById('previewLokacija');
+    lokacijaEl.textContent = lokacija;
+    lokacijaEl.className = lokacija === '________________' ? 'highlight-field' : '';
+
+    const ciljEl = document.getElementById('previewCilj');
+    ciljEl.textContent = cilj;
+    ciljEl.className = cilj === '________________' ? 'highlight-field' : '';
+
+    document.getElementById('previewSef').innerHTML = sefOdeljenja === '________________'
+        ? '<span class="highlight-field">________________</span>'
+        : sefOdeljenja;
+
+    // Date
+    let datumText = '__.__.____';
+    if (datumDokumenta) {
+        datumText = formatDateSerbian(datumDokumenta);
+    }
+    document.getElementById('previewDatum').textContent = datumText;
+
+    // Costs
+    let totalCost = 0;
+
+    // Fuel costs
+    const troskoviPrevoza = document.getElementById('troskoviPrevoza').checked;
+    const vozilo = document.getElementById('vozilo').value;
+    const fuelRow = document.getElementById('fuelRow');
+
+    if (troskoviPrevoza && vozilo) {
+        const fuel = calculateFuelCost();
+        document.getElementById('previewLitri').textContent = fuel.liters;
+        document.getElementById('previewKm').textContent = document.getElementById('kilometraza').value || '__';
+        document.getElementById('previewFuelCost').textContent = formatNumber(fuel.cost);
+        document.getElementById('fuelCost').textContent = formatNumber(fuel.cost);
+        fuelRow.style.display = '';
+        totalCost += fuel.cost;
+    } else {
+        fuelRow.style.display = 'none';
+    }
+
+    // Dnevnica
+    const dnevnica = document.getElementById('dnevnica').checked;
+    const dnevnicaRow = document.getElementById('dnevnicaRow');
+
+    if (dnevnica && days > 0) {
+        const rate = parseInt(document.getElementById('dnevnicaValue').value) || 3000;
+        const cost = days * rate;
+        document.getElementById('previewDnevnicaDana').textContent = days;
+        document.getElementById('previewDnevnicaRate').textContent = formatNumber(rate);
+        document.getElementById('previewDnevnicaCost').textContent = formatNumber(cost);
+        dnevnicaRow.style.display = '';
+        totalCost += cost;
+        document.getElementById('previewDnevnica').textContent = '';
+    } else {
+        dnevnicaRow.style.display = 'none';
+        document.getElementById('previewDnevnica').textContent = 'Одричем се права на дневницу. ';
+    }
+
+    // Toll (Putarina)
+    const includeToll = document.getElementById('includeToll').checked;
+    const tollRow = document.getElementById('tollRow');
+
+    if (troskoviPrevoza && vozilo && includeToll && currentRouteData && currentRouteData.toll_round_trip > 0) {
+        const tollCost = currentRouteData.toll_round_trip;
+        document.getElementById('previewTollRoute').textContent = `повратно до ${currentRouteData.toll_station}`;
+        document.getElementById('previewTollCost').textContent = formatNumber(tollCost);
+        tollRow.style.display = '';
+        totalCost += tollCost;
+    } else {
+        tollRow.style.display = 'none';
+    }
+
+    // Smestaj
+    const smestaj = document.getElementById('smestaj').checked;
+    const smestajRow = document.getElementById('smestajRow');
+
+    if (smestaj && days > 0) {
+        const nights = days - 1;
+        let smestajCost = 0;
+        if (selectedAccommodations.length > 0) {
+            smestajCost = selectedAccommodations[0].price_per_night * nights;
+        }
+        document.getElementById('previewSmestajNoci').textContent = nights;
+        document.getElementById('previewSmestajCost').textContent = formatNumber(smestajCost);
+        smestajRow.style.display = '';
+        totalCost += smestajCost;
+        document.getElementById('previewSmestaj').textContent = '';
+    } else {
+        smestajRow.style.display = 'none';
+        document.getElementById('previewSmestaj').textContent = smestaj ? '' : 'Трошкови смештаја су обезбеђени.';
+    }
+
+    // Total
+    document.getElementById('previewTotal').textContent = formatNumber(totalCost);
+
+    // Show integration status if vehicle or timesheet selected
+    const showIntegration = vozilo || document.getElementById('updateTimesheet').checked;
+    document.getElementById('integrationStatus').style.display = showIntegration ? 'block' : 'none';
+}
+
+function formatDateSerbian(dateStr) {
+    const date = new Date(dateStr);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return day + '.' + month + '.' + year + '.';
+}
+
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function searchAccommodation() {
+    const locations = getLocations();
+    const lokacija = locations[0] || '';  // Use first location for accommodation
+    const brojGostiju = document.getElementById('brojGostiju').value;
+    const maxCena = document.getElementById('maxCena').value;
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+
+    if (!lokacija) {
+        alert('Молимо унесите локацију');
+        return;
+    }
+
+    const resultsDiv = document.getElementById('accommodationResults');
+    resultsDiv.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-info" role="status"></div><p class="mt-2">Претрага у току...</p></div>';
+
+    secureFetch('/api/accommodation/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+            location: lokacija,
+            guests: brojGostiju,
+            max_price: maxCena,
+            check_in: odDatuma,
+            check_out: doDatuma
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            let html = '';
+
+            // Show source info
+            if (data.source) {
+                const sourceIcon = data.source === 'Демо подаци' ? 'bi-info-circle text-warning' : 'bi-cloud-check text-success';
+                html += `<div class="alert alert-light py-2 mb-2 small"><i class="bi ${sourceIcon} me-1"></i> Извор: <strong>${data.source}</strong></div>`;
+            }
+
+            data.accommodations.forEach((acc, index) => {
+                const accJson = JSON.stringify(acc).replace(/'/g, "\\'");
+                html += `
+                    <div class="accommodation-card" onclick="selectAccommodation(${index}, this)" data-accommodation='${accJson}'>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="mb-1">${acc.name}</h6>
+                                <small class="text-muted">${acc.type}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="price">${formatNumber(acc.price_per_night)} дин</div>
+                                <small class="text-muted">по ноћи</small>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small><i class="bi bi-star-fill text-warning"></i> ${acc.rating} | ${acc.distance}</small>
+                        </div>
+                        <div class="mt-1">
+                            ${acc.amenities.map(a => `<span class="badge bg-light text-dark me-1">${a}</span>`).join('')}
+                        </div>
+                        ${acc.booking_url ? `<div class="mt-2"><a href="${acc.booking_url}" target="_blank" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right me-1"></i>Booking.com</a></div>` : ''}
+                    </div>
+                `;
+            });
+            html += `<div class="alert alert-info mt-2 small"><i class="bi bi-info-circle me-2"></i>${data.note}</div>`;
+            resultsDiv.innerHTML = html;
+        } else {
+            resultsDiv.innerHTML = `<div class="alert alert-danger">Грешка при претрази: ${data.message || 'Непозната грешка'}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Accommodation search error:', error);
+        if (error.message.includes('401')) {
+            resultsDiv.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Сесија је истекла. Молимо освежите страницу.</div>`;
+        } else {
+            resultsDiv.innerHTML = `<div class="alert alert-danger">Грешка при повезивању: ${error.message}</div>`;
+        }
+    });
+}
+
+function selectAccommodation(index, element) {
+    // Toggle selection
+    const card = element;
+    const isSelected = card.classList.contains('selected');
+
+    if (isSelected) {
+        card.classList.remove('selected');
+        selectedAccommodations = selectedAccommodations.filter(a => a.id !== JSON.parse(card.dataset.accommodation).id);
+    } else {
+        if (selectedAccommodations.length >= 3) {
+            alert('Можете одабрати максимално 3 понуде');
+            return;
+        }
+        card.classList.add('selected');
+        selectedAccommodations.push(JSON.parse(card.dataset.accommodation));
+    }
+
+    updatePreview();
+}
+
+function submitTrip() {
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const locations = getLocations();
+    const lokacija = getLocationsText();
+    const cilj = document.getElementById('cilj').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value;
+
+    if (!odDatuma || !doDatuma || locations.length === 0 || !cilj || !sefOdeljenja) {
+        alert('Молимо попуните сва обавезна поља');
+        return;
+    }
+
+    const data = {
+        start_date: odDatuma,
+        end_date: doDatuma,
+        locations: locations,
+        location: lokacija,
+        purpose: cilj,
+        vehicle_id: document.getElementById('vozilo').value || null,
+        update_timesheet: document.getElementById('updateTimesheet').checked,
+        accommodations: selectedAccommodations
+    };
+
+    secureFetch('/api/field-trip/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Update status indicators
+            if (result.vehicle_reserved) {
+                document.getElementById('vehicleStatus').className = 'integration-status success';
+                document.getElementById('vehicleStatus').innerHTML = '<i class="bi bi-check-circle me-2"></i><span>Возило: Резервација успешна</span>';
+            }
+            if (result.timesheet_updated) {
+                document.getElementById('timesheetStatus').className = 'integration-status success';
+                document.getElementById('timesheetStatus').innerHTML = '<i class="bi bi-check-circle me-2"></i><span>Месечни извештај: Ажурирано</span>';
+            }
+
+            alert('Захтев је успешно креиран!\n' +
+                  (result.vehicle_reserved ? '- Возило резервисано\n' : '') +
+                  (result.timesheet_updated ? '- Месечни извештај ажуриран' : ''));
+        } else {
+            alert('Грешка: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Грешка при креирању захтева');
+    });
+}
+
+function printDocument() {
+    // Validate form before printing
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const locations = getLocations();
+    const lokacija = getLocationsText();
+    const cilj = document.getElementById('cilj').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value;
+    const datumDokumenta = document.getElementById('datumDokumenta').value;
+
+    if (!odDatuma || !doDatuma || locations.length === 0 || !cilj || !sefOdeljenja) {
+        alert('Молимо попуните сва обавезна поља пре штампања.');
+        return;
+    }
+
+    const days = calculateDays();
+    const datum = datumDokumenta ? formatDateSerbian(datumDokumenta) : formatDateSerbian(new Date().toISOString().split('T')[0]);
+
+    // Period format
+    const odDate = new Date(odDatuma);
+    const doDate = new Date(doDatuma);
+    const periodText = odDate.getDate() + '-' + doDate.getDate() + '.' + (doDate.getMonth() + 1).toString().padStart(2, '0') + '.' + doDate.getFullYear();
+
+    // Calculate costs
+    const troskoviPrevoza = document.getElementById('troskoviPrevoza').checked;
+    const vozilo = document.getElementById('vozilo').value;
+    const dnevnica = document.getElementById('dnevnica').checked;
+    const smestaj = document.getElementById('smestaj').checked;
+
+    let costRows = '';
+    let totalCost = 0;
+
+    if (troskoviPrevoza && vozilo) {
+        const fuel = calculateFuelCost();
+        const km = document.getElementById('kilometraza').value || 0;
+        costRows += `<tr><td>Трошкови пута (гориво) ${fuel.liters} л – укупно ${km} км (${fuel.consumption} L/100km)</td><td style="text-align: right;">= ${formatNumber(fuel.cost)} дин.</td></tr>`;
+        totalCost += fuel.cost;
+
+        // Add toll if applicable
+        const includeToll = document.getElementById('includeToll').checked;
+        if (includeToll && currentRouteData && currentRouteData.toll_round_trip > 0) {
+            const tollCost = currentRouteData.toll_round_trip;
+            costRows += `<tr><td>Путарина (повратно до ${currentRouteData.toll_station})</td><td style="text-align: right;">= ${formatNumber(tollCost)} дин.</td></tr>`;
+            totalCost += tollCost;
+        }
+    }
+
+    if (dnevnica && days > 0) {
+        const rate = parseInt(document.getElementById('dnevnicaValue').value) || 3000;
+        const cost = days * rate;
+        costRows += `<tr><td>Дневнице (${days} дана x ${formatNumber(rate)} дин)</td><td style="text-align: right;">= ${formatNumber(cost)} дин.</td></tr>`;
+        totalCost += cost;
+    }
+
+    if (smestaj && days > 0) {
+        const nights = days - 1;
+        let smestajCost = 0;
+        if (selectedAccommodations.length > 0) {
+            smestajCost = selectedAccommodations[0].price_per_night * nights;
+        }
+        costRows += `<tr><td>Трошкови смештаја (${nights} ноћи)</td><td style="text-align: right;">= ${formatNumber(smestajCost)} дин.</td></tr>`;
+        totalCost += smestajCost;
+    }
+
+    const dnevnicaText = dnevnica ? '' : 'Одричем се права на дневницу и ';
+    const smestajText = smestaj ? '' : 'трошкови смештаја су обезбеђени.';
+    const troskoviNote = dnevnicaText + smestajText;
+
+    // Open new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Захтев за службени пут</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            margin: 0;
+            padding: 15px;
+        }
+        .memorandum-header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .memorandum-header img {
+            width: 100%;
+            max-width: 750px;
+            height: auto;
+        }
+        .memorandum-date-overlay {
+            position: absolute;
+            bottom: 13px;
+            right: 68px;
+            font-size: 11pt;
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            letter-spacing: 0.5px;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .header-to {
+            text-align: center;
+            margin-bottom: 25px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        .body-text {
+            text-align: justify;
+            text-indent: 30px;
+            margin-bottom: 15px;
+        }
+        .cost-table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+        .cost-table td {
+            padding: 5px 10px;
+        }
+        .cost-table .total-row {
+            border-top: 2px solid #000;
+            font-weight: bold;
+        }
+        .signature-block {
+            margin-bottom: 15px;
+        }
+        .signature-block .label {
+            font-weight: bold;
+        }
+        .signature-block .line {
+            border-bottom: 1px solid #000;
+            width: 160px;
+            margin-top: 20px;
+        }
+        .director-block {
+            text-align: center;
+            margin-top: 25px;
+        }
+        .director-block .label {
+            font-weight: bold;
+        }
+        .director-block .line {
+            border-bottom: 1px solid #000;
+            width: 160px;
+            margin: 20px auto 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="memorandum-header">
+        <img src="${memorandumUrl}" alt="Меморандум">
+        <div class="memorandum-date-overlay">${datum}</div>
+    </div>
+
+    <div class="container">
+        <div class="header-to">
+            Директору Природњачког музеја,
+        </div>
+
+        <div class="body-text">
+            Молим да ми се одобре ${days} дана ради одласка на терен у периоду од ${periodText} године. Теренски рад ће се обавити на подручју ${lokacija}.
+        </div>
+
+        <div class="body-text">
+            Циљ теренског рада је ${cilj}.
+        </div>
+
+        <div class="body-text">
+            Трошкови превоза падају на терет теренских активности Музеја. ${troskoviNote}
+        </div>
+
+        <div class="body-text">
+            <strong>Спецификација трошкова:</strong>
+        </div>
+
+        <table class="cost-table">
+            <tbody>
+                ${costRows}
+                <tr class="total-row">
+                    <td><strong>ТОТАЛ</strong></td>
+                    <td style="text-align: right;"><strong>= ${formatNumber(totalCost)} дин.</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="signature-block">
+            <div class="label">Подносилац захтева:</div>
+            <div>${userFullName || '________________'}</div>
+        </div>
+
+        <div class="signature-block">
+            <div class="label">Одобрава шеф одељења:</div>
+            <div>${sefOdeljenja}</div>
+            <div class="line"></div>
+        </div>
+
+        <div class="signature-block">
+            <div class="label">Одобрава Шеф рачуноводства:</div>
+            <div>Душица Ивић</div>
+            <div class="line"></div>
+        </div>
+
+        <div class="director-block">
+            <div class="label">Одобрава Директор</div>
+            <div>Славко Спасић</div>
+            <div class="line"></div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    <\\/script>
+</body>
+</html>
+    `);
+
+    printWindow.document.close();
+}
+
+function saveRequest() {
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const locations = getLocations();
+    const lokacijaTekst = getLocationsText();
+    const cilj = document.getElementById('cilj').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value;
+    const datumDokumenta = document.getElementById('datumDokumenta').value;
+
+    if (!odDatuma || !doDatuma || locations.length === 0 || !cilj || !sefOdeljenja) {
+        alert('Молимо попуните сва обавезна поља пре чувања.');
+        return;
+    }
+
+    const btn = document.getElementById('saveRequestBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Чување...';
+
+    const days = calculateDays();
+    const vozilo = document.getElementById('vozilo').value;
+    const voziloOption = document.getElementById('vozilo').options[document.getElementById('vozilo').selectedIndex];
+    const voziloOpis = voziloOption ? voziloOption.text : '';
+    const km = document.getElementById('kilometraza').value || '';
+
+    let troskovi = {};
+    if (document.getElementById('troskoviPrevoza').checked && vozilo) {
+        const fuel = calculateFuelCost();
+        troskovi.gorivo = fuel.cost;
+        troskovi.gorivo_litara = fuel.liters;
+        if (document.getElementById('includeToll').checked && typeof currentRouteData !== 'undefined' && currentRouteData && currentRouteData.toll_round_trip > 0) {
+            troskovi.putarina = currentRouteData.toll_round_trip;
+        }
+    }
+    if (document.getElementById('dnevnica').checked && days > 0) {
+        const rate = parseInt(document.getElementById('dnevnicaValue').value) || 3000;
+        troskovi.dnevnice = days * rate;
+    }
+    if (document.getElementById('smestaj').checked && days > 0) {
+        const nights = days - 1;
+        if (typeof selectedAccommodations !== 'undefined' && selectedAccommodations.length > 0) {
+            troskovi.smestaj = selectedAccommodations[0].price_per_night * nights;
+        }
+    }
+
+    const payload = {
+        request_type: 'terenska_aktivnost',
+        subtype: 'sluzbeni_put',
+        title: 'Службени пут - ' + lokacijaTekst + ' (' + formatDateSerbian(odDatuma) + ' - ' + formatDateSerbian(doDatuma) + ')',
+        description: 'Захтев за службени пут на подручје ' + lokacijaTekst + '. Циљ: ' + cilj,
+        request_data: {
+            od_datuma: odDatuma,
+            do_datuma: doDatuma,
+            broj_dana: days,
+            lokacije: locations,
+            lokacija_tekst: lokacijaTekst,
+            cilj: cilj,
+            sef_odeljenja: sefOdeljenja,
+            vozilo: vozilo,
+            vozilo_opis: voziloOpis,
+            kilometraza: km,
+            troskovi: troskovi,
+            datum_dokumenta: datumDokumenta,
+            podnosilac: userFullName
+        }
+    };
+
+    secureFetch('/api/archive/requests', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.className = 'btn btn-success btn-sm';
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Сачувано (#' + data.id + ')';
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';
+            alert('Грешка: ' + (data.message || 'Непозната грешка'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';
+        alert('Грешка при чувању захтева: ' + err.message);
+    });
+}
+</script>
+{% endblock %}

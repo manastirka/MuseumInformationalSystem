@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Подешавања поште — Природњачки музеј{% endblock %}
+
+{% block content %}
+<div class="container py-4" x-data="mailSettings()" x-init="load()">
+    <div class="d-flex align-items-center mb-4">
+        <a href="{{ url_for('mail_client_page') }}" class="btn btn-outline-secondary btn-sm me-3">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="mb-0"><i class="bi bi-gear me-2"></i>Подешавања електронске поште</h4>
+    </div>
+
+    <div class="row g-4">
+        <!-- IMAP Settings -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-download me-2"></i>IMAP сервер (пријем поште)
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Сервер</label>
+                        <input type="text" class="form-control" x-model="settings.imap_server"
+                               placeholder="imap.example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Порт</label>
+                        <input type="number" class="form-control" x-model="settings.imap_port"
+                               placeholder="993">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" x-model="settings.imap_ssl" id="imapSsl">
+                        <label class="form-check-label" for="imapSsl">Користи SSL</label>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" @click="testConnection('imap')" :disabled="testingImap">
+                        <span x-show="!testingImap"><i class="bi bi-plug me-1"></i>Тестирај IMAP</span>
+                        <span x-show="testingImap"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
+                    </button>
+                    <div class="mt-2" x-show="imapResult">
+                        <div class="alert alert-sm py-1 px-2 mb-0"
+                             :class="imapSuccess ? 'alert-success' : 'alert-danger'"
+                             x-text="imapResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SMTP Settings -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-upload me-2"></i>SMTP сервер (слање поште)
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Сервер</label>
+                        <input type="text" class="form-control" x-model="settings.smtp_server"
+                               placeholder="smtp.example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Порт</label>
+                        <input type="number" class="form-control" x-model="settings.smtp_port"
+                               placeholder="587">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" x-model="settings.smtp_starttls" id="smtpTls">
+                        <label class="form-check-label" for="smtpTls">Користи STARTTLS</label>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" @click="testConnection('smtp')" :disabled="testingSmtp">
+                        <span x-show="!testingSmtp"><i class="bi bi-plug me-1"></i>Тестирај SMTP</span>
+                        <span x-show="testingSmtp"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
+                    </button>
+                    <div class="mt-2" x-show="smtpResult">
+                        <div class="alert alert-sm py-1 px-2 mb-0"
+                             :class="smtpSuccess ? 'alert-success' : 'alert-danger'"
+                             x-text="smtpResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Settings -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-person me-2"></i>Налог
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Е-пошта адреса</label>
+                        <input type="email" class="form-control" x-model="settings.email_address"
+                               placeholder="korisnik@nhmbeo.rs">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Лозинка</label>
+                        <div class="input-group">
+                            <input :type="showPw ? 'text' : 'password'" class="form-control"
+                                   x-model="password" placeholder="Унесите лозинку">
+                            <button class="btn btn-outline-secondary" type="button" @click="showPw = !showPw">
+                                <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'"></i>
+                            </button>
+                        </div>
+                        <div class="form-text" x-show="hasExistingPassword && !password">
+                            <i class="bi bi-lock-fill me-1"></i>Лозинка је сачувана (оставите празно да бисте задржали постојећу)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save -->
+        <div class="col-12">
+            <button class="btn btn-primary" @click="save()" :disabled="saving">
+                <span x-show="!saving"><i class="bi bi-check-lg me-1"></i>Сачувај подешавања</span>
+                <span x-show="saving"><span class="spinner-border spinner-border-sm me-1"></span>Чувам...</span>
+            </button>
+            <div class="mt-2" x-show="saveResult">
+                <div class="alert py-1 px-2 d-inline-block"
+                     :class="saveSuccess ? 'alert-success' : 'alert-danger'"
+                     x-text="saveResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mailSettings() {
+    return {
+        settings: {
+            imap_server: '',
+            imap_port: 993,
+            imap_ssl: true,
+            smtp_server: '',
+            smtp_port: 587,
+            smtp_starttls: true,
+            email_address: '',
+        },
+        password: '',
+        showPw: false,
+        hasExistingPassword: false,
+        saving: false,
+        saveResult: '',
+        saveSuccess: false,
+        testingImap: false,
+        testingSmtp: false,
+        imapResult: '',
+        imapSuccess: false,
+        smtpResult: '',
+        smtpSuccess: false,
+
+        async load() {
+            try {
+                const r = await fetch('/api/mail/settings');
+                const d = await r.json();
+                if (d.success && d.settings) {
+                    Object.assign(this.settings, d.settings);
+                    this.hasExistingPassword = true;
+                }
+            } catch (e) { /* first time */ }
+        },
+
+        async save() {
+            this.saving = true;
+            this.saveResult = '';
+            try {
+                const payload = { ...this.settings };
+                if (this.password) payload.password = this.password;
+                const r = await secureFetch('/api/mail/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const d = await r.json();
+                this.saveResult = d.message;
+                this.saveSuccess = d.success;
+                if (d.success) this.hasExistingPassword = true;
+            } catch (e) {
+                this.saveResult = 'Грешка при чувању.';
+                this.saveSuccess = false;
+            }
+            this.saving = false;
+        },
+
+        async testConnection(type) {
+            if (type === 'imap') { this.testingImap = true; this.imapResult = ''; }
+            else { this.testingSmtp = true; this.smtpResult = ''; }
+            try {
+                const payload = {
+                    type,
+                    email_address: this.settings.email_address,
+                    password: this.password || '',
+                    imap_server: this.settings.imap_server,
+                    imap_port: this.settings.imap_port,
+                    imap_ssl: this.settings.imap_ssl,
+                    smtp_server: this.settings.smtp_server,
+                    smtp_port: this.settings.smtp_port,
+                    smtp_starttls: this.settings.smtp_starttls,
+                };
+                const r = await secureFetch('/api/mail/test-connection', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const d = await r.json();
+                if (type === 'imap') { this.imapResult = d.message; this.imapSuccess = d.success; }
+                else { this.smtpResult = d.message; this.smtpSuccess = d.success; }
+            } catch (e) {
+                const msg = 'Грешка при тестирању.';
+                if (type === 'imap') { this.imapResult = msg; this.imapSuccess = false; }
+                else { this.smtpResult = msg; this.smtpSuccess = false; }
+            }
+            if (type === 'imap') this.testingImap = false;
+            else this.testingSmtp = false;
+        }
+    }
+}
+</script>
+{% endblock %}

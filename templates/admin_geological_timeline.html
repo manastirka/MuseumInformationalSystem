@@ -1,0 +1,1692 @@
+{% extends "base.html" %}
+{% block title %}Геотектонска еволуција Балкана{% endblock %}
+
+{% block content %}
+<style>
+/* ── Layout ── */
+#geo-tl-wrap {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 70px);
+    background: #080c14;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+}
+#three-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+}
+
+/* ── Top bar ── */
+.gt-top {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px;
+    background: linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(8,12,20,0) 100%);
+    pointer-events: none;
+}
+.gt-top > * { pointer-events: auto; }
+.gt-top h5 { color: #d0d0d0; margin: 0; font-weight: 700; font-size: 1rem; }
+.gt-top .btn-back {
+    color: #999; text-decoration: none; font-size: 0.82rem;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+    padding: 4px 12px; transition: all 0.2s;
+}
+.gt-top .btn-back:hover { color: #fff; border-color: rgba(255,255,255,0.35); }
+
+/* ── Period label ── */
+.gt-period-hud {
+    position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+    z-index: 10; text-align: center; pointer-events: none;
+}
+.gt-period-hud .era { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 3px; opacity: 0.6; }
+.gt-period-hud .name { font-size: 1.5rem; font-weight: 700; text-shadow: 0 2px 12px rgba(0,0,0,0.7); }
+.gt-period-hud .age { font-size: 0.78rem; opacity: 0.5; margin-top: 2px; }
+
+/* ── Info panel ── */
+.gt-info {
+    position: absolute; top: 56px; right: 16px; z-index: 10;
+    width: 350px; max-height: calc(100% - 170px);
+    overflow-y: auto; background: rgba(12,16,28,0.92);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 10px;
+    padding: 14px 16px; backdrop-filter: blur(10px);
+    color: #bbb; font-size: 0.76rem; line-height: 1.55;
+    transition: opacity 0.3s;
+}
+.gt-info::-webkit-scrollbar { width: 4px; }
+.gt-info::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+.gt-info h6 { color: #eee; font-size: 0.82rem; margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+.gt-info .sec { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.gt-info .sec:last-child { border-bottom: none; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 0.66rem; font-weight: 600; margin: 1px 2px; }
+.tag.oc { background: rgba(33,150,243,0.2); color: #90caf9; }
+.tag.vo { background: rgba(244,67,54,0.2); color: #ef9a9a; }
+.tag.or { background: rgba(255,152,0,0.2); color: #ffcc80; }
+.tag.ar { background: rgba(156,39,176,0.2); color: #ce93d8; }
+.tag.bk { background: rgba(76,175,80,0.2); color: #a5d6a7; }
+
+/* ── Legend ── */
+.gt-legend {
+    position: absolute; top: 56px; left: 16px; z-index: 10;
+    background: rgba(12,16,28,0.88); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px; padding: 10px 14px; backdrop-filter: blur(8px);
+    color: #aaa; font-size: 0.7rem;
+}
+.gt-legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+.gt-legend-sw { width: 18px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── 3D Labels overlay ── */
+#label-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 5; pointer-events: none; overflow: hidden;
+}
+.lbl3d {
+    position: absolute; white-space: nowrap;
+    font-size: 0.62rem; font-weight: 600;
+    padding: 1px 5px; border-radius: 3px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+.lbl3d.plate { color: #ffe0b2; background: rgba(139,105,20,0.5); }
+.lbl3d.ocean { color: #bbdefb; background: rgba(21,101,192,0.5); }
+.lbl3d.volcano { color: #ffcdd2; background: rgba(211,47,47,0.55); font-size: 0.58rem; }
+.lbl3d.arc { color: #e1bee7; background: rgba(156,39,176,0.45); }
+.lbl3d.mountain { color: #d7ccc8; background: rgba(93,64,55,0.5); }
+.lbl3d.ophiolite { color: #b2dfdb; background: rgba(0,137,123,0.45); }
+.lbl3d.zone { color: #fff9c4; background: rgba(255,193,7,0.35); font-size: 0.56rem; border: 1px dashed rgba(255,193,7,0.4); }
+.lbl3d.city { color: rgba(255,255,255,0.7); font-size: 0.58rem; font-weight: 500; background: rgba(0,0,0,0.45); }
+.lbl3d.city::before { content:''; display:inline-block; width:4px; height:4px; border-radius:50%; background:#fff; margin-right:3px; vertical-align:middle; }
+.lbl3d.cardinal { color: rgba(255,255,255,0.35); font-size: 0.7rem; font-weight: 700; letter-spacing:1px; background: none; text-shadow: 0 0 8px rgba(0,0,0,0.9); }
+.lbl3d.north { color: rgba(244,67,54,0.8); font-size: 0.85rem; }
+.lbl3d.river { color: rgba(100,181,246,0.55); font-size: 0.5rem; font-weight: 400; background: none; font-style: italic; }
+
+/* ── Cross-section panel ── */
+.gt-xsection {
+    position: absolute;
+    bottom: 90px;
+    left: 16px;
+    z-index: 10;
+    background: rgba(12,16,28,0.94);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 8px 10px;
+    backdrop-filter: blur(10px);
+    text-align: center;
+    transition: opacity 0.4s, transform 0.4s;
+    width: 480px;
+}
+.gt-xsection.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+.gt-xsection-title {
+    color: #aaa;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.gt-xsection-title .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #4fc3f7; display: inline-block;
+    animation: xpulse 2s ease-in-out infinite;
+}
+@keyframes xpulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+.gt-xsection img {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.gt-xsection-caption {
+    color: #999;
+    font-size: 0.6rem;
+    margin-top: 4px;
+}
+.gt-xsection .btn-close-xs {
+    position: absolute; top: 4px; right: 8px;
+    color: #666; background: none; border: none;
+    font-size: 0.85rem; cursor: pointer; line-height: 1;
+}
+.gt-xsection .btn-close-xs:hover { color: #fff; }
+/* Toggle button when panel is closed */
+.gt-xsection-toggle {
+    position: absolute; bottom: 90px; left: 16px;
+    z-index: 10; background: rgba(12,16,28,0.85);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    padding: 4px 14px; color: #888; font-size: 0.68rem;
+    cursor: pointer; transition: all 0.2s; display: none;
+    backdrop-filter: blur(8px);
+}
+.gt-xsection-toggle:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.gt-xsection-toggle.visible { display: block; }
+
+/* ── Compass ── */
+.gt-compass {
+    position: absolute; bottom: 100px; right: 20px; z-index: 10;
+    width: 60px; height: 60px;
+    pointer-events: none;
+}
+.gt-compass svg { width: 100%; height: 100%; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.6)); }
+.gt-compass .compass-ring { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 1.5; }
+.gt-compass .compass-n { fill: #e53935; }
+.gt-compass .compass-s { fill: rgba(255,255,255,0.35); }
+.gt-compass .compass-letter { font-size: 9px; font-weight: 700; text-anchor: middle; }
+.gt-compass .compass-tick { stroke: rgba(255,255,255,0.25); stroke-width: 1; }
+
+/* ── Slider ── */
+.gt-slider-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+    background: linear-gradient(0deg, rgba(8,12,20,0.97) 0%, rgba(8,12,20,0) 100%);
+    padding: 20px 28px 16px;
+}
+.gt-slider-row { display: flex; align-items: center; gap: 12px; }
+.btn-play {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.05);
+    color: #ccc; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 0.95rem; transition: all 0.2s; flex-shrink: 0;
+}
+.btn-play:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.gt-slider-c { flex: 1; position: relative; }
+#time-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.08); outline: none; cursor: pointer;
+}
+#time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: grab;
+}
+#time-slider::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: none; box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: grab;
+}
+.gt-ticks { display: flex; height: 18px; position: relative; margin-top: 5px; }
+.gt-tick {
+    position: absolute; top: 0; transform: translateX(-50%);
+    text-align: center; font-size: 0.56rem; color: rgba(255,255,255,0.3);
+    cursor: pointer; transition: color 0.2s; white-space: nowrap;
+}
+.gt-tick:hover { color: rgba(255,255,255,0.8); }
+.gt-tick .tl { width: 1px; height: 5px; background: rgba(255,255,255,0.15); margin: 0 auto 2px; }
+
+/* ── Loading ── */
+.gt-loading {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 20; text-align: center; color: #aaa;
+}
+.gt-loading .spinner-border { width: 2rem; height: 2rem; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) { .gt-info { width: 270px; font-size: 0.72rem; } .gt-legend { display: none; } }
+@media (max-width: 600px) { .gt-info { width: calc(100% - 32px); left: 16px; right: 16px; top: auto; bottom: 100px; max-height: 35vh; } }
+</style>
+
+<div id="geo-tl-wrap">
+    <canvas id="three-canvas"></canvas>
+    <div id="label-overlay"></div>
+
+    <div class="gt-top">
+        <a href="{{ url_for('admin_maps') }}" class="btn-back"><i class="bi bi-arrow-left me-1"></i>Карте</a>
+        <h5><i class="bi bi-hourglass-split me-2"></i>Геотектонска еволуција Балкана</h5>
+        <div style="font-size:0.68rem;color:#666;" id="hud-coords"></div>
+    </div>
+
+    <div class="gt-period-hud" id="period-hud">
+        <div class="era" id="hud-era"></div>
+        <div class="name" id="hud-name"></div>
+        <div class="age" id="hud-age"></div>
+    </div>
+
+    <div class="gt-legend" id="legend-box">
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:linear-gradient(90deg,#2e7d32,#8d6e63,#e0e0e0);"></div> 3D рељеф (ДЕМ)</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#e53935;"></div> Вулкани / Магматизам</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#ff8f00;"></div> Субдукциона зона</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#ab47bc;"></div> Острвски лук</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#1e88e5;"></div> Океан / Море</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#00897b;"></div> Офиолити</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:rgba(255,235,59,0.5);border:1px dashed #fdd835;"></div> Тектонска зона</div>
+        <div class="gt-legend-item"><div class="gt-legend-sw" style="background:#5d4037;"></div> Навлачни фронт</div>
+        <hr style="margin:4px 0;border-color:rgba(255,255,255,0.08);">
+        <div style="color:#777;font-size:0.62rem;">Миш: ротирај | Точкић: зум<br>Ctrl+миш: помери</div>
+    </div>
+
+    <div class="gt-info" id="info-panel"></div>
+
+    <!-- Cross-section diagram panel -->
+    <div class="gt-xsection" id="xsection-panel">
+        <button class="btn-close-xs" id="btn-close-xs" title="Затвори">&times;</button>
+        <div class="gt-xsection-title"><span class="dot"></span> Тектонски попречни пресек <span class="dot"></span></div>
+        <img id="xsection-img" src="" alt="Тектонски пресек">
+        <div class="gt-xsection-caption" id="xsection-caption"></div>
+    </div>
+    <div class="gt-xsection-toggle" id="btn-show-xs"><i class="bi bi-layers me-1"></i>Попречни пресек</div>
+
+    <!-- Compass -->
+    <div class="gt-compass" id="compass">
+        <svg viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="26" class="compass-ring"/>
+            <line x1="30" y1="4" x2="30" y2="10" class="compass-tick"/>
+            <line x1="30" y1="50" x2="30" y2="56" class="compass-tick"/>
+            <line x1="4" y1="30" x2="10" y2="30" class="compass-tick"/>
+            <line x1="50" y1="30" x2="56" y2="30" class="compass-tick"/>
+            <!-- North arrow (red) -->
+            <polygon points="30,6 25,28 30,24 35,28" class="compass-n"/>
+            <!-- South arrow (gray) -->
+            <polygon points="30,54 25,32 30,36 35,32" class="compass-s"/>
+            <text x="30" y="5" class="compass-letter" fill="#e53935">С</text>
+            <text x="30" y="59" class="compass-letter" fill="rgba(255,255,255,0.35)">Ј</text>
+            <text x="3" y="33" class="compass-letter" fill="rgba(255,255,255,0.35)">З</text>
+            <text x="57" y="33" class="compass-letter" fill="rgba(255,255,255,0.35)">И</text>
+        </svg>
+    </div>
+
+    <div class="gt-slider-bar">
+        <div class="gt-slider-row">
+            <button class="btn-play" id="btn-play" title="Пусти анимацију"><i class="bi bi-play-fill"></i></button>
+            <div class="gt-slider-c">
+                <input type="range" id="time-slider" min="0" max="1000" value="0" step="1">
+                <div class="gt-ticks" id="era-ticks"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="gt-loading" id="loading-msg">
+        <div class="spinner-border text-info mb-2" role="status"></div>
+        <div>Учитавање терена...</div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════
+   GEOLOGICAL PERIODS — real geographic coordinates
+   Coordinates: lat/lon → mapped onto 3D terrain
+   ═══════════════════════════════════════════════════════ */
+var BOUNDS = { south: 42.0, north: 46.0, west: 19.0, east: 23.0 };
+var PERIODS = [
+{
+    id:'cambrian', name:'Камбријум', nameEn:'Cambrian', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:541, endMa:485, color:'#7cb342',
+    xsection: { img: 'P1.png', caption: 'Камбријум — рани ордовицијум (~500 Ma): Јапетус океан, будући палеозојски Балкански терани, пасивна маргина Гондване' },
+    features: {
+        zones: [
+            { id:'gondwana-margin', label:'Маргина Гондване\n(пасивна маргина)', color:0xffe082,
+              path:[[42.3,19.1],[42.8,19.5],[43.5,20.0],[44.0,20.8],[44.5,21.5],[45.0,22.0],[45.5,22.8]] },
+            { id:'sedim-sequence', label:'Седиментна секвенца', color:0xc8b560,
+              path:[[42.5,19.5],[43.0,20.0],[43.8,20.5],[44.3,21.0],[44.8,21.5]] }
+        ],
+        oceans: [
+            { id:'prototethys', label:'Прото-Тетис', color:0x1565c0,
+              center:[44.0,22.5], radius: 1.5 },
+            { id:'iapetus', label:'Јапетус океан', color:0x0d47a1,
+              center:[45.5,19.5], radius: 1.0 }
+        ],
+        volcanoes: [
+            { id:'cadomian', label:'Кадомски магматизам\n(562-521 Ma)', lat:43.5, lon:21.8 }
+        ],
+        labels: [
+            { text:'Јапетус океан', lat:45.5, lon:19.5, type:'ocean' },
+            { text:'Дебела конт. кора', lat:44.8, lon:19.5, type:'plate' },
+            { text:'Будући палеозојски\nБалкански терани', lat:43.8, lon:20.5, type:'plate' },
+            { text:'К-О седименти', lat:43.2, lon:21.5, type:'plate' },
+            { text:'Гондвана\n(Африка/Ј. Америка)', lat:42.5, lon:22.5, type:'plate' },
+            { text:'Мезијски теран', lat:44.2, lon:22.2, type:'plate' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        'Прото-балкански терани на <b>северном ободу Гондване</b> (~60-70°S). ' +
+        '<span class="tag oc">Јапетус океан</span> се шири. <span class="tag oc">Прото-Тетис</span> субдукује под Гондвану.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Кадомски магматизам</span> (562-521 Ma) — вулкански лук дуж активне маргине Гондване. ' +
+        'Српско-Мак. маса чува кадомске вулканско-седиментне секвенце.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        '<span class="tag bk">Дијабаз-филитоидни комплекс</span> формиран као акрециони клин. ' +
+        'Неопротерозојско кадомско језгро које ће бити преобликовано у свим каснијим орогенезама.</div>'
+},
+{
+    id:'ordovician', name:'Ордовицијум', nameEn:'Ordovician', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:485, endMa:444, color:'#009688',
+    xsection: { img: 'P1.png', caption: 'Камбријум — рани ордовицијум (~500 Ma): Јапетус океан, камбро-ордовицијски седименти, Гондвана' },
+    features: {
+        zones: [
+            { id:'gondwana-margin', label:'Маргина Гондване', color:0xffe082,
+              path:[[42.3,19.1],[42.8,19.5],[43.5,20.0],[44.0,20.8],[44.5,21.5],[45.0,22.0],[45.5,22.8]] },
+            { id:'sedim-sequence', label:'К-О седименти', color:0xc8b560,
+              path:[[42.5,19.5],[43.0,20.0],[43.8,20.5],[44.3,21.0],[44.8,21.5]] }
+        ],
+        oceans: [
+            { id:'prototethys', label:'Прото-Тетис (субдукција)', color:0x0d47a1,
+              center:[43.5,22.8], radius:1.2 },
+            { id:'iapetus', label:'Јапетус океан\n(сужава се)', color:0x0d47a1,
+              center:[45.5,19.5], radius:0.8 }
+        ],
+        volcanoes: [
+            { id:'cenerian', label:'Ценеријски магматизам\n(490-439 Ma)', lat:43.3, lon:21.8 }
+        ],
+        subduction: [
+            { path:[[43.0,22.0],[43.5,22.5],[44.0,22.8]], label:'Субдукција Прото-Тетиса', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Јапетус океан\n(сужава се)', lat:45.5, lon:19.5, type:'ocean' },
+            { text:'Реик океан →', lat:45.5, lon:19.0, type:'ocean' },
+            { text:'Арморикански терани (ATA)', lat:44.0, lon:20.5, type:'plate' },
+            { text:'К-О седименти', lat:43.5, lon:20.5, type:'plate' },
+            { text:'Гондвана', lat:42.5, lon:22.5, type:'plate' },
+            { text:'Серб.-Мак. маса', lat:43.2, lon:21.5, type:'plate' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<span class="tag oc">Реик океан</span> се отвара (Авалонија ← Гондвана). ' +
+        '<span class="tag oc">Јапетус</span> се сужава. Субдукција Прото-Тетиса под С маргину Гондване.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Ценеријски догађај</span> (490-439 Ma) — прво сведочанство камбро-ордовицијске акреције ' +
+        'у Карпатско-Балканском орогену. Континентални лучни магматизам у Серб.-Мак. маси.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        '<span class="tag bk">Балкански теран</span> припада Арморичанском скупу терана. ' +
+        'Западно-мезијски теран укључен у маргину Балтике.</div>'
+},
+{
+    id:'silurian', name:'Силур', nameEn:'Silurian', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:444, endMa:419, color:'#b3e5fc',
+    xsection: { img: 'P2.png', caption: 'Силур — девон (~400 Ma): Реик океан (субдукција), вулкански острвски лук, акрециони клин, будући Балкански терани' },
+    features: {
+        zones: [
+            { id:'gondwana-margin', label:'Маргина Гондване', color:0xffe082,
+              path:[[42.3,19.1],[42.8,19.5],[43.5,20.0],[44.0,20.8],[44.5,21.5],[45.0,22.0],[45.5,22.8]] },
+            { id:'accretionary-wedge', label:'Акрециони клин', color:0xa1887f,
+              path:[[43.0,21.0],[43.5,21.2],[44.0,21.5],[44.5,21.8]] }
+        ],
+        oceans: [
+            { id:'rheic', label:'Реик океан\n(субдукција/задлучни)', color:0x1565c0,
+              center:[44.5,20.0], radius:1.2 }
+        ],
+        arcs: [
+            { id:'volcanic-arc', label:'Вулкански острвски лук', lat:45.0, lon:19.5, color:0xd32f2f }
+        ],
+        subduction: [
+            { path:[[43.5,20.0],[44.0,20.5],[44.5,20.8],[45.0,21.0]], label:'Активна субдукциона зона', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Реик океан (максимум\n~4000 km)', lat:44.5, lon:20.0, type:'ocean' },
+            { text:'Вулкански\nострвски лук', lat:45.0, lon:19.5, type:'volcano' },
+            { text:'Акрециони клин', lat:43.5, lon:21.2, type:'zone' },
+            { text:'Будући Балкански\nтерани', lat:43.0, lon:21.5, type:'plate' },
+            { text:'Гондвана', lat:42.5, lon:22.5, type:'plate' },
+            { text:'← Каледонска\nорогенеза', lat:45.5, lon:19.0, type:'mountain' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<b>Јапетус се затвара</b> → настаје <span class="tag or">Лаурусија</span> (Балтика + Лаурентија). ' +
+        '<span class="tag oc">Реик океан</span> на максимуму (~4000 km).</div>' +
+        '<div class="sec"><h6><i class="bi bi-triangle"></i> Орогенеза</h6>' +
+        '<span class="tag or">Каледонска орогенеза</span> — судар Балтике и Лаурентије. ' +
+        'Балкан није директно погођен али глобална тектоника се реорганизује.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'Пасивна маргинска седиментација. Завршна фаза Ценеријске акреције (439 Ma) у Серб.-Мак. маси.</div>'
+},
+{
+    id:'devonian', name:'Девон', nameEn:'Devonian', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:419, endMa:359, color:'#ff9800',
+    xsection: { img: 'P2.png', caption: 'Силур — девон (~400 Ma): Активна субдукциона зона, Реик океан, вулкански лук, формирање Балканско-Карпатског офиолита' },
+    features: {
+        zones: [
+            { id:'variscan-front', label:'Варисцијски фронт', color:0xff8f00,
+              path:[[42.5,19.0],[43.0,19.8],[43.8,20.5],[44.5,21.2],[45.2,22.0]] },
+            { id:'accretionary-wedge', label:'Акрециони клин', color:0xa1887f,
+              path:[[43.0,21.0],[43.5,21.2],[44.0,21.5],[44.5,21.8]] }
+        ],
+        oceans: [
+            { id:'rheic-closing', label:'Реик океан\n(затвара се)', color:0x1565c0,
+              center:[44.5,19.5], radius:0.8 }
+        ],
+        arcs: [
+            { id:'volcanic-arc', label:'Вулкански острвски лук', lat:45.0, lon:19.5, color:0xd32f2f }
+        ],
+        ophiolites: [
+            { id:'bco', label:'Балк.-Карп. офиолит\n(BCO, ~409 Ma)', lat:43.8, lon:22.0, radius:0.6 }
+        ],
+        subduction: [
+            { path:[[42.5,19.0],[43.0,19.8],[43.8,20.5],[44.5,21.2]], label:'Активна субдукциона зона', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Реик ок. (затвара се)', lat:44.5, lon:19.5, type:'ocean' },
+            { text:'Вулкански\nострвски лук', lat:45.0, lon:19.5, type:'volcano' },
+            { text:'Акрециони клин', lat:43.5, lon:21.2, type:'zone' },
+            { text:'Палеотетис →', lat:43.0, lon:22.5, type:'ocean' },
+            { text:'BCO задлучни басен', lat:43.8, lon:22.0, type:'ophiolite' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<span class="tag oc">Реик океан се затвара</span> — Гондвана ка Лаурусији. ' +
+        'Ране фазе <span class="tag or">Варисцијске орогенезе</span>. ' +
+        '<span class="tag oc">Палеотетис</span> се отвара на истоку.</div>' +
+        '<div class="sec"><h6><i class="bi bi-layers"></i> Офиолити</h6>' +
+        '<span class="tag bk">Балканско-Карпатски офиолит</span> (BCO, ~409±38 Ma) — зрели девонски задлучни басен. ' +
+        'Океанска кора са Al-богатим хромититима. Изложен у Румунији, <b>Србији</b> и Бугарској.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'Пре-варисцијска палеогеографска конфигурација добро сачувана у <b>источној Србији</b>.</div>'
+},
+{
+    id:'carboniferous', name:'Карбон', nameEn:'Carboniferous', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:359, endMa:299, color:'#616161',
+    xsection: { img: 'P3.png', caption: 'Рани карбон (~330 Ma): Варисцијски орогени појас, зона колизије, акретирани лук, Лаурусија и Гондвана се спајају' },
+    features: {
+        zones: [
+            { id:'variscan-belt', label:'Варисцијски орогени појас', color:0xff8f00,
+              path:[[42.2,19.0],[42.8,19.5],[43.5,20.2],[44.2,21.0],[45.0,21.8],[45.8,22.5]] },
+            { id:'collision-zone', label:'Зона колизије', color:0xd32f2f,
+              path:[[43.5,20.5],[44.0,21.0],[44.5,21.5],[45.0,22.0]] }
+        ],
+        mountains: [
+            { id:'variscides', label:'Варисциди', path:[[43.0,19.5],[43.8,20.5],[44.5,21.2],[45.2,22.0]], color:0x5d4037 }
+        ],
+        arcs: [
+            { id:'volcanic-arc', label:'Вулкански острвски лук\n(Лаурусија)', lat:45.5, lon:19.5, color:0xd32f2f },
+            { id:'accreted-arc', label:'Акретирани лук', lat:44.0, lon:21.5, color:0x795548 }
+        ],
+        volcanoes: [
+            { id:'variscan-granites', label:'Варисцијски гранитоиди\n(328-304 Ma)', lat:43.5, lon:21.5 }
+        ],
+        subduction: [
+            { path:[[43.0,22.5],[43.5,22.8],[44.0,23.0]], label:'Нова субдукциона зона\n(Палеотетис)', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Лаурусија /\nСибирско језгро', lat:45.5, lon:19.5, type:'plate' },
+            { text:'ПАНГЕА (склапање)', lat:45.0, lon:20.0, type:'plate' },
+            { text:'Зона колизије', lat:44.0, lon:21.0, type:'zone' },
+            { text:'Акретирани лук и\nдеформисана маргина', lat:44.0, lon:21.5, type:'zone' },
+            { text:'Гондвана', lat:42.5, lon:22.5, type:'plate' },
+            { text:'Палеотетис →', lat:43.5, lon:23.0, type:'ocean' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        'Кулминација <span class="tag or">Варисцијске орогенезе</span> и склапање <b>Пангее</b>. ' +
+        'Реик океан потпуно затворен. <span class="tag oc">Палеотетис</span> отворен на истоку.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Варисцијски гранитоиди</span> (328-304 Ma) — интрудирали подлогу Серб.-Мак. масе. ' +
+        'Пре-, син- и пост-колизиони магматизам. Ломљење плоче (<i>slab breakoff</i>).</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'Судар <b>Мезијског</b> и <b>Балканског терана</b>. Интрамонтана молас седиментација. ' +
+        'Балкан укопан унутар Пангее.</div>'
+},
+{
+    id:'permian', name:'Перм', nameEn:'Permian', era:'Палеозоик', eraColor:'#8bc34a',
+    startMa:299, endMa:252, color:'#e65100',
+    xsection: { img: 'P4.png', caption: 'Перм (~270 Ma): Пангеа, ерозија Варисцида, пермски рифтни басени, истањена кора — почетак распада' },
+    features: {
+        zones: [
+            { id:'neotethys-rift', label:'Рифт Неотетиса', color:0x42a5f5,
+              path:[[42.3,19.5],[42.8,20.0],[43.3,20.5],[43.8,21.0],[44.3,21.5]] },
+            { id:'eroded-variscan', label:'Ерод. Варисцијски појас', color:0xa1887f,
+              path:[[43.5,20.0],[44.0,20.5],[44.5,21.0],[45.0,21.5]] },
+            { id:'faulted-complex', label:'Деформисани комплекс\n(будући Балк. подлога)', color:0x8d6e63,
+              path:[[43.0,21.5],[43.5,21.8],[44.0,22.0],[44.5,22.3]] }
+        ],
+        oceans: [
+            { id:'rift-basin1', label:'Пермски рифтни басен', color:0x42a5f5,
+              center:[43.5,20.5], radius:0.6 },
+            { id:'rift-basin2', label:'Пермски рифтни басен', color:0x42a5f5,
+              center:[44.0,21.5], radius:0.5 }
+        ],
+        volcanoes: [
+            { id:'perm-magma', label:'Пермско-тријаски\nмагматизам (255-253 Ma)', lat:43.3, lon:21.8 }
+        ],
+        subduction: [
+            { path:[[43.0,21.0],[43.5,21.5],[44.0,22.0]], label:'Нормални раседи', color:0x795548 }
+        ],
+        labels: [
+            { text:'ПАНГЕА\n(Гондвана+Лаурусија)', lat:45.0, lon:19.5, type:'plate' },
+            { text:'Пермски\nрифтни басени', lat:43.5, lon:20.5, type:'ocean' },
+            { text:'Ерод. Варисцијски\nпојас', lat:44.0, lon:20.5, type:'zone' },
+            { text:'Нормални раседи', lat:43.5, lon:21.5, type:'zone' },
+            { text:'Истањена конт. кора', lat:42.5, lon:22.5, type:'plate' },
+            { text:'Палеотетис\n(затвара се)', lat:43.0, lon:23.0, type:'ocean' },
+            { text:'Неотетис\n(отвара се) →', lat:42.5, lon:20.0, type:'ocean' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<b>Пангеа потпуно склопљена</b>. Критичан прелаз: <span class="tag oc">Палеотетис → Неотетис</span>. ' +
+        'Пост-варисцијска екстензија и транстензија.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Касно-пермски магматизам</span> (255-253 Ma) у Серб.-Мак. маси — крустална екстензија.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'Алпска екстензија + <b>палеотетијско повлачење плоче</b> → интраплочни басени → будући ' +
+        '<span class="tag bk">Вардарски океан</span>.</div>'
+},
+{
+    id:'triassic', name:'Тријас', nameEn:'Triassic', era:'Мезозоик', eraColor:'#ff9800',
+    startMa:252, endMa:201, color:'#9c27b0',
+    xsection: { img: '1.png', caption: 'Касни тријас — рани јура (~200 Ma): Рифтинг, формирање Тетис океана, будућа Балканска област' },
+    features: {
+        zones: [
+            { id:'neotethys-vardar', label:'Неотетис / Вардарски крак', color:0x42a5f5,
+              path:[[42.3,20.5],[42.8,20.8],[43.3,21.0],[43.8,21.2],[44.3,21.0],[44.8,20.8],[45.2,20.5]] }
+        ],
+        oceans: [
+            { id:'neotethys', label:'Тетис океан\n(формира се)', color:0x1976d2,
+              center:[43.5,21.0], radius:0.8 },
+            { id:'epicont-sea', label:'Плитко\nепиконтинентално море', color:0x4fc3f7,
+              center:[44.5,20.0], radius:0.8 }
+        ],
+        volcanoes: [
+            { id:'triassic-volc', label:'Средње-тријаски\nбимодални вулканизам', lat:43.8, lon:20.0 }
+        ],
+        subduction: [
+            { path:[[44.5,19.5],[44.8,19.8],[45.0,20.0],[45.2,20.3]], label:'Активни нормални раседи\n(Евроазијска страна)', color:0x795548 },
+            { path:[[42.5,21.5],[42.8,21.8],[43.0,22.0],[43.2,22.3]], label:'Активни нормални раседи\n(Адрија страна)', color:0x795548 }
+        ],
+        labels: [
+            { text:'Евроазијска плоча', lat:45.0, lon:19.5, type:'plate' },
+            { text:'Плитко епиконт.\nморе', lat:44.5, lon:20.0, type:'ocean' },
+            { text:'Будућа Балканска\nобласт', lat:43.8, lon:20.5, type:'plate' },
+            { text:'Тетис океан\n(формира се)', lat:43.5, lon:21.0, type:'ocean' },
+            { text:'Адрија микроплоча\n(Африка)', lat:42.5, lon:22.0, type:'plate' },
+            { text:'Динаридске карбонатне\nплатформе', lat:43.8, lon:19.5, type:'plate' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<b>Пангеа се распада</b>. <span class="tag oc">Палеотетис затворен</span> (касни ладинијум-карнијум). ' +
+        '<span class="tag oc">Неотетис/Вардар</span> се отвара — достиже Динаридски домен у средњем тријасу.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Средње-тријаски бимодални вулканизам</span> у Алпско-Динаридској зони — ' +
+        'рифтинг Малијак-Мелијата-Вардарског крака Неотетиса.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        '<span class="tag bk">Динаридске карбонатне платформе</span>. <b>Копаоничка формација</b> (Халштатски фацијес). ' +
+        '<b>Будвански басен</b> (рани тријас). Дистална пасивна маргина ка Неотетису.</div>'
+},
+{
+    id:'jurassic', name:'Јура', nameEn:'Jurassic', era:'Мезозоик', eraColor:'#ff9800',
+    startMa:201, endMa:145, color:'#1565c0',
+    xsection: { img: '2.png', caption: 'Касна јура — рана креда (~150 Ma): Вардарски басен, активни вулкански лук, интра-океанска субдукција' },
+    features: {
+        zones: [
+            { id:'vardar-ocean', label:'Вардарски океан (>3000 km)', color:0x42a5f5,
+              path:[[42.2,20.8],[42.8,21.0],[43.5,21.2],[44.0,21.0],[44.5,20.8],[45.0,20.5]] }
+        ],
+        oceans: [
+            { id:'w-vardar', label:'Западни Вардар', color:0x1565c0,
+              center:[43.5,20.5], radius:0.5 },
+            { id:'e-vardar', label:'Источни Вардар', color:0x0d47a1,
+              center:[43.5,21.8], radius:0.8 }
+        ],
+        arcs: [
+            { id:'eohellenic', label:'Еохеленски лук', lat:43.2, lon:21.0, color:0xab47bc },
+            { id:'paikon', label:'Пајкон лук', lat:43.0, lon:21.8, color:0x9c27b0 }
+        ],
+        ophiolites: [
+            { id:'zlatibor', label:'Златибор офиолит', lat:43.73, lon:19.72, radius:0.3 },
+            { id:'avala-melange', label:'Авала меланж\n(јурски радиоларити)', lat:44.69, lon:20.52, radius:0.2 }
+        ],
+        subduction: [
+            { path:[[42.5,20.8],[43.0,21.0],[43.5,21.2],[44.0,21.0]], label:'Интра-океанска субдукција', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Адрија', lat:44.5, lon:19.0, type:'plate' },
+            { text:'Европа\n(Серб.-Мак.)', lat:44.5, lon:22.2, type:'plate' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<span class="tag oc">Вардарски океан</span> потпуно развијен (>3000 km). ' +
+        '<b>Интра-океанска субдукција</b> почиње у средњој јури. <b>Обдукција офиолита</b> на Адрију у горњој јури.</div>' +
+        '<div class="sec"><h6><i class="bi bi-tsunami"></i> Острвски лукови</h6>' +
+        '<span class="tag ar">Еохеленски лук</span> — SSZ офиолитски комплекс. ' +
+        '<span class="tag ar">Пајкон лук</span> — источна Вардарска субдукција под Европу.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        '<span class="tag bk">Златибор офиолит</span> — остатак Зап. Вардара. ' +
+        '<b>Авала</b> — меланж са јурским радиоларијама. ' +
+        'Калвијска баукситна седиментација.</div>'
+},
+{
+    id:'cretaceous', name:'Креда', nameEn:'Cretaceous', era:'Мезозоик', eraColor:'#ff9800',
+    startMa:145, endMa:66, color:'#2e7d32',
+    xsection: { img: '3.png', caption: 'Касна креда (~80 Ma): Еурозијски магматски лук, акрециони клин, затварање Тетиса' },
+    features: {
+        zones: [
+            { id:'sava-ocean', label:'Савски океан (остатак)', color:0x42a5f5,
+              path:[[44.6,19.0],[44.8,19.5],[44.9,20.0],[44.8,20.5],[44.7,21.0]] },
+            { id:'abts-belt', label:'Евроазијски магматски лук', color:0xd32f2f,
+              path:[[44.0,21.5],[44.2,22.0],[44.5,22.2],[45.0,22.5]] },
+            { id:'accretionary-wedge', label:'Акрециони клин', color:0xa1887f,
+              path:[[43.5,20.5],[43.8,20.8],[44.0,21.0],[44.3,21.2],[44.5,21.5]] }
+        ],
+        oceans: [
+            { id:'closing-tethys', label:'Тетис океан\n(затвара се)', color:0x1565c0,
+              center:[43.5,21.5], radius:0.8 }
+        ],
+        volcanoes: [
+            { id:'timok', label:'Тимочки магм.\nкомплекс (90-78 Ma)', lat:44.1, lon:22.1 },
+            { id:'bor', label:'Бор Cu-Au\n(87-80 Ma)', lat:44.07, lon:22.1 },
+            { id:'majdanpek', label:'Мајданпек\nCu-Au', lat:44.42, lon:21.95 }
+        ],
+        subduction: [
+            { path:[[44.5,20.5],[44.8,21.0],[45.0,21.5],[44.8,22.0]], label:'Активна субдукциона зона', color:0xff8f00 },
+            { path:[[42.5,21.5],[42.8,21.8],[43.0,22.0],[43.2,22.3]], label:'Субдукција Адрије', color:0xff5722 }
+        ],
+        mountains: [
+            { id:'carpatho-balk', label:'Карпато-Балканиди', path:[[43.5,22.0],[44.0,22.2],[44.5,22.0],[45.0,22.3]], color:0x5d4037 }
+        ],
+        labels: [
+            { text:'Евроазијска плоча\n(активна маргина)', lat:45.0, lon:19.5, type:'plate' },
+            { text:'Евроазијски\nмагматски лук', lat:44.5, lon:22.0, type:'volcano' },
+            { text:'Акрециони клин', lat:43.8, lon:21.0, type:'zone' },
+            { text:'Тетис океан\n(затвара се)', lat:43.5, lon:21.5, type:'ocean' },
+            { text:'Адрија микроплоча', lat:42.5, lon:22.0, type:'plate' },
+            { text:'Флиш', lat:43.5, lon:20.5, type:'zone' },
+            { text:'Савска сутура\n(затвара се ~66 Ma)', lat:44.8, lon:20.0, type:'zone' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<span class="tag oc">Савски океан</span> остаје отворен до ~66 Ma. ' +
+        'Прогресивно затварање неотетијских басена. Велика субдукција и вулканизам.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Тимочки магматски комплекс</span> — ~85 km × 25 km. Андезити (турон-кампан). ' +
+        '<span class="tag vo">АБТС појас</span> — најобимнији калко-алкални магматизам у Европи.<br>' +
+        '<b>Бор + Мајданпек</b>: ~6 Mt Cu, 9.65 Moz Au.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'Карпато-Балканиди — источно-вергентне навлаке. <b>Флишна седиментација</b>. ' +
+        'Блаушисти у Савској зони. Савска сутура затворена ~66 Ma.</div>'
+},
+{
+    id:'paleogene', name:'Палеоген', nameEn:'Paleogene', era:'Кенозоик', eraColor:'#ffd54f',
+    startMa:66, endMa:23, color:'#f9a825',
+    xsection: { img: '4.png', caption: 'Палеоген: еоцен-олигоцен (~40 Ma): Прото-Динариди/Алпи, зона колизије, подвлачење Адрије' },
+    features: {
+        zones: [
+            { id:'sava-suture', label:'Савска сутура', color:0xfdd835,
+              path:[[44.5,19.0],[44.7,19.5],[44.8,20.0],[44.7,20.5],[44.5,21.0]] },
+            { id:'vardar-zone', label:'Вардарска зона', color:0xfdd835,
+              path:[[42.5,21.5],[43.0,21.3],[43.5,21.2],[44.0,21.0],[44.5,20.8],[44.8,20.5]] },
+            { id:'collision-zone', label:'Зона колизије', color:0xd32f2f,
+              path:[[43.0,20.5],[43.5,20.8],[44.0,21.0],[44.5,20.8]] }
+        ],
+        mountains: [
+            { id:'dinarides', label:'Прото-Динариди / Алпи', path:[[42.5,19.0],[43.0,19.5],[43.5,19.8],[44.0,19.5],[44.5,19.2],[45.0,19.0]], color:0x5d4037 },
+            { id:'ext-dinarides', label:'Спољашњи Динариди', path:[[42.5,19.1],[43.0,19.0],[43.5,19.2],[44.0,19.0]], color:0x795548 }
+        ],
+        arcs: [
+            { id:'accreted-arc', label:'Акретирани лук и\nдеформисана маргина', lat:44.0, lon:20.5, color:0x795548 }
+        ],
+        volcanoes: [
+            { id:'kopaonik', label:'Копаонички\nинтрузивни комплекс', lat:43.28, lon:20.82 },
+            { id:'fruska-gora', label:'Фрушка Гора\nсубвулк. интрузије', lat:45.15, lon:19.79 },
+            { id:'rhodope', label:'Родопски вулканизам', lat:42.5, lon:22.5 }
+        ],
+        subduction: [
+            { path:[[42.5,19.5],[43.0,20.0],[43.5,20.5],[44.0,20.8]], label:'Подвлачење Адрије', color:0xff5722 }
+        ],
+        labels: [
+            { text:'Евроазијска плоча\n(задебљана кора)', lat:45.0, lon:19.5, type:'plate' },
+            { text:'Акретирани лук и\nдеформ. маргина', lat:44.0, lon:20.5, type:'zone' },
+            { text:'Прото-Динариди / Алпи', lat:43.5, lon:19.5, type:'mountain' },
+            { text:'Зона колизије', lat:43.5, lon:20.8, type:'zone' },
+            { text:'Адрија → Европа\n(КОЛИЗИЈА)', lat:44.2, lon:20.5, type:'zone' },
+            { text:'Адрија микроплоча\n(подвлачење)', lat:42.5, lon:22.0, type:'plate' },
+            { text:'Промина наслаге\n(молас)', lat:43.0, lon:19.0, type:'plate' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<b>Континентална колизија</b> Адрије и Европе. Сви неотетијски океани затворени. ' +
+        '<span class="tag or">Динаридска орогенеза — кулминација</span>.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Олигоцен гранитоиди</span> у Сава-Вардарској зони. ' +
+        '<b>Копаонички</b> пост-колизиони комплекс. <b>Родопски</b> магматизам (500 km). ' +
+        '<b>Фрушка Гора</b> — Pb-Zn минерализација.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        'ЈЗ-усмерено навлачење. <span class="tag bk">Далматински флиш + Промина молас</span>. ' +
+        'Прелаз са компресије на екстензију.</div>'
+},
+{
+    id:'neogene', name:'Неоген', nameEn:'Neogene', era:'Кенозоик', eraColor:'#ffd54f',
+    startMa:23, endMa:2.6, color:'#f9a825',
+    xsection: { img: '5.png', caption: 'Данашњи тектонски склоп (~30 Ma): Панонски басен, Динариди, Хеленски лук' },
+    features: {
+        zones: [
+            { id:'vardar-zone', label:'Вардарска зона', color:0xfdd835,
+              path:[[42.5,21.5],[43.0,21.3],[43.5,21.2],[44.0,21.0],[44.5,20.8],[44.8,20.5]] },
+            { id:'pannonian-ext', label:'Панонска екстензија', color:0x42a5f5,
+              path:[[45.0,19.0],[45.2,19.5],[45.5,20.0],[45.5,20.5],[45.2,21.0]] }
+        ],
+        oceans: [
+            { id:'pannonian-sea', label:'Панонски басен', color:0x42a5f5,
+              center:[45.3,20.0], radius:1.2 }
+        ],
+        volcanoes: [
+            { id:'avala', label:'Авала\n(андезитски комплекс)', lat:44.69, lon:20.52 },
+            { id:'cer', label:'Цер', lat:44.55, lon:19.37 },
+            { id:'rhyolites', label:'Риолити (~22 Ma)', lat:44.0, lon:21.5 },
+            { id:'smm-belt', label:'Серб.-Мак.\nметалог. појас', lat:43.0, lon:21.5 }
+        ],
+        arcs: [
+            { id:'hellenic-arc', label:'Хеленски лук', lat:42.2, lon:22.5, color:0xd32f2f }
+        ],
+        mountains: [
+            { id:'dinarides', label:'Динариди (остатак)', path:[[42.5,19.0],[43.0,19.5],[43.5,19.8],[44.0,19.5],[44.5,19.2]], color:0x5d4037 },
+            { id:'carpathians', label:'Карпати', path:[[44.5,22.0],[45.0,22.3],[45.5,22.0]], color:0x795548 }
+        ],
+        subduction: [
+            { path:[[42.1,21.0],[42.2,21.5],[42.3,22.0],[42.5,22.5]], label:'Активна субдукциона зона', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Евроазијска плоча\n(задебљана кора)', lat:45.5, lon:19.5, type:'plate' },
+            { text:'Панонски басен', lat:45.3, lon:20.0, type:'ocean' },
+            { text:'Динариди\n(остатак)', lat:43.5, lon:19.2, type:'mountain' },
+            { text:'Адрија микроплоча', lat:43.0, lon:19.0, type:'plate' },
+            { text:'Хеленски лук', lat:42.2, lon:22.5, type:'volcano' },
+            { text:'Афричка плоча\n(океански део)', lat:42.1, lon:22.8, type:'plate' },
+            { text:'Задлучна екстензија', lat:45.0, lon:20.5, type:'zone' },
+            { text:'Миоценски грабени', lat:44.5, lon:20.5, type:'zone' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Глобална тектоника</h6>' +
+        '<span class="tag oc">Панонски басен</span> — задлучна екстензија покренута повлачењем карпатске и динаридске плоче. ' +
+        'Истањивање коре и субсиденција.</div>' +
+        '<div class="sec"><h6><i class="bi bi-fire"></i> Магматизам</h6>' +
+        '<span class="tag vo">Риолити (~22 Ma)</span>. <span class="tag vo">Андезитски вулканизам</span>. ' +
+        '<b>Авала</b> — андезитски комплекс. ' +
+        '<b>Серб.-Мак. металогенски појас</b> (Pb-Zn-Bi-Ag-Au).</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> Балкан</h6>' +
+        '<span class="tag bk">Панонско море</span> изоловано ~11.63 Ma (Фрушка Гора). ' +
+        '<b>Језеро Панон</b> — бракично, ендемска биота. Миоценски екстензиони детачменти.</div>'
+},
+{
+    id:'quaternary', name:'Квартар', nameEn:'Quaternary', era:'Кенозоик', eraColor:'#ffd54f',
+    startMa:2.6, endMa:0, color:'#8d6e63',
+    xsection: { img: '5.png', caption: 'Данашњи тектонски склоп: Панонски басен, остаци Динарида, активна субдукција Хеленског лука' },
+    features: {
+        zones: [
+            { id:'vardar-zone', label:'Вардарска зона', color:0xfdd835,
+              path:[[42.5,21.5],[43.0,21.3],[43.5,21.2],[44.0,21.0],[44.5,20.8],[44.8,20.5]] },
+            { id:'sava-suture', label:'Савска сутура', color:0xfdd835,
+              path:[[44.5,19.0],[44.7,19.5],[44.8,20.0],[44.7,20.5],[44.5,21.0]] },
+            { id:'smm-axis', label:'Серб.-Мак. маса', color:0xaed581,
+              path:[[42.5,22.0],[43.0,21.5],[43.5,21.3],[44.0,21.5],[44.5,21.2]] }
+        ],
+        mountains: [
+            { id:'dinarides', label:'Динарски Алпи (остатак)', path:[[42.5,19.0],[43.0,19.5],[43.5,19.8],[44.0,19.5],[44.5,19.2],[45.0,19.0]], color:0x5d4037 },
+            { id:'carpathians', label:'Карпато-Балканиди', path:[[43.5,22.0],[44.0,22.2],[44.5,22.0],[45.0,22.3],[45.5,22.0]], color:0x795548 },
+            { id:'sar', label:'Шар-пл./Проклетије', path:[[42.2,20.5],[42.5,20.8],[42.3,21.2]], color:0x6d4c41 }
+        ],
+        arcs: [
+            { id:'hellenic-arc', label:'Хеленски лук', lat:42.2, lon:22.5, color:0xd32f2f }
+        ],
+        subduction: [
+            { path:[[42.1,21.0],[42.2,21.5],[42.3,22.0],[42.5,22.5]], label:'Активна субдукциона зона', color:0xff8f00 }
+        ],
+        labels: [
+            { text:'Евроазијска плоча', lat:45.5, lon:19.5, type:'plate' },
+            { text:'Панонска равница', lat:45.5, lon:20.0, type:'plate' },
+            { text:'Динарски Алпи', lat:43.5, lon:19.2, type:'mountain' },
+            { text:'Вардарска зона', lat:43.5, lon:21.2, type:'zone' },
+            { text:'Серб.-Мак. маса', lat:43.0, lon:21.5, type:'plate' },
+            { text:'Карпато-Балканиди', lat:44.2, lon:22.3, type:'mountain' },
+            { text:'Лес (Војводина)', lat:45.2, lon:19.8, type:'plate' },
+            { text:'Адрија микроплоча', lat:43.0, lon:19.0, type:'plate' },
+            { text:'Хеленски лук', lat:42.2, lon:22.5, type:'volcano' },
+            { text:'Афричка плоча\n(океански део)', lat:42.1, lon:22.8, type:'plate' },
+            { text:'Краљево М5.4\n(2010)', lat:43.7, lon:20.7, type:'volcano' }
+        ]
+    },
+    desc: '<div class="sec"><h6><i class="bi bi-globe2"></i> Данашња тектоника</h6>' +
+        'Активна неотектоника на споју <b>Алпског, Карпатског и Динаридског</b> орогеног појаса. ' +
+        'СЗ-ЈИ и СИ-ЈЗ раседни системи су активни.</div>' +
+        '<div class="sec"><h6><i class="bi bi-snow2"></i> Глацијације</h6>' +
+        'Ледничке творевине: <b>Проклетије, Шар-пл., Кортник</b>. ' +
+        'Снежна линија: 1900 m (С) / 2200 m (Ј). ' +
+        '<b>Лес секвенце</b> у Војводини — међу најважнијим у Европи.</div>' +
+        '<div class="sec"><h6><i class="bi bi-pin-map"></i> 5 геотектонских јединица</h6>' +
+        '1. <b>Панонска равница</b> — танка кора<br>' +
+        '2. <b>Динарски Алпи</b> — СЗ-ЈИ набирање<br>' +
+        '3. <b>Вардарска зона</b> — сутурна зона<br>' +
+        '4. <b>Серб.-Мак. маса</b> — уз Моравске долине<br>' +
+        '5. <b>Карпато-Балканиди</b> — источна Србија<br><br>' +
+        'Сеизмичност М5-6. <span class="tag vo">Краљево М5.4 (2010)</span>.</div>'
+}
+];
+
+/* Reference cities for orientation */
+var CITIES = [
+    { name:'Београд', lat:44.82, lon:20.46 },
+    { name:'Нови Сад', lat:45.25, lon:19.85 },
+    { name:'Ниш', lat:43.32, lon:21.90 },
+    { name:'Крагујевац', lat:44.01, lon:20.92 },
+    { name:'Суботица', lat:45.90, lon:19.66 },
+    { name:'Нови Пазар', lat:43.14, lon:20.52 },
+    { name:'Зајечар', lat:43.90, lon:22.29 },
+    { name:'Ужице', lat:43.86, lon:19.84 },
+    { name:'Бор', lat:44.07, lon:22.10 }
+];
+
+
+/* ═══════════════════════════════════════════
+   THREE.JS SETUP
+   ═══════════════════════════════════════════ */
+var canvas = document.getElementById('three-canvas');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x080c14);
+renderer.shadowMap.enabled = true;
+
+var W = canvas.clientWidth, H = canvas.clientHeight;
+renderer.setSize(W, H, false);
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x080c14, 0.015);
+
+var camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+camera.position.set(0, 12, 16);
+camera.lookAt(0, 0, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x445566, 0.5));
+var sun = new THREE.DirectionalLight(0xffeedd, 0.9);
+sun.position.set(8, 15, 10);
+sun.castShadow = true;
+scene.add(sun);
+var fill = new THREE.DirectionalLight(0x8899bb, 0.3);
+fill.position.set(-5, 8, -8);
+scene.add(fill);
+
+// Groups
+var terrainGroup = new THREE.Group();
+var featureGroup = new THREE.Group();
+var waterGroup = new THREE.Group();
+scene.add(terrainGroup);
+scene.add(waterGroup);
+scene.add(featureGroup);
+
+/* ═══════════════════════════════════════════
+   COORDINATE HELPERS
+   ═══════════════════════════════════════════ */
+var terrainMesh = null;
+var elevData = null;
+var gridRows = 0, gridCols = 0;
+var EXAG = 0.18; // elevation exaggeration
+var SCALE = 2.0; // world units per degree
+
+function geoToWorld(lat, lon) {
+    var cx = (BOUNDS.west + BOUNDS.east) / 2;
+    var cy = (BOUNDS.south + BOUNDS.north) / 2;
+    var x = (lon - cx) * SCALE;
+    var z = -(lat - cy) * SCALE;
+    return { x: x, z: z };
+}
+
+function geoToWorldWithY(lat, lon) {
+    var p = geoToWorld(lat, lon);
+    p.y = sampleElevation(lat, lon);
+    return p;
+}
+
+function sampleElevation(lat, lon) {
+    if (!elevData) return 0.3;
+    var r = (BOUNDS.north - lat) / (BOUNDS.north - BOUNDS.south) * (gridRows - 1);
+    var c = (lon - BOUNDS.west) / (BOUNDS.east - BOUNDS.west) * (gridCols - 1);
+    r = Math.max(0, Math.min(gridRows - 1, r));
+    c = Math.max(0, Math.min(gridCols - 1, c));
+    var ri = Math.floor(r), ci = Math.floor(c);
+    var fr = r - ri, fc = c - ci;
+    var ri1 = Math.min(ri + 1, gridRows - 1), ci1 = Math.min(ci + 1, gridCols - 1);
+    var v00 = elevData[ri][ci], v01 = elevData[ri][ci1];
+    var v10 = elevData[ri1][ci], v11 = elevData[ri1][ci1];
+    var elev = v00*(1-fr)*(1-fc) + v01*(1-fr)*fc + v10*fr*(1-fc) + v11*fr*fc;
+    return Math.max(0, elev) / 1000 * EXAG; // meters to world units
+}
+
+
+/* ═══════════════════════════════════════════
+   TERRAIN BUILDER
+   ═══════════════════════════════════════════ */
+function buildTerrain(data) {
+    elevData = data.elevation;
+    gridRows = data.grid.rows;
+    gridCols = data.grid.cols;
+
+    var geo = new THREE.BufferGeometry();
+    var verts = new Float32Array(gridRows * gridCols * 3);
+    var colors = new Float32Array(gridRows * gridCols * 3);
+    var indices = [];
+    var normals;
+
+    var latRange = BOUNDS.north - BOUNDS.south;
+    var lonRange = BOUNDS.east - BOUNDS.west;
+    var cx = (BOUNDS.west + BOUNDS.east) / 2;
+    var cy = (BOUNDS.south + BOUNDS.north) / 2;
+
+    // Find min/max for color mapping
+    var eMin = 9999, eMax = -9999;
+    for (var r = 0; r < gridRows; r++) {
+        for (var c = 0; c < gridCols; c++) {
+            var e = elevData[r][c];
+            if (e < eMin) eMin = e;
+            if (e > eMax) eMax = e;
+        }
+    }
+
+    for (var r = 0; r < gridRows; r++) {
+        for (var c = 0; c < gridCols; c++) {
+            var idx = r * gridCols + c;
+            var lat = BOUNDS.north - (r / (gridRows - 1)) * latRange;
+            var lon = BOUNDS.west + (c / (gridCols - 1)) * lonRange;
+            var elev = elevData[r][c];
+            var y = Math.max(0, elev) / 1000 * EXAG;
+
+            verts[idx * 3]     = (lon - cx) * SCALE;
+            verts[idx * 3 + 1] = y;
+            verts[idx * 3 + 2] = -(lat - cy) * SCALE;
+
+            // Hypsometric tinting
+            var rgb = elevToColor(elev, eMin, eMax);
+            colors[idx * 3]     = rgb[0];
+            colors[idx * 3 + 1] = rgb[1];
+            colors[idx * 3 + 2] = rgb[2];
+        }
+    }
+
+    // Indices for triangulated mesh
+    for (var r = 0; r < gridRows - 1; r++) {
+        for (var c = 0; c < gridCols - 1; c++) {
+            var tl = r * gridCols + c;
+            var tr = tl + 1;
+            var bl = (r + 1) * gridCols + c;
+            var br = bl + 1;
+            indices.push(tl, bl, tr);
+            indices.push(tr, bl, br);
+        }
+    }
+
+    geo.setIndex(indices);
+    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+
+    var mat = new THREE.MeshPhongMaterial({
+        vertexColors: true,
+        flatShading: false,
+        shininess: 5,
+        side: THREE.DoubleSide
+    });
+
+    terrainMesh = new THREE.Mesh(geo, mat);
+    terrainMesh.receiveShadow = true;
+    terrainGroup.add(terrainMesh);
+
+    var hw = lonRange * SCALE / 2, hd = latRange * SCALE / 2;
+
+    // Latitude/longitude grid lines
+    var gridLineMat = new THREE.LineBasicMaterial({ color: 0x223344, transparent: true, opacity: 0.2 });
+    for (var gLat = Math.ceil(BOUNDS.south); gLat <= Math.floor(BOUNDS.north); gLat++) {
+        var gz = -((gLat - cy) * SCALE);
+        var gPts = [new THREE.Vector3(-hw, 0.005, gz), new THREE.Vector3(hw, 0.005, gz)];
+        terrainGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(gPts), gridLineMat));
+    }
+    for (var gLon = Math.ceil(BOUNDS.west); gLon <= Math.floor(BOUNDS.east); gLon++) {
+        var gx = (gLon - cx) * SCALE;
+        var gPts2 = [new THREE.Vector3(gx, 0.005, -hd), new THREE.Vector3(gx, 0.005, hd)];
+        terrainGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(gPts2), gridLineMat));
+    }
+
+    // Serbia approximate border outline
+    var serbiaBorder = [
+        [46.15,19.0],[46.1,19.5],[46.1,20.0],[45.9,20.3],[45.8,20.5],[45.65,20.8],
+        [45.5,21.4],[45.15,21.5],[44.85,21.4],[44.8,21.6],[44.6,21.6],[44.5,22.0],
+        [44.2,22.4],[44.0,22.65],[43.8,22.4],[43.5,22.4],[43.2,22.6],[43.0,22.75],
+        [42.75,22.4],[42.6,22.3],[42.45,22.0],[42.35,21.5],[42.25,21.0],[42.3,20.7],
+        [42.5,20.5],[42.6,20.3],[42.75,20.2],[43.0,20.0],[43.2,19.7],[43.3,19.5],
+        [43.5,19.3],[43.7,19.3],[43.8,19.5],[44.0,19.1],[44.2,19.1],[44.4,19.0],
+        [44.6,19.0],[44.8,19.0],[44.9,19.2],[45.0,19.1],[45.2,19.0],[45.5,19.0],
+        [45.8,19.0],[46.0,19.0],[46.15,19.0]
+    ];
+    var serbBorderPts = serbiaBorder.map(function(p) {
+        var w = geoToWorld(p[0], p[1]);
+        return new THREE.Vector3(w.x, 0.01, w.z);
+    });
+    var serbBorderMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+    terrainGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(serbBorderPts), serbBorderMat));
+
+    // Major rivers
+    var rivers = [
+        { name: 'Дунав', color: 0x42a5f5, pts: [
+            [45.9,19.0],[45.35,19.15],[45.25,19.85],[44.85,20.4],[44.65,20.5],
+            [44.5,20.65],[44.42,21.55],[44.6,21.6],[44.5,22.0],[44.2,22.4],[44.0,22.65]
+        ]},
+        { name: 'Сава', color: 0x42a5f5, pts: [
+            [44.8,19.0],[44.78,19.6],[44.8,20.0],[44.78,20.3],[44.82,20.45]
+        ]},
+        { name: 'В. Морава', color: 0x64b5f6, pts: [
+            [44.65,20.52],[44.3,20.8],[44.0,21.0],[43.7,21.3],[43.5,21.5],[43.3,21.9]
+        ]},
+        { name: 'З. Морава', color: 0x64b5f6, pts: [
+            [43.8,20.0],[43.9,20.3],[43.8,20.5],[43.7,20.6],[43.65,20.8],[43.7,21.3]
+        ]},
+        { name: 'Дрина', color: 0x64b5f6, pts: [
+            [44.8,19.35],[44.5,19.3],[44.1,19.3],[43.8,19.5],[43.5,19.3],[43.2,19.5]
+        ]}
+    ];
+    rivers.forEach(function(river) {
+        var rPts = river.pts.map(function(p) {
+            var w = geoToWorldWithY(p[0], p[1]);
+            return new THREE.Vector3(w.x, w.y + 0.005, w.z);
+        });
+        var rMat = new THREE.LineBasicMaterial({ color: river.color, transparent: true, opacity: 0.45 });
+        terrainGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rPts), rMat));
+    });
+
+    // 3D North arrow on terrain
+    var northArrowY = 0.04;
+    var nTip = new THREE.Vector3(0, northArrowY, -hd - 0.3);
+    var nLeft = new THREE.Vector3(-0.15, northArrowY, -hd + 0.1);
+    var nRight = new THREE.Vector3(0.15, northArrowY, -hd + 0.1);
+    var nArrowGeo = new THREE.BufferGeometry().setFromPoints([nLeft, nTip, nRight]);
+    var nArrowMat = new THREE.LineBasicMaterial({ color: 0xe53935 });
+    terrainGroup.add(new THREE.Line(nArrowGeo, nArrowMat));
+}
+
+function elevToColor(elev, eMin, eMax) {
+    // Hypsometric color ramp
+    if (elev <= 0)   return [0.04, 0.18, 0.32]; // water
+    if (elev < 100)  return [0.22, 0.42, 0.18]; // dark green lowland
+    if (elev < 200)  return [0.30, 0.50, 0.22];
+    if (elev < 400)  return [0.42, 0.56, 0.28]; // light green
+    if (elev < 600)  return [0.56, 0.58, 0.32]; // yellow-green
+    if (elev < 800)  return [0.62, 0.52, 0.30]; // tan
+    if (elev < 1000) return [0.55, 0.42, 0.25]; // brown
+    if (elev < 1400) return [0.48, 0.35, 0.22]; // dark brown
+    if (elev < 1800) return [0.52, 0.45, 0.40]; // gray-brown
+    if (elev < 2200) return [0.65, 0.60, 0.55]; // light gray
+    return [0.80, 0.78, 0.75]; // snow-white peaks
+}
+
+
+/* ═══════════════════════════════════════════
+   FEATURE BUILDERS
+   ═══════════════════════════════════════════ */
+function clearFeatures() {
+    while (featureGroup.children.length) {
+        var c = featureGroup.children[0];
+        featureGroup.remove(c);
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) { if (c.material.dispose) c.material.dispose(); }
+    }
+    while (waterGroup.children.length) {
+        var c = waterGroup.children[0];
+        waterGroup.remove(c);
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) { if (c.material.dispose) c.material.dispose(); }
+    }
+}
+
+function buildZoneLine(zone) {
+    var pts = [];
+    zone.path.forEach(function(p) {
+        var w = geoToWorldWithY(p[0], p[1]);
+        pts.push(new THREE.Vector3(w.x, w.y + 0.08, w.z));
+    });
+    var geo = new THREE.BufferGeometry().setFromPoints(pts);
+    var mat = new THREE.LineBasicMaterial({
+        color: zone.color || 0xfdd835,
+        transparent: true,
+        opacity: 0.75,
+        linewidth: 2
+    });
+    featureGroup.add(new THREE.Line(geo, mat));
+
+    // Glow line
+    var mat2 = new THREE.LineBasicMaterial({
+        color: zone.color || 0xfdd835,
+        transparent: true,
+        opacity: 0.2,
+        linewidth: 1
+    });
+    var pts2 = pts.map(function(p) { return new THREE.Vector3(p.x, p.y + 0.03, p.z); });
+    var geo2 = new THREE.BufferGeometry().setFromPoints(pts2);
+    featureGroup.add(new THREE.Line(geo2, mat2));
+}
+
+function buildOceanArea(ocean) {
+    var w = geoToWorld(ocean.center[0], ocean.center[1]);
+    var r = ocean.radius * SCALE;
+    var geo = new THREE.CircleGeometry(r, 32);
+    var mat = new THREE.MeshBasicMaterial({
+        color: ocean.color || 0x1565c0,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(w.x, 0.15, w.z);
+    waterGroup.add(mesh);
+
+    // Animated ring
+    var ringGeo = new THREE.RingGeometry(r - 0.05, r, 48);
+    var ringMat = new THREE.MeshBasicMaterial({
+        color: 0x4fc3f7,
+        transparent: true,
+        opacity: 0.25,
+        side: THREE.DoubleSide
+    });
+    var ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(w.x, 0.16, w.z);
+    ring.userData.isOceanRing = true;
+    waterGroup.add(ring);
+}
+
+function buildVolcanoMarker(v) {
+    var w = geoToWorldWithY(v.lat, v.lon);
+    // Cone
+    var coneGeo = new THREE.ConeGeometry(0.08, 0.25, 8);
+    var coneMat = new THREE.MeshPhongMaterial({ color: 0xe53935, emissive: 0x661111 });
+    var cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.set(w.x, w.y + 0.13, w.z);
+    featureGroup.add(cone);
+
+    // Glow sphere
+    var glowGeo = new THREE.SphereGeometry(0.12, 8, 8);
+    var glowMat = new THREE.MeshBasicMaterial({ color: 0xff5722, transparent: true, opacity: 0.25 });
+    var glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.set(w.x, w.y + 0.25, w.z);
+    glow.userData.isVolcanoGlow = true;
+    featureGroup.add(glow);
+
+    // Particles
+    for (var i = 0; i < 4; i++) {
+        var pGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 5, 5);
+        var pMat = new THREE.MeshBasicMaterial({
+            color: Math.random() > 0.5 ? 0xff5722 : 0xffab00,
+            transparent: true, opacity: 0.6
+        });
+        var p = new THREE.Mesh(pGeo, pMat);
+        p.position.set(w.x + (Math.random()-0.5)*0.1, w.y + 0.3 + Math.random()*0.4, w.z + (Math.random()-0.5)*0.1);
+        p.userData.volcParticle = { baseY: p.position.y, speed: 0.5+Math.random()*2, phase: Math.random()*6.28 };
+        featureGroup.add(p);
+    }
+}
+
+function buildArcMarker(a) {
+    var w = geoToWorldWithY(a.lat, a.lon);
+    var geo = new THREE.TorusGeometry(0.15, 0.03, 8, 16, Math.PI);
+    var mat = new THREE.MeshPhongMaterial({ color: a.color || 0xab47bc, emissive: 0x330033 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(w.x, w.y + 0.15, w.z);
+    mesh.rotation.x = -Math.PI / 2;
+    featureGroup.add(mesh);
+}
+
+function buildOphioliteMarker(o) {
+    var w = geoToWorldWithY(o.lat, o.lon);
+    var r = (o.radius || 0.3) * SCALE;
+    var geo = new THREE.CylinderGeometry(r, r, 0.06, 16);
+    var mat = new THREE.MeshPhongMaterial({ color: 0x00897b, transparent: true, opacity: 0.7 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(w.x, w.y + 0.04, w.z);
+    featureGroup.add(mesh);
+}
+
+function buildMountainLine(m) {
+    var pts = [];
+    m.path.forEach(function(p) {
+        var w = geoToWorldWithY(p[0], p[1]);
+        pts.push(new THREE.Vector3(w.x, w.y + 0.1, w.z));
+    });
+    // Thick ridge line
+    var geo = new THREE.BufferGeometry().setFromPoints(pts);
+    var mat = new THREE.LineBasicMaterial({ color: m.color || 0x5d4037, linewidth: 2 });
+    featureGroup.add(new THREE.Line(geo, mat));
+
+    // Small peaks along the line
+    for (var i = 0; i < pts.length; i++) {
+        var peakGeo = new THREE.ConeGeometry(0.06, 0.15, 5);
+        var peakMat = new THREE.MeshPhongMaterial({ color: m.color || 0x5d4037, flatShading: true });
+        var peak = new THREE.Mesh(peakGeo, peakMat);
+        peak.position.copy(pts[i]);
+        peak.position.y += 0.08;
+        featureGroup.add(peak);
+    }
+}
+
+function buildSubductionLine(s) {
+    var pts = [];
+    s.path.forEach(function(p) {
+        var w = geoToWorldWithY(p[0], p[1]);
+        pts.push(new THREE.Vector3(w.x, w.y + 0.06, w.z));
+    });
+    // Dashed line
+    var geo = new THREE.BufferGeometry().setFromPoints(pts);
+    var mat = new THREE.LineDashedMaterial({
+        color: s.color || 0xff8f00,
+        dashSize: 0.15,
+        gapSize: 0.08,
+        transparent: true,
+        opacity: 0.85
+    });
+    var line = new THREE.Line(geo, mat);
+    line.computeLineDistances();
+    featureGroup.add(line);
+
+    // Direction triangles
+    for (var i = 0; i < pts.length - 1; i++) {
+        var mid = new THREE.Vector3().lerpVectors(pts[i], pts[i+1], 0.5);
+        var triGeo = new THREE.ConeGeometry(0.05, 0.1, 3);
+        var triMat = new THREE.MeshBasicMaterial({ color: s.color || 0xff8f00, transparent: true, opacity: 0.7 });
+        var tri = new THREE.Mesh(triGeo, triMat);
+        tri.position.copy(mid);
+        tri.position.y += 0.05;
+        // Point downward to indicate subduction
+        tri.rotation.z = Math.PI;
+        featureGroup.add(tri);
+    }
+}
+
+
+/* ═══════════════════════════════════════════
+   BUILD FEATURES FOR A PERIOD
+   ═══════════════════════════════════════════ */
+function buildPeriodFeatures(period) {
+    clearFeatures();
+    var f = period.features;
+    if (!f) return;
+
+    if (f.zones) f.zones.forEach(buildZoneLine);
+    if (f.oceans) f.oceans.forEach(buildOceanArea);
+    if (f.volcanoes) f.volcanoes.forEach(buildVolcanoMarker);
+    if (f.arcs) f.arcs.forEach(buildArcMarker);
+    if (f.ophiolites) f.ophiolites.forEach(buildOphioliteMarker);
+    if (f.mountains) f.mountains.forEach(buildMountainLine);
+    if (f.subduction) f.subduction.forEach(buildSubductionLine);
+}
+
+
+/* ═══════════════════════════════════════════
+   3D LABELS → 2D PROJECTION
+   ═══════════════════════════════════════════ */
+var labelOverlay = document.getElementById('label-overlay');
+var activeLabels = [];
+
+function updateLabels(period) {
+    labelOverlay.innerHTML = '';
+    activeLabels = [];
+
+    var f = period.features;
+    var allLabels = [];
+
+    // Feature labels
+    if (f) {
+        if (f.labels) f.labels.forEach(function(l) { allLabels.push(l); });
+        if (f.zones) f.zones.forEach(function(z) {
+            var mid = z.path[Math.floor(z.path.length/2)];
+            allLabels.push({ text: z.label, lat: mid[0], lon: mid[1], type: 'zone' });
+        });
+        if (f.volcanoes) f.volcanoes.forEach(function(v) {
+            allLabels.push({ text: v.label, lat: v.lat, lon: v.lon, type: 'volcano' });
+        });
+        if (f.arcs) f.arcs.forEach(function(a) {
+            allLabels.push({ text: a.label, lat: a.lat, lon: a.lon, type: 'arc' });
+        });
+        if (f.ophiolites) f.ophiolites.forEach(function(o) {
+            allLabels.push({ text: o.label, lat: o.lat, lon: o.lon, type: 'ophiolite' });
+        });
+        if (f.mountains) f.mountains.forEach(function(m) {
+            var mid = m.path[Math.floor(m.path.length/2)];
+            allLabels.push({ text: m.label, lat: mid[0], lon: mid[1], type: 'mountain' });
+        });
+        if (f.subduction) f.subduction.forEach(function(s) {
+            var mid = s.path[Math.floor(s.path.length/2)];
+            allLabels.push({ text: s.label, lat: mid[0], lon: mid[1], type: 'zone' });
+        });
+        if (f.oceans) f.oceans.forEach(function(o) {
+            allLabels.push({ text: o.label, lat: o.center[0], lon: o.center[1], type: 'ocean' });
+        });
+    }
+
+    // City labels (always shown)
+    CITIES.forEach(function(c) {
+        allLabels.push({ text: c.name, lat: c.lat, lon: c.lon, type: 'city' });
+    });
+
+    // Cardinal direction labels at terrain edges
+    var midLat = (BOUNDS.south + BOUNDS.north) / 2;
+    var midLon = (BOUNDS.west + BOUNDS.east) / 2;
+    allLabels.push({ text: 'СЕВЕР (N)', lat: BOUNDS.north + 0.15, lon: midLon, type: 'north' });
+    allLabels.push({ text: 'ЈУГ (S)', lat: BOUNDS.south - 0.15, lon: midLon, type: 'cardinal' });
+    allLabels.push({ text: 'ЗАПАД (W)', lat: midLat, lon: BOUNDS.west - 0.12, type: 'cardinal' });
+    allLabels.push({ text: 'ИСТОК (E)', lat: midLat, lon: BOUNDS.east + 0.12, type: 'cardinal' });
+
+    // Coordinate labels along edges
+    for (var cLat = Math.ceil(BOUNDS.south); cLat <= Math.floor(BOUNDS.north); cLat++) {
+        allLabels.push({ text: cLat + '°N', lat: cLat, lon: BOUNDS.west - 0.08, type: 'cardinal' });
+    }
+    for (var cLon = Math.ceil(BOUNDS.west); cLon <= Math.floor(BOUNDS.east); cLon++) {
+        allLabels.push({ text: cLon + '°E', lat: BOUNDS.south - 0.08, lon: cLon, type: 'cardinal' });
+    }
+
+    // River labels
+    var riverLabels = [
+        { text: 'Дунав', lat: 45.3, lon: 19.5 },
+        { text: 'Сава', lat: 44.82, lon: 19.8 },
+        { text: 'В. Морава', lat: 44.0, lon: 21.1 },
+        { text: 'З. Морава', lat: 43.78, lon: 20.3 },
+        { text: 'Дрина', lat: 44.2, lon: 19.3 }
+    ];
+    riverLabels.forEach(function(r) { allLabels.push({ text: r.text, lat: r.lat, lon: r.lon, type: 'river' }); });
+
+    // Neighbor country hints
+    var neighbors = [
+        { text: 'МАЂАРСКА', lat: 46.0, lon: 20.0 },
+        { text: 'РУМУНИЈА', lat: 44.8, lon: 22.8 },
+        { text: 'БУГАРСКА', lat: 43.0, lon: 22.8 },
+        { text: 'С. МАКЕДОНИЈА', lat: 42.1, lon: 21.0 },
+        { text: 'КОСОВО', lat: 42.5, lon: 20.8 },
+        { text: 'ЦРНА ГОРА', lat: 42.8, lon: 19.2 },
+        { text: 'БиХ', lat: 44.3, lon: 19.1 },
+        { text: 'ХРВАТСКА', lat: 45.3, lon: 19.1 }
+    ];
+    neighbors.forEach(function(n) { allLabels.push({ text: n.text, lat: n.lat, lon: n.lon, type: 'cardinal' }); });
+
+    allLabels.forEach(function(l) {
+        var div = document.createElement('div');
+        div.className = 'lbl3d ' + (l.type || 'plate');
+        div.innerHTML = (l.text || '').replace(/\n/g, '<br>');
+        labelOverlay.appendChild(div);
+
+        var wp = geoToWorldWithY(l.lat, l.lon);
+        var yOff = l.type === 'city' ? 0.02 : (l.type === 'cardinal' || l.type === 'north' || l.type === 'river') ? 0.03 : 0.15;
+        activeLabels.push({
+            el: div,
+            pos: new THREE.Vector3(wp.x, wp.y + yOff, wp.z)
+        });
+    });
+}
+
+function projectLabels() {
+    var w2 = canvas.clientWidth / 2;
+    var h2 = canvas.clientHeight / 2;
+    activeLabels.forEach(function(l) {
+        var v = l.pos.clone().project(camera);
+        if (v.z > 1 || v.z < -1) {
+            l.el.style.display = 'none';
+            return;
+        }
+        l.el.style.display = '';
+        l.el.style.left = (v.x * w2 + w2) + 'px';
+        l.el.style.top = (-v.y * h2 + h2) + 'px';
+    });
+}
+
+
+/* ═══════════════════════════════════════════
+   UI / SLIDER LOGIC
+   ═══════════════════════════════════════════ */
+var slider = document.getElementById('time-slider');
+var infoPanel = document.getElementById('info-panel');
+var hudEra = document.getElementById('hud-era');
+var hudName = document.getElementById('hud-name');
+var hudAge = document.getElementById('hud-age');
+var btnPlay = document.getElementById('btn-play');
+var isPlaying = false;
+var curSliderVal = 0;
+var lastPIdx = -1;
+
+// Ticks
+var ticksEl = document.getElementById('era-ticks');
+var totalMa = 541;
+PERIODS.forEach(function(p) {
+    var midMa = (p.startMa + p.endMa) / 2;
+    var pct = (1 - midMa / totalMa) * 100;
+    var tick = document.createElement('div');
+    tick.className = 'gt-tick';
+    tick.style.left = pct + '%';
+    tick.innerHTML = '<div class="tl"></div>' + p.name;
+    tick.style.color = p.color;
+    tick.addEventListener('click', function() {
+        slider.value = curSliderVal = (1 - midMa / totalMa) * 1000;
+        updateSlider();
+    });
+    ticksEl.appendChild(tick);
+});
+
+function getPeriodIdx(val) {
+    var ma = totalMa * (1 - val / 1000);
+    for (var i = 0; i < PERIODS.length; i++) {
+        if (ma >= PERIODS[i].endMa && ma <= PERIODS[i].startMa) return i;
+    }
+    return PERIODS.length - 1;
+}
+
+function updateSlider() {
+    var val = parseFloat(slider.value);
+    curSliderVal = val;
+    var idx = getPeriodIdx(val);
+    var p = PERIODS[idx];
+
+    hudEra.textContent = p.era;
+    hudEra.style.color = p.eraColor;
+    hudName.textContent = p.name;
+    hudName.style.color = p.color;
+    var ma = totalMa * (1 - val / 1000);
+    hudAge.textContent = ma < 1 ? 'Данас' : '~' + Math.round(ma) + ' милиона година';
+    hudAge.style.color = p.color;
+
+    if (idx !== lastPIdx) {
+        infoPanel.innerHTML = p.desc;
+        buildPeriodFeatures(p);
+        updateLabels(p);
+        updateCrossSection(p);
+        lastPIdx = idx;
+    }
+}
+
+slider.addEventListener('input', updateSlider);
+
+// Cross-section panel logic
+var xsPanel = document.getElementById('xsection-panel');
+var xsImg = document.getElementById('xsection-img');
+var xsCaption = document.getElementById('xsection-caption');
+var xsToggle = document.getElementById('btn-show-xs');
+var xsVisible = true;
+
+function updateCrossSection(period) {
+    if (period.xsection) {
+        xsImg.src = '/static/img/tektonika/' + period.xsection.img;
+        xsCaption.textContent = period.xsection.caption;
+        if (xsVisible) {
+            xsPanel.classList.remove('hidden');
+            xsToggle.classList.remove('visible');
+        }
+    } else {
+        xsPanel.classList.add('hidden');
+        xsToggle.classList.remove('visible');
+    }
+}
+
+document.getElementById('btn-close-xs').addEventListener('click', function(e) {
+    e.stopPropagation();
+    xsVisible = false;
+    xsPanel.classList.add('hidden');
+    xsToggle.classList.add('visible');
+});
+
+xsToggle.addEventListener('click', function() {
+    xsVisible = true;
+    xsToggle.classList.remove('visible');
+    var p = PERIODS[lastPIdx];
+    if (p && p.xsection) {
+        xsPanel.classList.remove('hidden');
+    }
+});
+
+btnPlay.addEventListener('click', function() {
+    isPlaying = !isPlaying;
+    btnPlay.innerHTML = isPlaying ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+});
+
+
+/* ═══════════════════════════════════════════
+   CAMERA CONTROLS (orbit + pan)
+   ═══════════════════════════════════════════ */
+var camTarget = new THREE.Vector3(0, 0, 0);
+var camSpherical = { theta: 0, phi: 0.65, dist: 18 };
+var isDragging = false, isPanning = false;
+var dragStart = { x: 0, y: 0 };
+
+canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+canvas.addEventListener('mousedown', function(e) {
+    if (e.button === 0 && e.ctrlKey) { isPanning = true; }
+    else if (e.button === 0) { isDragging = true; }
+    else if (e.button === 2) { isPanning = true; }
+    dragStart.x = e.clientX;
+    dragStart.y = e.clientY;
+});
+document.addEventListener('mousemove', function(e) {
+    if (isDragging) {
+        camSpherical.theta -= (e.clientX - dragStart.x) * 0.005;
+        camSpherical.phi = Math.max(0.1, Math.min(1.5, camSpherical.phi - (e.clientY - dragStart.y) * 0.005));
+    } else if (isPanning) {
+        var panSpeed = camSpherical.dist * 0.001;
+        var right = new THREE.Vector3();
+        camera.getWorldDirection(right);
+        right.cross(camera.up).normalize();
+        var up = new THREE.Vector3(0, 1, 0);
+        camTarget.addScaledVector(right, -(e.clientX - dragStart.x) * panSpeed);
+        camTarget.addScaledVector(up, (e.clientY - dragStart.y) * panSpeed);
+    }
+    dragStart.x = e.clientX;
+    dragStart.y = e.clientY;
+});
+document.addEventListener('mouseup', function() { isDragging = false; isPanning = false; });
+
+canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    camSpherical.dist = Math.max(5, Math.min(40, camSpherical.dist + e.deltaY * 0.015));
+}, { passive: false });
+
+// Touch
+var touchStart = null, touchDist = 0;
+canvas.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) { touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
+    else if (e.touches.length === 2) {
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx*dx+dy*dy);
+    }
+}, { passive: true });
+canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (e.touches.length === 1 && touchStart) {
+        camSpherical.theta -= (e.touches[0].clientX - touchStart.x) * 0.005;
+        camSpherical.phi = Math.max(0.1, Math.min(1.5, camSpherical.phi - (e.touches[0].clientY - touchStart.y) * 0.005));
+        touchStart.x = e.touches[0].clientX; touchStart.y = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        var nd = Math.sqrt(dx*dx+dy*dy);
+        camSpherical.dist = Math.max(5, Math.min(40, camSpherical.dist - (nd - touchDist) * 0.05));
+        touchDist = nd;
+    }
+}, { passive: false });
+
+
+/* ═══════════════════════════════════════════
+   ANIMATION LOOP
+   ═══════════════════════════════════════════ */
+var clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta();
+    var t = clock.getElapsedTime();
+
+    // Auto-play
+    if (isPlaying) {
+        curSliderVal = Math.min(1000, curSliderVal + dt * 12);
+        slider.value = curSliderVal;
+        if (curSliderVal >= 1000) { isPlaying = false; btnPlay.innerHTML = '<i class="bi bi-play-fill"></i>'; }
+        updateSlider();
+    }
+
+    // Camera spherical → Cartesian
+    camera.position.set(
+        camTarget.x + Math.sin(camSpherical.theta) * Math.cos(camSpherical.phi) * camSpherical.dist,
+        camTarget.y + Math.sin(camSpherical.phi) * camSpherical.dist,
+        camTarget.z + Math.cos(camSpherical.theta) * Math.cos(camSpherical.phi) * camSpherical.dist
+    );
+    camera.lookAt(camTarget);
+
+    // Rotate compass to match camera heading
+    var compassEl = document.getElementById('compass');
+    var compassDeg = camSpherical.theta * (180 / Math.PI);
+    compassEl.querySelector('svg').style.transform = 'rotate(' + compassDeg + 'deg)';
+
+    // Animate volcano particles
+    featureGroup.children.forEach(function(c) {
+        if (c.userData.volcParticle) {
+            var vp = c.userData.volcParticle;
+            c.position.y = vp.baseY + Math.sin(t * vp.speed + vp.phase) * 0.15;
+            c.material.opacity = 0.3 + 0.4 * Math.abs(Math.sin(t * 1.5 + vp.phase));
+        }
+        if (c.userData.isVolcanoGlow) {
+            c.material.opacity = 0.15 + 0.15 * Math.sin(t * 2);
+            c.scale.setScalar(1 + 0.15 * Math.sin(t * 1.8));
+        }
+    });
+
+    // Animate ocean rings
+    waterGroup.children.forEach(function(c) {
+        if (c.userData.isOceanRing) {
+            c.material.opacity = 0.12 + 0.12 * Math.sin(t * 1.2);
+            c.scale.setScalar(1 + 0.05 * Math.sin(t * 0.8));
+        }
+    });
+
+    // Project labels
+    projectLabels();
+
+    // Resize
+    if (canvas.clientWidth !== W || canvas.clientHeight !== H) {
+        W = canvas.clientWidth; H = canvas.clientHeight;
+        renderer.setSize(W, H, false);
+        camera.aspect = W / H;
+        camera.updateProjectionMatrix();
+    }
+
+    renderer.render(scene, camera);
+}
+
+
+/* ═══════════════════════════════════════════
+   LOAD TERRAIN DATA AND START
+   ═══════════════════════════════════════════ */
+fetch('/api/map/balkans-terrain')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('loading-msg').style.display = 'none';
+        buildTerrain(data);
+        updateSlider();
+        animate();
+    })
+    .catch(function(err) {
+        document.getElementById('loading-msg').innerHTML =
+            '<div class="text-danger">Грешка при учитавању терена</div><div class="text-muted mt-1" style="font-size:0.75rem;">' + err + '</div>';
+        console.error('Terrain load error:', err);
+        // Start anyway without terrain
+        updateSlider();
+        animate();
+    });
+
+})();
+</script>
+{% endblock %}

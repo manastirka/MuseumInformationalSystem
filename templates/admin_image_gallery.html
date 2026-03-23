@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Галерија слика{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-images"></i> Галерија слика</h2>
+            {% if item %}
+            <p class="text-muted mb-0">
+                <strong>Предмет:</strong> {{ item.get('naziv', item.get('name', item.get('title', 'N/A'))) }}<br>
+                <strong>ID:</strong> <code>{{ entity_id }}</code>
+            </p>
+            {% endif %}
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="bi bi-cloud-upload"></i> Додај слику
+            </button>
+        </div>
+    </div>
+
+    {% if images|length > 0 %}
+    <div class="row">
+        {% for image in images %}
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card h-100">
+                <a href="{{ image.full_url }}" target="_blank">
+                    <img src="{{ image.thumbnail_url }}" class="card-img-top" alt="{{ image.metadata.description }}"
+                         style="height: 200px; object-fit: cover;">
+                </a>
+                <div class="card-body">
+                    <h6 class="card-title">{{ image.metadata.description or 'Без описа' }}</h6>
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-calendar"></i> {{ image.metadata.upload_date[:10] }}<br>
+                        <i class="bi bi-file-earmark"></i> {{ (image.metadata.file_size / 1024)|round(1) }} KB
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex gap-2">
+                        <a href="{{ image.full_url }}" target="_blank" class="btn btn-sm btn-primary flex-grow-1">
+                            <i class="bi bi-eye"></i> Прикажи
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_item_image', database=database, entity_id=entity_id, image_id=image.image_id) }}"
+                              onsubmit="return confirm('Да ли сте сигурни да желите да обришете ову слику?')"
+                              class="d-inline">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Нема слика за овај предмет. Додајте прву слику користећи дугме изnad.
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ request.referrer or url_for('admin_panel') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Отпреми слику</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('upload_item_image', database=database, entity_id=entity_id) }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Изаберите слику *</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
+                        <small class="form-text text-muted">
+                            Подржани формати: JPG, PNG, GIF, BMP, WebP, TIFF (макс. 10MB)
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Опис</label>
+                        <input type="text" class="form-control" id="description" name="description"
+                               placeholder="Опис слике...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-cloud-upload"></i> Отпреми
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

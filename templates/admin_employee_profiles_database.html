@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}База профила запослених - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-person-badge me-2"></i>
+                                База профила запослених
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Биографије и стручни профили запослених Природњачког музеја
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ total_profiles }}</h2>
+                                <small>Профила</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-people-fill" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.total_profiles }}</h5>
+                    <p class="text-muted mb-0 small">Укупно профила</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-card-text" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.with_descriptions }}</h5>
+                    <p class="text-muted mb-0 small">Са описима</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-building" style="font-size: 2rem; color: var(--museum-secondary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.total_departments }}</h5>
+                    <p class="text-muted mb-0 small">Одељења</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-percent" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.completion_rate }}%</h5>
+                    <p class="text-muted mb-0 small">Попуњеност</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Profiles List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <i class="bi bi-card-list me-2"></i>
+                                Профили запослених
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="input-group" style="max-width: 300px; margin-left: auto;">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Претражи...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    {% if employees %}
+                    <div class="row g-4" id="profilesContainer">
+                        {% for employee in employees %}
+                        <div class="col-lg-6 profile-card">
+                            <div class="card h-100 border shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="avatar-large me-3">
+                                            {{ employee.full_name.split()[0][0] }}{{ employee.full_name.split()[1][0] if employee.full_name.split()|length > 1 else '' }}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h5 class="mb-1">{{ employee.full_name }}</h5>
+                                            <p class="text-muted mb-1 small">
+                                                <i class="bi bi-briefcase me-1"></i>
+                                                {{ employee.position }}
+                                            </p>
+                                            <p class="text-muted mb-0 small">
+                                                <i class="bi bi-building me-1"></i>
+                                                {{ employee.department }}
+                                            </p>
+                                        </div>
+                                        {% if employee.role == 'admin' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-shield-check"></i>
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if employee.description %}
+                                    <div class="profile-description mb-3">
+                                        <p class="text-muted mb-0">
+                                            <i class="bi bi-info-circle me-1 text-primary"></i>
+                                            {{ employee.description }}
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="border-top pt-3">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-envelope me-1"></i>
+                                                    {{ employee.email }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: var(--museum-secondary); opacity: 0.3;"></i>
+                        <h5 class="mt-3 text-muted">Нема профила са описима</h5>
+                        <p class="text-muted">Додајте описе запосленима да бисте видели њихове профиле овде.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-muted">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <small>Приказано {{ total_profiles }} профила са биографијама</small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small>Последње ажурирано: данас</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightning me-2"></i>
+                        Брзе акције
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('employees_database') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-people-fill me-2"></i>
+                                Сви запослени
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success w-100" onclick="printProfiles()">
+                                <i class="bi bi-printer me-2"></i>
+                                Штампај профиле
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-info w-100">
+                                <i class="bi bi-database me-2"></i>
+                                Музејске базе
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Назад на панел
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--museum-primary), var(--museum-secondary));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.profile-description {
+    background: #f8f9fa;
+    border-left: 3px solid var(--museum-primary);
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+}
+
+.profile-card {
+    transition: transform 0.2s;
+}
+
+.profile-card:hover {
+    transform: translateY(-2px);
+}
+
+.card {
+    border-radius: 0.5rem;
+}
+
+@media print {
+    .card-header, .card-footer, .btn, .input-group {
+        display: none !important;
+    }
+    
+    .col-lg-6 {
+        width: 50% !important;
+    }
+}
+</style>
+
+<script>
+// Search functionality
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const profileCards = document.querySelectorAll('.profile-card');
+
+    profileCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Print profiles
+function printProfiles() {
+    window.print();
+}
+</script>
+{% endblock %}
+

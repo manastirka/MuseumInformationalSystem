@@ -1,0 +1,693 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collection_name }} - Природњачки музеј{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="{{ collection_icon }} me-2"></i>{{ collection_name }}</h2>
+                    {% if highlight %}
+                    <div class="alert alert-info d-inline-block py-2 px-3 mb-0 mt-2">
+                        <i class="bi bi-qr-code me-2"></i>
+                        <strong>QR скениран примерак:</strong> {{ highlight }}
+                        <a href="{{ request.path }}" class="btn btn-sm btn-outline-primary ms-3">
+                            <i class="bi bi-grid-3x3-gap me-1"></i>Прикажи све примерке
+                        </a>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Преглед свих примерака у збирци</p>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    {% if image_upload_url %}
+                    <a href="{{ image_upload_url }}" class="btn btn-outline-primary">
+                        <i class="bi bi-images me-1"></i> Слике
+                    </a>
+                    {% endif %}
+                    {% if qr_action_url %}
+                    <a href="{{ qr_action_url }}" class="btn btn-success">
+                        <i class="bi bi-qr-code me-1"></i> QR кодови
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Назад на базе података
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    {% set stat_labels = {
+        'total_specimens': 'Укупно примерака',
+        'serbian_meteorites': 'Српски метеорити',
+        'foreign_meteorites': 'Страни метеорити',
+        'total_classes': 'Број класа',
+        'total_mass_grams': 'Укупна маса (g)',
+        'witnessed_falls': 'Посматрани падови',
+        'finds': 'Налази',
+        'total_books': 'Укупно књига',
+        'available_books': 'Доступне књиге',
+        'borrowed_books': 'Позајмљене књиге',
+        'total_categories': 'Број категорија',
+        'total_heritage_items': 'Укупно предмета',
+        'exceptional_significance': 'Изузетан значај',
+        'great_significance': 'Велики значај'
+    } %}
+    <div class="row mb-4">
+        {% for key, value in statistics.items() %}
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h3 class="text-primary mb-2">{{ value if key != 'total_mass_grams' else '%.2f'|format(value) }}</h3>
+                    <p class="text-muted mb-0 small">{{ stat_labels.get(key, key|replace('_', ' ')|title) }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Specimens Table -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul me-2"></i>Примерци у збирци
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('add_collection_item', collection_type=collection_type) }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i>Додај примерак
+                            </a>
+                            <a href="{{ url_for('export_collection_to_pdf', collection_type=collection_type) }}" class="btn btn-sm btn-danger" title="Извоз збирке у ПДФ">
+                                <i class="bi bi-file-pdf me-1"></i>Извоз ПДФ
+                            </a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="toggleColumnSelector()">
+                                <i class="bi bi-sliders me-1"></i>Колоне
+                            </button>
+                            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Претрага..." onkeyup="filterTable()" style="min-width: 200px;">
+                        </div>
+                    </div>
+                    <!-- Column Selector (Hidden by default) -->
+                    <div id="columnSelector" class="mt-3 p-3 bg-light rounded" style="display: none;">
+                        <div class="row g-2" id="columnCheckboxes">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-success" onclick="selectAllColumns()">
+                                <i class="bi bi-check-all"></i> Изабери све
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="deselectAllColumns()">
+                                <i class="bi bi-x-lg"></i> Поништи све
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="specimensTable">
+                            <thead class="table-light">
+                                <tr id="tableHeaders">
+                                    <th style="width: 80px;">Слика</th>
+                                    <!-- Dynamically populated with sortable headers -->
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Укупно примерака: <strong id="totalCount">{{ specimens|length }}</strong>
+                        <span id="filteredCount" class="ms-2" style="display: none;">
+                            (Приказано: <strong></strong>)
+                        </span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Specimen Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="{{ collection_icon }} me-2"></i>Детаљни подаци о примерку
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Details will be inserted here by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store specimens data in JavaScript
+const specimens = {{ specimens|tojson }};
+const collectionType = '{{ collection_type }}';
+
+// Get all unique column names from specimens
+let allColumns = new Set();
+specimens.forEach(spec => {
+    Object.keys(spec).forEach(key => allColumns.add(key));
+});
+allColumns = Array.from(allColumns);
+
+// Default visible columns (stored in localStorage)
+let visibleColumns = JSON.parse(localStorage.getItem(`columns_${collectionType}`) || 'null') || 
+    allColumns.slice(0, Math.min(7, allColumns.length));
+
+// Current sort state
+let currentSort = { column: null, direction: 'asc' };
+
+// Serbian translations for ALL field names
+const fieldTranslations = {
+    // Common fields
+    'id': 'ИД',
+    'catalog_number': 'Каталошки број',
+    'record_number': 'Број записа',
+    'scientific_name': 'Научно име',
+    'common_name_sr': 'Народно име',
+    'meteorite_name': 'Назив метеорита',
+    'rock_name': 'Назив стене',
+    'specimen_name': 'Назив примерка',
+    'alternative_names': 'Алтернативни називи',
+    'location_found': 'Локација',
+    'habitat': 'Станиште',
+    'date_collected': 'Датум прикупљања',
+    'date_discovered': 'Датум открића',
+    'date_completed': 'Датум завршетка',
+    'condition': 'Стање',
+    'condition_after': 'Стање после',
+    'condition_notes': 'Напомене о стању',
+    'family': 'Фамилија',
+    'order': 'Ред',
+    'class': 'Класа',
+    'classification': 'Класификација',
+    'classification_scheme': 'Шема класификације',
+    'total_mass_kg': 'Маса (kg)',
+    'total_mass_g': 'Маса (g)',
+    'weight_kg': 'Тежина (kg)',
+    'length_cm': 'Дужина (cm)',
+    'wingspan_cm': 'Распон крила (cm)',
+    'wingspan_mm': 'Распон крила (mm)',
+    'curator': 'Кустос',
+    'collector': 'Сакупљач',
+    'description': 'Опис',
+    'quantity': 'Количина',
+    'source': 'Извор',
+    'acquisition_date': 'Датум набавке',
+    'conservation_status': 'Статус заштите',
+    'endemic_status': 'Ендемски статус',
+    'geological_period': 'Геолошки период',
+    'age_million_years': 'Старост (мил. год.)',
+    'herbarium_number': 'Хербаријумски број',
+    'altitude': 'Надморска висина',
+    'sex': 'Пол',
+    'ring_number': 'Број прстена',
+    'venomous': 'Отровност',
+    'type_status': 'Тип статус',
+    'created_at': 'Креирано',
+    'updated_at': 'Ажурирано',
+    'images': 'Слике',
+    'keywords': 'Кључне речи',
+    'notes': 'Напомене',
+    'status': 'Статус',
+
+    // Meteorite-specific fields - Basic Information
+    'serbian_meteorite': 'Српски метеорит',
+    'meteorite_class': 'Класа метеорита',
+    'meteorite_group': 'Група метеорита',
+    'meteorite_type': 'Тип метеорита',
+
+    // Meteorite - Physical Properties
+    'mass': 'Маса',
+    'mass_unit': 'Јединица масе',
+    'total_mass': 'Укупна маса',
+    'total_mass_unit': 'Јединица укупне масе',
+    'dimensions': 'Димензије',
+    'shape': 'Облик',
+    'color': 'Боја',
+    'texture': 'Текстура',
+    'surface_features': 'Површинске карактеристике',
+
+    // Meteorite - Composition
+    'chemical_composition': 'Хемијски састав',
+    'mineralogy': 'Минералогија',
+    'main_minerals': 'Главни минерали',
+    'minor_minerals': 'Споредни минерали',
+    'metal_content': 'Садржај метала',
+    'silicate_content': 'Садржај силиката',
+    'geochemical_data': 'Геохемијски подаци',
+    'isotopic_data': 'Изотопски подаци',
+
+    // Meteorite - Fall/Find Data
+    'fall_type': 'Тип пада',
+    'fall_date': 'Датум пада',
+    'fall_date_text': 'Датум пада',
+    'fall_location': 'Локација пада',
+    'fall_country': 'Држава пада',
+    'fall_coordinates': 'Координате пада',
+    'fall_witnessed': 'Посматран пад',
+    'fall_description': 'Опис пада',
+
+    // Meteorite - Discovery & Collection
+    'discovery_date': 'Датум открића',
+    'discovery_location': 'Локација открића',
+    'discoverer': 'Проналазач',
+    'collection_date': 'Датум прикупљања',
+    'collection_method': 'Метод прикупљања',
+
+    // Meteorite - Acquisition
+    'acquisition_method': 'Начин прибављања',
+    'acquisition_date_text': 'Датум прибављања',
+    'acquisition_source': 'Извор прибављања',
+    'acquisition_value': 'Вредност набавке',
+
+    // Meteorite - Scientific Analysis
+    'shock_stage': 'Ниво шока',
+    'weathering_grade': 'Степен трошења',
+    'petrographic_notes': 'Петрографске белешке',
+    'age_estimation': 'Процена старости',
+    'parent_body': 'Матично тело',
+    'cosmic_ray_exposure': 'Космички зраци',
+    'widmanstatten_pattern': 'Widmanstätten структура',
+    'fusion_crust': 'Фузиона кора',
+
+    // Meteorite - Documentation
+    'meteorite_bulletin_number': 'Број билтена',
+    'scientific_significance': 'Научни значај',
+    'publications': 'Публикације',
+    'bibliography_references': 'Библиографске референце',
+
+    // Meteorite - Storage & Display
+    'storage_location': 'Локација складишта',
+    'storage_conditions': 'Услови складиштења',
+    'display_status': 'Статус излагања'
+};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    initializeColumnSelector();
+    renderTable();
+});
+
+// Toggle column selector visibility
+function toggleColumnSelector() {
+    const selector = document.getElementById('columnSelector');
+    selector.style.display = selector.style.display === 'none' ? 'block' : 'none';
+}
+
+// Initialize column selector checkboxes
+function initializeColumnSelector() {
+    const container = document.getElementById('columnCheckboxes');
+    container.innerHTML = '';
+    
+    allColumns.forEach(col => {
+        const isVisible = visibleColumns.includes(col);
+        const label = fieldTranslations[col] || col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        const colDiv = document.createElement('div');
+        colDiv.className = 'col-md-3';
+        colDiv.innerHTML = `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="${col}" 
+                       id="col_${col}" ${isVisible ? 'checked' : ''} 
+                       onchange="toggleColumn('${col}')">
+                <label class="form-check-label" for="col_${col}">
+                    ${label}
+                </label>
+            </div>
+        `;
+        container.appendChild(colDiv);
+    });
+}
+
+// Toggle column visibility
+function toggleColumn(column) {
+    const index = visibleColumns.indexOf(column);
+    if (index > -1) {
+        visibleColumns.splice(index, 1);
+    } else {
+        visibleColumns.push(column);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem(`columns_${collectionType}`, JSON.stringify(visibleColumns));
+    
+    // Re-render table
+    renderTable();
+}
+
+// Select/Deselect all columns
+function selectAllColumns() {
+    visibleColumns = [...allColumns];
+    localStorage.setItem(`columns_${collectionType}`, JSON.stringify(visibleColumns));
+    initializeColumnSelector();
+    renderTable();
+}
+
+function deselectAllColumns() {
+    visibleColumns = [];
+    localStorage.setItem(`columns_${collectionType}`, JSON.stringify(visibleColumns));
+    initializeColumnSelector();
+    renderTable();
+}
+
+// Sort table by column
+function sortTable(column) {
+    // Toggle sort direction if same column
+    if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+    }
+    
+    renderTable();
+}
+
+// Render table with current settings
+function renderTable() {
+    const headersRow = document.getElementById('tableHeaders');
+    const tbody = document.getElementById('tableBody');
+    
+    // Clear existing content
+    headersRow.innerHTML = '';
+    tbody.innerHTML = '';
+
+    // Add image column header first
+    const imgTh = document.createElement('th');
+    imgTh.style.width = '80px';
+    imgTh.textContent = 'Слика';
+    headersRow.appendChild(imgTh);
+
+    // Create headers with sort functionality
+    visibleColumns.forEach(col => {
+        const th = document.createElement('th');
+        const label = fieldTranslations[col] || col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        th.className = 'sortable-header';
+        th.style.cursor = 'pointer';
+        th.onclick = () => sortTable(col);
+        
+        let sortIcon = '<i class="bi bi-arrow-down-up ms-1 text-muted"></i>';
+        if (currentSort.column === col) {
+            sortIcon = currentSort.direction === 'asc' 
+                ? '<i class="bi bi-arrow-up ms-1 text-primary"></i>'
+                : '<i class="bi bi-arrow-down ms-1 text-primary"></i>';
+        }
+        
+        th.innerHTML = label + sortIcon;
+        headersRow.appendChild(th);
+    });
+    
+    // Add actions column
+    const actionsTh = document.createElement('th');
+    actionsTh.textContent = 'Акције';
+    headersRow.appendChild(actionsTh);
+    
+    // Sort specimens
+    let sortedSpecimens = [...specimens];
+    if (currentSort.column) {
+        sortedSpecimens.sort((a, b) => {
+            let aVal = a[currentSort.column] || '';
+            let bVal = b[currentSort.column] || '';
+            
+            // Try to parse as number
+            const aNum = parseFloat(aVal);
+            const bNum = parseFloat(bVal);
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return currentSort.direction === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+            
+            // String comparison
+            aVal = String(aVal).toLowerCase();
+            bVal = String(bVal).toLowerCase();
+            
+            if (currentSort.direction === 'asc') {
+                return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            } else {
+                return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+            }
+        });
+    }
+    
+    // Create table rows
+    sortedSpecimens.forEach((specimen, index) => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-original-index', index);
+
+        // Add thumbnail column first
+        const imgTd = document.createElement('td');
+        imgTd.className = 'text-center';
+
+        // Determine entity_id - try common id fields
+        let entityId = specimen.id || specimen.record_id || specimen.catalog_number || specimen.record_number || index;
+
+        // Map collection type to database name
+        const databaseMap = {
+            'mineral': 'minerals',
+            'meteorite': 'meteorites',
+            'paleozoology': 'paleozoology',
+            'paleobotany': 'paleobotany',
+            'botany': 'botany',
+            'geology': 'geology',
+            'cultural_heritage': 'cultural_heritage'
+        };
+
+        const dbName = databaseMap[collectionType] || collectionType;
+        const imgUrl = `/api/specimen_thumbnail/${dbName}/${collectionType}/${entityId}`;
+
+        imgTd.innerHTML = `<img src="${imgUrl}" alt="Specimen" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;">`;
+        tr.appendChild(imgTd);
+
+        visibleColumns.forEach(col => {
+            const td = document.createElement('td');
+            let value = specimen[col];
+            
+            // Format value based on field type
+            if (value === null || value === undefined || value === '') {
+                td.innerHTML = '<span class="text-muted">-</span>';
+            } else if (col.includes('catalog_number') || col.includes('record_number')) {
+                td.innerHTML = `<span class="badge bg-primary">${value}</span>`;
+            } else if (col.includes('scientific_name') || col.includes('meteorite_name')) {
+                td.innerHTML = `<em>${value}</em>`;
+            } else if (col === 'condition' || col === 'condition_after') {
+                let badgeClass = 'bg-secondary';
+                if (value.includes('Одлично') || value.includes('Одличан')) badgeClass = 'bg-success';
+                else if (value.includes('Добро') || value.includes('Добар')) badgeClass = 'bg-info';
+                else if (value.includes('Оштећен')) badgeClass = 'bg-warning';
+                td.innerHTML = `<span class="badge ${badgeClass}">${value}</span>`;
+            } else if (col === 'conservation_status') {
+                td.innerHTML = `<span class="badge bg-danger">${value}</span>`;
+            } else if (col === 'serbian_meteorite') {
+                td.innerHTML = value ? '<span class="badge bg-success">Да</span>' : '<span class="badge bg-secondary">Не</span>';
+            } else if (typeof value === 'number') {
+                td.innerHTML = `<strong>${value}</strong>`;
+            } else if (col.includes('date')) {
+                td.innerHTML = `<small>${value}</small>`;
+            } else {
+                td.innerHTML = value;
+            }
+            
+            tr.appendChild(td);
+        });
+        
+        // Actions column
+        const actionsTd = document.createElement('td');
+        actionsTd.innerHTML = `
+            <button class="btn btn-sm btn-outline-info" onclick="showDetails(${index})">
+                <i class="bi bi-eye"></i> Детаљи
+            </button>
+        `;
+        tr.appendChild(actionsTd);
+        
+        tbody.appendChild(tr);
+    });
+    
+    // Update filtered count
+    updateFilteredCount();
+}
+
+// Filter table function
+function filterTable() {
+    const input = document.getElementById("searchInput");
+    const filter = input.value.toLowerCase();
+    const tbody = document.getElementById("tableBody");
+    const rows = tbody.getElementsByTagName("tr");
+    
+    let visibleCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName("td");
+        let found = false;
+        
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j]) {
+                const txtValue = cells[j].textContent || cells[j].innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        rows[i].style.display = found ? "" : "none";
+        if (found) visibleCount++;
+    }
+    
+    // Update filtered count display
+    const filteredSpan = document.getElementById('filteredCount');
+    if (filter) {
+        filteredSpan.style.display = 'inline';
+        filteredSpan.querySelector('strong').textContent = visibleCount;
+    } else {
+        filteredSpan.style.display = 'none';
+    }
+}
+
+// Update filtered count
+function updateFilteredCount() {
+    const filteredSpan = document.getElementById('filteredCount');
+    filteredSpan.style.display = 'none';
+}
+
+// Show specimen details in modal
+function showDetails(index) {
+    const specimen = specimens[index];
+    const modalBody = document.getElementById('modalBody');
+
+    // Determine entity_id for image
+    let entityId = specimen.id || specimen.record_id || specimen.catalog_number || specimen.record_number || index;
+    const databaseMap = {
+        'mineral': 'minerals',
+        'meteorite': 'meteorites',
+        'paleozoology': 'paleozoology',
+        'paleobotany': 'paleobotany',
+        'botany': 'botany',
+        'geology': 'geology',
+        'cultural_heritage': 'cultural_heritage'
+    };
+    const dbName = databaseMap[collectionType] || collectionType;
+    const imgUrl = `/api/specimen_image/${dbName}/${collectionType}/${entityId}`;
+
+    let html = '<div class="row g-3">';
+
+    // Add image at the top
+    html += `
+        <div class="col-12 text-center mb-3">
+            <img src="${imgUrl}" alt="Specimen" class="img-fluid rounded shadow-sm" style="max-height: 300px; object-fit: contain;">
+        </div>
+    `;
+
+    // Iterate through all fields
+    for (const [key, value] of Object.entries(specimen)) {
+        if (value !== null && value !== undefined && value !== '') {
+            const label = fieldTranslations[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            html += `
+                <div class="col-md-6">
+                    <div class="border-bottom pb-2">
+                        <strong class="text-muted d-block small">${label}:</strong>
+                        <span>${value}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    html += '</div>';
+    modalBody.innerHTML = html;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+}
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.modal-body .border-bottom:last-child {
+    border-bottom: none !important;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+    padding: 12px 8px !important;
+}
+
+.sortable-header:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.sortable-header i {
+    font-size: 0.85em;
+}
+
+#columnSelector {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Responsive table improvements */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}

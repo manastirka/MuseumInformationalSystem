@@ -1,0 +1,1016 @@
+{% extends "base.html" %}
+
+{% block title %}NHM London Data Portal - Администрација{% endblock %}
+
+{% block head_extra %}
+<style>
+.search-mode-toggle {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.search-mode-btn {
+    padding: 12px 25px;
+    border: 2px solid #dee2e6;
+    border-radius: 25px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 5px;
+}
+.search-mode-btn:hover {
+    border-color: #1a472a;
+}
+.search-mode-btn.active {
+    background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+    color: white;
+    border-color: #1a472a;
+}
+.results-column {
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+}
+.column-header {
+    padding: 15px 20px;
+    font-weight: 600;
+}
+.column-header.museum {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+}
+.column-header.nhm {
+    background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+    color: white;
+}
+.result-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s;
+}
+.result-item:hover {
+    background: #f8f9fa;
+}
+.result-item:last-child {
+    border-bottom: none;
+}
+.no-data-message {
+    padding: 40px 20px;
+    text-align: center;
+    color: #6c757d;
+}
+.specimen-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin: 2px;
+}
+.badge-mineral { background: #ffc107; color: #000; }
+.badge-location { background: #e3f2fd; color: #1565c0; }
+.badge-country { background: #e8f5e9; color: #2e7d32; }
+.dataset-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+}
+.dataset-card:hover {
+    border-color: #1a472a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.loading-spinner {
+    text-align: center;
+    padding: 60px 20px;
+}
+.nhm-item-clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.nhm-item-clickable:hover {
+    background: #e8f5e9;
+    transform: translateX(3px);
+}
+.local-item-clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.local-item-clickable:hover {
+    background: #e3f2fd;
+    transform: translateX(3px);
+}
+.translation-info {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+}
+.translation-info i {
+    color: #856404;
+}
+.detail-row {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
+.detail-row:last-child {
+    border-bottom: none;
+}
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 140px;
+    display: inline-block;
+}
+.detail-value {
+    color: #212529;
+}
+.coordinate-link {
+    color: #1a472a;
+    text-decoration: none;
+}
+.coordinate-link:hover {
+    text-decoration: underline;
+}
+/* Pagination styling */
+#nhmPaginationContainer .pagination {
+    margin-bottom: 0.5rem;
+}
+#nhmPaginationContainer .page-link {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+#nhmPaginationContainer .page-item.active .page-link {
+    background-color: #1a472a;
+    border-color: #1a472a;
+}
+#nhmPaginationContainer .page-link:hover {
+    background-color: #e8f5e9;
+    color: #1a472a;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 50%, #1a472a 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-globe-europe-africa me-2"></i>
+                                Natural History Museum London
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Data Portal - 286 датасетова са 35+ милиона записа
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="d-flex justify-content-end gap-3">
+                                <div class="bg-white bg-opacity-25 rounded p-2 px-3">
+                                    <i class="bi bi-database me-1"></i>
+                                    <strong>286</strong>
+                                    <br><small>Датасетова</small>
+                                </div>
+                                <div class="{% if status.connected %}bg-white bg-opacity-25{% else %}bg-danger bg-opacity-50{% endif %} rounded p-2 px-3">
+                                    {% if status.connected %}
+                                    <i class="bi bi-wifi me-1"></i>
+                                    <strong>API</strong>
+                                    <br><small>Повезан</small>
+                                    {% else %}
+                                    <i class="bi bi-wifi-off me-1"></i>
+                                    <strong>API</strong>
+                                    <br><small>Офлајн</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Mode Toggle -->
+    <div class="search-mode-toggle text-center">
+        <span class="me-3 text-muted">Режим претраге:</span>
+        <button class="search-mode-btn active" id="modeDatasets" onclick="setSearchMode('datasets')">
+            <i class="bi bi-folder2 me-2"></i>Претрага датасетова
+        </button>
+        <button class="search-mode-btn" id="modeData" onclick="setSearchMode('data')">
+            <i class="bi bi-table me-2"></i>Претрага података (упореди са нашом базом)
+        </button>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Упит за претрагу</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchQuery"
+                               placeholder="Унесите термин за претрагу...">
+                    </div>
+                </div>
+                <div class="col-md-3" id="dataFieldsContainer" style="display: none;">
+                    <label class="form-label">Тип података</label>
+                    <select class="form-select form-select-lg" id="dataType">
+                        <option value="all">Сви типови</option>
+                        <option value="minerals">Минерали</option>
+                        <option value="fossils">Фосили</option>
+                        <option value="specimens">Примерци</option>
+                    </select>
+                </div>
+                <div class="col-md-3" id="datasetFieldsContainer">
+                    <label class="form-label">Одељење</label>
+                    <select class="form-select form-select-lg" id="department">
+                        <option value="">Сва одељења</option>
+                        <option value="mineralogy">Минералогија</option>
+                        <option value="palaeontology">Палеонтологија</option>
+                        <option value="zoology">Зоологија</option>
+                        <option value="botany">Ботаника</option>
+                        <option value="entomology">Ентомологија</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success btn-lg w-100" onclick="performSearch()">
+                        <i class="bi bi-search me-2"></i>Претражи
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick searches -->
+            <div class="mt-3" id="quickSearches">
+                <span class="text-muted me-2">Брза претрага:</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('Serbia')">Србија</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('pyrite')">Пирит</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('quartz')">Кварц</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('fossil')">Фосил</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('mineral')">Минерал</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="quickSearch('bird')">Птице</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Container -->
+    <div id="resultsContainer">
+        <!-- Default message -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-search" style="font-size: 4rem; color: #ddd;"></i>
+                <h5 class="mt-3 text-muted">Унесите термин за претрагу</h5>
+                <p class="text-muted">
+                    Претражите NHM датасетове или упоредите податке са нашом колекцијом
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dataset Details Modal -->
+<div class="modal fade" id="datasetModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%); color: white;">
+                <h5 class="modal-title"><i class="bi bi-folder2-open me-2"></i>Детаљи датасета</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="datasetModalContent">
+                <div class="loading-spinner">
+                    <div class="spinner-border text-success"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NHM Specimen Detail Modal -->
+<div class="modal fade" id="specimenModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%); color: white;">
+                <h5 class="modal-title"><i class="bi bi-gem me-2"></i>Детаљи примерка - NHM London</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="specimenModalContent">
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="specimenNhmLink" target="_blank" class="btn btn-success">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Погледај на NHM сајту
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Local Database Specimen Detail Modal -->
+<div class="modal fade" id="localSpecimenModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white;">
+                <h5 class="modal-title"><i class="bi bi-gem me-2"></i>Детаљи примерка - Наша колекција</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="localSpecimenModalContent">
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="localSpecimenLink" target="_blank" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Отвори у бази
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let searchMode = 'datasets';
+let nhmItemsCache = {};    // Store NHM items data for modal display
+let localItemsCache = {};  // Store local items data for modal display
+
+// Pagination state for NHM data
+let currentNhmQuery = '';
+let currentNhmPage = 1;
+let currentNhmTotal = 0;
+let currentDataType = 'all';
+let currentLocalData = null;
+const NHM_PAGE_SIZE = 50;
+
+function setSearchMode(mode) {
+    searchMode = mode;
+
+    // Update button states
+    document.getElementById('modeDatasets').classList.toggle('active', mode === 'datasets');
+    document.getElementById('modeData').classList.toggle('active', mode === 'data');
+
+    // Toggle field visibility
+    document.getElementById('dataFieldsContainer').style.display = mode === 'data' ? 'block' : 'none';
+    document.getElementById('datasetFieldsContainer').style.display = mode === 'datasets' ? 'block' : 'none';
+
+    // Update placeholder
+    const placeholder = mode === 'datasets'
+        ? 'Претражите датасетове (нпр. fossil, mineral, bird)...'
+        : 'Претражите податке (нпр. pyrite, Serbia, quartz)...';
+    document.getElementById('searchQuery').placeholder = placeholder;
+}
+
+function quickSearch(term) {
+    document.getElementById('searchQuery').value = term;
+    performSearch();
+}
+
+function performSearch() {
+    const query = document.getElementById('searchQuery').value.trim();
+    if (!query) {
+        alert('Молимо унесите термин за претрагу');
+        return;
+    }
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner-border text-success"></div><p class="mt-3">Претрага у току...</p></div>';
+
+    if (searchMode === 'datasets') {
+        searchDatasets(query);
+    } else {
+        searchData(query);
+    }
+}
+
+function searchDatasets(query) {
+    const department = document.getElementById('department').value;
+    const params = new URLSearchParams({q: query});
+    if (department) params.append('department', department);
+
+    fetch(`/api/nhm/search?${params}`)
+        .then(res => res.json())
+        .then(data => {
+            displayDatasetResults(data, query);
+        })
+        .catch(err => {
+            document.getElementById('resultsContainer').innerHTML =
+                `<div class="alert alert-danger">Грешка: ${err}</div>`;
+        });
+}
+
+function searchData(query) {
+    const dataType = document.getElementById('dataType').value;
+
+    // Reset pagination state
+    currentNhmQuery = query;
+    currentNhmPage = 1;
+    currentDataType = dataType;
+    nhmItemsCache = {};
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner-border text-success"></div><p class="mt-3">Претрага у току...</p></div>';
+
+    // Search both local museum data and NHM data
+    Promise.all([
+        fetch(`/api/nhm/data/search/local?q=${encodeURIComponent(query)}&type=${dataType}`).then(r => r.json()).catch(() => ({results: []})),
+        fetch(`/api/nhm/data/search/nhm?q=${encodeURIComponent(query)}&type=${dataType}&limit=${NHM_PAGE_SIZE}&offset=0`).then(r => r.json()).catch(() => ({results: []}))
+    ])
+    .then(([localData, nhmData]) => {
+        currentNhmTotal = nhmData.total || 0;
+        currentLocalData = localData;  // Store for page changes
+        displayComparisonResults(localData, nhmData, query);
+    })
+    .catch(err => {
+        document.getElementById('resultsContainer').innerHTML =
+            `<div class="alert alert-danger">Грешка: ${err}</div>`;
+    });
+}
+
+function goToNhmPage(page) {
+    if (page < 1) return;
+    const totalPages = Math.ceil(currentNhmTotal / NHM_PAGE_SIZE);
+    if (page > totalPages) return;
+
+    currentNhmPage = page;
+    nhmItemsCache = {};
+    const offset = (page - 1) * NHM_PAGE_SIZE;
+
+    // Show loading in NHM column
+    const nhmContainer = document.getElementById('nhmResultsContainer');
+    if (nhmContainer) {
+        nhmContainer.innerHTML = '<div class="loading-spinner p-4"><div class="spinner-border spinner-border-sm text-success"></div></div>';
+    }
+
+    fetch(`/api/nhm/data/search/nhm?q=${encodeURIComponent(currentNhmQuery)}&type=${currentDataType}&limit=${NHM_PAGE_SIZE}&offset=${offset}`)
+        .then(r => r.json())
+        .then(nhmData => {
+            // Update NHM results
+            if (nhmContainer) {
+                nhmContainer.innerHTML = '';
+                if (nhmData.results) {
+                    nhmData.results.forEach((item, index) => {
+                        nhmContainer.insertAdjacentHTML('beforeend', createNhmItemHtml(item, index));
+                    });
+                }
+            }
+
+            // Update pagination
+            updateNhmPagination();
+
+            // Scroll to top of results
+            nhmContainer.scrollTop = 0;
+        })
+        .catch(err => {
+            console.error('Error loading NHM page:', err);
+            if (nhmContainer) {
+                nhmContainer.innerHTML = '<div class="alert alert-danger m-3">Грешка при учитавању</div>';
+            }
+        });
+}
+
+function updateNhmPagination() {
+    const paginationContainer = document.getElementById('nhmPaginationContainer');
+    if (!paginationContainer) return;
+
+    const totalPages = Math.ceil(currentNhmTotal / NHM_PAGE_SIZE);
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+
+    let html = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
+
+    // Previous button
+    html += `<li class="page-item ${currentNhmPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${currentNhmPage - 1})">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+    </li>`;
+
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentNhmPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // First page and ellipsis
+    if (startPage > 1) {
+        html += `<li class="page-item">
+            <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(1)">1</a>
+        </li>`;
+        if (startPage > 2) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${i === currentNhmPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${i})">${i}</a>
+        </li>`;
+    }
+
+    // Last page and ellipsis
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        html += `<li class="page-item">
+            <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${totalPages})">${totalPages}</a>
+        </li>`;
+    }
+
+    // Next button
+    html += `<li class="page-item ${currentNhmPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${currentNhmPage + 1})">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </li>`;
+
+    html += '</ul></nav>';
+
+    // Add info text
+    const startItem = (currentNhmPage - 1) * NHM_PAGE_SIZE + 1;
+    const endItem = Math.min(currentNhmPage * NHM_PAGE_SIZE, currentNhmTotal);
+    html += `<div class="text-center mt-2"><small class="text-muted">${startItem}-${endItem} од ${currentNhmTotal}</small></div>`;
+
+    paginationContainer.innerHTML = html;
+}
+
+function displayDatasetResults(data, query) {
+    const container = document.getElementById('resultsContainer');
+    const results = data.results || [];
+
+    if (results.length === 0) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-folder-x" style="font-size: 3rem; color: #ddd;"></i>
+                    <h5 class="mt-3 text-muted">Нема резултата за "${escapeHtml(query)}"</h5>
+                </div>
+            </div>`;
+        return;
+    }
+
+    let html = `
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-folder2 me-2"></i>Датасетови</h5>
+                <span class="badge bg-success">${data.count || results.length} резултата</span>
+            </div>
+            <div class="card-body p-0">`;
+
+    results.forEach(ds => {
+        html += `
+            <div class="dataset-card m-3" onclick="showDatasetDetails('${ds.name}')">
+                <div class="d-flex justify-content-between">
+                    <h6 class="mb-1">${escapeHtml(ds.title)}</h6>
+                    <a href="${ds.portal_url || 'https://data.nhm.ac.uk/dataset/' + ds.name}"
+                       target="_blank" class="btn btn-sm btn-outline-success" onclick="event.stopPropagation()">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+                <p class="text-muted small mb-2">${escapeHtml((ds.notes || '').substring(0, 150))}...</p>
+                <div>
+                    <span class="badge bg-info">${ds.num_resources || 0} ресурса</span>
+                    ${(ds.tags || []).slice(0, 3).map(t =>
+                        `<span class="badge bg-secondary">${typeof t === 'string' ? t : (t.name || '')}</span>`
+                    ).join('')}
+                </div>
+            </div>`;
+    });
+
+    html += '</div></div>';
+    container.innerHTML = html;
+}
+
+function displayComparisonResults(localData, nhmData, query) {
+    const container = document.getElementById('resultsContainer');
+
+    const localResults = localData.results || [];
+    const nhmResults = nhmData.results || [];
+
+    const hasLocal = localResults.length > 0;
+    const hasNhm = nhmResults.length > 0;
+
+    if (!hasLocal && !hasNhm) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-search" style="font-size: 3rem; color: #ddd;"></i>
+                    <h5 class="mt-3 text-muted">Нема резултата за "${escapeHtml(query)}"</h5>
+                    <p class="text-muted">Покушајте са другим термином</p>
+                </div>
+            </div>`;
+        return;
+    }
+
+    // Start building HTML
+    let html = '';
+
+    // Show translation info if query was translated
+    const localTranslated = localData.translated_query;
+    const nhmTranslated = nhmData.translated_query;
+
+    if (localTranslated || nhmTranslated) {
+        html += `<div class="translation-info">
+            <i class="bi bi-translate me-2"></i>
+            <strong>Превод:</strong> `;
+        if (localTranslated && nhmTranslated) {
+            html += `Локална база: "${escapeHtml(query)}" → "${escapeHtml(localTranslated)}",
+                     NHM: "${escapeHtml(query)}" → "${escapeHtml(nhmTranslated)}"`;
+        } else if (localTranslated) {
+            html += `"${escapeHtml(query)}" преведено на "${escapeHtml(localTranslated)}" за локалну претрагу`;
+        } else if (nhmTranslated) {
+            html += `"${escapeHtml(query)}" преведено на "${escapeHtml(nhmTranslated)}" за NHM претрагу`;
+        }
+        html += `</div>`;
+    }
+
+    // Two column layout
+    html += '<div class="row">';
+
+    // Left column - Museum data
+    html += `<div class="${hasNhm ? 'col-md-6' : 'col-12'}">`;
+    html += `<div class="results-column border">
+        <div class="column-header museum">
+            <i class="bi bi-building me-2"></i>Наша колекција
+            <span class="badge bg-white text-primary float-end">${localResults.length}</span>
+        </div>
+        <div class="column-body">`;
+
+    if (hasLocal) {
+        // Clear cache for new search
+        localItemsCache = {};
+        localResults.forEach((item, index) => {
+            html += createLocalItemHtml(item, index);
+        });
+    } else {
+        html += `<div class="no-data-message">
+            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+            <p class="mt-2 mb-0">Нема података у нашој бази за "${escapeHtml(query)}"</p>
+        </div>`;
+    }
+
+    html += '</div></div></div>';
+
+    // Right column - NHM data (only if there are results or local has results)
+    if (hasNhm || hasLocal) {
+        html += `<div class="${hasLocal ? 'col-md-6' : 'col-12'}">`;
+        html += `<div class="results-column border">
+            <div class="column-header nhm">
+                <i class="bi bi-globe me-2"></i>NHM London
+                <span id="nhmCountBadge" class="badge bg-white text-success float-end">${nhmData.total || nhmResults.length}</span>
+            </div>
+            <div class="column-body" style="max-height: 600px; overflow-y: auto;">`;
+
+        if (hasNhm) {
+            // Container for NHM results
+            html += `<div id="nhmResultsContainer">`;
+            nhmResults.forEach((item, index) => {
+                html += createNhmItemHtml(item, index);
+            });
+            html += `</div>`;
+
+            // Pagination container
+            html += `<div id="nhmPaginationContainer" class="p-3 border-top">`;
+            const totalPages = Math.ceil(nhmData.total / NHM_PAGE_SIZE);
+            if (totalPages > 1) {
+                html += '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
+
+                // Previous button (disabled on first page)
+                html += `<li class="page-item disabled">
+                    <a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>
+                </li>`;
+
+                // Show first few pages
+                const maxVisiblePages = Math.min(5, totalPages);
+                for (let i = 1; i <= maxVisiblePages; i++) {
+                    html += `<li class="page-item ${i === 1 ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${i})">${i}</a>
+                    </li>`;
+                }
+
+                // Ellipsis and last page if needed
+                if (totalPages > maxVisiblePages) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    html += `<li class="page-item">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(${totalPages})">${totalPages}</a>
+                    </li>`;
+                }
+
+                // Next button
+                html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); goToNhmPage(2)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>`;
+
+                html += '</ul></nav>';
+                html += `<div class="text-center mt-2"><small class="text-muted">1-${Math.min(NHM_PAGE_SIZE, nhmData.total)} од ${nhmData.total}</small></div>`;
+            } else if (nhmData.total > 0) {
+                html += `<div class="text-center"><small class="text-muted">Приказано свих ${nhmData.total} резултата</small></div>`;
+            }
+            html += `</div>`;
+        } else {
+            html += `<div class="no-data-message">
+                <i class="bi bi-globe" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">Нема података у NHM бази за "${escapeHtml(query)}"</p>
+            </div>`;
+        }
+
+        html += '</div></div></div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function createLocalItemHtml(item, index) {
+    const name = item.naziv || item.name || item.mineral_name || item.predmet || 'Непознато';
+    const locality = item.lokalitet || item.locality || '';
+    const invNum = item.inventarni_broj || item.inventory_number || '';
+
+    // Store item data for later retrieval
+    const itemId = item.id || `local_${index}`;
+    localItemsCache[itemId] = item;
+
+    return `
+        <div class="result-item local-item-clickable" onclick="showLocalSpecimenDetails('${itemId}')" title="Кликните за више информација">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">${escapeHtml(name)}</h6>
+                    <div class="small">
+                        ${invNum ? `<span class="specimen-badge badge-mineral">Инв. бр: ${escapeHtml(invNum)}</span>` : ''}
+                        ${locality ? `<span class="specimen-badge badge-location"><i class="bi bi-geo-alt"></i> ${escapeHtml(locality)}</span>` : ''}
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </div>
+        </div>`;
+}
+
+function showLocalSpecimenDetails(itemId) {
+    const item = localItemsCache[itemId];
+    if (!item) return;
+
+    const modal = new bootstrap.Modal(document.getElementById('localSpecimenModal'));
+    const content = document.getElementById('localSpecimenModalContent');
+
+    // Build detail rows based on item type
+    let fields = [];
+
+    if (item.type === 'mineral') {
+        fields = [
+            { label: 'Назив', value: item.naziv },
+            { label: 'Инвентарни број', value: item.inventarni_broj },
+            { label: 'Хемијска формула', value: item.hemijska_formula },
+            { label: 'Кристални систем', value: item.kristalni_sistem },
+            { label: 'Боја', value: item.boja },
+            { label: 'Сјај', value: item.sjaj },
+            { label: 'Тврдоћа', value: item.tvrdoca },
+            { label: 'Густина', value: item.gustina },
+            { label: 'Цеп', value: item.cep },
+            { label: 'Лом', value: item.lom },
+            { label: 'Провидност', value: item.providnost },
+            { label: 'Локалитет', value: item.lokalitet },
+            { label: 'Држава', value: item.drzava },
+            { label: 'Где се налази', value: item.gde_se_nalazi },
+            { label: 'Кутија', value: item.kutija },
+            { label: 'Напомена', value: item.napomena },
+        ];
+    } else if (item.type === 'bird') {
+        fields = [
+            { label: 'Врста', value: item.naziv },
+            { label: 'Локалитет', value: item.locality },
+        ];
+    } else {
+        // Generic fields
+        fields = [
+            { label: 'Назив', value: item.naziv || item.name },
+            { label: 'Инвентарни број', value: item.inventarni_broj || item.inventory_number },
+            { label: 'Локалитет', value: item.lokalitet || item.locality },
+        ];
+    }
+
+    let html = '<div class="specimen-details">';
+
+    // Add header with name
+    const displayName = item.naziv || item.name || item.mineral_name || 'Непознато';
+    html += `<div class="text-center mb-4">
+        <h4 class="text-primary">${escapeHtml(displayName)}</h4>
+        ${item.inventarni_broj ? `<span class="badge bg-secondary fs-6">${escapeHtml(item.inventarni_broj)}</span>` : ''}
+        ${item.type ? `<span class="badge bg-info ms-2">${item.type === 'mineral' ? 'Минерал' : item.type === 'bird' ? 'Птица' : item.type}</span>` : ''}
+    </div>`;
+
+    // Add chemical formula prominently if available
+    if (item.hemijska_formula) {
+        html += `<div class="text-center mb-3">
+            <span class="fs-5 text-muted">${escapeHtml(item.hemijska_formula)}</span>
+        </div>`;
+    }
+
+    // Add detail rows
+    html += '<div class="row">';
+    fields.forEach(field => {
+        if (field.value) {
+            html += `<div class="col-md-6">
+                <div class="detail-row">
+                    <span class="detail-label">${field.label}:</span>
+                    <span class="detail-value">${escapeHtml(String(field.value))}</span>
+                </div>
+            </div>`;
+        }
+    });
+    html += '</div>';
+
+    html += '</div>';
+
+    content.innerHTML = html;
+
+    // Update link to mineral database
+    const localLink = document.getElementById('localSpecimenLink');
+    if (item.type === 'mineral' && item.id) {
+        localLink.href = `/admin/mineral_detail/${item.id}`;
+        localLink.style.display = 'inline-block';
+    } else {
+        localLink.style.display = 'none';
+    }
+
+    modal.show();
+}
+
+function createNhmItemHtml(item, index) {
+    const name = item.scientificName || item.title || 'Unknown';
+    const country = item.country || '';
+    const locality = item.locality || '';
+    const catalog = item.catalogNumber || '';
+
+    // Store item data for later retrieval
+    const itemId = item._id || `nhm_${index}`;
+    nhmItemsCache[itemId] = item;
+
+    return `
+        <div class="result-item nhm-item-clickable" onclick="showNhmSpecimenDetails('${itemId}')" title="Кликните за више информација">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">${escapeHtml(name)}</h6>
+                    <div class="small">
+                        ${catalog ? `<span class="specimen-badge badge-mineral">${escapeHtml(catalog)}</span>` : ''}
+                        ${country ? `<span class="specimen-badge badge-country"><i class="bi bi-globe"></i> ${escapeHtml(country)}</span>` : ''}
+                        ${locality ? `<span class="specimen-badge badge-location"><i class="bi bi-geo-alt"></i> ${escapeHtml(locality)}</span>` : ''}
+                    </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </div>
+        </div>`;
+}
+
+function showNhmSpecimenDetails(itemId) {
+    const item = nhmItemsCache[itemId];
+    if (!item) return;
+
+    const modal = new bootstrap.Modal(document.getElementById('specimenModal'));
+    const content = document.getElementById('specimenModalContent');
+
+    // Build detail rows
+    const fields = [
+        { label: 'Научни назив', value: item.scientificName },
+        { label: 'Каталошки број', value: item.catalogNumber },
+        { label: 'Колекција', value: item.collectionCode },
+        { label: 'Статус типа', value: item.typeStatus },
+        { label: 'Фамилија', value: item.family },
+        { label: 'Род', value: item.genus },
+        { label: 'Врста', value: item.specificEpithet },
+        { label: 'Земља', value: item.country },
+        { label: 'Локалитет', value: item.locality },
+        { label: 'Сакупио', value: item.recordedBy },
+        { label: 'Година', value: item.year },
+        { label: 'Тип записа', value: item.basisOfRecord },
+    ];
+
+    let html = '<div class="specimen-details">';
+
+    // Add header with scientific name
+    html += `<div class="text-center mb-4">
+        <h4 class="text-success">${escapeHtml(item.scientificName || 'Непознато')}</h4>
+        ${item.catalogNumber ? `<span class="badge bg-secondary fs-6">${escapeHtml(item.catalogNumber)}</span>` : ''}
+    </div>`;
+
+    // Add detail rows
+    html += '<div class="row">';
+    fields.forEach(field => {
+        if (field.value) {
+            html += `<div class="col-md-6">
+                <div class="detail-row">
+                    <span class="detail-label">${field.label}:</span>
+                    <span class="detail-value">${escapeHtml(String(field.value))}</span>
+                </div>
+            </div>`;
+        }
+    });
+    html += '</div>';
+
+    // Add coordinates if available
+    if (item.decimalLatitude && item.decimalLongitude) {
+        html += `<div class="mt-3 p-3 bg-light rounded">
+            <i class="bi bi-geo-alt-fill text-success me-2"></i>
+            <strong>Координате:</strong>
+            <a href="https://www.google.com/maps?q=${item.decimalLatitude},${item.decimalLongitude}"
+               target="_blank" class="coordinate-link ms-2">
+                ${item.decimalLatitude}, ${item.decimalLongitude}
+                <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+        </div>`;
+    }
+
+    // Add media indicator
+    if (item.associatedMedia) {
+        html += `<div class="mt-3">
+            <span class="badge bg-info"><i class="bi bi-image me-1"></i>Има слике/медије</span>
+        </div>`;
+    }
+
+    html += '</div>';
+
+    content.innerHTML = html;
+
+    // Update NHM link
+    const nhmLink = document.getElementById('specimenNhmLink');
+    if (item.catalogNumber) {
+        nhmLink.href = `https://data.nhm.ac.uk/object/${encodeURIComponent(item.catalogNumber)}`;
+        nhmLink.style.display = 'inline-block';
+    } else {
+        nhmLink.style.display = 'none';
+    }
+
+    modal.show();
+}
+
+function showDatasetDetails(datasetId) {
+    const modal = new bootstrap.Modal(document.getElementById('datasetModal'));
+    const content = document.getElementById('datasetModalContent');
+    content.innerHTML = '<div class="loading-spinner"><div class="spinner-border text-success"></div></div>';
+    modal.show();
+
+    fetch(`/api/nhm/dataset/${datasetId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const ds = data.dataset;
+                content.innerHTML = `
+                    <h5 class="text-success">${escapeHtml(ds.title)}</h5>
+                    <p class="text-muted">${escapeHtml(ds.notes || '')}</p>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Аутор:</strong> ${escapeHtml(ds.author || '-')}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Ажурирано:</strong> ${ds.metadata_modified ? ds.metadata_modified.substring(0, 10) : '-'}</p>
+                        </div>
+                    </div>
+                    ${ds.resources && ds.resources.length > 0 ? `
+                        <h6 class="mt-3">Ресурси (${ds.resources.length})</h6>
+                        <ul class="list-group">
+                            ${ds.resources.slice(0, 10).map(r => `
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>${escapeHtml(r.name || 'Resource')}</span>
+                                    <span class="badge bg-info">${r.format || 'N/A'}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    ` : ''}
+                    <div class="text-center mt-4">
+                        <a href="https://data.nhm.ac.uk/dataset/${ds.name}" target="_blank" class="btn btn-success">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Отвори на NHM
+                        </a>
+                    </div>`;
+            } else {
+                content.innerHTML = `<div class="alert alert-danger">${data.error || 'Грешка'}</div>`;
+            }
+        });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Search on Enter
+document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') performSearch();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}База библиотеке - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-book me-2"></i>
+                                База библиотеке
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Каталог књига и научних публикација музејске библиотеке
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h2 class="mb-0">{{ statistics.total_books }}</h2>
+                                <small>Укупно књига</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.available_books }}</h5>
+                    <p class="text-muted mb-0 small">Доступне књиге</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-arrow-right-circle" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.borrowed_books }}</h5>
+                    <p class="text-muted mb-0 small">Позајмљене књиге</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-tags" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ statistics.total_categories }}</h5>
+                    <p class="text-muted mb-0 small">Категорије</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-graph-up" style="font-size: 2rem; color: var(--museum-accent); margin-bottom: 1rem;"></i>
+                    <h5 class="mb-1">{{ ((statistics.borrowed_books / statistics.total_books) * 100)|round|int }}%</h5>
+                    <p class="text-muted mb-0 small">Искориштеност</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <span class="input-group-text bg-light">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="bookSearch" placeholder="Претражите књиге по наслову, аутору или ISBN-у...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('add_book') }}" class="btn btn-info">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Додај књигу
+                </a>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>
+                    Штампај
+                </button>
+                <button class="btn btn-success" onclick="exportLibraryToCSV()">
+                    <i class="bi bi-download me-1"></i>
+                    Извези CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Филтрирај по категоријама:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-secondary btn-sm category-filter active" data-category="all">
+                            Све категорије
+                        </button>
+                        {% for category in categories %}
+                        <button class="btn btn-outline-info btn-sm category-filter" data-category="{{ category }}">
+                            {{ category }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Books Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>
+                        Каталог књига
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="booksTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">ID</th>
+                                    <th width="25%">Наслов</th>
+                                    <th width="20%">Аутор</th>
+                                    <th width="15%">Категорија</th>
+                                    <th width="10%">Година</th>
+                                    <th width="15%">Локација</th>
+                                    <th width="10%">Статус</th>
+                                    <th width="5%">Слика</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for book in books %}
+                                <tr class="book-row"
+                                    data-category="{{ book.category }}"
+                                    data-book-id="{{ book.id }}"
+                                    data-title="{{ book.title }}"
+                                    data-author="{{ book.author }}"
+                                    data-year="{{ book.year }}"
+                                    data-location="{{ book.location }}"
+                                    data-status="{{ book.status }}"
+                                    data-isbn="{{ book.isbn or '' }}"
+                                    data-category-name="{{ book.category }}"
+                                    data-publisher="{{ book.publisher or '' }}"
+                                    data-language="{{ book.language or '' }}"
+                                    data-inventory="{{ book.inventory_number or '' }}"
+                                    data-detailed-info="{{ book.detailed_info or book.description or '' }}"
+                                    data-search-text="{{ (book.title + ' ' + book.author + ' ' + (book.isbn or '') + ' ' + (book.description or '') + ' ' + (book.publisher or ''))|lower }}">
+                                    <td>
+                                        <span class="badge bg-secondary">{{ book.id }}</span>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ book.title }}</strong>
+                                            {% if book.isbn %}
+                                            <br><small class="text-muted">ISBN: {{ book.isbn }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>{{ book.author }}</td>
+                                    <td>
+                                        <span class="badge bg-info bg-opacity-10 text-info">{{ book.category }}</span>
+                                    </td>
+                                    <td>{{ book.year if book.year != 0 else '' }}</td>
+                                    <td>
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        {{ book.location }}
+                                    </td>
+                                    <td>
+                                        {% if book.status == 'доступна' %}
+                                        <span class="badge bg-success">{{ book.status }}</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">{{ book.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openImageModal('library', 'book', '{{ book.id }}', '{{ book.title }}')" title="Слике">
+                                            <i class="bi bi-camera"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Book Details Modal would go here -->
+    <div class="modal fade" id="bookDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Детаљи о књизи</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="bookDetailsContent">
+                    <!-- Book details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Затвори
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search functionality - improved to search all fields including detailed info
+document.getElementById('bookSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#booksTable tbody tr');
+
+    rows.forEach(row => {
+        // Use the pre-computed search text that includes all fields
+        const searchText = row.dataset.searchText || '';
+
+        if (searchText.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Category filtering
+document.querySelectorAll('.category-filter').forEach(button => {
+    button.addEventListener('click', function() {
+        // Remove active class from all buttons
+        document.querySelectorAll('.category-filter').forEach(btn => btn.classList.remove('active'));
+        // Add active class to clicked button
+        this.classList.add('active');
+
+        const selectedCategory = this.dataset.category;
+        const rows = document.querySelectorAll('.book-row');
+
+        rows.forEach(row => {
+            if (selectedCategory === 'all' || row.dataset.category === selectedCategory) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Export to CSV function
+function exportLibraryToCSV() {
+    const books = {{ books|tojson }};
+
+    let csv = 'ID,Наслов,Аутор,Категорија,Година,Локација,Статус,ISBN,Страница,Издавач,Језик\n';
+
+    books.forEach(book => {
+        csv += `${book.id},"${book.title}","${book.author}","${book.category}",${book.year},"${book.location}","${book.status}","${book.isbn || ''}",${book.pages || ''},"${book.publisher || ''}","${book.language || ''}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'muzejska_biblioteka.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Add click event to book rows for details - now shows actual detailed info
+document.querySelectorAll('.book-row').forEach(row => {
+    row.addEventListener('click', function() {
+        const bookData = {
+            id: this.dataset.bookId,
+            title: this.dataset.title,
+            author: this.dataset.author,
+            year: this.dataset.year,
+            location: this.dataset.location,
+            status: this.dataset.status,
+            isbn: this.dataset.isbn,
+            category: this.dataset.categoryName,
+            publisher: this.dataset.publisher,
+            language: this.dataset.language,
+            inventory: this.dataset.inventory,
+            detailedInfo: this.dataset.detailedInfo
+        };
+
+        // Build detailed modal content (with XSS protection)
+        let modalContent = `
+            <div class="book-detail-header mb-4">
+                <h4 class="text-primary mb-3">
+                    <i class="bi bi-book me-2"></i>
+                    ${escapeHtml(bookData.title)}
+                </h4>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong><i class="bi bi-person me-2"></i>Аутор:</strong>
+                            ${escapeHtml(bookData.author)}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong><i class="bi bi-calendar me-2"></i>Година:</strong>
+                            ${escapeHtml(bookData.year || 'Непознато')}
+                        </p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong><i class="bi bi-geo-alt me-2"></i>Локација:</strong>
+                            ${escapeHtml(bookData.location)}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong><i class="bi bi-info-circle me-2"></i>Статус:</strong>
+                            <span class="badge ${bookData.status === 'доступна' ? 'bg-success' : 'bg-warning'}">
+                                ${escapeHtml(bookData.status)}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="book-detail-info">
+                <h5 class="mb-3"><i class="bi bi-info-square me-2"></i>Детаљне информације</h5>
+                <div class="detailed-info-box p-3 bg-light rounded">
+                    <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${escapeHtml(bookData.detailedInfo || 'Нема доступних детаљних информација.')}</pre>
+                </div>
+            </div>
+        `;
+
+        // Update modal title and content
+        document.querySelector('#bookDetailsModal .modal-title').textContent = 'Детаљи о књизи';
+        document.getElementById('bookDetailsContent').innerHTML = modalContent;
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('bookDetailsModal')).show();
+    });
+});
+</script>
+
+<style>
+@media print {
+    .btn, .input-group, .card-header {
+        display: none !important;
+    }
+}
+
+.book-row {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.book-row:hover {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    transform: scale(1.01);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.category-filter.active {
+    background-color: var(--museum-info) !important;
+    color: white !important;
+    border-color: var(--museum-info) !important;
+}
+
+/* Book detail modal styling */
+.book-detail-header {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 1rem;
+}
+
+.detailed-info-box {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.detailed-info-box pre {
+    color: #333;
+    background-color: transparent;
+}
+
+/* Modal improvements */
+#bookDetailsModal .modal-lg {
+    max-width: 800px;
+}
+
+#bookDetailsModal .modal-body {
+    padding: 2rem;
+}
+
+/* Add visual indicator that rows are clickable */
+.book-row td:first-child::after {
+    content: "\f138";
+    font-family: "bootstrap-icons";
+    opacity: 0;
+    margin-left: 0.5rem;
+    transition: opacity 0.2s;
+}
+
+.book-row:hover td:first-child::after {
+    opacity: 0.5;
+}
+</style>
+{% include '_image_upload_modal.html' %}
+{% endblock %}

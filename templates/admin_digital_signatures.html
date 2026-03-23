@@ -1,0 +1,994 @@
+{% extends "base.html" %}
+
+{% block title %}Дигитални потписи - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div x-data="digitalSignatures()" x-init="init()" x-cloak>
+<style>
+/* Digital Signatures styles */
+.signatures-header {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.signatures-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+}
+
+.stat-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+
+.stat-card .stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.signature-card {
+    border: none;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.signature-card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.signature-card.selected {
+    border: 2px solid #7c3aed;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+.workflow-steps {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.workflow-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.workflow-step.completed {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+}
+
+.workflow-step.current {
+    background: rgba(124, 58, 237, 0.1);
+    color: #7c3aed;
+    animation: pulse 2s infinite;
+}
+
+.workflow-step.pending {
+    background: rgba(156, 163, 175, 0.1);
+    color: #6b7280;
+}
+
+.workflow-arrow {
+    color: #9ca3af;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.status-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.status-pending_signature { background: #fef3c7; color: #d97706; }
+.status-pending_legal_verification { background: #dbeafe; color: #2563eb; }
+.status-pending_approval { background: #e0e7ff; color: #4f46e5; }
+.status-verified { background: #d1fae5; color: #059669; }
+.status-rejected { background: #fee2e2; color: #dc2626; }
+.status-archived { background: #f3f4f6; color: #374151; }
+
+.detail-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 600px;
+    max-width: 100%;
+    height: 100vh;
+    background: white;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+    z-index: 1000;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.detail-panel.open {
+    transform: translateX(0);
+}
+
+.detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.detail-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.audit-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.audit-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+}
+
+.audit-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+}
+
+.audit-item::before {
+    content: '';
+    position: absolute;
+    left: -1.5rem;
+    top: 0.25rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #7c3aed;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #7c3aed;
+}
+
+.audit-item.created::before { background: #3b82f6; box-shadow: 0 0 0 2px #3b82f6; }
+.audit-item.signed::before { background: #f59e0b; box-shadow: 0 0 0 2px #f59e0b; }
+.audit-item.verified::before { background: #10b981; box-shadow: 0 0 0 2px #10b981; }
+.audit-item.approved::before { background: #059669; box-shadow: 0 0 0 2px #059669; }
+.audit-item.rejected::before { background: #ef4444; box-shadow: 0 0 0 2px #ef4444; }
+.audit-item.registered::before { background: #8b5cf6; box-shadow: 0 0 0 2px #8b5cf6; }
+
+.kep-info {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.kep-info i {
+    color: #d97706;
+}
+</style>
+
+<!-- Header -->
+<div class="signatures-header p-4 p-md-5 text-white mb-4">
+    <div class="row align-items-center position-relative">
+        <div class="col-md-8">
+            <h2 class="mb-2 fw-bold">
+                <i class="fas fa-file-signature me-2"></i>
+                Дигитални потписи (КЕП)
+            </h2>
+            <p class="mb-0 opacity-75">
+                Управљање квалификованим електронским потписима - Правна служба
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-light btn-lg" @click="showTemplates = true">
+                <i class="fas fa-cog me-2"></i>
+                Шаблони
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- KEP Info Banner -->
+<div class="kep-info mb-4">
+    <div class="d-flex align-items-start">
+        <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
+        <div>
+            <strong>Квалификовани електронски потпис (КЕП)</strong>
+            <p class="mb-0 small">
+                Сви документи морају бити потписани квалификованим електронским потписом у складу са
+                Законом о електронском документу, електронској идентификацији и услугама од поверења
+                у електронском пословању. Користите личну карту са чипом или сертификовани USB токен.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card card shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                    <i class="fas fa-pen"></i>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold text-warning" x-text="stats.pending_signature || 0"></div>
+                    <div class="text-muted small">Чека потпис</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card card shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                    <i class="fas fa-balance-scale"></i>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold text-primary" x-text="stats.pending_legal_verification || 0"></div>
+                    <div class="text-muted small">Чека верификацију</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card card shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold text-info" x-text="stats.pending_approval || 0"></div>
+                    <div class="text-muted small">Чека одобрење</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card card shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold text-success" x-text="stats.verified || 0"></div>
+                    <div class="text-muted small">Верификовано</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted">Статус</label>
+                <select class="form-select" x-model="filters.status" @change="loadSignatures()">
+                    <option value="all">Сви статуси</option>
+                    <option value="pending_signature">Чека потпис подносиоца</option>
+                    <option value="pending_legal_verification">Чека правну верификацију</option>
+                    <option value="pending_approval">Чека одобрење</option>
+                    <option value="verified">Верификовано</option>
+                    <option value="rejected">Одбијено</option>
+                    <option value="archived">Архивирано</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">Тип документа</label>
+                <select class="form-select" x-model="filters.document_type" @change="loadSignatures()">
+                    <option value="all">Сви типови</option>
+                    <template x-for="t in templates" :key="t.document_type">
+                        <option :value="t.document_type" x-text="t.document_type_label"></option>
+                    </template>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-outline-primary" @click="loadSignatures()">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Освежи
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Signatures List -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2 text-primary"></i>
+                Документи за потписивање
+            </h5>
+            <span class="badge bg-primary" x-text="signatures.length + ' докумената'"></span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <template x-if="loading">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted mt-2">Учитавање...</p>
+            </div>
+        </template>
+
+        <template x-if="!loading && signatures.length === 0">
+            <div class="text-center py-5">
+                <i class="fas fa-file-signature fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Нема докумената за приказ</p>
+            </div>
+        </template>
+
+        <template x-if="!loading && signatures.length > 0">
+            <div class="list-group list-group-flush">
+                <template x-for="sig in signatures" :key="sig.id">
+                    <div class="list-group-item signature-card p-3"
+                         :class="{'selected': selectedSignature && selectedSignature.id === sig.id}"
+                         @click="selectSignature(sig)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="status-badge me-2" :class="'status-' + sig.status">
+                                        <i class="fas" :class="getStatusIcon(sig.status)"></i>
+                                        <span x-text="getStatusLabel(sig.status)"></span>
+                                    </span>
+                                    <span class="badge bg-light text-dark" x-text="getDocTypeLabel(sig.document_type)"></span>
+                                </div>
+                                <h6 class="mb-1" x-text="sig.document_title"></h6>
+                                <div class="text-muted small">
+                                    <span><i class="fas fa-user me-1"></i><span x-text="sig.requester_name"></span></span>
+                                    <span class="ms-3"><i class="fas fa-calendar me-1"></i><span x-text="formatDate(sig.created_at)"></span></span>
+                                    <span class="ms-3" x-show="sig.registration_number">
+                                        <i class="fas fa-hashtag me-1"></i><span x-text="sig.registration_number"></span>
+                                    </span>
+                                </div>
+
+                                <!-- Workflow steps -->
+                                <div class="workflow-steps">
+                                    <span class="workflow-step"
+                                          :class="sig.requester_signed_at ? 'completed' : (sig.status === 'pending_signature' ? 'current' : 'pending')">
+                                        <i class="fas fa-pen"></i>
+                                        Потпис подносиоца
+                                    </span>
+                                    <i class="fas fa-arrow-right workflow-arrow"></i>
+                                    <span class="workflow-step"
+                                          :class="sig.legal_verified_at ? 'completed' : (sig.status === 'pending_legal_verification' ? 'current' : 'pending')">
+                                        <i class="fas fa-balance-scale"></i>
+                                        Правна верификација
+                                    </span>
+                                    <template x-if="requiresApproval(sig.document_type)">
+                                        <span>
+                                            <i class="fas fa-arrow-right workflow-arrow"></i>
+                                            <span class="workflow-step"
+                                                  :class="sig.approver_signed_at ? 'completed' : (sig.status === 'pending_approval' ? 'current' : 'pending')">
+                                                <i class="fas fa-user-check"></i>
+                                                Одобрење
+                                            </span>
+                                        </span>
+                                    </template>
+                                    <i class="fas fa-arrow-right workflow-arrow"></i>
+                                    <span class="workflow-step"
+                                          :class="sig.registration_number ? 'completed' : (sig.status === 'verified' ? 'current' : 'pending')">
+                                        <i class="fas fa-archive"></i>
+                                        Завођење
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</div>
+
+<!-- Detail Panel Overlay -->
+<div class="detail-overlay" :class="{'open': selectedSignature}" @click="selectedSignature = null"></div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" :class="{'open': selectedSignature}">
+    <template x-if="selectedSignature">
+        <div>
+            <div class="sticky-top bg-white border-bottom p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Детаљи документа</h5>
+                    <button class="btn btn-sm btn-light" @click="selectedSignature = null">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <!-- Document Info -->
+                <div class="mb-4">
+                    <span class="status-badge mb-3" :class="'status-' + selectedSignature.status">
+                        <i class="fas" :class="getStatusIcon(selectedSignature.status)"></i>
+                        <span x-text="getStatusLabel(selectedSignature.status)"></span>
+                    </span>
+                    <h4 x-text="selectedSignature.document_title"></h4>
+                    <p class="text-muted mb-0" x-text="getDocTypeLabel(selectedSignature.document_type)"></p>
+                </div>
+
+                <!-- Requester Info -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3"><i class="fas fa-user me-2"></i>Подносилац</h6>
+                        <p class="mb-1"><strong x-text="selectedSignature.requester_name"></strong></p>
+                        <p class="mb-1 text-muted" x-text="selectedSignature.requester_email"></p>
+                        <p class="mb-0 text-muted" x-text="selectedSignature.requester_department"></p>
+                    </div>
+                </div>
+
+                <!-- Signature Status -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3"><i class="fas fa-signature me-2"></i>Статус потписа</h6>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Потпис подносиоца:</span>
+                                <span x-show="selectedSignature.requester_signed_at" class="text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span x-text="formatDateTime(selectedSignature.requester_signed_at)"></span>
+                                </span>
+                                <span x-show="!selectedSignature.requester_signed_at" class="text-warning">
+                                    <i class="fas fa-clock"></i> Чека потпис
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Правна верификација:</span>
+                                <span x-show="selectedSignature.legal_verified_at" class="text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span x-text="selectedSignature.legal_verified_by_name"></span>
+                                </span>
+                                <span x-show="!selectedSignature.legal_verified_at && selectedSignature.requester_signed_at" class="text-warning">
+                                    <i class="fas fa-clock"></i> Чека верификацију
+                                </span>
+                                <span x-show="!selectedSignature.legal_verified_at && !selectedSignature.requester_signed_at" class="text-muted">
+                                    <i class="fas fa-minus"></i> -
+                                </span>
+                            </div>
+                            <div x-show="selectedSignature.legal_verification_notes" class="mt-1 small text-muted">
+                                <i class="fas fa-comment me-1"></i>
+                                <span x-text="selectedSignature.legal_verification_notes"></span>
+                            </div>
+                        </div>
+
+                        <template x-if="requiresApproval(selectedSignature.document_type)">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>Одобрење:</span>
+                                    <span x-show="selectedSignature.approver_signed_at" class="text-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span x-text="selectedSignature.approver_name"></span>
+                                    </span>
+                                    <span x-show="!selectedSignature.approver_signed_at && selectedSignature.legal_verified_at" class="text-warning">
+                                        <i class="fas fa-clock"></i> Чека одобрење
+                                    </span>
+                                    <span x-show="!selectedSignature.approver_signed_at && !selectedSignature.legal_verified_at" class="text-muted">
+                                        <i class="fas fa-minus"></i> -
+                                    </span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div>
+                            <div class="d-flex justify-content-between">
+                                <span>Деловодни број:</span>
+                                <span x-show="selectedSignature.registration_number" class="text-success fw-bold">
+                                    <span x-text="selectedSignature.registration_number"></span>
+                                </span>
+                                <span x-show="!selectedSignature.registration_number" class="text-muted">
+                                    <i class="fas fa-minus"></i> Није заведено
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card mb-4" x-show="canPerformAction(selectedSignature)">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3"><i class="fas fa-tasks me-2"></i>Акције</h6>
+
+                        <!-- Sign button (for requester) -->
+                        <template x-if="selectedSignature.status === 'pending_signature' && selectedSignature.requester_email === userEmail">
+                            <div>
+                                <p class="small text-muted mb-2">Потпишите документ вашим КЕП сертификатом</p>
+                                <button class="btn btn-warning w-100" @click="signDocument(selectedSignature.id)">
+                                    <i class="fas fa-pen me-2"></i>
+                                    Потпиши документ
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Verify button (for sef_pravne_sluzbe) -->
+                        <template x-if="selectedSignature.status === 'pending_legal_verification' && (userRole === 'sef_pravne_sluzbe' || userRole === 'admin')">
+                            <div>
+                                <div class="mb-3">
+                                    <label class="form-label">Напомена (опционо)</label>
+                                    <textarea class="form-control" rows="2" x-model="verificationNotes"
+                                              placeholder="Унесите напомену о верификацији..."></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success flex-grow-1" @click="verifySignature(selectedSignature.id)">
+                                        <i class="fas fa-check me-2"></i>
+                                        Верификуј
+                                    </button>
+                                    <button class="btn btn-danger" @click="showRejectModal = true">
+                                        <i class="fas fa-times me-2"></i>
+                                        Одбиј
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Approve button (for approvers) -->
+                        <template x-if="selectedSignature.status === 'pending_approval' && canApprove(selectedSignature)">
+                            <div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success flex-grow-1" @click="approveSignature(selectedSignature.id)">
+                                        <i class="fas fa-check me-2"></i>
+                                        Одобри
+                                    </button>
+                                    <button class="btn btn-danger" @click="showRejectModal = true">
+                                        <i class="fas fa-times me-2"></i>
+                                        Одбиј
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Register button (for sef_pravne_sluzbe) -->
+                        <template x-if="selectedSignature.status === 'verified' && (userRole === 'sef_pravne_sluzbe' || userRole === 'admin')">
+                            <div>
+                                <div class="mb-3">
+                                    <label class="form-label">Деловодни број (опционо - аутоматски ако празно)</label>
+                                    <input type="text" class="form-control" x-model="registrationNumber"
+                                           placeholder="нпр. 01-0001/2026">
+                                </div>
+                                <button class="btn btn-primary w-100" @click="registerDocument(selectedSignature.id)">
+                                    <i class="fas fa-archive me-2"></i>
+                                    Заведи документ
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Audit Trail -->
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3"><i class="fas fa-history me-2"></i>Историја</h6>
+                        <div class="audit-timeline">
+                            <template x-for="item in auditLog" :key="item.id">
+                                <div class="audit-item" :class="item.action">
+                                    <div class="fw-bold" x-text="getActionLabel(item.action)"></div>
+                                    <div class="small text-muted">
+                                        <span x-text="item.action_by_name"></span> &bull;
+                                        <span x-text="formatDateTime(item.created_at)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" :class="{'show d-block': showRejectModal}" tabindex="-1" x-show="showRejectModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Одбијање документа</h5>
+                <button type="button" class="btn-close" @click="showRejectModal = false"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Разлог одбијања *</label>
+                    <textarea class="form-control" rows="3" x-model="rejectionReason"
+                              placeholder="Унесите разлог одбијања..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="showRejectModal = false">Откажи</button>
+                <button type="button" class="btn btn-danger" @click="rejectSignature(selectedSignature.id)"
+                        :disabled="!rejectionReason">
+                    <i class="fas fa-times me-2"></i>Одбиј
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show" x-show="showRejectModal" @click="showRejectModal = false"></div>
+
+<!-- Templates Modal -->
+<div class="modal fade" :class="{'show d-block': showTemplates}" tabindex="-1" x-show="showTemplates">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-cog me-2"></i>Шаблони докумената</h5>
+                <button type="button" class="btn-close" @click="showTemplates = false"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Тип документа</th>
+                                <th class="text-center">Потпис подносиоца</th>
+                                <th class="text-center">Правна верификација</th>
+                                <th class="text-center">Одобрење</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="t in templates" :key="t.id">
+                                <tr>
+                                    <td>
+                                        <strong x-text="t.document_type_label"></strong>
+                                        <div class="small text-muted" x-text="t.instructions" x-show="t.instructions"></div>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas" :class="t.requires_requester_signature ? 'fa-check text-success' : 'fa-times text-muted'"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas" :class="t.requires_legal_verification ? 'fa-check text-success' : 'fa-times text-muted'"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <template x-if="t.requires_approver_signature">
+                                            <span>
+                                                <i class="fas fa-check text-success"></i>
+                                                <span class="small text-muted d-block" x-text="t.approver_roles.join(', ')"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="!t.requires_approver_signature">
+                                            <i class="fas fa-times text-muted"></i>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="showTemplates = false">Затвори</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show" x-show="showTemplates" @click="showTemplates = false"></div>
+
+</div>
+
+<script>
+function digitalSignatures() {
+    return {
+        signatures: [],
+        templates: [],
+        stats: {},
+        loading: true,
+        selectedSignature: null,
+        auditLog: [],
+        filters: {
+            status: 'all',
+            document_type: 'all'
+        },
+        showRejectModal: false,
+        showTemplates: false,
+        rejectionReason: '',
+        verificationNotes: '',
+        registrationNumber: '',
+        userRole: '{{ session.get("user_role", "") }}',
+        userEmail: '{{ session.get("user_email", "") }}',
+
+        async init() {
+            await this.loadTemplates();
+            await this.loadStatistics();
+            await this.loadSignatures();
+        },
+
+        async loadSignatures() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.status !== 'all') params.append('status', this.filters.status);
+                if (this.filters.document_type !== 'all') params.append('document_type', this.filters.document_type);
+
+                const response = await fetch(`/api/digital-signatures?${params.toString()}`);
+                const data = await response.json();
+                if (data.success) {
+                    this.signatures = data.signatures;
+                }
+            } catch (error) {
+                console.error('Error loading signatures:', error);
+            }
+            this.loading = false;
+        },
+
+        async loadTemplates() {
+            try {
+                const response = await fetch('/api/digital-signatures/templates');
+                const data = await response.json();
+                if (data.success) {
+                    this.templates = data.templates;
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        },
+
+        async loadStatistics() {
+            try {
+                const response = await fetch('/api/digital-signatures/statistics');
+                const data = await response.json();
+                if (data.success) {
+                    this.stats = data.statistics;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        },
+
+        async selectSignature(sig) {
+            this.selectedSignature = sig;
+            await this.loadAuditLog(sig.id);
+        },
+
+        async loadAuditLog(sigId) {
+            try {
+                const response = await fetch(`/api/digital-signatures/${sigId}/audit`);
+                const data = await response.json();
+                if (data.success) {
+                    this.auditLog = data.audit;
+                }
+            } catch (error) {
+                console.error('Error loading audit log:', error);
+            }
+        },
+
+        async signDocument(sigId) {
+            if (!confirm('Да ли сте сигурни да желите да потпишете овај документ?\n\nНапомена: У производном окружењу овде би се покренуо процес КЕП потписивања са вашим сертификатом.')) return;
+
+            try {
+                const response = await secureFetch(`/api/digital-signatures/${sigId}/sign`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({certificate_info: {simulated: true, timestamp: new Date().toISOString()}})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    await this.loadSignatures();
+                    await this.loadStatistics();
+                    this.selectedSignature = null;
+                } else {
+                    alert('Грешка: ' + data.message);
+                }
+            } catch (error) {
+                alert('Грешка при потписивању');
+            }
+        },
+
+        async verifySignature(sigId) {
+            try {
+                const response = await secureFetch(`/api/digital-signatures/${sigId}/verify`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({notes: this.verificationNotes, certificate_info: {verified_by: this.userEmail}})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    this.verificationNotes = '';
+                    await this.loadSignatures();
+                    await this.loadStatistics();
+                    this.selectedSignature = null;
+                } else {
+                    alert('Грешка: ' + data.message);
+                }
+            } catch (error) {
+                alert('Грешка при верификацији');
+            }
+        },
+
+        async approveSignature(sigId) {
+            if (!confirm('Да ли сте сигурни да желите да одобрите овај документ?')) return;
+
+            try {
+                const response = await secureFetch(`/api/digital-signatures/${sigId}/approve`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({certificate_info: {approved_by: this.userEmail}})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    await this.loadSignatures();
+                    await this.loadStatistics();
+                    this.selectedSignature = null;
+                } else {
+                    alert('Грешка: ' + data.message);
+                }
+            } catch (error) {
+                alert('Грешка при одобравању');
+            }
+        },
+
+        async rejectSignature(sigId) {
+            if (!this.rejectionReason) {
+                alert('Унесите разлог одбијања');
+                return;
+            }
+
+            try {
+                const response = await secureFetch(`/api/digital-signatures/${sigId}/reject`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({reason: this.rejectionReason})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    this.rejectionReason = '';
+                    this.showRejectModal = false;
+                    await this.loadSignatures();
+                    await this.loadStatistics();
+                    this.selectedSignature = null;
+                } else {
+                    alert('Грешка: ' + data.message);
+                }
+            } catch (error) {
+                alert('Грешка при одбијању');
+            }
+        },
+
+        async registerDocument(sigId) {
+            try {
+                const response = await secureFetch(`/api/digital-signatures/${sigId}/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({registration_number: this.registrationNumber || null})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    this.registrationNumber = '';
+                    await this.loadSignatures();
+                    await this.loadStatistics();
+                    this.selectedSignature = null;
+                } else {
+                    alert('Грешка: ' + data.message);
+                }
+            } catch (error) {
+                alert('Грешка при завођењу');
+            }
+        },
+
+        getStatusIcon(status) {
+            const icons = {
+                'pending_signature': 'fa-pen',
+                'pending_legal_verification': 'fa-balance-scale',
+                'pending_approval': 'fa-user-check',
+                'verified': 'fa-check-double',
+                'rejected': 'fa-times-circle',
+                'archived': 'fa-archive'
+            };
+            return icons[status] || 'fa-file';
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                'pending_signature': 'Чека потпис',
+                'pending_legal_verification': 'Чека верификацију',
+                'pending_approval': 'Чека одобрење',
+                'verified': 'Верификовано',
+                'rejected': 'Одбијено',
+                'archived': 'Архивирано'
+            };
+            return labels[status] || status;
+        },
+
+        getDocTypeLabel(docType) {
+            const template = this.templates.find(t => t.document_type === docType);
+            return template ? template.document_type_label : docType;
+        },
+
+        getActionLabel(action) {
+            const labels = {
+                'created': 'Креирано',
+                'signed': 'Потписано',
+                'verified': 'Верификовано',
+                'approved': 'Одобрено',
+                'rejected': 'Одбијено',
+                'registered': 'Заведено'
+            };
+            return labels[action] || action;
+        },
+
+        requiresApproval(docType) {
+            const template = this.templates.find(t => t.document_type === docType);
+            return template ? template.requires_approver_signature : false;
+        },
+
+        canPerformAction(sig) {
+            if (!sig) return false;
+            if (sig.status === 'pending_signature' && sig.requester_email === this.userEmail) return true;
+            if (sig.status === 'pending_legal_verification' && ['sef_pravne_sluzbe', 'admin'].includes(this.userRole)) return true;
+            if (sig.status === 'pending_approval' && this.canApprove(sig)) return true;
+            if (sig.status === 'verified' && ['sef_pravne_sluzbe', 'admin'].includes(this.userRole)) return true;
+            return false;
+        },
+
+        canApprove(sig) {
+            if (['admin', 'direktor'].includes(this.userRole)) return true;
+            const template = this.templates.find(t => t.document_type === sig.document_type);
+            if (template && template.approver_roles) {
+                return template.approver_roles.includes(this.userRole);
+            }
+            return false;
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('sr-RS');
+        },
+
+        formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString('sr-RS');
+        }
+    };
+}
+</script>
+{% endblock %}

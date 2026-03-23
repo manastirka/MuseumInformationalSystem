@@ -1,0 +1,2767 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mineral.naziv or 'Минерал' }} - Детаљи{% endblock %}
+
+{% block head_extra %}
+<!-- 3Dmol.js for crystal structure visualization -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.3/3Dmol-min.js"></script>
+<!-- Chart.js for diffractogram -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-gem"></i> {{ mineral.naziv or 'Минерал' }}</h2>
+            <p class="text-muted mb-0">{{ mineral.inventarni_broj_display }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if mineral.gde_se_nalazi %}
+            <button type="button" class="btn btn-info btn-sm" onclick="openBoxMinerals('{{ mineral.gde_se_nalazi }}')">
+                <i class="bi bi-box-seam me-1"></i>Кутија {{ mineral.gde_se_nalazi }}
+            </button>
+            {% endif %}
+            <a href="{{ url_for('edit_mineral', mineral_id=mineral.id) }}" class="btn btn-warning btn-sm">
+                <i class="bi bi-pencil-square me-1"></i>Измени
+            </a>
+            <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- LEFT COLUMN: Museum Mineral Data (Primary) -->
+        <div class="col-lg-8">
+            <!-- Specimen Image and Info -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gem me-2"></i>Музејски примерак</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5 text-center">
+                            <img src="{{ url_for('get_specimen_image', database='minerals', entity_type='mineral', entity_id=mineral.id) }}"
+                                 alt="{{ mineral.naziv or 'Минерал' }}"
+                                 class="img-fluid rounded shadow mb-3"
+                                 style="max-height: 350px; object-fit: contain; cursor: zoom-in;"
+                                 data-bs-toggle="modal" data-bs-target="#imageEnlargeModal"
+                                 onclick="document.getElementById('enlargedImage').src='{{ url_for('get_specimen_image_full', database='minerals', entity_type='mineral', entity_id=mineral.id) }}'"
+                                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/specimen-placeholder.png') }}'; this.style.cursor='default'; this.removeAttribute('data-bs-toggle'); this.removeAttribute('data-bs-target'); this.onclick=null;">
+                            <p class="text-muted small mb-0">
+                                <i class="bi bi-camera"></i> Фотографија примерка
+                            </p>
+                        </div>
+                        <div class="col-md-7">
+                            <h3 class="mb-2 text-primary">{{ mineral.naziv or 'N/A' }}</h3>
+                            {% if mineral.predmet %}
+                            <p class="lead text-muted mb-3">{{ mineral.predmet }}</p>
+                            {% endif %}
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                {% if mineral.inventarni_broj_display %}
+                                <span class="badge bg-primary fs-6">{{ mineral.inventarni_broj_display }}</span>
+                                {% endif %}
+                                {% if mineral.lokalitet %}
+                                <span class="badge bg-success fs-6"><i class="bi bi-geo-alt me-1"></i>{{ mineral.lokalitet }}</span>
+                                {% endif %}
+                                {% if mineral.gde_se_nalazi %}
+                                <span class="badge bg-secondary fs-6"><i class="bi bi-box-seam me-1"></i>Кутија {{ mineral.gde_se_nalazi }}</span>
+                                {% endif %}
+                            </div>
+                            {% if mineral.napomena %}
+                            <div class="alert alert-light border mb-0">
+                                <strong><i class="bi bi-sticky me-1"></i>Напомена:</strong><br>
+                                {{ mineral.napomena }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Mineral Data -->
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-card-list me-2"></i>Детаљни подаци</h5>
+                </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Инвентарни број:</th>
+                            <td><strong>{{ mineral.inventarni_broj_display }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Назив:</th>
+                            <td>{{ mineral.naziv or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Предмет:</th>
+                            <td>{{ mineral.predmet or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Количина:</th>
+                            <td>{{ mineral.kolicina or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Где се налази:</th>
+                            <td>{{ mineral.gde_se_nalazi or 'N/A' }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Локалитет:</th>
+                            <td>{{ mineral.lokalitet or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Начин набављања:</th>
+                            <td>{{ mineral.nacin_nabavljanja or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Датум набављања:</th>
+                            <td>{{ mineral.datum_nabavljanja or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Легатор/Нашао:</th>
+                            <td>{{ mineral.legator or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Идентификовао:</th>
+                            <td>{{ mineral.identifikovao or 'N/A' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End of left column museum data -->
+    </div>
+
+        <!-- RIGHT COLUMN: Scientific Reference Data -->
+        <div class="col-lg-4">
+            <div class="sticky-top" style="top: 80px; z-index: 100;">
+                <!-- COD Crystal Structure Visualization -->
+                <div class="card mb-3 border-info" id="codCrystalCard">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0"><i class="bi bi-box"></i> 3D кристална структура (COD)</h6>
+                        <button type="button" class="btn btn-sm btn-light" onclick="loadCODData('{{ mineral.naziv or '' }}')" id="loadCodBtn">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-2">
+                        <div id="codLoading2" class="text-center py-3" style="display: none;">
+                            <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                            <small class="ms-2 text-muted">Учитавање...</small>
+                        </div>
+
+                        <div id="codNoData2" class="text-center py-3">
+                            <i class="bi bi-box text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-1 mb-0 small text-muted">Кликните <i class="bi bi-arrow-clockwise"></i> за 3D модел</p>
+                        </div>
+
+                        <div id="codContent2" style="display: none;">
+                            <!-- Structure selector -->
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="codEntrySelect2" onchange="selectCODEntry2()">
+                                </select>
+                            </div>
+
+                            <!-- Reference Info (compact) -->
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-journal-text me-1"></i>
+                                <strong>COD:</strong> <span id="codId2">-</span> |
+                                <strong>SG:</strong> <span id="codSpaceGroup2">-</span> |
+                                <strong>Формула:</strong> <span id="codFormula2">-</span>
+                            </div>
+
+                            <!-- 3D Viewer -->
+                            <div id="codCrystalViewer" style="width: 100%; height: 280px; background: #ffffff; border-radius: 0.375rem; border: 1px solid #dee2e6;">
+                                <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
+                                    <i class="bi bi-cube" style="font-size: 2rem;"></i>
+                                </div>
+                            </div>
+
+                            <!-- Controls -->
+                            <div class="mt-2">
+                                <div class="d-flex flex-wrap gap-1 mb-1">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="codViewMode" id="codViewAsym" value="asymmetric" checked onchange="setCodViewMode('asymmetric')">
+                                        <label class="btn btn-outline-info btn-sm" for="codViewAsym" title="Асиметрична јединица">Асим.</label>
+                                        <input type="radio" class="btn-check" name="codViewMode" id="codViewUnit" value="unitcell" onchange="setCodViewMode('unitcell')">
+                                        <label class="btn btn-outline-info btn-sm" for="codViewUnit" title="Јединична ћелија">Ћелија</label>
+                                        <input type="radio" class="btn-check" name="codViewMode" id="codViewSuper" value="supercell" onchange="setCodViewMode('supercell')">
+                                        <label class="btn btn-outline-info btn-sm" for="codViewSuper" title="Суперћелија 2x2x2">2x2x2</label>
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="codStyleMode" id="codStyleBS" value="ball-stick" checked onchange="setCodStyle('ball-stick')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="codStyleBS" title="Ball and Stick">B&S</label>
+                                        <input type="radio" class="btn-check" name="codStyleMode" id="codStyleSF" value="spacefill" onchange="setCodStyle('spacefill')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="codStyleSF" title="Space Fill">SF</label>
+                                        <input type="radio" class="btn-check" name="codStyleMode" id="codStyleSt" value="stick" onchange="setCodStyle('stick')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="codStyleSt" title="Stick">St</label>
+                                        <input type="radio" class="btn-check" name="codStyleMode" id="codStylePoly" value="polyhedra" onchange="setCodStyle('polyhedra')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="codStylePoly" title="Полиедарски">Poly</label>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetCodView()" title="Ресетуј"><i class="bi bi-arrows-angle-expand"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCodSpin()" title="Ротација" id="codSpinBtn"><i class="bi bi-arrow-repeat"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCodUnitCell()" title="Ћелија" id="codUnitCellBtn"><i class="bi bi-bounding-box"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCodLabels()" title="Ознаке" id="codLabelsBtn"><i class="bi bi-tag"></i></button>
+                                    </div>
+                                    <small class="text-muted" id="codAtomCount">-</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="codError2" class="alert alert-warning alert-sm py-1 mb-0 mt-2" style="display: none;">
+                            <small><i class="bi bi-exclamation-triangle me-1"></i><span id="codErrorMsg2"></span></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RRUFF Scientific Data - Compact -->
+                {% if rruff_data %}
+                <div class="card mb-3 border-secondary">
+                    <div class="card-header bg-secondary text-white py-2">
+                        <h6 class="mb-0"><i class="bi bi-journal-text me-1"></i>RRUFF Подаци</h6>
+                    </div>
+                    <div class="card-body p-2 small">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <th width="40%">Формула:</th>
+                                <td><code class="small">{{ rruff_data.formula_rruff or rruff_data.formula_ima or 'N/A' }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Кр. систем:</th>
+                                <td>{{ rruff_data.crystal_system or 'N/A' }}</td>
+                            </tr>
+                            {% if rruff_data.space_group %}
+                            <tr>
+                                <th>Space Group:</th>
+                                <td>{{ rruff_data.space_group }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if rruff_data.chemistry_elements %}
+                            <tr>
+                                <th>Елементи:</th>
+                                <td><span class="badge bg-light text-dark small">{{ rruff_data.chemistry_elements }}</span></td>
+                            </tr>
+                            {% endif %}
+                            {% if rruff_data.ima_status %}
+                            <tr>
+                                <th>IMA статус:</th>
+                                <td>
+                                    {% if rruff_data.ima_status == 'Approved' %}
+                                    <span class="badge bg-success">{{ rruff_data.ima_status }}</span>
+                                    {% else %}
+                                    {{ rruff_data.ima_status }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                        <div class="text-end mt-1">
+                            <a href="https://rruff.info/{{ rruff_data.rruff_id }}" target="_blank" class="btn btn-outline-secondary btn-sm py-0">
+                                <i class="bi bi-box-arrow-up-right"></i> RRUFF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Diffractogram - Compact -->
+                <div class="card mb-3 border-warning" id="diffractogramCard" style="display: none;">
+                    <div class="card-header bg-warning py-2">
+                        <h6 class="mb-0"><i class="bi bi-bar-chart me-1"></i>Дифрактограм</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <canvas id="diffractogramChart" style="height: 150px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End of main row -->
+
+    <!-- Hidden: Full RRUFF Data (kept for reference, collapsed by default) -->
+    {% if rruff_data %}
+    <div class="accordion mt-4" id="fullScientificData">
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fullRruffCollapse">
+                    <i class="bi bi-diagram-3 me-2"></i>Комплетни RRUFF научни подаци
+                </button>
+            </h2>
+            <div id="fullRruffCollapse" class="accordion-collapse collapse" data-bs-parent="#fullScientificData">
+                <div class="accordion-body">
+    <!-- Original full RRUFF data below -->
+        <div class="card-body">
+            <!-- Chemical Formula -->
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="bi bi-flask"></i> Хемијска формула</h6>
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <th width="30%">RRUFF формула:</th>
+                        <td><code>{{ rruff_data.formula_rruff or 'N/A' }}</code></td>
+                    </tr>
+                    {% if rruff_data.formula_ima %}
+                    <tr>
+                        <th>IMA формула:</th>
+                        <td><code>{{ rruff_data.formula_ima }}</code></td>
+                    </tr>
+                    {% endif %}
+                    {% if rruff_data.ideal_chemistry %}
+                    <tr>
+                        <th>Идеална хемија:</th>
+                        <td>{{ rruff_data.ideal_chemistry }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if rruff_data.chemistry_elements %}
+                    <tr>
+                        <th>Елементи:</th>
+                        <td><span class="badge bg-secondary">{{ rruff_data.chemistry_elements }}</span></td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            <!-- Chemical Composition -->
+            {% if rruff_data.chemistry %}
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="bi bi-pie-chart"></i> Хемијски састав (тежински %)</h6>
+                <div class="row">
+                    {% for comp in rruff_data.chemistry[:10] %}
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <div class="d-flex justify-content-between border-bottom pb-1">
+                            <strong>{{ comp.oxide }}:</strong>
+                            <span>{{ "%.2f"|format(comp.weight_percent) ~ "%" if comp.weight_percent is not none else "N/A" }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if rruff_data.chemistry|length > 10 %}
+                <small class="text-muted">Приказано првих 10 од {{ rruff_data.chemistry|length }} оксида</small>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Crystallography -->
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="bi bi-hexagon"></i> Кристалографија</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="50%">Кристални систем:</th>
+                                <td><strong>{{ rruff_data.crystal_system or 'N/A' }}</strong></td>
+                            </tr>
+                            {% if rruff_data.space_group %}
+                            <tr>
+                                <th>Space Group:</th>
+                                <td>{{ rruff_data.space_group }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                            {% if rruff_data.structural_groupname %}
+                            <tr>
+                                <th width="50%">Структурна група:</th>
+                                <td>{{ rruff_data.structural_groupname }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if rruff_data.crystal_morphology %}
+                            <tr>
+                                <th>Морфологија:</th>
+                                <td>{{ rruff_data.crystal_morphology }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMA Classification -->
+            <div class="mb-3">
+                <h6 class="text-primary"><i class="bi bi-award"></i> IMA класификација</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                            {% if rruff_data.ima_number %}
+                            <tr>
+                                <th width="50%">IMA број:</th>
+                                <td><strong>{{ rruff_data.ima_number }}</strong></td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>IMA статус:</th>
+                                <td>
+                                    {% if rruff_data.ima_status == 'Approved' %}
+                                    <span class="badge bg-success">{{ rruff_data.ima_status }}</span>
+                                    {% else %}
+                                    {{ rruff_data.ima_status or 'N/A' }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                            {% if rruff_data.year_first_published %}
+                            <tr>
+                                <th width="50%">Прва публикација:</th>
+                                <td>{{ rruff_data.year_first_published }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if rruff_data.country_type_locality %}
+                            <tr>
+                                <th>Тип локалитет:</th>
+                                <td><strong>{{ rruff_data.country_type_locality }}</strong></td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complete Data Table -->
+            <div class="mt-4">
+                <h6 class="text-primary"><i class="bi bi-table"></i> Комплетна научна документација</h6>
+                <div class="accordion" id="rruffCompleteData">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#allDataCollapse">
+                                <i class="bi bi-list-ul"></i>&nbsp; Прикажи све RRUFF податке ({{ mineral.inventarni_broj_display }})
+                            </button>
+                        </h2>
+                        <div id="allDataCollapse" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <tbody>
+                                            <tr><th width="35%">RRUFF ID:</th><td><strong>{{ rruff_data.rruff_id }}</strong></td></tr>
+                                            <tr><th>Database ID:</th><td>{{ rruff_data.database_id or 'N/A' }}</td></tr>
+                                            <tr><th>Internal ID:</th><td>{{ rruff_data.id }}</td></tr>
+                                            <tr><th>Name:</th><td><strong>{{ rruff_data.name }}</strong></td></tr>
+                                            <tr><th>Name (Plain):</th><td>{{ rruff_data.name_plain or 'N/A' }}</td></tr>
+
+                                            <tr class="table-primary"><th colspan="2"><strong>Formulas & Chemistry</strong></th></tr>
+                                            <tr><th>RRUFF Formula:</th><td><code>{{ rruff_data.formula_rruff or 'N/A' }}</code></td></tr>
+                                            <tr><th>IMA Formula:</th><td><code>{{ rruff_data.formula_ima or 'N/A' }}</code></td></tr>
+                                            <tr><th>Concise Formula:</th><td><code>{{ rruff_data.formula_concise or 'N/A' }}</code></td></tr>
+                                            <tr><th>HTML Formula:</th><td>{{ rruff_data.formula_html or 'N/A' }}</td></tr>
+                                            <tr><th>Ideal Chemistry:</th><td>{{ rruff_data.ideal_chemistry or 'N/A' }}</td></tr>
+                                            <tr><th>Chemistry Elements:</th><td><span class="badge bg-secondary">{{ rruff_data.chemistry_elements or 'N/A' }}</span></td></tr>
+                                            <tr><th>Valence Elements:</th><td>{{ rruff_data.valence_elements or 'N/A' }}</td></tr>
+
+                                            <tr class="table-success"><th colspan="2"><strong>Crystallography</strong></th></tr>
+                                            <tr><th>Crystal System:</th><td><strong>{{ rruff_data.crystal_system or 'N/A' }}</strong></td></tr>
+                                            <tr><th>Crystal Systems (All):</th><td>{{ rruff_data.crystal_systems or 'N/A' }}</td></tr>
+                                            <tr><th>Space Group:</th><td>{{ rruff_data.space_group or 'N/A' }}</td></tr>
+                                            <tr><th>Space Groups (All):</th><td>{{ rruff_data.space_groups or 'N/A' }}</td></tr>
+                                            <tr><th>Crystal Morphology:</th><td>{{ rruff_data.crystal_morphology or 'N/A' }}</td></tr>
+                                            <tr><th>Structural Group:</th><td>{{ rruff_data.structural_groupname or 'N/A' }}</td></tr>
+                                            <tr><th>Fleischer's Group:</th><td>{{ rruff_data.fleischers_groupname or 'N/A' }}</td></tr>
+                                            <tr><th>Fleischer's Glossary:</th><td>{{ rruff_data.fleischers_glossary or 'N/A' }}</td></tr>
+
+                                            <tr class="table-warning"><th colspan="2"><strong>IMA Classification</strong></th></tr>
+                                            <tr><th>IMA Number:</th><td><strong>{{ rruff_data.ima_number or 'N/A' }}</strong></td></tr>
+                                            <tr><th>IMA Status:</th><td>
+                                                {% if rruff_data.ima_status == 'Approved' %}
+                                                    <span class="badge bg-success">{{ rruff_data.ima_status }}</span>
+                                                {% else %}
+                                                    {{ rruff_data.ima_status or 'N/A' }}
+                                                {% endif %}
+                                            </td></tr>
+                                            <tr><th>IMA Mineral:</th><td>{{ 'Yes' if rruff_data.ima_mineral == 'Y' else 'No' }}</td></tr>
+                                            <tr><th>IMA Mineral Symbol:</th><td><strong>{{ rruff_data.ima_mineral_symbol or 'N/A' }}</strong></td></tr>
+
+                                            <tr class="table-info"><th colspan="2"><strong>Locality & Age</strong></th></tr>
+                                            <tr><th>Type Locality Country:</th><td><strong>{{ rruff_data.country_type_locality or 'N/A' }}</strong></td></tr>
+                                            <tr><th>Year First Published:</th><td>{{ rruff_data.year_first_published or 'N/A' }}</td></tr>
+                                            <tr><th>Oldest Known Age:</th><td>{{ rruff_data.oldest_known_age_ma ~ ' Ma' if rruff_data.oldest_known_age_ma else 'N/A' }}</td></tr>
+
+                                            <tr class="table-secondary"><th colspan="2"><strong>Additional Data</strong></th></tr>
+                                            <tr><th>Paragenetic Modes:</th><td>{{ rruff_data.paragenetic_modes or 'N/A' }}</td></tr>
+                                            <tr><th>Status Notes:</th><td>{{ rruff_data.status_notes or 'N/A' }}</td></tr>
+                                            <tr><th>RRUFF IDs (All):</th><td>{{ rruff_data.rruff_ids or 'N/A' }}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {% if rruff_data.chemistry %}
+                                <div class="mt-3">
+                                    <h6 class="text-success">Complete Chemical Composition:</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Oxide</th>
+                                                    <th>Weight %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for comp in rruff_data.chemistry %}
+                                                <tr>
+                                                    <td><strong>{{ comp.oxide }}</strong></td>
+                                                    <td>{{ "%.4f"|format(comp.weight_percent) ~ "%" if comp.weight_percent is not none else "N/A" }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mb-0 mt-3">
+                <small>
+                    <i class="bi bi-info-circle"></i>
+                    <strong>RRUFF ID:</strong> {{ rruff_data.rruff_id }}
+                    <span class="text-muted">| Подаци из RRUFF научне базе</span>
+                </small>
+            </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Two Column Layout: Geochemical Data | RRUFF Data + Crystal Structure -->
+    <div class="row">
+
+    <!-- Left Column: Geochemical Data -->
+    <div class="col-lg-6 mb-4">
+    <div class="card h-100 border-success" id="geochemSection">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-moisture"></i> Геохемијски подаци (EarthChem/GEOROC)</h5>
+            <button type="button" class="btn btn-sm btn-light" onclick="loadGeochemData('{{ mineral.naziv or '' }}')" id="loadGeochemBtn">
+                <i class="bi bi-arrow-clockwise me-1"></i>Учитај податке
+            </button>
+        </div>
+        <div class="card-body">
+            <div id="geochemLoading" class="text-center py-4" style="display: none;">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Учитавање...</span>
+                </div>
+                <p class="mt-2 text-muted">Претражујем EarthChem и GEOROC базе...</p>
+            </div>
+
+            <div id="geochemNoData" class="text-center py-4">
+                <i class="bi bi-moisture text-muted" style="font-size: 3rem;"></i>
+                <p class="mt-2 text-muted">Кликните на "Учитај податке" за претрагу геохемијских база</p>
+                <small class="text-muted d-block">Извори: EarthChem Portal, GEOROC 2.0</small>
+            </div>
+
+            <div id="geochemContent" style="display: none;">
+                <!-- Source Info -->
+                <div class="alert alert-success mb-3" id="geochemSourceInfo">
+                    <i class="bi bi-database me-2"></i>
+                    <strong>Извор:</strong> <span id="geochemSource">-</span>
+                    <span class="ms-3"><strong>Узорака:</strong> <span id="geochemSampleCount">0</span></span>
+                </div>
+
+                <!-- API Note (shown when using reference data) -->
+                <div id="geochemApiNote" style="display: none;"></div>
+
+                <!-- Major Elements (Oxides) -->
+                <div class="mb-4" id="majorElementsSection">
+                    <h6 class="text-success"><i class="bi bi-pie-chart me-1"></i> Главни елементи (оксиди, wt%)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" id="majorElementsTable">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Оксид</th>
+                                    <th>Просек</th>
+                                    <th>Мин</th>
+                                    <th>Макс</th>
+                                    <th>n</th>
+                                </tr>
+                            </thead>
+                            <tbody id="majorElementsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Trace Elements -->
+                <div class="mb-4" id="traceElementsSection" style="display: none;">
+                    <h6 class="text-success"><i class="bi bi-diagram-2 me-1"></i> Елементи у траговима (ppm)</h6>
+                    <div class="row" id="traceElementsGrid">
+                    </div>
+                </div>
+
+                <!-- Isotope Ratios -->
+                <div class="mb-4" id="isotopesSection" style="display: none;">
+                    <h6 class="text-success"><i class="bi bi-radioactive me-1"></i> Изотопски односи</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Однос</th>
+                                    <th>Просек</th>
+                                    <th>Мин - Макс</th>
+                                    <th>n</th>
+                                </tr>
+                            </thead>
+                            <tbody id="isotopesBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Geological Context -->
+                <div class="row mb-4">
+                    <div class="col-md-6" id="rockTypesSection" style="display: none;">
+                        <h6 class="text-success"><i class="bi bi-layers me-1"></i> Типови стена</h6>
+                        <div id="rockTypesList" class="d-flex flex-wrap gap-2">
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="tectonicSection" style="display: none;">
+                        <h6 class="text-success"><i class="bi bi-globe me-1"></i> Тектонска подешавања</h6>
+                        <div id="tectonicList" class="d-flex flex-wrap gap-2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Localities -->
+                <div class="mb-4" id="geochemLocalitiesSection" style="display: none;">
+                    <h6 class="text-success"><i class="bi bi-geo-alt me-1"></i> Локалитети узорака</h6>
+                    <ul class="list-group list-group-flush" id="geochemLocalitiesList">
+                    </ul>
+                </div>
+
+                <!-- References -->
+                <div class="mb-3" id="geochemReferencesSection" style="display: none;">
+                    <h6 class="text-success"><i class="bi bi-journal-text me-1"></i> Референце</h6>
+                    <ul class="small" id="geochemReferencesList">
+                    </ul>
+                </div>
+
+                <!-- External Links -->
+                <div class="d-flex gap-2 flex-wrap mt-3">
+                    <a href="https://www.earthchem.org/ecl/" target="_blank" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>EarthChem Portal
+                    </a>
+                    <a href="https://georoc.eu/georoc2/" target="_blank" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>GEOROC 2.0
+                    </a>
+                </div>
+            </div>
+
+            <div id="geochemError" class="alert alert-warning" style="display: none;">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <span id="geochemErrorMessage"></span>
+            </div>
+        </div>
+    </div>
+    </div><!-- End col-lg-6 Geochemical Data -->
+
+    <!-- Right Column: RRUFF Data -->
+    <div class="col-lg-6 mb-4">
+
+    <!-- Local RRUFF Data Section -->
+    <div class="card border-danger" id="localRruffSection">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0"><i class="bi bi-database-fill-gear"></i> RRUFF спектри и подаци</h6>
+            <button type="button" class="btn btn-sm btn-light" onclick="loadLocalRruffData('{{ mineral.naziv or '' }}')" id="loadLocalRruffBtn">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <div id="localRruffLoading" class="text-center py-3" style="display: none;">
+                <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                <small class="ms-2 text-muted">Учитавање...</small>
+            </div>
+
+            <div id="localRruffNoData" class="text-center py-3">
+                <i class="bi bi-folder2-open text-muted" style="font-size: 2rem;"></i>
+                <p class="mt-1 mb-0 small text-muted">Кликните <i class="bi bi-arrow-clockwise"></i> за RRUFF податке</p>
+            </div>
+
+            <div id="localRruffContent" style="display: none;">
+                <!-- Comparative Data Notice -->
+                <div class="alert alert-warning mb-3 py-2 small">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>Компаративни подаци:</strong> Приказани спектри и структурни подаци су референтни узорци из RRUFF базе података за поређење са вашим примерком.
+                    <a href="https://rruff.info/" target="_blank" class="alert-link ms-1">rruff.info <i class="bi bi-box-arrow-up-right"></i></a>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-danger mb-0 py-2">
+                            <i class="bi bi-gem me-2"></i>
+                            <strong>Минерал:</strong> <span id="localRruffMineralName">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-danger mb-0 py-2">
+                            <i class="bi bi-upc-scan me-2"></i>
+                            <strong>RRUFF ID:</strong> <span id="localRruffId">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Counts -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6 col-xl-3">
+                        <div class="card bg-light border-secondary">
+                            <div class="card-body text-center py-2">
+                                <div class="fs-5 text-secondary" id="localRruffMicroprobeCount">0</div>
+                                <small class="text-muted">EMPA</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                        <div class="card bg-light border-primary">
+                            <div class="card-body text-center py-2">
+                                <div class="fs-5 text-primary" id="localRruffRamanCount">0</div>
+                                <small class="text-muted">Raman</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                        <div class="card bg-light border-success">
+                            <div class="card-body text-center py-2">
+                                <div class="fs-5 text-success" id="localRruffInfraredCount">0</div>
+                                <small class="text-muted">IR</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                        <div class="card bg-light border-warning">
+                            <div class="card-body text-center py-2">
+                                <div class="fs-5 text-warning" id="localRruffImageCount">0</div>
+                                <small class="text-muted">Слике</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Microprobe Data (EMPA) -->
+                <div class="mb-4" id="localRruffMicroprobeSection" style="display: none;">
+                    <div class="card border-secondary">
+                        <div class="card-header bg-secondary bg-opacity-10 py-2">
+                            <h6 class="mb-0 text-secondary"><i class="bi bi-table me-1"></i> Микросонда (EMPA)</h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="small text-muted mb-2" id="microprobeLocation"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0" id="microprobeTable" style="font-size: 0.85rem;">
+                                    <thead>
+                                        <tr class="table-dark">
+                                            <th style="width: 35%;">Оксид</th>
+                                            <th class="text-end" style="width: 25%;">wt%</th>
+                                            <th class="text-end" style="width: 20%;">±σ</th>
+                                            <th class="text-center" style="width: 20%;">n</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="microprobeBody">
+                                    </tbody>
+                                    <tfoot id="microprobeFoot" class="table-secondary">
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="mt-2 small text-muted" id="microprobeInfo">
+                                <i class="bi bi-info-circle me-1"></i>EMPA - референтни подаци
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raman Spectrum -->
+                <div class="mb-4" id="localRruffRamanSection" style="display: none;">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary bg-opacity-10 py-2">
+                            <h6 class="mb-0 text-primary"><i class="bi bi-activity me-1"></i> Раман спектар</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="localRamanSelect" onchange="displayLocalRamanChart()">
+                                </select>
+                            </div>
+                            <canvas id="localRamanChart" style="height: 220px;"></canvas>
+                            <div class="mt-2 small text-muted" id="localRamanInfo"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Infrared Spectrum -->
+                <div class="mb-4" id="localRruffInfraredSection" style="display: none;">
+                    <div class="card border-success">
+                        <div class="card-header bg-success bg-opacity-10 py-2">
+                            <h6 class="mb-0 text-success"><i class="bi bi-soundwave me-1"></i> Инфрацрвени (IR) спектар</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <select class="form-select form-select-sm" id="localInfraredSelect" onchange="displayLocalInfraredChart()">
+                                </select>
+                            </div>
+                            <canvas id="localInfraredChart" style="height: 220px;"></canvas>
+                            <div class="mt-2 small text-muted" id="localInfraredInfo"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Local RRUFF Images -->
+                <div class="mb-4" id="localRruffImagesSection" style="display: none;">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning bg-opacity-10 py-2">
+                            <h6 class="mb-0 text-warning"><i class="bi bi-images me-1"></i> RRUFF референтне слике</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2" id="localRruffImagesGrid">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="localRruffError" class="alert alert-warning" style="display: none;">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <span id="localRruffErrorMessage"></span>
+            </div>
+        </div>
+    </div>
+    </div><!-- End col-lg-6 RRUFF Data -->
+    </div><!-- End row: Geochemical | RRUFF -->
+
+    <!-- Additional Information -->
+    {% if mineral.komentar or mineral.napomena %}
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Додатне информације</h5>
+        </div>
+        <div class="card-body">
+            {% if mineral.komentar %}
+            <div class="mb-3">
+                <h6>Коментар/Напомена:</h6>
+                <p>{{ mineral.komentar }}</p>
+            </div>
+            {% endif %}
+            {% if mineral.napomena %}
+            <div class="mb-3">
+                <h6>Напомена/Опис:</h6>
+                <p>{{ mineral.napomena }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- System Information -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Системске информације</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Унео у базу:</strong> {{ mineral.uneo_u_bazu or 'N/A' }}</p>
+                    <p><strong>Датум уноса:</strong> {{ mineral.datum_unosa or 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>У библиографији:</strong> {{ mineral.u_bibliografiji or 'N/A' }}</p>
+                    <p><strong>ID у бази:</strong> {{ mineral.id }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 mb-4">
+        <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад на листу
+        </a>
+    </div>
+</div>
+
+<!-- Box Minerals Modal - Dark Theme like 3D Depot -->
+<div class="modal fade" id="boxMineralsModal" tabindex="-1" aria-labelledby="boxMineralsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content box-modal-content">
+            <div class="modal-header box-modal-header">
+                <h5 class="modal-title" id="boxMineralsModalLabel">
+                    <i class="bi bi-box-seam me-2"></i>Кутија <span id="boxIdDisplay"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Затвори"></button>
+            </div>
+            <div class="modal-body box-modal-body">
+                <div id="boxMineralsLoading" class="rruff-loading">
+                    <i class="bi bi-hourglass-split"></i>
+                    Учитавање минерала...
+                </div>
+                <div id="boxMineralsList"></div>
+            </div>
+            <div class="modal-footer box-modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Затвори
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.mineral-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+.mineral-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #17a2b8;
+}
+.mineral-card.current-mineral {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+.mineral-card-header {
+    padding: 12px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mineral-card-header:hover {
+    background-color: #f8f9fa;
+}
+.mineral-name-box {
+    font-weight: 600;
+    color: #333;
+}
+.mineral-locality-box {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+.mineral-inv-box {
+    font-family: monospace;
+    background-color: #e9ecef;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.mineral-rruff-details {
+    display: none;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+.mineral-rruff-details.show {
+    display: block;
+}
+.rruff-grid-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+.rruff-field-box {
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+.rruff-field-box.full-width {
+    grid-column: 1 / -1;
+}
+.rruff-label-box {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 2px;
+}
+.rruff-value-box {
+    font-weight: 500;
+    color: #333;
+}
+.expand-icon {
+    transition: transform 0.2s ease;
+}
+.mineral-card.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+.current-badge {
+    background-color: #28a745;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* COD Section Styles */
+#codSection .card-header {
+    background: linear-gradient(135deg, #0dcaf0 0%, #0a9ec2 100%);
+}
+
+#codCrystalViewer {
+    position: relative;
+}
+
+#codCrystalViewer canvas {
+    border-radius: 0.375rem;
+}
+
+#codSection .btn-group .btn.active {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+#codSection .cell-params-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+/* Light modal styles for box view */
+.box-modal-content {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    color: #212529;
+}
+.box-modal-header {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    border-bottom: 1px solid #dee2e6;
+    color: #ffffff;
+}
+.box-modal-body {
+    background: #f8f9fa;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.box-modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Mineral Item Styling - Light Theme */
+.mineral-item {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    list-style: none;
+}
+.mineral-item:hover {
+    border-color: #17a2b8;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.mineral-item.current-mineral {
+    border-color: #28a745;
+    background: linear-gradient(180deg, rgba(40, 167, 69, 0.05) 0%, rgba(40, 167, 69, 0.02) 100%);
+}
+.mineral-item-header {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mineral-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 4px;
+}
+.mineral-locality {
+    font-size: 12px;
+    color: #6c757d;
+}
+.mineral-inv {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    background: #e9ecef;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+.mineral-expand-hint {
+    font-size: 11px;
+    color: #6c757d;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+}
+.mineral-item.expanded .mineral-expand-hint {
+    display: none;
+}
+.current-badge-depot {
+    background: #28a745;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+/* RRUFF Loading & Animations */
+.rruff-loading {
+    text-align: center;
+    padding: 25px;
+    color: #17a2b8;
+    font-size: 13px;
+}
+.rruff-loading i {
+    animation: spin 1s linear infinite;
+    font-size: 18px;
+    margin-bottom: 8px;
+    display: block;
+    color: #17a2b8;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* RRUFF Details Section */
+.rruff-details {
+    display: none;
+    padding: 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    animation: slideDown 0.3s ease;
+}
+.rruff-details.visible {
+    display: block;
+}
+@keyframes slideDown {
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 800px; }
+}
+
+/* RRUFF Grid */
+.rruff-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.rruff-field {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+}
+.rruff-field::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, #17a2b8, #138496);
+}
+.rruff-field.full-width {
+    grid-column: span 2;
+}
+.rruff-field.highlight {
+    border-color: #28a745;
+}
+.rruff-field.highlight::before {
+    background: linear-gradient(180deg, #28a745, #218838);
+}
+.rruff-label {
+    font-size: 10px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.rruff-value {
+    font-size: 14px;
+    color: #212529;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    line-height: 1.4;
+    word-break: break-word;
+}
+.rruff-formula {
+    font-size: 20px;
+    color: #0056b3;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 8px 0;
+}
+
+/* Crystal System Badge */
+.crystal-system-badge {
+    display: inline-block;
+    background: #6f42c1;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #ffffff;
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+/* IMA Status */
+.ima-approved { color: #28a745; font-weight: 600; }
+
+/* RRUFF Mineral Entry */
+.rruff-mineral-entry {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.rruff-mineral-entry:last-child { margin-bottom: 0; }
+.rruff-mineral-entry.not-found {
+    background: #fff5f5;
+    border-color: #f5c6cb;
+}
+.rruff-mineral-header-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #17a2b8;
+}
+.rruff-mineral-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+    letter-spacing: 0.5px;
+}
+.rruff-mineral-original {
+    font-size: 11px;
+    color: #6c757d;
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: #e9ecef;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #ced4da;
+}
+.rruff-mineral-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #dee2e6;
+    font-size: 11px;
+    color: #6c757d;
+}
+.rruff-mineral-footer a {
+    color: #17a2b8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.rruff-mineral-footer a:hover { color: #0056b3; }
+
+/* RRUFF Not Found */
+.rruff-not-found {
+    text-align: center;
+    padding: 20px;
+    color: #dc3545;
+    font-size: 13px;
+    background: #fff5f5;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+}
+.rruff-not-found-mini {
+    text-align: center;
+    padding: 12px;
+    color: #dc3545;
+    font-size: 12px;
+    font-style: italic;
+}
+.rruff-summary {
+    text-align: center;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: #e7f5ff;
+    border: 1px solid #17a2b8;
+    border-radius: 8px;
+    color: #0c5460;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Wikipedia Source Styling */
+.rruff-mineral-entry.wikipedia-source {
+    background: #f8f5ff;
+    border-color: #6f42c1;
+}
+.rruff-mineral-entry.wikipedia-source .rruff-mineral-header-box {
+    border-bottom-color: #6f42c1;
+}
+.rruff-mineral-entry.wikipedia-source .rruff-field::before {
+    background: linear-gradient(180deg, #6f42c1, #5a32a3);
+}
+.rruff-mineral-entry.wikipedia-source .rruff-formula {
+    color: #6f42c1;
+}
+
+/* Box Info Alert */
+.box-info-alert {
+    background: #e7f5ff;
+    border: 1px solid #17a2b8;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #0c5460;
+    font-size: 13px;
+}
+.box-info-alert strong { color: #17a2b8; }
+
+/* Mineral list styling */
+.mineral-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+/* Geochemical Data Section Styles */
+#geochemSection .card-header {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+}
+
+#geochemSection .table th {
+    font-weight: 600;
+    background: rgba(25, 135, 84, 0.1);
+}
+
+#geochemSection .badge-sm {
+    font-size: 0.65rem;
+    padding: 0.2em 0.5em;
+}
+
+#geochemSection #traceElementsGrid .card {
+    border-color: #198754;
+    border-width: 1px;
+}
+
+#geochemSection #traceElementsGrid .card:hover {
+    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.2);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+#geochemSection .list-group-item {
+    border-left: 3px solid #198754;
+    background: transparent;
+}
+
+#geochemSection #geochemSourceInfo {
+    background: linear-gradient(135deg, rgba(25, 135, 84, 0.1) 0%, rgba(25, 135, 84, 0.05) 100%);
+    border-color: #198754;
+}
+
+/* Geochem loading animation */
+#geochemLoading .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+/* Local RRUFF Section Styles */
+#localRruffSection {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.02) 0%, rgba(220, 53, 69, 0.05) 100%);
+}
+
+#localRruffSection .card-header {
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%) !important;
+}
+
+#localRruffSection #localRruffSummary {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
+    border-color: #dc3545;
+}
+
+#localRruffSection .table-danger {
+    --bs-table-bg: rgba(220, 53, 69, 0.05);
+}
+
+/* Local RRUFF loading animation */
+#localRruffLoading .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+/* Spectrum chart canvas styling */
+#localPowderChart, #localRamanChart, #localInfraredChart {
+    max-height: 280px !important;
+}
+</style>
+
+<script>
+let boxModal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    boxModal = new bootstrap.Modal(document.getElementById('boxMineralsModal'));
+});
+
+async function openBoxMinerals(boxId) {
+    document.getElementById('boxIdDisplay').textContent = boxId;
+    document.getElementById('boxMineralsLoading').style.display = 'block';
+    document.getElementById('boxMineralsList').innerHTML = '';
+    boxModal.show();
+
+    try {
+        const response = await fetch(`/api/depot/box/${encodeURIComponent(boxId)}`);
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('boxMineralsLoading').style.display = 'none';
+            const currentMineralId = {{ mineral.id }};
+
+            const html = data.minerals.map((m, index) => {
+                const isCurrent = m.id === currentMineralId;
+                return `
+                    <li class="mineral-item ${isCurrent ? 'current-mineral' : ''}" data-mineral-name="${(m.item_name || '').replace(/"/g, '&quot;')}" data-index="${index}">
+                        <div class="mineral-item-header" onclick="toggleMineralRruff(this, '${(m.item_name || '').replace(/'/g, "\\'")}', ${index})">
+                            <div>
+                                <div class="mineral-name">
+                                    <i class="bi bi-gem me-1 text-primary"></i>
+                                    ${m.item_name || 'Непознато'}
+                                    ${isCurrent ? '<span class="current-badge-depot">Тренутни</span>' : ''}
+                                </div>
+                                <div class="mineral-locality">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    ${m.card_locality || 'Непознат локалитет'}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="mineral-inv">${m.inventory_number || 'N/A'}</span>
+                                ${m.quantity ? `<div class="small text-muted" style="margin-top: 5px;">Количина: ${m.quantity}</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="mineral-expand-hint">
+                            <i class="bi bi-chevron-down"></i>
+                            Кликни за научне податке из RRUFF базе
+                        </div>
+                        <div class="rruff-details" id="rruff-box-${index}"></div>
+                    </li>
+                `;
+            }).join('');
+
+            document.getElementById('boxMineralsList').innerHTML = `
+                <div class="box-info-alert">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Пронађено <strong>${data.minerals.length}</strong> минерала у кутији <strong>${boxId}</strong>.
+                    Кликните на минерал за научне податке из RRUFF базе.
+                </div>
+                <ul class="mineral-list">${html}</ul>
+            `;
+        } else {
+            document.getElementById('boxMineralsLoading').innerHTML = `
+                <div class="rruff-not-found">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Нема минерала у овој кутији.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading box contents:', error);
+        document.getElementById('boxMineralsLoading').innerHTML = `
+            <div class="rruff-not-found">
+                <i class="bi bi-x-circle me-1"></i>
+                Грешка при учитавању: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// ========================================
+// COD Crystal Structure Visualization
+// ========================================
+
+let codData = [];
+let currentCodEntry = null;
+let viewer = null;
+let isSpinning = false;
+let showUnitCell = true;
+let currentCifContent = null;
+let diffractogramChart = null;
+
+// COD Crystal Viewer variables
+let codViewer = null;
+let codViewMode = 'asymmetric';
+let codStyleMode = 'ball-stick';
+let codIsSpinning = false;
+let codShowUnitCell = true;
+let codShowLabels = false;
+let codCifContent = null;
+
+async function loadCODData(mineralName) {
+    if (!mineralName) {
+        showCodError2('Назив минерала није доступан');
+        return;
+    }
+
+    document.getElementById('codLoading2').style.display = 'block';
+    document.getElementById('codNoData2').style.display = 'none';
+    document.getElementById('codContent2').style.display = 'none';
+    document.getElementById('codError2').style.display = 'none';
+    document.getElementById('loadCodBtn').disabled = true;
+
+    try {
+        const response = await fetch(`/api/cod/search/${encodeURIComponent(mineralName)}`);
+        const data = await response.json();
+
+        document.getElementById('codLoading2').style.display = 'none';
+        document.getElementById('loadCodBtn').disabled = false;
+
+        if (data.success && data.results && data.results.length > 0) {
+            codData = data.results;
+            populateCODSelector2(data.results);
+            document.getElementById('codContent2').style.display = 'block';
+            selectCODEntry2();
+        } else {
+            let errorMsg = data.message || 'Нису пронађене структуре';
+            showCodError2(errorMsg);
+        }
+    } catch (error) {
+        console.error('Error loading COD data:', error);
+        document.getElementById('codLoading2').style.display = 'none';
+        document.getElementById('loadCodBtn').disabled = false;
+        showCodError2('Грешка: ' + error.message);
+    }
+}
+
+function showCodError2(message) {
+    document.getElementById('codError2').style.display = 'block';
+    document.getElementById('codErrorMsg2').textContent = message;
+    document.getElementById('codNoData2').style.display = 'none';
+}
+
+function populateCODSelector2(results) {
+    const select = document.getElementById('codEntrySelect2');
+    select.innerHTML = results.map((entry, i) => {
+        const db = entry.database || 'COD';
+        const id = entry.entry_id || entry.cod_id || '';
+        const formula = entry.formula || '';
+        return `<option value="${i}">[${db}] ${id} ${formula}</option>`;
+    }).join('');
+}
+
+async function selectCODEntry2() {
+    const select = document.getElementById('codEntrySelect2');
+    const index = parseInt(select.value);
+    if (isNaN(index) || !codData || !codData[index]) return;
+
+    const entry = codData[index];
+
+    // Update info display
+    document.getElementById('codId2').textContent = entry.entry_id || entry.cod_id || '-';
+    document.getElementById('codSpaceGroup2').textContent = entry.space_group || '-';
+    document.getElementById('codFormula2').textContent = entry.formula || '-';
+
+    // Load CIF and render
+    await loadCodCif(entry);
+}
+
+async function loadCodCif(entry) {
+    const container = document.getElementById('codCrystalViewer');
+    container.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100"><div class="spinner-border spinner-border-sm text-info"></div></div>';
+
+    try {
+        let cifContent = null;
+        const entryId = entry.entry_id || entry.cod_id;
+        const db = entry.database || 'COD';
+
+        // Try multiple methods to get CIF
+        if (entry.cif_url) {
+            // Check if it's a local API path or external URL
+            if (entry.cif_url.startsWith('/api/')) {
+                // Local API path - fetch directly
+                const response = await fetch(entry.cif_url);
+                const data = await response.json();
+                if (data.success) cifContent = data.cif_content;
+            } else {
+                // External URL - use proxy endpoint
+                const response = await fetch(`/api/crystal/cif?url=${encodeURIComponent(entry.cif_url)}`);
+                const data = await response.json();
+                if (data.success) cifContent = data.cif_content;
+            }
+        }
+
+        // If no CIF yet, try local crystal API (works well for both COD and RRUFF)
+        if (!cifContent && entryId) {
+            const response = await fetch(`/api/crystal/local/${entryId}`);
+            const data = await response.json();
+            if (data.success) cifContent = data.cif_content;
+        }
+
+        // Last resort: try cod/cif endpoint
+        if (!cifContent && entryId) {
+            const response = await fetch(`/api/cod/cif/${entryId}?database=${db}`);
+            const data = await response.json();
+            if (data.success) cifContent = data.cif_content;
+        }
+
+        if (!cifContent) {
+            container.innerHTML = '<div class="text-center text-muted p-3"><i class="bi bi-exclamation-circle"></i> CIF недоступан</div>';
+            return;
+        }
+
+        codCifContent = cifContent;
+        renderCodStructure();
+
+    } catch (error) {
+        console.error('Error loading CIF:', error);
+        container.innerHTML = '<div class="text-center text-muted p-3">Грешка при учитавању</div>';
+    }
+}
+
+function renderCodStructure() {
+    const container = document.getElementById('codCrystalViewer');
+    if (!codCifContent || typeof $3Dmol === 'undefined') return;
+
+    container.innerHTML = '';
+    codViewer = $3Dmol.createViewer(container, {
+        backgroundColor: '#ffffff',
+        antialias: true
+    });
+
+    // Add model with appropriate options based on view mode
+    let modelOptions = {};
+    if (codViewMode === 'unitcell') {
+        // Fill the unit cell
+        modelOptions = { doAssembly: true, duplicateAssemblyAtoms: true };
+    } else if (codViewMode === 'supercell') {
+        // Will replicate after adding
+        modelOptions = { doAssembly: true, duplicateAssemblyAtoms: true };
+    }
+
+    codViewer.addModel(codCifContent, 'cif', modelOptions);
+
+    // For supercell, replicate the unit cell 2x2x2
+    if (codViewMode === 'supercell') {
+        try {
+            codViewer.replicateUnitCell(2, 2, 2);
+        } catch (e) {
+            console.log('Supercell replication not supported for this structure');
+        }
+    }
+
+    applyCodStyle();
+
+    // Always show unit cell boundaries for unitcell and supercell modes
+    if (codShowUnitCell || codViewMode === 'unitcell' || codViewMode === 'supercell') {
+        codViewer.addUnitCell({
+            box: { color: '#333333' },
+            astyle: { color: 'red', radius: 0.1 },
+            bstyle: { color: 'green', radius: 0.1 },
+            cstyle: { color: 'blue', radius: 0.1 }
+        });
+    }
+
+    if (codShowLabels) addCodLabels();
+
+    codViewer.zoomTo();
+    codViewer.render();
+
+    const atomCount = codViewer.getModel().selectedAtoms({}).length;
+    document.getElementById('codAtomCount').textContent = `Атома: ${atomCount}`;
+}
+
+function applyCodStyle() {
+    if (!codViewer) return;
+    const model = codViewer.getModel();
+    model.assignBonds();
+
+    switch (codStyleMode) {
+        case 'ball-stick':
+            codViewer.setStyle({}, { sphere: { scale: 0.3, colorscheme: 'Jmol' }, stick: { radius: 0.15, colorscheme: 'Jmol' } });
+            break;
+        case 'spacefill':
+            codViewer.setStyle({}, { sphere: { colorscheme: 'Jmol' } });
+            break;
+        case 'stick':
+            codViewer.setStyle({}, { stick: { radius: 0.2, colorscheme: 'Jmol' } });
+            break;
+        case 'polyhedra':
+            codViewer.setStyle({}, { sphere: { scale: 0.25, colorscheme: 'Jmol' }, stick: { radius: 0.1, colorscheme: 'Jmol' } });
+            break;
+    }
+    codViewer.render();
+}
+
+function addCodLabels() {
+    if (!codViewer) return;
+    const atoms = codViewer.getModel().selectedAtoms({});
+    atoms.forEach(atom => {
+        codViewer.addLabel(atom.elem, {
+            position: atom,
+            fontSize: 10,
+            fontColor: '#333',
+            backgroundColor: 'rgba(255,255,255,0.7)'
+        });
+    });
+}
+
+function setCodViewMode(mode) { codViewMode = mode; renderCodStructure(); }
+function setCodStyle(style) { codStyleMode = style; applyCodStyle(); }
+function resetCodView() { if (codViewer) { codViewer.zoomTo(); codViewer.render(); } }
+function toggleCodSpin() {
+    if (!codViewer) return;
+    codIsSpinning = !codIsSpinning;
+    codViewer.spin(codIsSpinning ? 'y' : false);
+    document.getElementById('codSpinBtn').classList.toggle('btn-secondary', codIsSpinning);
+}
+function toggleCodUnitCell() {
+    codShowUnitCell = !codShowUnitCell;
+    document.getElementById('codUnitCellBtn').classList.toggle('btn-secondary', codShowUnitCell);
+    renderCodStructure();
+}
+function toggleCodLabels() {
+    codShowLabels = !codShowLabels;
+    document.getElementById('codLabelsBtn').classList.toggle('btn-secondary', codShowLabels);
+    renderCodStructure();
+}
+
+
+// ========================================
+// Box Minerals Modal Functions
+// ========================================
+
+async function toggleMineralRruff(header, mineralName, index) {
+    const item = header.closest('.mineral-item');
+    const detailsDiv = document.getElementById(`rruff-box-${index}`);
+
+    // Toggle expanded state
+    if (item.classList.contains('expanded')) {
+        item.classList.remove('expanded');
+        detailsDiv.classList.remove('visible');
+        return;
+    }
+
+    // Collapse other expanded items
+    document.querySelectorAll('.mineral-item.expanded').forEach(other => {
+        other.classList.remove('expanded');
+        other.querySelector('.rruff-details').classList.remove('visible');
+    });
+
+    item.classList.add('expanded');
+    detailsDiv.classList.add('visible');
+
+    // If already loaded, just show
+    if (detailsDiv.dataset.loaded === 'true') {
+        return;
+    }
+
+    // Show loading
+    detailsDiv.innerHTML = `
+        <div class="rruff-loading">
+            <i class="bi bi-hourglass-split"></i>
+            Превођење и учитавање RRUFF података...
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/rruff/mineral/${encodeURIComponent(mineralName)}`);
+        const result = await response.json();
+
+        if (result.success && result.minerals && result.minerals.length > 0) {
+            let html = '';
+
+            // Show summary if multiple minerals detected
+            if (result.total_parsed > 1) {
+                html += `
+                    <div class="rruff-summary">
+                        <i class="bi bi-diagram-3 me-1"></i>
+                        Детектовано ${result.total_parsed} минерала, пронађено ${result.total_found} у RRUFF бази
+                    </div>
+                `;
+            }
+
+            // Display each mineral
+            result.minerals.forEach((mineral, idx) => {
+                if (mineral.found && mineral.data) {
+                    const d = mineral.data;
+                    const imaClass = d.ima_status && d.ima_status.includes('Approved') ? 'ima-approved' : '';
+                    const isWikipedia = mineral.source === 'Wikipedia';
+                    const sourceBadge = isWikipedia
+                        ? '<span class="badge bg-secondary ms-2"><i class="bi bi-wikipedia me-1"></i>Wikipedia</span>'
+                        : '<span class="badge bg-success ms-2"><i class="bi bi-database me-1"></i>RRUFF</span>';
+
+                    html += `
+                        <div class="rruff-mineral-entry ${isWikipedia ? 'wikipedia-source' : ''}">
+                            <div class="rruff-mineral-header-box">
+                                <span class="rruff-mineral-name">
+                                    <i class="bi bi-gem me-2" style="color: ${isWikipedia ? '#6f42c1' : '#17a2b8'};"></i>${d.name}${sourceBadge}
+                                </span>
+                                <span class="rruff-mineral-original">${mineral.original_name} → ${mineral.english_name}</span>
+                            </div>
+                            <div class="rruff-grid">
+                                ${d.formula ? `
+                                <div class="rruff-field full-width highlight">
+                                    <div class="rruff-label"><i class="bi bi-bezier2 me-1"></i>Хемијска формула</div>
+                                    <div class="rruff-formula">${d.formula}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.crystal_system ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-dice-3 me-1"></i>Кристални систем</div>
+                                    <div class="rruff-value"><span class="crystal-system-badge">${d.crystal_system.split('|')[0]}</span></div>
+                                </div>
+                                ` : ''}
+
+                                ${d.space_group ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-grid-3x3 me-1"></i>Просторна група</div>
+                                    <div class="rruff-value" style="font-style: italic;">${d.space_group.split('|')[0]}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.mohs_hardness ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-hammer me-1"></i>Тврдоћа (Mohs)</div>
+                                    <div class="rruff-value" style="font-size: 16px; font-weight: 600;">${d.mohs_hardness}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.specific_gravity ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-speedometer me-1"></i>Специфична тежина</div>
+                                    <div class="rruff-value">${d.specific_gravity}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.color ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-palette me-1"></i>Боја</div>
+                                    <div class="rruff-value">${d.color}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.luster ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-brightness-high me-1"></i>Сјај</div>
+                                    <div class="rruff-value">${d.luster}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.ima_status && !isWikipedia ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-patch-check me-1"></i>IMA статус</div>
+                                    <div class="rruff-value ${imaClass}">${d.ima_status.includes('Approved') ? '✓ ' : ''}${d.ima_status}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.year_first_published && d.year_first_published > 0 ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-calendar-event me-1"></i>Година открића</div>
+                                    <div class="rruff-value" style="font-size: 16px; font-weight: 600;">${d.year_first_published}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.chemistry_elements ? `
+                                <div class="rruff-field full-width">
+                                    <div class="rruff-label"><i class="bi bi-diagram-2 me-1"></i>Хемијски елементи</div>
+                                    <div class="rruff-value">${d.chemistry_elements.split(',').map(e => '<span class="crystal-system-badge">' + e.trim() + '</span>').join(' ')}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.country_type_locality ? `
+                                <div class="rruff-field full-width">
+                                    <div class="rruff-label"><i class="bi bi-geo-alt me-1"></i>Типски локалитет</div>
+                                    <div class="rruff-value">${d.country_type_locality}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.structural_groupname ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-layers me-1"></i>Структурна група</div>
+                                    <div class="rruff-value">${d.structural_groupname}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.fleischers_groupname ? `
+                                <div class="rruff-field">
+                                    <div class="rruff-label"><i class="bi bi-bookmark me-1"></i>Класификација</div>
+                                    <div class="rruff-value">${d.fleischers_groupname}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.crystal_morphology && d.crystal_morphology !== 'unknown' ? `
+                                <div class="rruff-field full-width">
+                                    <div class="rruff-label"><i class="bi bi-box me-1"></i>Морфологија кристала</div>
+                                    <div class="rruff-value">${d.crystal_morphology}</div>
+                                </div>
+                                ` : ''}
+
+                                ${d.description && isWikipedia ? `
+                                <div class="rruff-field full-width">
+                                    <div class="rruff-label"><i class="bi bi-info-circle me-1"></i>Опис</div>
+                                    <div class="rruff-value" style="font-size: 12px; line-height: 1.5;">${d.description}</div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            <div class="rruff-mineral-footer">
+                                ${isWikipedia ? `
+                                    <span><i class="bi bi-globe me-1"></i>Извор: <strong>Wikipedia</strong></span>
+                                    <a href="${d.source_url || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(d.name)}" target="_blank" rel="noopener">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Отвори на Wikipedia
+                                    </a>
+                                ` : `
+                                    <span><i class="bi bi-database me-1"></i>RRUFF ID: <strong>${d.rruff_id || 'N/A'}</strong></span>
+                                    <a href="https://rruff.info/${d.rruff_id}" target="_blank" rel="noopener">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Отвори у RRUFF бази
+                                    </a>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="rruff-mineral-entry not-found">
+                            <div class="rruff-mineral-header-box">
+                                <span class="rruff-mineral-name">
+                                    <i class="bi bi-gem me-2" style="opacity: 0.5;"></i>${mineral.english_name}
+                                </span>
+                                <span class="rruff-mineral-original">${mineral.original_name}</span>
+                            </div>
+                            <div class="rruff-not-found-mini">
+                                <i class="bi bi-question-circle me-1"></i>
+                                Минерал није пронађен у RRUFF научној бази података
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            detailsDiv.innerHTML = html;
+            detailsDiv.dataset.loaded = 'true';
+        } else {
+            detailsDiv.innerHTML = `
+                <div class="rruff-not-found">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    RRUFF подаци нису пронађени за овај минерал
+                </div>
+            `;
+            detailsDiv.dataset.loaded = 'true';
+        }
+    } catch (error) {
+        detailsDiv.innerHTML = `
+            <div class="rruff-not-found">
+                <i class="bi bi-x-circle me-1"></i>
+                Грешка при учитавању RRUFF података
+            </div>
+        `;
+        detailsDiv.dataset.loaded = 'true';
+    }
+}
+
+// ========================================
+// EarthChem/GEOROC Geochemical Data Functions
+// ========================================
+
+let geochemData = null;
+
+async function loadGeochemData(mineralName) {
+    if (!mineralName) {
+        showGeochemError('Назив минерала није доступан');
+        return;
+    }
+
+    document.getElementById('geochemLoading').style.display = 'block';
+    document.getElementById('geochemNoData').style.display = 'none';
+    document.getElementById('geochemContent').style.display = 'none';
+    document.getElementById('geochemError').style.display = 'none';
+    document.getElementById('loadGeochemBtn').disabled = true;
+
+    try {
+        const response = await fetch(`/api/geochemical/${encodeURIComponent(mineralName)}`);
+        const result = await response.json();
+
+        document.getElementById('geochemLoading').style.display = 'none';
+        document.getElementById('loadGeochemBtn').disabled = false;
+
+        if (result.success && result.minerals && result.minerals.length > 0) {
+            // Find first result with data
+            const foundMineral = result.minerals.find(m => m.found && m.data);
+
+            if (foundMineral && foundMineral.data) {
+                geochemData = foundMineral.data;
+                displayGeochemData(foundMineral.data, foundMineral.english_name);
+                document.getElementById('geochemContent').style.display = 'block';
+            } else {
+                showGeochemError('Геохемијски подаци нису пронађени у EarthChem/GEOROC базама');
+            }
+        } else {
+            showGeochemError(result.message || 'Геохемијски подаци нису пронађени');
+        }
+    } catch (error) {
+        console.error('Error loading geochemical data:', error);
+        document.getElementById('geochemLoading').style.display = 'none';
+        document.getElementById('loadGeochemBtn').disabled = false;
+        showGeochemError('Грешка при повезивању са геохемијским базама: ' + error.message);
+    }
+}
+
+function showGeochemError(message) {
+    document.getElementById('geochemError').style.display = 'block';
+    document.getElementById('geochemErrorMessage').textContent = message;
+    document.getElementById('geochemNoData').style.display = 'none';
+}
+
+function displayGeochemData(data, mineralName) {
+    // Display source info
+    document.getElementById('geochemSource').textContent = data.source || 'EarthChem/GEOROC';
+    document.getElementById('geochemSampleCount').textContent = data.total_samples || 0;
+
+    // Display API note if present
+    const apiNoteEl = document.getElementById('geochemApiNote');
+    if (apiNoteEl) {
+        if (data.api_note) {
+            apiNoteEl.innerHTML = `<div class="alert alert-info py-2 mb-3"><i class="bi bi-info-circle me-2"></i>${data.api_note}</div>`;
+            apiNoteEl.style.display = 'block';
+        } else {
+            apiNoteEl.style.display = 'none';
+        }
+    }
+
+    // Display major elements
+    const majorElements = data.major_elements || [];
+    if (majorElements.length > 0) {
+        document.getElementById('majorElementsSection').style.display = 'block';
+        const majorBody = document.getElementById('majorElementsBody');
+        majorBody.innerHTML = majorElements.map(elem => `
+            <tr>
+                <td><strong>${elem.oxide}</strong></td>
+                <td>${elem.mean.toFixed(2)}</td>
+                <td>${elem.min.toFixed(2)}</td>
+                <td>${elem.max.toFixed(2)}</td>
+                <td><span class="badge bg-secondary">${elem.n}</span></td>
+            </tr>
+        `).join('');
+    } else {
+        document.getElementById('majorElementsSection').style.display = 'none';
+    }
+
+    // Display trace elements
+    const traceElements = data.trace_elements || [];
+    if (traceElements.length > 0) {
+        document.getElementById('traceElementsSection').style.display = 'block';
+        const traceGrid = document.getElementById('traceElementsGrid');
+        traceGrid.innerHTML = traceElements.map(elem => `
+            <div class="col-md-3 col-sm-4 col-6 mb-2">
+                <div class="card h-100">
+                    <div class="card-body p-2 text-center">
+                        <div class="fw-bold text-success">${elem.element}</div>
+                        <div class="fs-6">${elem.mean.toFixed(1)} ppm</div>
+                        <small class="text-muted">${elem.min.toFixed(1)} - ${elem.max.toFixed(1)}</small>
+                        <div><span class="badge bg-secondary badge-sm">n=${elem.n}</span></div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        document.getElementById('traceElementsSection').style.display = 'none';
+    }
+
+    // Display isotope ratios
+    const isotopes = data.isotope_ratios || [];
+    if (isotopes.length > 0) {
+        document.getElementById('isotopesSection').style.display = 'block';
+        const isotopesBody = document.getElementById('isotopesBody');
+        isotopesBody.innerHTML = isotopes.map(iso => `
+            <tr>
+                <td><strong>${iso.ratio}</strong></td>
+                <td>${iso.mean.toFixed(6)}</td>
+                <td>${iso.min.toFixed(6)} - ${iso.max.toFixed(6)}</td>
+                <td><span class="badge bg-secondary">${iso.n}</span></td>
+            </tr>
+        `).join('');
+    } else {
+        document.getElementById('isotopesSection').style.display = 'none';
+    }
+
+    // Display rock types
+    const rockTypes = data.rock_types || [];
+    if (rockTypes.length > 0) {
+        document.getElementById('rockTypesSection').style.display = 'block';
+        const rockList = document.getElementById('rockTypesList');
+        rockList.innerHTML = rockTypes.map(rt =>
+            `<span class="badge bg-success">${rt}</span>`
+        ).join('');
+    } else {
+        document.getElementById('rockTypesSection').style.display = 'none';
+    }
+
+    // Display tectonic settings
+    const tectonicSettings = data.tectonic_settings || [];
+    if (tectonicSettings.length > 0) {
+        document.getElementById('tectonicSection').style.display = 'block';
+        const tectonicList = document.getElementById('tectonicList');
+        tectonicList.innerHTML = tectonicSettings.map(ts =>
+            `<span class="badge bg-info text-dark">${ts}</span>`
+        ).join('');
+    } else {
+        document.getElementById('tectonicSection').style.display = 'none';
+    }
+
+    // Display localities
+    const localities = data.localities || [];
+    if (localities.length > 0) {
+        document.getElementById('geochemLocalitiesSection').style.display = 'block';
+        const locList = document.getElementById('geochemLocalitiesList');
+        locList.innerHTML = localities.slice(0, 10).map(loc =>
+            `<li class="list-group-item py-1"><i class="bi bi-geo-alt-fill text-success me-2"></i>${loc}</li>`
+        ).join('');
+    } else {
+        document.getElementById('geochemLocalitiesSection').style.display = 'none';
+    }
+
+    // Display references
+    const references = data.references || [];
+    if (references.length > 0) {
+        document.getElementById('geochemReferencesSection').style.display = 'block';
+        const refList = document.getElementById('geochemReferencesList');
+        refList.innerHTML = references.slice(0, 5).map(ref =>
+            `<li class="text-muted">${ref}</li>`
+        ).join('');
+    } else {
+        document.getElementById('geochemReferencesSection').style.display = 'none';
+    }
+}
+
+// ========================================
+// Local RRUFF Data Functions
+// ========================================
+
+let localRruffData = null;
+let localMineralName = null;
+let localRamanChart = null;
+let localInfraredChart = null;
+
+async function loadLocalRruffData(mineralName) {
+    if (!mineralName) {
+        showLocalRruffError('Назив минерала није доступан');
+        return;
+    }
+
+    document.getElementById('localRruffLoading').style.display = 'block';
+    document.getElementById('localRruffNoData').style.display = 'none';
+    document.getElementById('localRruffContent').style.display = 'none';
+    document.getElementById('localRruffError').style.display = 'none';
+    document.getElementById('loadLocalRruffBtn').disabled = true;
+
+    try {
+        const response = await fetch(`/api/local_rruff/${encodeURIComponent(mineralName)}`);
+        const result = await response.json();
+
+        document.getElementById('localRruffLoading').style.display = 'none';
+        document.getElementById('loadLocalRruffBtn').disabled = false;
+
+        if (result.success && result.minerals && result.minerals.length > 0) {
+            const foundMineral = result.minerals.find(m => m.found && m.data);
+
+            if (foundMineral && foundMineral.data) {
+                localRruffData = foundMineral.data;
+                displayLocalRruffData(foundMineral.data, foundMineral.english_name);
+                document.getElementById('localRruffContent').style.display = 'block';
+
+                // Load microprobe data if available
+                loadMicroprobeData(mineralName);
+            } else {
+                showLocalRruffError('Локални RRUFF подаци нису пронађени за овај минерал');
+            }
+        } else {
+            showLocalRruffError(result.message || 'Локални RRUFF подаци нису пронађени');
+        }
+    } catch (error) {
+        console.error('Error loading local RRUFF data:', error);
+        document.getElementById('localRruffLoading').style.display = 'none';
+        document.getElementById('loadLocalRruffBtn').disabled = false;
+        showLocalRruffError('Грешка при учитавању локалних RRUFF података: ' + error.message);
+    }
+}
+
+function showLocalRruffError(message) {
+    document.getElementById('localRruffError').style.display = 'block';
+    document.getElementById('localRruffErrorMessage').textContent = message;
+    document.getElementById('localRruffNoData').style.display = 'none';
+}
+
+function displayLocalRruffData(data, mineralName) {
+    // Display summary
+    document.getElementById('localRruffMineralName').textContent = mineralName || data.mineral_name || '-';
+
+    const rruffIds = data.rruff_ids || [];
+    document.getElementById('localRruffId').textContent = rruffIds.length > 0 ? rruffIds.slice(0, 3).join(', ') + (rruffIds.length > 3 ? '...' : '') : '-';
+
+    // Display counts
+    const chemistryFiles = data.chemistry || [];
+    const ramanFiles = data.raman || [];
+    const infraredFiles = data.infrared || [];
+    const imageFiles = data.images || [];
+
+    document.getElementById('localRruffMicroprobeCount').textContent = chemistryFiles.length;
+    document.getElementById('localRruffRamanCount').textContent = ramanFiles.length;
+    document.getElementById('localRruffInfraredCount').textContent = infraredFiles.length;
+    document.getElementById('localRruffImageCount').textContent = imageFiles.length;
+
+    // Setup Raman section
+    if (ramanFiles.length > 0) {
+        document.getElementById('localRruffRamanSection').style.display = 'block';
+        const ramanSelect = document.getElementById('localRamanSelect');
+        ramanSelect.innerHTML = ramanFiles.map((f, i) =>
+            `<option value="${i}" data-path="${f.path}">${f.rruff_id || 'Unknown'} - ${f.laser || ''} ${f.orientation || ''}</option>`
+        ).join('');
+        displayLocalRamanChart();
+    } else {
+        document.getElementById('localRruffRamanSection').style.display = 'none';
+    }
+
+    // Setup Infrared section
+    if (infraredFiles.length > 0) {
+        document.getElementById('localRruffInfraredSection').style.display = 'block';
+        const infraredSelect = document.getElementById('localInfraredSelect');
+        infraredSelect.innerHTML = infraredFiles.map((f, i) =>
+            `<option value="${i}" data-path="${f.path}">${f.rruff_id || 'Unknown'} - ${f.type || 'IR'}</option>`
+        ).join('');
+        displayLocalInfraredChart();
+    } else {
+        document.getElementById('localRruffInfraredSection').style.display = 'none';
+    }
+
+    // Setup Images section (compact layout for two-column view)
+    if (imageFiles.length > 0) {
+        document.getElementById('localRruffImagesSection').style.display = 'block';
+        const imagesGrid = document.getElementById('localRruffImagesGrid');
+        imagesGrid.innerHTML = imageFiles.slice(0, 4).map(f => `
+            <div class="col-6 mb-2">
+                <a href="/api/local_rruff/image/${encodeURIComponent(f.relative_path || f.path)}" target="_blank" class="d-block">
+                    <img src="/api/local_rruff/image/${encodeURIComponent(f.relative_path || f.path)}"
+                         class="img-fluid rounded shadow-sm"
+                         style="height: 100px; width: 100%; object-fit: cover;"
+                         alt="${f.rruff_id || 'RRUFF Image'}"
+                         onerror="this.src='/static/placeholder.png'">
+                </a>
+                <small class="text-muted d-block text-center mt-1">${f.rruff_id || ''}</small>
+            </div>
+        `).join('');
+        if (imageFiles.length > 4) {
+            imagesGrid.innerHTML += `<div class="col-12 text-center mt-2"><small class="text-muted"><i class="bi bi-plus-circle me-1"></i>${imageFiles.length - 4} више слика</small></div>`;
+        }
+    } else {
+        document.getElementById('localRruffImagesSection').style.display = 'none';
+    }
+}
+
+// Load microprobe data
+async function loadMicroprobeData(mineralName) {
+    try {
+        const response = await fetch(`/api/local_rruff/microprobe/${encodeURIComponent(mineralName)}`);
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.elements && result.data.elements.length > 0) {
+            const data = result.data;
+            document.getElementById('localRruffMicroprobeSection').style.display = 'block';
+
+            // Update location info
+            if (data.location) {
+                document.getElementById('microprobeLocation').innerHTML = `<i class="bi bi-geo-alt me-1"></i><strong>Локалитет:</strong> ${data.location}`;
+            }
+
+            // Major oxides (typically >1 wt%)
+            const majorOxides = ['SiO2', 'TiO2', 'Al2O3', 'Fe2O3', 'FeO', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O', 'P2O5', 'H2O', 'CO2', 'SO3', 'PbO', 'ZnO', 'CuO', 'Ag2O', 'As2O3', 'Sb2O3', 'BaO', 'SrO'];
+
+            // Separate major and minor elements
+            const major = [];
+            const minor = [];
+            let total = null;
+
+            data.elements.forEach(el => {
+                const elName = el.element.toUpperCase().replace(/\s/g, '');
+                if (elName === 'TOTAL' || elName === 'SUM' || elName === 'SUMA') {
+                    total = el;
+                } else if (majorOxides.some(ox => elName.includes(ox.toUpperCase())) || (typeof el.average === 'number' && el.average >= 1.0)) {
+                    major.push(el);
+                } else {
+                    minor.push(el);
+                }
+            });
+
+            // Build table rows with groups
+            const tbody = document.getElementById('microprobeBody');
+            let html = '';
+
+            // Major oxides
+            major.forEach((el, idx) => {
+                const bgClass = idx % 2 === 0 ? '' : 'style="background-color: #f8f9fa;"';
+                html += `<tr ${bgClass}>
+                    <td><strong>${el.element}</strong></td>
+                    <td class="text-end">${typeof el.average === 'number' ? el.average.toFixed(2) : el.average}</td>
+                    <td class="text-end text-muted">${typeof el.stdev === 'number' ? el.stdev.toFixed(2) : '-'}</td>
+                    <td class="text-center">${el.measurements ? el.measurements.length : '-'}</td>
+                </tr>`;
+            });
+
+            // Separator and minor oxides if any
+            if (minor.length > 0) {
+                html += `<tr class="table-light"><td colspan="4" class="text-center small text-muted py-1" style="border-top: 2px solid #dee2e6;"><em>Мали удео (&lt;1%)</em></td></tr>`;
+                minor.forEach((el, idx) => {
+                    const bgClass = idx % 2 === 0 ? 'style="background-color: #fafafa;"' : 'style="background-color: #f0f0f0;"';
+                    html += `<tr ${bgClass}>
+                        <td class="text-muted">${el.element}</td>
+                        <td class="text-end text-muted">${typeof el.average === 'number' ? el.average.toFixed(3) : el.average}</td>
+                        <td class="text-end text-muted">${typeof el.stdev === 'number' ? el.stdev.toFixed(3) : '-'}</td>
+                        <td class="text-center text-muted">${el.measurements ? el.measurements.length : '-'}</td>
+                    </tr>`;
+                });
+            }
+
+            tbody.innerHTML = html;
+
+            // Total row in footer
+            const tfoot = document.getElementById('microprobeFoot');
+            if (total) {
+                tfoot.innerHTML = `<tr class="fw-bold">
+                    <td>Укупно</td>
+                    <td class="text-end">${typeof total.average === 'number' ? total.average.toFixed(2) : total.average}</td>
+                    <td class="text-end">-</td>
+                    <td class="text-center">-</td>
+                </tr>`;
+            } else {
+                // Calculate sum if no total row
+                const sum = [...major, ...minor].reduce((acc, el) => acc + (typeof el.average === 'number' ? el.average : 0), 0);
+                if (sum > 0) {
+                    tfoot.innerHTML = `<tr class="fw-bold">
+                        <td>Укупно</td>
+                        <td class="text-end">${sum.toFixed(2)}</td>
+                        <td class="text-end">-</td>
+                        <td class="text-center">-</td>
+                    </tr>`;
+                }
+            }
+
+            // Update count in file counts
+            document.getElementById('localRruffMicroprobeCount').textContent = data.elements.length;
+        } else {
+            document.getElementById('localRruffMicroprobeSection').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading microprobe data:', error);
+        document.getElementById('localRruffMicroprobeSection').style.display = 'none';
+    }
+}
+
+async function displayLocalPowderChart() {
+    const select = document.getElementById('localPowderSelect');
+    if (!select.value || !localRruffData || !localRruffData.powder) return;
+
+    const index = parseInt(select.value);
+    const fileInfo = localRruffData.powder[index];
+    if (!fileInfo || !fileInfo.data) {
+        document.getElementById('localPowderInfo').textContent = 'Нема података за приказ';
+        return;
+    }
+
+    const xyData = fileInfo.data;
+    currentXrdData = xyData;
+
+    // Check view mode
+    if (currentXrdViewMode === 'continuous') {
+        displayContinuousXrdChart(xyData);
+        document.getElementById('localPowderInfo').innerHTML =
+            `<i class="bi bi-graph-up text-danger me-1"></i>` +
+            `RRUFF ID: <strong>${fileInfo.rruff_id || 'N/A'}</strong> | ` +
+            `Тачака: <strong>${xyData.length}</strong> | ` +
+            `Cu Kα (λ = 1.5406 Å)`;
+        return;
+    }
+
+    const ctx = document.getElementById('localPowderChart').getContext('2d');
+
+    if (localPowderChart) {
+        localPowderChart.destroy();
+    }
+
+    // Extract peaks from the data (find local maxima)
+    const peaks = extractDiffractionPeaks(xyData);
+
+    // Prepare data for scatter chart - each peak as a point with vertical line from baseline
+    const peakData = peaks.map(p => ({ x: p.twoTheta, y: p.intensity }));
+
+    // Custom plugin to draw vertical lines for peaks
+    const verticalLinePlugin = {
+        id: 'verticalLines',
+        afterDatasetsDraw: function(chart) {
+            const ctx = chart.ctx;
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+            const dataset = chart.data.datasets[0];
+
+            ctx.save();
+            ctx.strokeStyle = '#dc3545';
+            ctx.lineWidth = 2;
+
+            dataset.data.forEach((point, i) => {
+                const x = xScale.getPixelForValue(point.x);
+                const y0 = yScale.getPixelForValue(0);
+                const y1 = yScale.getPixelForValue(point.y);
+
+                ctx.beginPath();
+                ctx.moveTo(x, y0);
+                ctx.lineTo(x, y1);
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+    };
+
+    // Calculate x-axis range
+    const minTheta = Math.min(...peaks.map(p => p.twoTheta));
+    const maxTheta = Math.max(...peaks.map(p => p.twoTheta));
+    const padding = (maxTheta - minTheta) * 0.05;
+
+    // Create classic stick diffractogram using scatter chart
+    localPowderChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Diffraction Peaks',
+                data: peakData,
+                backgroundColor: '#dc3545',
+                borderColor: '#dc3545',
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                showLine: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const peak = peaks[context.dataIndex];
+                            const dSpacing = calculateDSpacing(peak.twoTheta);
+                            return [
+                                `2θ = ${peak.twoTheta.toFixed(3)}°`,
+                                `Интензитет: ${peak.intensity.toFixed(1)}%`,
+                                `d = ${dSpacing.toFixed(4)} Å`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: Math.max(0, minTheta - padding),
+                    max: maxTheta + padding,
+                    title: {
+                        display: true,
+                        text: '2θ (степени)',
+                        font: { weight: 'bold', size: 12 }
+                    },
+                    grid: { display: true, color: 'rgba(0,0,0,0.1)' },
+                    ticks: { stepSize: 5 }
+                },
+                y: {
+                    min: 0,
+                    max: 105,
+                    title: {
+                        display: true,
+                        text: 'Релативни интензитет (%)',
+                        font: { weight: 'bold', size: 12 }
+                    },
+                    grid: { display: true, color: 'rgba(0,0,0,0.1)' }
+                }
+            }
+        },
+        plugins: [verticalLinePlugin]
+    });
+
+    document.getElementById('localPowderInfo').innerHTML =
+        `<i class="bi bi-bar-chart-fill text-danger me-1"></i>` +
+        `RRUFF ID: <strong>${fileInfo.rruff_id || 'N/A'}</strong> | ` +
+        `Пикова: <strong>${peaks.length}</strong> | ` +
+        `Cu Kα (λ = 1.5406 Å)`;
+}
+
+function extractDiffractionPeaks(xyData, threshold = 0.02) {
+    // Find maximum intensity for normalization
+    const maxIntensity = Math.max(...xyData.map(p => p[1]));
+    const minThreshold = maxIntensity * threshold;
+
+    const peaks = [];
+
+    // Find local maxima
+    for (let i = 2; i < xyData.length - 2; i++) {
+        const prev2 = xyData[i-2][1];
+        const prev1 = xyData[i-1][1];
+        const curr = xyData[i][1];
+        const next1 = xyData[i+1][1];
+        const next2 = xyData[i+2][1];
+
+        // Check if current point is a local maximum
+        if (curr > prev1 && curr > next1 && curr > prev2 && curr > next2 && curr > minThreshold) {
+            // Normalize intensity to 0-100 scale
+            const normalizedIntensity = (curr / maxIntensity) * 100;
+
+            peaks.push({
+                twoTheta: xyData[i][0],
+                intensity: normalizedIntensity,
+                rawIntensity: curr
+            });
+        }
+    }
+
+    // Sort by intensity (descending) and take top peaks
+    peaks.sort((a, b) => b.intensity - a.intensity);
+
+    // Limit to reasonable number of peaks and sort by 2-theta
+    const topPeaks = peaks.slice(0, 100);
+    topPeaks.sort((a, b) => a.twoTheta - b.twoTheta);
+
+    return topPeaks;
+}
+
+function calculateDSpacing(twoTheta, wavelength = 1.5406) {
+    // Bragg's Law: d = λ / (2 * sin(θ))
+    const theta = (twoTheta / 2) * (Math.PI / 180);
+    return wavelength / (2 * Math.sin(theta));
+}
+
+let currentXrdViewMode = 'peaks';
+let currentXrdData = null;
+
+function setXrdViewMode(mode) {
+    currentXrdViewMode = mode;
+    displayLocalPowderChart();
+}
+
+function displayContinuousXrdChart(xyData) {
+    const ctx = document.getElementById('localPowderChart').getContext('2d');
+
+    if (localPowderChart) {
+        localPowderChart.destroy();
+    }
+
+    // Downsample if too many points
+    let displayData = xyData;
+    if (xyData.length > 500) {
+        const step = Math.ceil(xyData.length / 500);
+        displayData = xyData.filter((_, i) => i % step === 0);
+    }
+
+    localPowderChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: displayData.map(p => p[0].toFixed(2)),
+            datasets: [{
+                label: 'Intensity',
+                data: displayData.map(p => p[1]),
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '2θ (степени)',
+                        font: { weight: 'bold' }
+                    },
+                    ticks: { maxTicksLimit: 20 }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Интензитет',
+                        font: { weight: 'bold' }
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function downloadXrdData() {
+    if (!currentXrdData) return;
+
+    const select = document.getElementById('localPowderSelect');
+    const index = parseInt(select.value);
+    const fileInfo = localRruffData.powder[index];
+    const rruffId = fileInfo ? fileInfo.rruff_id : 'data';
+
+    // Prepare CSV content
+    let csv = '2-Theta,Intensity,d-spacing\n';
+    currentXrdData.forEach(p => {
+        const dSpacing = calculateDSpacing(p[0]);
+        csv += `${p[0].toFixed(4)},${p[1].toFixed(4)},${dSpacing.toFixed(4)}\n`;
+    });
+
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `xrd_${rruffId}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function displayLocalRamanChart() {
+    const select = document.getElementById('localRamanSelect');
+    if (!select.value || !localRruffData || !localRruffData.raman) return;
+
+    const index = parseInt(select.value);
+    const fileInfo = localRruffData.raman[index];
+    if (!fileInfo || !fileInfo.data) {
+        document.getElementById('localRamanInfo').textContent = 'Нема података за приказ';
+        return;
+    }
+
+    const ctx = document.getElementById('localRamanChart').getContext('2d');
+
+    if (localRamanChart) {
+        localRamanChart.destroy();
+    }
+
+    const xyData = fileInfo.data;
+    localRamanChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: xyData.map(p => p[0].toFixed(1)),
+            datasets: [{
+                label: 'Intensity',
+                data: xyData.map(p => p[1]),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Raman Shift (cm⁻¹)' },
+                    ticks: { maxTicksLimit: 15 }
+                },
+                y: {
+                    title: { display: true, text: 'Intensity' },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    document.getElementById('localRamanInfo').textContent =
+        `RRUFF ID: ${fileInfo.rruff_id || 'N/A'} | Ласер: ${fileInfo.laser || 'N/A'} | Тачака: ${xyData.length}`;
+}
+
+async function displayLocalInfraredChart() {
+    const select = document.getElementById('localInfraredSelect');
+    if (!select.value || !localRruffData || !localRruffData.infrared) return;
+
+    const index = parseInt(select.value);
+    const fileInfo = localRruffData.infrared[index];
+    if (!fileInfo || !fileInfo.data) {
+        document.getElementById('localInfraredInfo').textContent = 'Нема података за приказ';
+        return;
+    }
+
+    const ctx = document.getElementById('localInfraredChart').getContext('2d');
+
+    if (localInfraredChart) {
+        localInfraredChart.destroy();
+    }
+
+    const xyData = fileInfo.data;
+    localInfraredChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: xyData.map(p => p[0].toFixed(1)),
+            datasets: [{
+                label: 'Transmittance',
+                data: xyData.map(p => p[1]),
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Wavenumber (cm⁻¹)' },
+                    ticks: { maxTicksLimit: 15 },
+                    reverse: true
+                },
+                y: {
+                    title: { display: true, text: 'Transmittance (%)' }
+                }
+            }
+        }
+    });
+
+    document.getElementById('localInfraredInfo').textContent =
+        `RRUFF ID: ${fileInfo.rruff_id || 'N/A'} | Тип: ${fileInfo.type || 'IR'} | Тачака: ${xyData.length}`;
+}
+</script>
+
+<!-- Image Enlarge Modal -->
+<div class="modal fade" id="imageEnlargeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title text-light">{{ mineral.naziv or 'Минерал' }}</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Затвори"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img id="enlargedImage" src="" alt="{{ mineral.naziv or 'Минерал' }}"
+                     class="img-fluid" style="max-height: 85vh; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

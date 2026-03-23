@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="sr" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Информациони систем Природњачког музеја у Београду">
+    <meta name="keywords" content="музеј, запослени, радна листа, минерали, Београд">
+    <meta name="author" content="Природњачки музеј у Београду">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>{% block title %}Информациони систем Природњачког музеја{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" integrity="sha384-Rpe/8orFUm5Q1GplYBHxbuA8Az8O8C5sAoOsdbRWkqPjKFaxPgGZipj4zeHL7lxX" crossorigin="anonymous"></script>
+
+    <style>
+        /* Language switcher */
+        .lang-option.active {
+            background-color: var(--primary, #0d6efd);
+            color: white !important;
+        }
+        .lang-option.active:hover {
+            background-color: var(--primary-dark, #0b5ed7);
+        }
+        #langSwitcherBtn {
+            transition: all 0.2s ease;
+        }
+        #langSwitcherBtn:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        /* Sidebar responsive styles */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1001;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5f1a1c 0%, #7a292b 46%, #21473d 100%);
+            color: var(--sidebar-ivory, #f7ebda);
+            border: 1px solid rgba(240, 210, 151, 0.38);
+            box-shadow: 0 14px 28px rgba(51, 17, 18, 0.24);
+            cursor: pointer;
+        }
+
+        .sidebar-toggle i {
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        /* Sidebar collapsed state */
+        .sidebar-collapsed {
+            width: var(--sidebar-collapsed-width, 96px);
+        }
+
+        .sidebar-collapsed .nav-link span,
+        .sidebar-collapsed .sidebar-brand-copy,
+        .sidebar-collapsed .sidebar-section-title,
+        .sidebar-collapsed .bi-chevron-down,
+        .sidebar-collapsed .sidebar-user-meta {
+            display: none;
+        }
+
+        .sidebar-collapsed .nav-link {
+            justify-content: center;
+            padding: 0.9rem 0.75rem;
+        }
+
+        .sidebar-collapsed .nav-link i,
+        .sidebar-collapsed .sidebar-avatar {
+            margin-right: 0;
+        }
+
+        .sidebar-collapsed .sidebar-user-panel {
+            justify-content: center;
+            padding-inline: 0.35rem;
+        }
+
+        .sidebar-collapsed .sidebar-brand-panel {
+            justify-content: center;
+            padding-inline: 0.35rem;
+        }
+
+        .sidebar-collapsed .sidebar-panel-scroll {
+            padding-left: 0.6rem;
+            padding-right: 0.6rem;
+        }
+
+        .sidebar-collapsed .sidebar-submenu {
+            display: none;
+        }
+
+        .sidebar-is-collapsed {
+            margin-left: calc(var(--sidebar-collapsed-width, 96px) + 0.75rem);
+        }
+
+        .sidebar-collapse-btn {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, rgba(122, 41, 43, 0.94), rgba(33, 71, 61, 0.96));
+            color: var(--sidebar-ivory, #f7ebda);
+            border: 1px solid rgba(240, 210, 151, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 10px 24px rgba(51, 17, 18, 0.24);
+            z-index: 3;
+        }
+
+        .sidebar-collapse-btn:hover {
+            transform: translateX(-50%) translateY(-2px);
+            filter: brightness(1.04);
+        }
+
+        .sidebar-collapsed .sidebar-collapse-btn i {
+            transform: rotate(180deg);
+        }
+
+        /* Scroll to top button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scroll-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Scroll progress */
+        .scroll-progress {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: 3px;
+            background-color: var(--primary);
+            z-index: 1001;
+            width: 0;
+            transition: width 0.1s ease;
+        }
+
+        /* Badge in development */
+        .badge-in-dev {
+            background: linear-gradient(135deg, #7a9e52, #4c6b33);
+            color: #fbf7eb;
+            font-size: 0.62rem;
+            padding: 0.18em 0.5em;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Submenu styles */
+        .sidebar-submenu .nav-link {
+            padding-left: 2.65rem !important;
+            font-size: 0.86rem;
+        }
+
+        /* Mail icon badge positioning */
+        .mail-icon-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mail-unread-badge {
+            position: absolute;
+            top: -0.35rem;
+            right: -0.45rem;
+            transform: none;
+            font-size: 0.65rem;
+            line-height: 1;
+            padding: 0.1rem 0.35rem;
+        }
+
+        /* Mega dropdown menu for databases */
+        .dropdown-menu-mega {
+            max-height: 80vh;
+            overflow-y: auto;
+            min-width: 300px;
+            padding: 0.5rem 0;
+        }
+
+        .dropdown-menu-mega .dropdown-item {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .dropdown-menu-mega .dropdown-item:hover {
+            background-color: rgba(45, 106, 79, 0.1);
+        }
+
+        .dropdown-menu-mega .dropdown-divider {
+            margin: 0.25rem 0;
+        }
+
+        /* Submenu styles */
+        .dropdown-submenu {
+            position: relative;
+        }
+
+        .dropdown-toggle-submenu {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: var(--primary, #2d6a4f) !important;
+            background-color: rgba(45, 106, 79, 0.05);
+            border-left: 3px solid var(--primary, #2d6a4f);
+        }
+
+        .dropdown-toggle-submenu:hover {
+            background-color: rgba(45, 106, 79, 0.15) !important;
+        }
+
+        .dropdown-toggle-submenu .submenu-arrow {
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
+        .dropdown-toggle-submenu.expanded .submenu-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-submenu-items {
+            display: none;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .dropdown-submenu-items.show {
+            display: block;
+        }
+
+        .dropdown-submenu-items .dropdown-item {
+            padding-left: 2.5rem !important;
+            font-size: 0.85rem;
+            border-left: 3px solid transparent;
+        }
+
+        .dropdown-submenu-items .dropdown-item:hover {
+            border-left-color: var(--primary, #2d6a4f);
+        }
+
+        /* Custom scrollbar for mega menu */
+        .dropdown-menu-mega::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dropdown-menu-mega::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .dropdown-menu-mega::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .dropdown-menu-mega::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    </style>
+
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}heritage-shell{% endblock %}">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-xl navbar-dark sticky-top" data-weather="{{ weather_condition|default('none') }}" style="position:sticky;">
+        <!-- Weather particle canvas (contained to navbar) -->
+        <canvas id="weather-canvas" data-weather="{{ weather_condition|default('none') }}"
+                aria-hidden="true"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;clip:rect(0,9999px,100px,0);clip-path:inset(0 0 0 0);"></canvas>
+        <style>
+            .navbar > .container-fluid {
+                position: relative;
+                z-index: 1;
+            }
+        </style>
+
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='images/logotransparent.png') }}" alt="Лого" height="64" class="me-2" style="filter: brightness(0) invert(1) drop-shadow(0 0 2px #d4a843) drop-shadow(0 0 1px #d4a843);">
+                Природњачки музеј у Београду
+            </a>
+
+            <div class="navbar-weather-center" aria-hidden="true">
+                <span class="navbar-cloud-layer navbar-cloud-layer-back"></span>
+                <span class="navbar-cloud-layer navbar-cloud-layer-mid-left"></span>
+                <span class="navbar-cloud-layer navbar-cloud-layer-mid-right"></span>
+                <span class="navbar-cloud-layer navbar-cloud-layer-front"></span>
+                <span class="navbar-cloud-layer navbar-cloud-layer-wisp-left"></span>
+                <span class="navbar-cloud-layer navbar-cloud-layer-wisp-right"></span>
+            </div>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <!-- Language/Script Switcher -->
+                    <li class="nav-item dropdown me-2" data-no-translate>
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center"
+                                id="langSwitcherBtn" data-bs-toggle="dropdown" aria-expanded="false"
+                                style="border-radius:20px; padding:4px 12px; font-size:0.85rem; margin-top:6px;">
+                            <i class="bi bi-translate me-1"></i>
+                            <span class="lang-label">{% if current_lang == 'en' %}EN{% elif current_lang == 'sr-Latn' %}Lat{% else %}Ћир{% endif %}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width:180px;">
+                            <li><a class="dropdown-item lang-option{% if current_lang == 'sr-Cyrl' %} active{% endif %}"
+                                   href="#" data-lang="sr-Cyrl" onclick="MuseumTranslator.switchLanguage('sr-Cyrl');return false;">
+                                <span class="me-2">🇷🇸</span> Српски (ћирилица)
+                            </a></li>
+                            <li><a class="dropdown-item lang-option{% if current_lang == 'sr-Latn' %} active{% endif %}"
+                                   href="#" data-lang="sr-Latn" onclick="MuseumTranslator.switchLanguage('sr-Latn');return false;">
+                                <span class="me-2">🇷🇸</span> Srpski (latinica)
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item lang-option{% if current_lang == 'en' %} active{% endif %}"
+                                   href="#" data-lang="en" onclick="MuseumTranslator.switchLanguage('en');return false;">
+                                <span class="me-2">🇬🇧</span> English
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% if user_logged_in() %}
+                        <!-- Mail notification icon -->
+                        <li class="nav-item me-2" x-data="mailNotifier()" x-init="check()">
+                            <a class="nav-link" href="{{ url_for('mail_client_page') }}" title="Електронска пошта">
+                                <span class="mail-icon-wrapper">
+                                    <i class="bi bi-envelope fs-5" :class="{'mail-pulse': unread > 0}"></i>
+                                    <span class="mail-unread-badge badge rounded-pill bg-danger"
+                                          x-show="unread > 0" x-text="unread > 99 ? '99+' : unread"></span>
+                                </span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="bi bi-house me-1"></i>Почетна
+                            </a>
+                        </li>
+                        {% if has_module_access('timesheet') %}
+                        <li class="nav-item dropdown">
+                            {% if is_admin() %}
+                            <a class="nav-link" href="{{ url_for('admin_timesheet_main') }}">
+                                <i class="bi bi-calendar-check me-1"></i>Радне листе
+                            </a>
+                            {% else %}
+                            <a class="nav-link dropdown-toggle" href="#" id="timesheetDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-calendar-check me-1"></i>Радне листе
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('timesheet_entry') }}">
+                                    <i class="bi bi-pencil-square me-2"></i>Унос радних листа
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('timesheet_view') }}">
+                                    <i class="bi bi-eye me-2"></i>Преглед радних листа
+                                </a></li>
+                            </ul>
+                            {% endif %}
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('vehicle_reservations') }}">
+                                <i class="bi bi-truck me-1"></i>Возила
+                            </a>
+                        </li>
+                        {% if has_module_access('museum_databases') %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="{{ url_for('museum_databases') }}" id="databasesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-database me-1"></i>Базе података
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-mega" aria-labelledby="databasesDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('museum_databases') }}">
+                                    <i class="bi bi-collection me-2"></i>Све базе података
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- Biology Section -->
+                                {% if has_module_access('curator_collections') %}
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="biologySubmenu">
+                                        <i class="bi bi-tree me-2"></i>Биологија
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="biologySubmenu">
+                                        <li><a class="dropdown-item" href="{{ url_for('botany_collection') if endpoint_exists('botany_collection') else '#' }}">
+                                            <i class="bi bi-flower1 me-2"></i>Ботаничка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('ornithology_collection') if endpoint_exists('ornithology_collection') else '#' }}">
+                                            <i class="bi bi-feather me-2"></i>Орнитолошка збирка
+                                        </a></li>
+                                        {% if has_module_access('bird_ringing_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('bird_ringing_database_view') if endpoint_exists('bird_ringing_database_view') else '#' }}">
+                                            <i class="bi bi-circle me-2"></i>База прстеновања птица
+                                        </a></li>
+                                        {% endif %}
+                                        <li><a class="dropdown-item" href="{{ url_for('ichthyology_collection') if endpoint_exists('ichthyology_collection') else '#' }}">
+                                            <i class="bi bi-water me-2"></i>Ихтиолошка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('herpetology_collection') if endpoint_exists('herpetology_collection') else '#' }}">
+                                            <i class="bi bi-bug me-2"></i>Херпетолошка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('entomology_collection') if endpoint_exists('entomology_collection') else '#' }}">
+                                            <i class="bi bi-bug-fill me-2"></i>Ентомолошка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('mycology_collection') if endpoint_exists('mycology_collection') else '#' }}">
+                                            <i class="bi bi-virus me-2"></i>Миколошка збирка
+                                        </a></li>
+                                        {% if has_module_access('biodiversity_map') %}
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('admin_biodiversity_map') if endpoint_exists('admin_biodiversity_map') else '#' }}">
+                                            <i class="bi bi-globe-americas me-2"></i>Карта биодиверзитета Србије
+                                        </a></li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+
+                                <!-- Geology Section -->
+                                {% if has_module_access('mineral_database') or has_module_access('curator_collections') %}
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="geologySubmenu">
+                                        <i class="bi bi-gem me-2"></i>Геологија
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="geologySubmenu">
+                                        {% if has_module_access('mineral_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('admin_mineral_collection') if endpoint_exists('admin_mineral_collection') else '#' }}">
+                                            <i class="bi bi-gem me-2"></i>Збирка минерала
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('mineral_database_app') if endpoint_exists('mineral_database_app') else '#' }}">
+                                            <i class="bi bi-search me-2"></i>Претрага минерала
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('curator_collections') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('petrology_collection') if endpoint_exists('petrology_collection') else '#' }}">
+                                            <i class="bi bi-bricks me-2"></i>Петролошка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('meteorite_collection') if endpoint_exists('meteorite_collection') else '#' }}">
+                                            <i class="bi bi-stars me-2"></i>Збирка метеорита
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('paleozoology_collection') if endpoint_exists('paleozoology_collection') else '#' }}">
+                                            <i class="bi bi-disc me-2"></i>Палеозоолошка збирка
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('paleobotany_collection') if endpoint_exists('paleobotany_collection') else '#' }}">
+                                            <i class="bi bi-leaf me-2"></i>Палеоботаничка збирка
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('maps_karte') %}
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('admin_maps') if endpoint_exists('admin_maps') else '#' }}">
+                                            <i class="bi bi-map me-2"></i>Геолошка карта Србије
+                                        </a></li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+
+                                <!-- Library Section -->
+                                {% if has_module_access('library_database') %}
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="librarySubmenu">
+                                        <i class="bi bi-book me-2"></i>Библиотека
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="librarySubmenu">
+                                        <li><a class="dropdown-item" href="{{ url_for('library_database') if endpoint_exists('library_database') else '#' }}">
+                                            <i class="bi bi-journal-bookmark me-2"></i>Библиотека музеја
+                                        </a></li>
+                                    </ul>
+                                </li>
+                                {% endif %}
+
+                                <!-- Administration Section -->
+                                {% if has_module_access('employees_database') or has_module_access('employee_profiles') or has_module_access('exhibitions_database') or has_module_access('exhibits_database') or has_module_access('cultural_heritage') %}
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="adminSubmenu">
+                                        <i class="bi bi-building me-2"></i>Администрација
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="adminSubmenu">
+                                        {% if has_module_access('employees_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
+                                            <i class="bi bi-people me-2"></i>База запослених
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('employee_profiles') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('employee_profiles_database') if endpoint_exists('employee_profiles_database') else '#' }}">
+                                            <i class="bi bi-person-badge me-2"></i>Профили запослених
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('employees_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
+                                            <i class="bi bi-person-walking me-2"></i>База посетилаца
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
+                                            <i class="bi bi-mortarboard me-2"></i>Истраживачки пројекти
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('exhibitions_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('exhibitions_database') if endpoint_exists('exhibitions_database') else '#' }}">
+                                            <i class="bi bi-easel me-2"></i>База изложби
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('exhibits_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
+                                            <i class="bi bi-box me-2"></i>База експоната
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('cultural_heritage') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
+                                            <i class="bi bi-bank me-2"></i>Културно наслеђе
+                                        </a></li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+
+                                <!-- External Databases Section -->
+                                {% if has_module_access('mineral_database') or has_module_access('nhm_data_portal') %}
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="externalSubmenu">
+                                        <i class="bi bi-globe me-2"></i>Екстерне базе
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="externalSubmenu">
+                                        {% if has_module_access('mineral_database') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('rruff_minerals') if endpoint_exists('rruff_minerals') else '#' }}">
+                                            <i class="bi bi-gem me-2"></i>RRUFF минерали
+                                        </a></li>
+                                        {% endif %}
+                                        {% if has_module_access('nhm_data_portal') %}
+                                        <li><a class="dropdown-item" href="{{ url_for('nhm_data_portal') if endpoint_exists('nhm_data_portal') else '#' }}">
+                                            <i class="bi bi-globe-europe-africa me-2"></i>NHM London Data Portal
+                                        </a></li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item nav-wide-only">
+                            <a class="nav-link" href="{{ url_for('museum_terminology') }}">
+                                <i class="bi bi-book me-1"></i>Терминологија
+                            </a>
+                        </li>
+                        <li class="nav-item nav-wide-only">
+                            <a class="nav-link" href="{{ url_for('exhibition_planner') if endpoint_exists('exhibition_planner') else '#' }}">
+                                <i class="bi bi-easel me-1"></i>Изложбе
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown nav-wide-only">
+                            <a class="nav-link dropdown-toggle" href="#" id="projektiDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-building me-1"></i>Пројекти
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti') }}">
+                                    <i class="bi bi-building me-2"></i>Преглед пројекта
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti_dokumentacija') }}">
+                                    <i class="bi bi-journal-richtext me-2"></i>Пројектна документација
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti_space_planner') }}">
+                                    <i class="bi bi-bounding-box-circles me-2"></i>Интерактивни план -5
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% if is_admin() %}
+                        <li class="nav-item nav-wide-only">
+                            <a class="nav-link" href="{{ url_for('admin_panel') }}">
+                                <i class="bi bi-gear me-1"></i>Администрација
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item dropdown nav-compact-only">
+                            <a class="nav-link dropdown-toggle" href="#" id="moreNavDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots me-1"></i>Више
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('museum_terminology') }}">
+                                    <i class="bi bi-book me-2"></i>Терминологија
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('exhibition_planner') if endpoint_exists('exhibition_planner') else '#' }}">
+                                    <i class="bi bi-easel me-2"></i>Изложбе
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti') }}">
+                                    <i class="bi bi-building me-2"></i>Преглед пројекта
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti_dokumentacija') }}">
+                                    <i class="bi bi-journal-richtext me-2"></i>Пројектна документација
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_projekti_space_planner') }}">
+                                    <i class="bi bi-bounding-box-circles me-2"></i>Интерактивни план -5
+                                </a></li>
+                                {% if is_admin() %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_panel') }}">
+                                    <i class="bi bi-gear me-2"></i>Администрација
+                                </a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle me-1"></i>{{ user_name }}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('change_password') }}">
+                                    <i class="bi bi-key me-2"></i>Промени лозинку
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ url_for('logout') }}" style="margin:0;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="dropdown-item">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Одјави се
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>Пријави се
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    {% if user_logged_in() %}
+    <!-- Left Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-organic-panel">
+            <div class="sidebar-panel-scroll">
+                <nav class="sidebar-nav">
+                    <ul class="nav flex-column">
+                <div class="sidebar-section-title">Оперативни модули</div>
+                <!-- Zahtevi Section -->
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="collapse" href="#zahteviSubmenu" data-bs-target="#zahteviSubmenu" role="button" aria-expanded="false" aria-controls="zahteviSubmenu">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Захтеви</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="collapse" id="zahteviSubmenu">
+                        <ul class="nav flex-column sidebar-submenu">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('zahtev_slobodan_dan') if endpoint_exists('zahtev_slobodan_dan') else '#' }}">
+                                    <i class="bi bi-calendar-x me-2"></i>
+                                    <span>Захтев за слободан дан</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('zahtev_godisnji_odmor') if endpoint_exists('zahtev_godisnji_odmor') else '#' }}">
+                                    <i class="bi bi-sun me-2"></i>
+                                    <span>Захтев за годишњи одмор</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('zahtev_razno') if endpoint_exists('zahtev_razno') else '#' }}">
+                                    <i class="bi bi-file-earmark-plus me-2"></i>
+                                    <span>Захтев разно</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <!-- Finansije Section -->
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="collapse" href="#finansijeSubmenu" data-bs-target="#finansijeSubmenu" role="button" aria-expanded="false" aria-controls="finansijeSubmenu">
+                        <i class="bi bi-wallet2"></i>
+                        <span>Финансије</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="collapse" id="finansijeSubmenu">
+                        <ul class="nav flex-column sidebar-submenu">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('finansijski_plan') if endpoint_exists('finansijski_plan') else '#' }}">
+                                    <i class="bi bi-graph-up me-2"></i>
+                                    <span>Финансијски план</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('zahtev_nabavka') if endpoint_exists('zahtev_nabavka') else '#' }}">
+                                    <i class="bi bi-cart-plus me-2"></i>
+                                    <span>Захтев за набавку</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <!-- Terenska aktivnost -->
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="collapse" href="#terenskaSubmenu" data-bs-target="#terenskaSubmenu" role="button" aria-expanded="false" aria-controls="terenskaSubmenu">
+                        <i class="bi bi-geo-alt"></i>
+                        <span>Теренска активност</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="collapse" id="terenskaSubmenu">
+                        <ul class="nav flex-column sidebar-submenu">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('terenska_aktivnost') if endpoint_exists('terenska_aktivnost') else '#' }}">
+                                    <i class="bi bi-list-ul me-2"></i>
+                                    <span>Преглед активности</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('zahtev_sluzbeni_put') if endpoint_exists('zahtev_sluzbeni_put') else '#' }}">
+                                    <i class="bi bi-signpost-2 me-2"></i>
+                                    <span>Захтев за службени пут</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <div class="sidebar-divider"></div>
+
+                <!-- Archive and Verification Section -->
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="collapse" href="#archiveSubmenu" data-bs-target="#archiveSubmenu" role="button" aria-expanded="false" aria-controls="archiveSubmenu">
+                        <i class="bi bi-archive"></i>
+                        <span>Архива и верификација</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="collapse" id="archiveSubmenu">
+                        <ul class="nav flex-column sidebar-submenu">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_dashboard') }}">
+                                    <i class="bi bi-speedometer2 me-2"></i>
+                                    <span>Контролна табла</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_zahtevi') }}">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <span>Захтеви</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_finansije') }}">
+                                    <i class="bi bi-cash-stack me-2"></i>
+                                    <span>Финансије</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_terenska') }}">
+                                    <i class="bi bi-geo-alt me-2"></i>
+                                    <span>Теренска активност</span>
+                                </a>
+                            </li>
+                            {% if session.get('user_role') in ['admin', 'direktor', 'sef_pravne_sluzbe'] %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.admin_digital_signatures') }}">
+                                    <i class="bi bi-pen me-2"></i>
+                                    <span>Дигитални потписи (КЕП)</span>
+                                    <span class="badge badge-in-dev ms-1">у развоју</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </li>
+
+                <div class="sidebar-divider"></div>
+
+                <div class="sidebar-section-title">Брзи приступ</div>
+
+                <!-- Quick Links -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard') }}">
+                        <i class="bi bi-house"></i>
+                        <span>Почетна</span>
+                    </a>
+                </li>
+                {% if has_module_access('museum_databases') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('museum_databases') }}">
+                        <i class="bi bi-database"></i>
+                        <span>Базе података</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if has_module_access('news') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('museum_news') }}">
+                        <i class="bi bi-newspaper"></i>
+                        <span>Музејске вести</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('mail_client_page') }}">
+                        <i class="bi bi-envelope"></i>
+                        <span>Електронска пошта</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('chat_room_page') }}">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>Ћаскаоница</span>
+                    </a>
+                </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar Toggle Button (mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+    {% endif %}
+
+    <!-- Content Wrapper -->
+    <div class="{% if user_logged_in() %}content-wrapper{% endif %}">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container mt-3">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {% if category == 'success' %}
+                                <i class="bi bi-check-circle me-2"></i>
+                            {% elif category == 'error' %}
+                                <i class="bi bi-exclamation-circle me-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle me-2"></i>
+                            {% endif %}
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto">
+        <div class="container text-center">
+            <h5 class="mb-2">Природњачки музеј у Београду</h5>
+            <p class="mb-2 opacity-75">Информациони систем музеја</p>
+            <p class="mb-0 small opacity-60">
+                <i class="bi bi-calendar me-1"></i>
+                2025 © Сва права задржана
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+
+    <!-- Global Security Utilities -->
+    <script>
+        // CSRF token for all AJAX requests
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        // CSRF-aware fetch wrapper - use this instead of raw fetch() for POST/PUT/DELETE
+        function secureFetch(url, options = {}) {
+            const method = (options.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                options.headers = options.headers || {};
+                if (options.headers instanceof Headers) {
+                    if (!options.headers.has('X-CSRFToken')) {
+                        options.headers.set('X-CSRFToken', CSRF_TOKEN);
+                    }
+                } else {
+                    options.headers['X-CSRFToken'] = options.headers['X-CSRFToken'] || CSRF_TOKEN;
+                }
+            }
+            return fetch(url, options);
+        }
+
+        // HTML escaping to prevent XSS in innerHTML assignments
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        // Configure HTMX to include CSRF token
+        document.addEventListener('htmx:configRequest', function(event) {
+            event.detail.headers['X-CSRFToken'] = CSRF_TOKEN;
+        });
+    </script>
+
+    <!-- Utility Scripts -->
+    <script>
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.removeItem('theme');
+
+        // Sidebar Toggle (mobile)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggleBtn = document.getElementById('sidebarToggle');
+
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+
+                const icon = toggleBtn.querySelector('i');
+                if (sidebar.classList.contains('show')) {
+                    icon.classList.remove('bi-list');
+                    icon.classList.add('bi-x-lg');
+                } else {
+                    icon.classList.remove('bi-x-lg');
+                    icon.classList.add('bi-list');
+                }
+            }
+        }
+
+        // Close sidebar on link click (mobile)
+        document.querySelectorAll('.sidebar-nav .nav-link:not([data-bs-toggle])').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Scroll to top button
+        (function() {
+            const scrollBtn = document.createElement('button');
+            scrollBtn.className = 'scroll-to-top';
+            scrollBtn.innerHTML = '<i class="bi bi-chevron-up"></i>';
+            scrollBtn.setAttribute('aria-label', 'Врати се на врх');
+            document.body.appendChild(scrollBtn);
+
+            window.addEventListener('scroll', function() {
+                if (window.pageYOffset > 300) {
+                    scrollBtn.classList.add('visible');
+                } else {
+                    scrollBtn.classList.remove('visible');
+                }
+            });
+
+            scrollBtn.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
+
+        // Scroll progress indicator
+        (function() {
+            const progress = document.createElement('div');
+            progress.className = 'scroll-progress';
+            document.body.appendChild(progress);
+
+            window.addEventListener('scroll', function() {
+                const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+                progress.style.width = scrollPercent + '%';
+            });
+        })();
+
+        // Sidebar collapse toggle
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('sidebar');
+            const contentWrapper = document.querySelector('.content-wrapper');
+            if (sidebar) {
+                sidebar.classList.toggle('sidebar-collapsed');
+                const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                if (contentWrapper) {
+                    contentWrapper.classList.toggle('sidebar-is-collapsed', isCollapsed);
+                }
+            }
+        }
+
+        // Initialize sidebar state
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const contentWrapper = document.querySelector('.content-wrapper');
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+            if (sidebar && isCollapsed) {
+                sidebar.classList.add('sidebar-collapsed');
+            }
+            if (contentWrapper && isCollapsed) {
+                contentWrapper.classList.add('sidebar-is-collapsed');
+            }
+
+            // Add collapse button to sidebar
+            if (sidebar && !sidebar.querySelector('.sidebar-collapse-btn')) {
+                const collapseBtn = document.createElement('button');
+                collapseBtn.className = 'sidebar-collapse-btn';
+                collapseBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+                collapseBtn.onclick = toggleSidebarCollapse;
+                collapseBtn.setAttribute('aria-label', 'Скупи/прошири бочну траку');
+                sidebar.appendChild(collapseBtn);
+            }
+
+            // Expand sidebar when clicking any icon in collapsed mode
+            if (sidebar) {
+                sidebar.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        if (sidebar.classList.contains('sidebar-collapsed')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            sidebar.classList.remove('sidebar-collapsed');
+                            localStorage.setItem('sidebarCollapsed', false);
+                            if (contentWrapper) {
+                                contentWrapper.classList.remove('sidebar-is-collapsed');
+                            }
+                            // After expanding, trigger the original click so the submenu opens or link navigates
+                            setTimeout(function() { link.click(); }, 300);
+                        }
+                    });
+                });
+            }
+
+            // Active menu highlight
+            const currentPath = window.location.pathname;
+            const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
+            sidebarLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && currentPath === href) {
+                    link.classList.add('active');
+                    const parentCollapse = link.closest('.collapse');
+                    if (parentCollapse) {
+                        parentCollapse.classList.add('show');
+                        const parentToggle = document.querySelector(
+                            `[data-bs-target="#${parentCollapse.id}"], [href="#${parentCollapse.id}"]`
+                        );
+                        if (parentToggle) {
+                            parentToggle.classList.add('parent-active');
+                            parentToggle.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                }
+            });
+
+            // Database dropdown submenu toggle
+            document.querySelectorAll('.dropdown-toggle-submenu').forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const submenuId = this.getAttribute('data-submenu');
+                    const submenu = document.getElementById(submenuId);
+
+                    if (submenu) {
+                        // Toggle current submenu
+                        submenu.classList.toggle('show');
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+
+            // Prevent dropdown from closing when clicking inside submenus
+            document.querySelectorAll('.dropdown-menu-mega').forEach(menu => {
+                menu.addEventListener('click', function(e) {
+                    // Only stop propagation for submenu toggles, allow links to work
+                    if (e.target.classList.contains('dropdown-toggle-submenu') ||
+                        e.target.closest('.dropdown-toggle-submenu')) {
+                        e.stopPropagation();
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- Mail notifier Alpine component -->
+    <script>
+    function mailNotifier() {
+        return {
+            unread: 0,
+            _interval: null,
+            async check() {
+                // Skip if on the mail client page (it has its own polling)
+                if (window.location.pathname === '/mail') {
+                    if (!this._interval) this._interval = setInterval(() => this.check(), 90000);
+                    return;
+                }
+                // Skip if tab is hidden
+                if (document.hidden) {
+                    if (!this._interval) this._interval = setInterval(() => this.check(), 90000);
+                    return;
+                }
+                try {
+                    const r = await fetch('/api/mail/check');
+                    const d = await r.json();
+                    if (d.success) this.unread = d.unread || 0;
+                } catch(e) { /* not configured yet */ }
+                if (!this._interval) {
+                    this._interval = setInterval(() => this.check(), 90000);
+                }
+            }
+        }
+    }
+    </script>
+    <style>
+    @keyframes mailPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+    }
+    .mail-pulse { animation: mailPulse 2s ease-in-out infinite; color: var(--bs-primary) !important; }
+    </style>
+
+    <!-- Three.js + Weather Particles -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/weather_particles.js') }}?v={{ weather_particles_version }}"></script>
+
+    <!-- Language/Script Translator -->
+    <script src="{{ url_for('static', filename='js/translator.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

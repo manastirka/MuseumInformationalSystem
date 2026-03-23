@@ -1,0 +1,1955 @@
+{% extends "base.html" %}
+
+{% block title %}Главна табла - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div x-data="dashboard()" x-cloak class="heritage-dashboard">
+<style>
+/* Dashboard page styles */
+.heritage-dashboard {
+    color: #4b3322;
+}
+
+.heritage-dashboard .container-main {
+    max-width: 1240px;
+    padding: 1.9rem 1.4rem 2.75rem;
+}
+
+.heritage-dashboard .dashboard-header {
+    background:
+        radial-gradient(circle at 24% 18%, rgba(255, 231, 188, 0.14), transparent 24%),
+        linear-gradient(135deg, #5c1719 0%, #6d1f21 34%, #4d1517 100%);
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(230, 192, 118, 0.3);
+    box-shadow: 0 22px 38px rgba(64, 18, 18, 0.22), inset 0 1px 0 rgba(255, 238, 201, 0.14);
+    padding: 1.8rem 2rem !important;
+}
+
+.heritage-dashboard .dashboard-header::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 18px;
+    border: 1px solid rgba(242, 210, 147, 0.16);
+    pointer-events: none;
+}
+
+.heritage-dashboard .dashboard-header::after {
+    content: "";
+    position: absolute;
+    inset: auto 10% 10px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(232, 203, 145, 0.45), transparent);
+    pointer-events: none;
+}
+
+.heritage-dashboard .dashboard-header h1,
+.heritage-dashboard .section-header h3,
+.heritage-dashboard .card h4,
+.heritage-dashboard .card h6,
+.heritage-dashboard .card-header,
+.heritage-dashboard .quick-action span {
+    font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+.heritage-dashboard .dashboard-header h1 {
+    font-size: clamp(2rem, 1.65rem + 1vw, 2.85rem);
+    line-height: 0.96;
+    letter-spacing: 0.01em;
+    color: #f0d19a;
+}
+
+.heritage-dashboard .dashboard-header p {
+    color: rgba(243, 226, 188, 0.84);
+    font-size: 1rem;
+}
+
+.dashboard-header-logo {
+    filter: sepia(1) saturate(0.45) hue-rotate(353deg) brightness(1.3) drop-shadow(0 0 2px rgba(233, 198, 121, 0.42));
+}
+
+.dashboard-header-toolbar {
+    gap: 0.8rem !important;
+}
+
+.dashboard-control-btn {
+    min-width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(117, 68, 44, 0.94), rgba(83, 42, 29, 0.96));
+    color: #ecd6aa;
+    border: 1px solid rgba(234, 204, 147, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 242, 215, 0.1), 0 12px 18px rgba(34, 10, 10, 0.16);
+}
+
+.dashboard-control-btn:hover {
+    color: #f7ead0;
+    filter: brightness(1.05);
+}
+
+.dashboard-control-btn i {
+    color: inherit;
+}
+
+.heritage-dashboard .dashboard-search {
+    background: linear-gradient(180deg, rgba(111, 67, 45, 0.92), rgba(76, 40, 28, 0.96));
+    border: 1px solid rgba(237, 205, 145, 0.24);
+    border-radius: 12px;
+    padding: 0.72rem 1rem;
+    color: #f2e4c5;
+    width: min(260px, 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 241, 213, 0.09), 0 10px 18px rgba(32, 8, 8, 0.15);
+}
+
+.heritage-dashboard .dashboard-search::placeholder {
+    color: rgba(241, 222, 186, 0.56);
+}
+
+.heritage-dashboard .dashboard-search:focus {
+    outline: none;
+    border-color: rgba(244, 217, 164, 0.42);
+    box-shadow: 0 0 0 3px rgba(222, 180, 107, 0.14), inset 0 1px 0 rgba(255, 241, 213, 0.12);
+}
+
+.heritage-dashboard .card {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid rgba(121, 85, 53, 0.38) !important;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(255, 247, 228, 0.72), transparent 24%),
+        linear-gradient(180deg, rgba(255, 251, 242, 0.86), rgba(235, 217, 184, 0.98));
+    box-shadow:
+        0 16px 28px rgba(80, 54, 31, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -6px 12px rgba(154, 114, 74, 0.08);
+    overflow: hidden;
+}
+
+.heritage-dashboard .card::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(150, 112, 76, 0.18);
+    pointer-events: none;
+}
+
+.heritage-dashboard .module-card,
+.heritage-dashboard .social-card,
+.heritage-dashboard .quick-action,
+.heritage-dashboard .news-card {
+    transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.heritage-dashboard .module-card:hover,
+.heritage-dashboard .social-card:hover,
+.heritage-dashboard .quick-action:hover,
+.heritage-dashboard .news-card:hover {
+    transform: translateY(-5px);
+    box-shadow:
+        0 22px 38px rgba(80, 54, 31, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72),
+        inset 0 -6px 12px rgba(154, 114, 74, 0.08);
+}
+
+.heritage-dashboard .card-header {
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.42), rgba(183, 147, 103, 0.2)) !important;
+    border-bottom: 1px solid rgba(139, 97, 60, 0.18);
+    color: #5b3b24 !important;
+}
+
+.heritage-dashboard .module-card .module-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: linear-gradient(180deg, #d6bb8c 0%, #ba9665 100%) !important;
+    border: 1px solid rgba(138, 101, 64, 0.26);
+    box-shadow: inset 0 1px 0 rgba(255, 244, 221, 0.7), 0 8px 14px rgba(94, 64, 35, 0.14);
+}
+
+.heritage-dashboard .module-card .module-icon i {
+    color: #7a562a !important;
+}
+
+/* Minimizable card styles */
+.heritage-dashboard .card-minimizable .card-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.heritage-dashboard .card-minimizable.minimized .card-body {
+    display: none;
+}
+
+.heritage-dashboard .card-minimizable .minimize-icon {
+    transition: transform 0.2s ease;
+}
+
+.heritage-dashboard .card-minimizable.minimized .minimize-icon {
+    transform: rotate(180deg);
+}
+
+.heritage-dashboard .window-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.heritage-dashboard .btn-window {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: #93642f;
+}
+
+/* Notification dropdown */
+.heritage-dashboard .notification-dropdown .notification-item:hover {
+    background-color: rgba(150, 111, 76, 0.08);
+}
+
+/* News cards */
+.heritage-dashboard .news-card .card-img-top {
+    height: 180px;
+    object-fit: cover;
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.28), rgba(154, 114, 74, 0.18));
+}
+
+.heritage-dashboard .news-card .card-body {
+    color: #4b3322;
+}
+
+.heritage-dashboard .news-card .card-title {
+    color: #4b3322 !important;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.35rem;
+    line-height: 1.1;
+}
+
+/* Section headers */
+.heritage-dashboard .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-bottom: 0.85rem;
+}
+
+.heritage-dashboard .section-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(127, 87, 52, 0.24), rgba(127, 87, 52, 0.08));
+}
+
+.heritage-dashboard .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 1.35rem + 0.35vw, 1.95rem);
+    color: #5f3b24;
+}
+
+/* Alpine.js */
+[x-cloak] {
+    display: none !important;
+}
+
+.heritage-dashboard .btn-primary {
+    background: linear-gradient(180deg, #285749 0%, #1b4439 100%);
+    border: 1px solid rgba(228, 198, 136, 0.36);
+    color: #e9d1a0;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(245, 229, 191, 0.1), 0 10px 18px rgba(39, 34, 19, 0.18);
+}
+
+.heritage-dashboard .btn-primary:hover,
+.heritage-dashboard .btn-primary:focus {
+    background: linear-gradient(180deg, #2d6252 0%, #1f4b3f 100%);
+    color: #f2e4c0;
+}
+
+.heritage-dashboard .btn-outline-primary,
+.heritage-dashboard .btn-outline-success,
+.heritage-dashboard .btn-outline-secondary {
+    background: linear-gradient(180deg, rgba(255, 250, 241, 0.72), rgba(233, 217, 186, 0.84));
+    border: 1px solid rgba(141, 101, 63, 0.28);
+    color: #5b3b24;
+    border-radius: 999px;
+}
+
+.heritage-dashboard .btn-outline-primary:hover,
+.heritage-dashboard .btn-outline-success:hover,
+.heritage-dashboard .btn-outline-secondary:hover {
+    color: #3d2517;
+    background: linear-gradient(180deg, rgba(255, 252, 246, 0.9), rgba(236, 221, 193, 0.96));
+}
+
+.heritage-dashboard .quick-action {
+    cursor: pointer;
+}
+
+.heritage-dashboard .quick-action .card-body {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.heritage-dashboard .quick-action span,
+.heritage-dashboard .card h4,
+.heritage-dashboard .card h6 {
+    color: #523620;
+}
+
+.heritage-dashboard .notification-badge {
+    background: radial-gradient(circle at 35% 32%, #cc5341, #8d211d 72%);
+    border: 1px solid rgba(255, 226, 186, 0.35);
+    box-shadow: 0 8px 12px rgba(77, 20, 18, 0.22);
+}
+
+.heritage-dashboard .heritage-notification-card .card-header {
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.38), rgba(181, 145, 102, 0.18)) !important;
+}
+
+.heritage-dashboard .text-muted {
+    color: rgba(86, 58, 38, 0.74) !important;
+}
+
+.heritage-dashboard .text-dark {
+    color: #4b3322 !important;
+}
+
+.heritage-dashboard .bg-light {
+    background-color: rgba(150, 111, 76, 0.08) !important;
+}
+
+.heritage-dashboard .border-bottom {
+    border-color: rgba(138, 101, 64, 0.12) !important;
+}
+
+.heritage-dashboard .alert {
+    border-radius: 16px;
+    border: 1px solid rgba(138, 101, 64, 0.22);
+    background: linear-gradient(180deg, rgba(255, 251, 244, 0.86), rgba(237, 221, 192, 0.94));
+    color: #5b3b24;
+}
+
+.heritage-dashboard .spinner-border {
+    border-color: rgba(112, 79, 48, 0.14);
+    border-top-color: #765129;
+}
+
+.heritage-feed-header {
+    background: linear-gradient(180deg, rgba(211, 184, 139, 0.5), rgba(175, 139, 96, 0.22)) !important;
+}
+
+.heritage-feed-header .btn-light {
+    background: linear-gradient(180deg, rgba(255, 250, 241, 0.84), rgba(233, 217, 186, 0.92));
+    border: 1px solid rgba(141, 101, 63, 0.2);
+    color: #5b3b24;
+}
+
+/* Animated weather widget */
+.dashboard-weather-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+    border: 1px solid rgba(240, 210, 150, 0.18);
+    border-radius: 16px;
+    padding: 0.55rem 1rem;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    min-width: 170px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.dashboard-weather-widget::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.dashboard-weather-widget:hover {
+    transform: translateY(-1px);
+    border-color: rgba(244, 217, 164, 0.34);
+    box-shadow: 0 16px 24px rgba(41, 13, 13, 0.18);
+}
+
+.dashboard-weather-widget:focus-visible {
+    outline: 2px solid rgba(245, 223, 172, 0.82);
+    outline-offset: 3px;
+}
+
+.weather-icon-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+
+.weather-icon-wrap .weather-icon-main {
+    font-size: 1.75rem;
+    line-height: 1;
+    display: block;
+    text-align: center;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+}
+
+/* Sun rays animation */
+.weather-icon-wrap.weather-clear .weather-icon-main {
+    animation: weatherSunPulse 3s ease-in-out infinite;
+}
+@keyframes weatherSunPulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(255,200,50,0.3)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 14px rgba(255,200,50,0.6)); transform: scale(1.08); }
+}
+
+/* Cloud drift animation */
+.weather-icon-wrap.weather-cloudy .weather-icon-main {
+    animation: weatherCloudDrift 4s ease-in-out infinite;
+}
+@keyframes weatherCloudDrift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(3px); }
+}
+
+/* Rain drop animation */
+.weather-icon-wrap.weather-rain::after,
+.weather-icon-wrap.weather-drizzle::after {
+    content: '💧';
+    position: absolute;
+    font-size: 0.5rem;
+    bottom: 2px;
+    left: 50%;
+    animation: weatherRainDrop 1.2s ease-in infinite;
+    opacity: 0;
+}
+@keyframes weatherRainDrop {
+    0% { transform: translateY(-16px) translateX(-2px); opacity: 0.8; }
+    100% { transform: translateY(4px) translateX(2px); opacity: 0; }
+}
+
+/* Snow float animation */
+.weather-icon-wrap.weather-snow .weather-icon-main {
+    animation: weatherSnowFloat 3s ease-in-out infinite;
+}
+@keyframes weatherSnowFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-2px) rotate(3deg); }
+    75% { transform: translateY(2px) rotate(-3deg); }
+}
+
+/* Fog pulse animation */
+.weather-icon-wrap.weather-fog .weather-icon-main {
+    animation: weatherFogPulse 4s ease-in-out infinite;
+}
+@keyframes weatherFogPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+/* Thunder flash animation */
+.weather-icon-wrap.weather-thunderstorm .weather-icon-main {
+    animation: weatherThunderFlash 2.5s ease-in-out infinite;
+}
+@keyframes weatherThunderFlash {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+    10% { filter: drop-shadow(0 0 18px rgba(255,255,150,0.9)); }
+    12% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+    14% { filter: drop-shadow(0 0 12px rgba(255,255,150,0.7)); }
+    16% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+}
+
+.weather-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+}
+
+.weather-temp {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #f5e2b8;
+    line-height: 1.1;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    letter-spacing: -0.02em;
+}
+
+.weather-desc {
+    font-size: 0.72rem;
+    color: rgba(243, 226, 188, 0.72);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.weather-wind {
+    font-size: 0.65rem;
+    color: rgba(243, 226, 188, 0.5);
+    line-height: 1.15;
+}
+
+.weather-location {
+    font-size: 0.6rem;
+    color: rgba(243, 226, 188, 0.4);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.weather-temp-placeholder {
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+}
+
+.weather-widget-cta {
+    margin-left: auto;
+    color: rgba(248, 233, 198, 0.64);
+    font-size: 0.95rem;
+}
+
+.weather-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1085;
+    background: rgba(31, 15, 13, 0.54);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.4rem;
+}
+
+.weather-modal-card {
+    width: min(960px, 100%);
+    max-height: min(88vh, 900px);
+    overflow: auto;
+    border-radius: 26px;
+    border: 1px solid rgba(127, 89, 53, 0.28);
+    background:
+        radial-gradient(circle at top right, rgba(255, 244, 217, 0.38), transparent 34%),
+        linear-gradient(180deg, rgba(255, 252, 245, 0.8), rgba(238, 226, 204, 0.75));
+    box-shadow: 0 32px 56px rgba(48, 22, 18, 0.32);
+    color: #4b3322;
+    backdrop-filter: blur(12px) saturate(1.05);
+    -webkit-backdrop-filter: blur(12px) saturate(1.05);
+}
+
+.weather-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.45rem 1.6rem 1rem;
+    border-bottom: 1px solid rgba(137, 98, 65, 0.16);
+}
+
+.weather-modal-header h4 {
+    margin-bottom: 0.25rem;
+    color: #6c221f;
+}
+
+.weather-modal-header p {
+    margin: 0;
+    color: #7a5a43;
+}
+
+.weather-modal-close {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid rgba(135, 96, 62, 0.18);
+    background: linear-gradient(180deg, rgba(255, 248, 235, 0.95), rgba(229, 213, 184, 0.95));
+    color: #633d26;
+}
+
+.weather-modal-body {
+    padding: 1.35rem 1.6rem 1.65rem;
+}
+
+.weather-modal-kicker {
+    display: inline-block;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b613e;
+}
+
+.weather-modal-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.95fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.weather-modal-current-card,
+.weather-modal-meta-card,
+.weather-warning-banner,
+.weather-day-card,
+.weather-empty-state {
+    border-radius: 20px;
+    border: 1px solid rgba(145, 106, 71, 0.16);
+    background: linear-gradient(180deg, rgba(255, 253, 247, 0.74), rgba(245, 235, 216, 0.7));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 14px 22px rgba(87, 59, 34, 0.08);
+}
+
+.weather-modal-current-card {
+    padding: 1.25rem 1.3rem;
+}
+
+.weather-modal-current {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.weather-modal-current-icon {
+    font-size: 2.7rem;
+    line-height: 1;
+}
+
+.weather-modal-current-temp {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 2.4rem;
+    line-height: 0.95;
+    color: #6b2f1f;
+}
+
+.weather-modal-current-desc {
+    color: #6e4e35;
+}
+
+.weather-modal-meta-card {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    padding: 1.15rem 1.2rem;
+}
+
+.weather-modal-meta-card span {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #916d4d;
+}
+
+.weather-modal-meta-card strong {
+    display: block;
+    margin-top: 0.28rem;
+    color: #563421;
+}
+
+.weather-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.05rem 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.weather-warning-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.weather-warning-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem;
+}
+
+.weather-warning-title-block {
+    min-width: 0;
+}
+
+.weather-warning-banner strong {
+    display: block;
+    color: #5a3822;
+}
+
+.weather-warning-banner p {
+    margin: 0.28rem 0 0;
+    color: #735339;
+}
+
+.weather-warning-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0.34rem 0.72rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.weather-warning-banner.is-warning .weather-warning-status {
+    background: rgba(183, 102, 28, 0.16);
+    color: #8c4216;
+    border-color: rgba(183, 102, 28, 0.24);
+}
+
+.weather-warning-banner.is-watch .weather-warning-status {
+    background: rgba(194, 145, 51, 0.16);
+    color: #7a5a17;
+    border-color: rgba(194, 145, 51, 0.24);
+}
+
+.weather-warning-banner.is-clear .weather-warning-status {
+    background: rgba(76, 135, 83, 0.14);
+    color: #2d6a35;
+    border-color: rgba(76, 135, 83, 0.22);
+}
+
+.weather-warning-banner.is-neutral .weather-warning-status {
+    background: rgba(140, 112, 82, 0.12);
+    color: #6b543d;
+    border-color: rgba(140, 112, 82, 0.2);
+}
+
+.weather-warning-summary {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.weather-warning-detail-box {
+    margin-top: 0.8rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.34);
+    border: 1px solid rgba(131, 94, 62, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+}
+
+.weather-warning-banner.is-warning {
+    background: linear-gradient(180deg, rgba(255, 235, 209, 0.98), rgba(244, 214, 176, 0.98));
+    border-color: rgba(183, 102, 28, 0.34);
+}
+
+.weather-warning-banner.is-watch {
+    background: linear-gradient(180deg, rgba(255, 244, 220, 0.98), rgba(245, 226, 188, 0.98));
+    border-color: rgba(194, 145, 51, 0.28);
+}
+
+.weather-warning-banner.is-clear {
+    background: linear-gradient(180deg, rgba(236, 248, 237, 0.98), rgba(215, 238, 219, 0.98));
+    border-color: rgba(76, 135, 83, 0.24);
+}
+
+.weather-warning-banner.is-neutral {
+    background: linear-gradient(180deg, rgba(244, 239, 232, 0.98), rgba(233, 223, 207, 0.98));
+    border-color: rgba(140, 112, 82, 0.22);
+}
+
+.weather-warning-message {
+    margin-top: 0;
+    color: #6d4d35;
+    line-height: 1.45;
+}
+
+.weather-warning-message p {
+    margin: 0;
+}
+
+.weather-warning-message p + p {
+    margin-top: 0.55rem;
+}
+
+.weather-warning-message strong {
+    color: #553522;
+}
+
+.weather-warning-meta-note {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.78rem;
+    color: #876246;
+}
+
+.weather-forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.weather-day-card {
+    padding: 0.95rem 0.9rem;
+}
+
+.weather-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.45rem;
+}
+
+.weather-day-short {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b613e;
+}
+
+.weather-day-icon {
+    font-size: 1.15rem;
+}
+
+.weather-day-name {
+    display: block;
+    color: #5a3822;
+}
+
+.weather-day-date {
+    display: block;
+    margin-top: 0.12rem;
+    color: #866042;
+    font-size: 0.76rem;
+}
+
+.weather-day-desc {
+    margin: 0.55rem 0 0.8rem;
+    font-size: 0.82rem;
+    min-height: 2.45rem;
+    color: #72533a;
+}
+
+.weather-day-temp-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+}
+
+.weather-day-temp-row span {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #6b2f1f;
+}
+
+.weather-day-temp-row small {
+    font-size: 0.86rem;
+    color: #8b6445;
+}
+
+.weather-day-meta {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    color: #73533a;
+}
+
+.weather-empty-state {
+    padding: 1rem 1.05rem;
+    color: #735239;
+}
+
+@media (max-width: 991.98px) {
+    .heritage-dashboard .dashboard-header {
+        padding: 1.5rem 1.4rem !important;
+    }
+
+    .heritage-dashboard .dashboard-header-toolbar {
+        justify-content: flex-start !important;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-weather-widget {
+        min-width: auto;
+    }
+
+    .weather-modal-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .weather-forecast-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .heritage-dashboard .container-main {
+        padding: 1.25rem 0.85rem 2rem;
+    }
+
+    .heritage-dashboard .dashboard-search {
+        width: 100%;
+    }
+
+    .weather-modal-backdrop {
+        padding: 0.85rem;
+    }
+
+    .weather-modal-header,
+    .weather-modal-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .weather-modal-meta-card {
+        grid-template-columns: 1fr;
+    }
+
+    .weather-warning-banner {
+        flex-direction: column;
+    }
+
+    .weather-warning-header {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .weather-forecast-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+</style>
+
+<div class="container-main fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header text-white p-4">
+                <div class="row align-items-center position-relative" style="z-index: 1;">
+                    <div class="col-md-6">
+                        <h1 class="h3 mb-1 fw-bold d-flex align-items-center">
+                            <img src="{{ url_for('static', filename='images/logotransparent.png') }}" alt="Лого" height="52" class="me-2 dashboard-header-logo">
+                            Добродошли, {{ user_name }}!
+                        </h1>
+                        <p class="mb-0 opacity-75">
+                            Информациони систем Природњачког музеја у Београду
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-end dashboard-header-toolbar">
+                            {% set _wc = weather_condition|default('none') %}
+                            {% set _weather_icons = {
+                                'clear': '☀️', 'cloudy': '☁️', 'fog': '🌫️',
+                                'drizzle': '🌦️', 'rain': '🌧️', 'snow': '🌨️',
+                                'thunderstorm': '⛈️'
+                            } %}
+                            <button type="button"
+                                    class="dashboard-weather-widget"
+                                    title="Клик за 7 дана прогнозе и RHMZ упозорења"
+                                    @click="openWeatherDetails()"
+                                    @keydown.enter.prevent="openWeatherDetails()"
+                                    @keydown.space.prevent="openWeatherDetails()">
+                                <div class="weather-icon-wrap weather-{{ _wc }}">
+                                    <span class="weather-icon-main">{{ _weather_icons.get(_wc, '🌤️') }}</span>
+                                </div>
+                                <div class="weather-info">
+                                    {% if weather_temperature is not none %}
+                                    <span class="weather-temp">{{ weather_temperature|round|int }}°C</span>
+                                    {% else %}
+                                    <span class="weather-temp weather-temp-placeholder">7 дана</span>
+                                    {% endif %}
+                                    <span class="weather-desc">{{ weather_description if weather_description else 'Прогноза и упозорења' }}</span>
+                                    {% if weather_windspeed is not none %}
+                                    <span class="weather-wind"><i class="bi bi-wind"></i> {{ weather_windspeed|round|int }} km/h</span>
+                                    {% else %}
+                                    <span class="weather-wind"><i class="bi bi-shield-exclamation"></i> RHMZ дневна провера</span>
+                                    {% endif %}
+                                    <span class="weather-location">Београд · клик за детаље</span>
+                                </div>
+                                <span class="weather-widget-cta" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                            </button>
+                            <input type="text"
+                                   class="dashboard-search"
+                                   placeholder="Претражи модуле..."
+                                   x-model="searchQuery"
+                                   @input="filterModules()">
+                            <div class="position-relative">
+                                <button class="btn dashboard-control-btn btn-sm" @click="showNotifications = !showNotifications; if(showNotifications) markAllRead()">
+                                    <i class="bi bi-bell"></i>
+                                </button>
+                                <span class="notification-badge" x-show="notifications > 0" x-text="notifications"></span>
+                            </div>
+                            <a href="{{ url_for('customize_dashboard') }}" class="btn dashboard-control-btn btn-sm" title="Прилагоди таблу">
+                                <i class="bi bi-sliders"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Dropdown -->
+    <div x-show="showNotifications"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 transform -translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click.away="showNotifications = false"
+         class="notification-dropdown position-fixed"
+         style="top: 120px; right: 30px; z-index: 1050; width: 350px;">
+        <div class="card card-glass heritage-notification-card shadow-lg border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h6 class="mb-0 fw-bold">
+                    <i class="bi bi-bell me-2"></i>
+                    Обавештења
+                </h6>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary" @click="markAllRead()" x-show="notifications > 0">
+                        Прочитано
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @click="clearNotifications()">
+                        Обриши све
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <template x-if="notificationsList.length === 0">
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-bell-slash d-block mb-2" style="font-size: 2rem;"></i>
+                        <small>Нема нових обавештења</small>
+                    </div>
+                </template>
+                <template x-for="(notification, index) in notificationsList" :key="index">
+                    <div class="notification-item p-3 border-bottom" :class="{'bg-light': !notification.read}">
+                        <div class="d-flex align-items-start">
+                            <div class="notification-icon me-3" :class="'bg-' + notification.type + '-subtle'">
+                                <i class="bi" :class="notification.icon" :style="'color: var(--museum-' + notification.type + ')'"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1 small fw-medium" x-text="notification.title"></p>
+                                <p class="mb-1 text-muted small" x-text="notification.message"></p>
+                                <small class="text-muted" x-text="notification.time"></small>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <template x-for="(toast, index) in toasts" :key="index">
+            <div class="toast show" role="alert"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform translate-x-4"
+                 x-transition:enter-end="opacity-100 transform translate-x-0">
+                <div class="toast-header" :class="'bg-' + toast.type + ' text-white'">
+                    <i class="bi me-2" :class="toast.icon"></i>
+                    <strong class="me-auto" x-text="toast.title"></strong>
+                    <button type="button" class="btn-close btn-close-white" @click="removeToast(index)"></button>
+                </div>
+                <div class="toast-body" x-text="toast.message"></div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Available Modules -->
+    {% if accessible_modules %}
+    <div class="row g-4 mb-5 stagger-children" id="modules-container">
+        {% for module in accessible_modules %}
+        <div class="col-lg-6 module-col" data-module-name="{{ module.name }}">
+            <div class="card module-card card-glass card-shine h-100 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="module-icon"
+                                 style="background: linear-gradient(135deg, rgba(45, 106, 79, 0.1) 0%, rgba(45, 106, 79, 0.2) 100%);">
+                                <i class="{{ module.icon }}" style="color: var(--museum-primary);"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h4 class="mb-1 fw-bold">{{ module.name }}</h4>
+                            <p class="text-muted mb-0 small">{{ module.description }}</p>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        {% if module.key == 'timesheet' %}
+                            <a href="{{ url_for('timesheet_entry') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-pencil-square me-2"></i>
+                                Унос радне листе
+                            </a>
+                        {% elif module.key == 'museum_databases' %}
+                            <a href="{{ url_for('museum_databases') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-database me-2"></i>
+                                Музејске базе података
+                            </a>
+                        {% elif module.key == 'mineral_database' %}
+                            <a href="{{ url_for('mineral_database_app') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-gem me-2"></i>
+                                База минерала
+                            </a>
+                        {% elif module.key == 'employees_database' %}
+                            <a href="{{ url_for('employees_database') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-people-fill me-2"></i>
+                                База запослених
+                            </a>
+                        {% elif module.key == 'employee_profiles' %}
+                            <a href="{{ url_for('employee_profiles_database') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-person-badge me-2"></i>
+                                Профили запослених
+                            </a>
+                        {% elif module.key == 'library_database' %}
+                            <a href="{{ url_for('library_database') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-book me-2"></i>
+                                База библиотеке
+                            </a>
+                        {% elif module.key == 'cultural_heritage' %}
+                            <a href="{{ url_for('cultural_heritage_database') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-award me-2"></i>
+                                Културна добра
+                            </a>
+                        {% elif module.key == 'curator_collections' %}
+                            <a href="{{ url_for('museum_databases') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-collection me-2"></i>
+                                Кустоске збирке
+                            </a>
+                        {% elif module.key == 'user_management' %}
+                            <a href="{{ url_for('manage_user_access') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-people me-2"></i>
+                                Управљање корисницима
+                            </a>
+                        {% elif module.key == 'reports_analytics' %}
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-graph-up me-2"></i>
+                                Извештаји
+                            </a>
+                        {% elif module.key == 'system_logs' %}
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-shield-check me-2"></i>
+                                Системски логови
+                            </a>
+                        {% elif module.key == 'news' %}
+                            <a href="{{ url_for('museum_news') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-newspaper me-2"></i>
+                                Музејске вести
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- No Access Message -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card card-glass border-warning shadow-sm" style="border-radius: 16px;">
+                <div class="card-body text-center p-5">
+                    <div class="mb-3">
+                        <i class="bi bi-shield-exclamation" style="font-size: 4rem; color: var(--museum-warning);"></i>
+                    </div>
+                    <h4 class="text-warning fw-bold">Немате приступ ниједном модулу</h4>
+                    <p class="text-muted mb-3">
+                        Контактирајте администратора да Вам додели приступ потребним модулима система.
+                    </p>
+                    <small class="text-muted">
+                        Ваш емејл: <code>{{ user_email }}</code>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Social Media Feeds Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="section-header">
+                <h3>
+                    <i class="bi bi-broadcast me-2"></i>
+                    Музејске вести - Друштвене мреже
+                </h3>
+                <a href="{{ url_for('museum_news') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-newspaper me-1"></i>
+                    Све вести
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5 stagger-children">
+        <!-- Facebook Feed -->
+        <div class="col-lg-6">
+            <div class="card social-card card-glass h-100 card-minimizable shadow-sm" data-card-id="facebook-feed">
+                <div class="card-header heritage-feed-header" @click="toggleCard('facebook-feed')">
+                    <span>
+                        <i class="bi bi-facebook me-2"></i>
+                        Facebook - Природњачки музеј
+                    </span>
+                    <div class="d-flex align-items-center">
+                        <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="btn btn-sm btn-light me-2" @click.stop>
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        <div class="window-controls">
+                            <button class="btn-window btn-minimize" @click.stop="toggleCard('facebook-feed')" title="Минимизуј/Врати">
+                                <i class="bi bi-dash minimize-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="fb-page-container" style="overflow: auto; display: flex; justify-content: center;">
+                        <iframe
+                            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fprirodnjacki&tabs=timeline&width=500&height=600&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
+                            width="100%"
+                            height="600"
+                            style="border:none; overflow:hidden; max-width: 500px;"
+                            scrolling="no"
+                            frameborder="0"
+                            allowfullscreen="true"
+                            loading="lazy"
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instagram Feed -->
+        <div class="col-lg-6">
+            <div class="card social-card card-glass h-100 card-minimizable shadow-sm" data-card-id="instagram-feed">
+                <div class="card-header heritage-feed-header" @click="toggleCard('instagram-feed')">
+                    <span>
+                        <i class="bi bi-instagram me-2"></i>
+                        Instagram - @prirodnjacki_muzej
+                    </span>
+                    <div class="d-flex align-items-center">
+                        <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-sm btn-light me-2" @click.stop>
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        <div class="window-controls">
+                            <button class="btn-window btn-minimize" @click.stop="toggleCard('instagram-feed')" title="Минимизуј/Врати">
+                                <i class="bi bi-dash minimize-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="instagram-feed-container" class="h-100">
+                        <script src="https://snapwidget.com/js/snapwidget.js"></script>
+                        <iframe src="https://snapwidget.com/embed/1089057"
+                                class="snapwidget-widget"
+                                allowtransparency="true"
+                                frameborder="0"
+                                scrolling="yes"
+                                style="border:none; overflow:hidden; width:100%; height:600px;"
+                                title="Instagram Feed">
+                        </iframe>
+                        <noscript>
+                            <div class="text-center py-5">
+                                <i class="bi bi-instagram" style="font-size: 3rem; color: #E1306C;"></i>
+                                <p class="mt-3">
+                                    <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-danger">
+                                        Погледај на Instagram
+                                    </a>
+                                </p>
+                            </div>
+                        </noscript>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Website News Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="section-header">
+                <h3>
+                    <i class="bi bi-globe me-2"></i>
+                    Вести са веб сајта - nhmbeo.rs
+                </h3>
+                <a href="https://nhmbeo.rs/vesti/" target="_blank" class="btn btn-outline-success">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                    Све вести
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5 stagger-children" id="website-news-container">
+        <div class="col-12 text-center py-5" id="website-news-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Учитавање...</span>
+            </div>
+            <p class="mt-2 text-muted">Учитавање вести са веб сајта...</p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="section-header">
+                <h3>
+                    <i class="bi bi-lightning me-2"></i>
+                    Брзе акције
+                </h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 stagger-children">
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('change_password') }}'">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-key d-block mb-2" style="font-size: 2rem; color: var(--museum-warning);"></i>
+                    <span class="fw-medium">Промени лозинку</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('timesheet_entry') }}'">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-calendar-event d-block mb-2" style="font-size: 2rem; color: var(--museum-primary);"></i>
+                    <span class="fw-medium">Радна листа</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('mineral_database_app') }}'">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-gem d-block mb-2" style="font-size: 2rem; color: var(--museum-secondary);"></i>
+                    <span class="fw-medium">Претрага минерала</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+            <div class="card border-0 card-glass quick-action icon-pulse" @click="performLogout()">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-box-arrow-right d-block mb-2" style="font-size: 2rem; color: var(--museum-danger);"></i>
+                    <span class="fw-medium">Одјави се</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div x-show="showWeatherModal"
+         x-transition.opacity
+         class="weather-modal-backdrop"
+         style="display: none;"
+         @click.self="closeWeatherDetails()"
+         @keydown.escape.window="closeWeatherDetails()">
+        <div class="weather-modal-card">
+            <div class="weather-modal-header">
+                <div>
+                    <span class="weather-modal-kicker">Београд</span>
+                    <h4 class="fw-bold">7-дневна прогноза и RHMZ упозорења</h4>
+                    <p>Open-Meteo прогноза по данима + дневна провера упозорења са званичног сајта РХМЗ.</p>
+                </div>
+                <button type="button" class="weather-modal-close" @click="closeWeatherDetails()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="weather-modal-body">
+                <template x-if="weatherLoading">
+                    <div class="d-flex align-items-center gap-3 py-4">
+                        <div class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></div>
+                        <span>Учитавам прогнозу и RHMZ упозорења...</span>
+                    </div>
+                </template>
+
+                <template x-if="weatherError && !weatherLoading">
+                    <div class="alert alert-warning mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <span x-text="weatherError"></span>
+                    </div>
+                </template>
+
+                <template x-if="weatherDetails && !weatherLoading">
+                    <div>
+                        <template x-if="weatherDetails.forecast_stale || (weatherDetails.rhmz && weatherDetails.rhmz.stale)">
+                            <div class="alert alert-warning mb-3">
+                                <i class="bi bi-clock-history me-2"></i>
+                                Приказани су последњи успешно учитани подаци јер ново освежавање није успело.
+                            </div>
+                        </template>
+
+                        <div class="weather-modal-summary">
+                            <div class="weather-modal-current-card">
+                                <span class="weather-modal-kicker">Тренутно стање</span>
+                                <div class="weather-modal-current">
+                                    <span class="weather-modal-current-icon"
+                                          x-text="weatherIcon(weatherDetails.current ? weatherDetails.current.condition : 'none')"></span>
+                                    <div>
+                                        <div class="weather-modal-current-temp"
+                                             x-text="formatTemperature(weatherDetails.current ? weatherDetails.current.temperature : null)"></div>
+                                        <div class="weather-modal-current-desc"
+                                             x-text="weatherDetails.current && weatherDetails.current.description ? weatherDetails.current.description : 'Нема тренутног описа'"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="weather-modal-meta-card">
+                                <div>
+                                    <span>Локација</span>
+                                    <strong x-text="weatherDetails.location || 'Београд'"></strong>
+                                </div>
+                                <div>
+                                    <span>Ветар</span>
+                                    <strong x-text="formatWind(weatherDetails.current ? weatherDetails.current.windspeed : null)"></strong>
+                                </div>
+                                <div>
+                                    <span>Ажурирано</span>
+                                    <strong x-text="weatherDetails.forecast_updated_at || '—'"></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="weather-warning-banner" :class="weatherWarningBannerClass()">
+                            <div class="weather-warning-content">
+                                <div class="weather-warning-header">
+                                    <div class="weather-warning-title-block">
+                                        <span class="weather-modal-kicker">RHMZ Србије</span>
+                                        <strong x-text="weatherWarningHeadline()"></strong>
+                                        <p class="weather-warning-summary" x-text="weatherWarningSummary()"></p>
+                                    </div>
+                                    <span class="weather-warning-status">
+                                        <i class="bi" :class="weatherWarningStatusIcon()"></i>
+                                        <span x-text="weatherWarningStatusLabel()"></span>
+                                    </span>
+                                </div>
+                                <div class="weather-warning-detail-box">
+                                    <div class="weather-warning-message"
+                                         x-html="formatWarningMessageHtml()"></div>
+                                    <small class="weather-warning-meta-note"
+                                           x-text="weatherWarningMetaNote()"></small>
+                                </div>
+                            </div>
+                            <a class="btn btn-sm btn-outline-secondary"
+                               :href="weatherDetails.rhmz && weatherDetails.rhmz.source_url ? weatherDetails.rhmz.source_url : '#'"
+                               target="_blank"
+                               rel="noopener">
+                                Отвори RHMZ
+                            </a>
+                        </div>
+
+                        <template x-if="weatherDetails.forecast && weatherDetails.forecast.length">
+                            <div class="weather-forecast-grid">
+                                <template x-for="day in weatherDetails.forecast" :key="day.date">
+                                    <article class="weather-day-card">
+                                        <div class="weather-day-head">
+                                            <span class="weather-day-short" x-text="day.short_label"></span>
+                                            <span class="weather-day-icon" x-text="weatherIcon(day.condition)"></span>
+                                        </div>
+                                        <strong class="weather-day-name" x-text="day.day_name"></strong>
+                                        <span class="weather-day-date" x-text="day.date_label"></span>
+                                        <p class="weather-day-desc" x-text="day.description"></p>
+                                        <div class="weather-day-temp-row">
+                                            <span x-text="formatTemperature(day.temp_max)"></span>
+                                            <small x-text="formatTemperature(day.temp_min)"></small>
+                                        </div>
+                                        <div class="weather-day-meta">
+                                            <span x-text="'Падавине ' + formatPercent(day.precipitation_probability)"></span>
+                                            <span x-text="'Ветар ' + formatWind(day.windspeed)"></span>
+                                        </div>
+                                    </article>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="!weatherDetails.forecast || !weatherDetails.forecast.length">
+                            <div class="weather-empty-state">
+                                <strong class="d-block mb-1">Прогноза није доступна</strong>
+                                <span>Open-Meteo тренутно није вратио 7-дневне податке.</span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+</div><!-- End Alpine x-data wrapper -->
+
+<script>
+// Alpine.js Dashboard Component
+function dashboard() {
+    return {
+        searchQuery: '',
+        showNotifications: false,
+        notifications: 0,
+        notificationsList: [],
+        toasts: [],
+        showWeatherModal: false,
+        weatherLoading: false,
+        weatherError: '',
+        weatherDetails: null,
+
+        init() {
+            this.loadNotifications();
+            this.loadCardStates();
+            this.loadWebsiteNews();
+        },
+
+        // Load notifications from server
+        loadNotifications() {
+            fetch('/api/notifications')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.notificationsList = data.notifications.map(n => ({
+                            id: n.id,
+                            title: n.title,
+                            message: n.message,
+                            time: n.time,
+                            icon: n.icon || 'bi-bell',
+                            type: n.type || 'info',
+                            read: n.is_read
+                        }));
+                        this.notifications = data.unread_count;
+                    }
+                })
+                .catch(() => {
+                    this.notificationsList = [];
+                    this.notifications = 0;
+                });
+        },
+
+        // Clear all notifications
+        clearNotifications() {
+            fetch('/api/notifications/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.notificationsList = [];
+                    this.notifications = 0;
+                    this.showToast('info', 'Обавештења', 'Сва обавештења су обрисана', 'bi-bell-slash');
+                }
+            });
+        },
+
+        // Mark all notifications as read
+        markAllRead() {
+            if (this.notifications === 0) return;
+            fetch('/api/notifications/read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.notificationsList.forEach(n => n.read = true);
+                    this.notifications = 0;
+                }
+            });
+        },
+
+        // Show toast notification
+        showToast(type, title, message, icon) {
+            const toast = { type, title, message, icon };
+            this.toasts.push(toast);
+            setTimeout(() => {
+                this.removeToast(this.toasts.indexOf(toast));
+            }, 4000);
+        },
+
+        // Remove toast
+        removeToast(index) {
+            if (index > -1) {
+                this.toasts.splice(index, 1);
+            }
+        },
+
+        openWeatherDetails() {
+            this.showWeatherModal = true;
+            this.loadWeatherDetails();
+        },
+
+        closeWeatherDetails() {
+            this.showWeatherModal = false;
+        },
+
+        loadWeatherDetails() {
+            this.weatherLoading = true;
+            this.weatherError = '';
+
+            fetch('/api/weather/details?days=7')
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'Није могуће учитати временске податке.');
+                    }
+                    return data;
+                })
+                .then(data => {
+                    this.weatherDetails = data;
+                })
+                .catch(error => {
+                    this.weatherError = error.message || 'Није могуће учитати временске податке.';
+                    if (!this.weatherDetails) {
+                        this.weatherDetails = null;
+                    }
+                })
+                .finally(() => {
+                    this.weatherLoading = false;
+                });
+        },
+
+        weatherIcon(condition) {
+            const icons = {
+                clear: '☀️',
+                cloudy: '☁️',
+                fog: '🌫️',
+                drizzle: '🌦️',
+                rain: '🌧️',
+                snow: '🌨️',
+                thunderstorm: '⛈️',
+                none: '🌤️'
+            };
+            return icons[condition] || '🌤️';
+        },
+
+        formatTemperature(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            const numericValue = Number(value);
+            if (Number.isNaN(numericValue)) return '—';
+            return `${Math.round(numericValue)}°C`;
+        },
+
+        formatWind(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            const numericValue = Number(value);
+            if (Number.isNaN(numericValue)) return '—';
+            return `${Math.round(numericValue)} km/h`;
+        },
+
+        formatPercent(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            const numericValue = Number(value);
+            if (Number.isNaN(numericValue)) return '—';
+            return `${Math.round(numericValue)}%`;
+        },
+
+        weatherWarningBannerClass() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) return 'is-neutral';
+            if (this.weatherDetails.rhmz.error) return 'is-neutral';
+            if (this.weatherDetails.rhmz.has_meteorological_warning) return 'is-warning';
+            if (this.weatherDetails.rhmz.has_warning) return 'is-watch';
+            return 'is-clear';
+        },
+
+        weatherWarningHeadline() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) {
+                return 'RHMZ статус недоступан';
+            }
+            if (this.weatherDetails.rhmz.error) {
+                return this.weatherDetails.rhmz.error;
+            }
+            if (this.weatherDetails.rhmz.has_meteorological_warning) {
+                return 'Активно метеоролошко упозорење';
+            }
+            if (this.weatherDetails.rhmz.has_warning) {
+                return 'Активна службена упозорења';
+            }
+            return 'Без активног метеоролошког упозорења';
+        },
+
+        weatherWarningSummary() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) {
+                return 'Провера са званичног сајта РХМЗ тренутно није доступна.';
+            }
+            return 'Дневна провера метеоролошког упозорења са званичног сајта РХМЗ.';
+        },
+
+        weatherWarningStatusLabel() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) {
+                return 'Непознато';
+            }
+            if (this.weatherDetails.rhmz.error) {
+                return 'Недоступно';
+            }
+            if (this.weatherDetails.rhmz.has_meteorological_warning) {
+                return 'Активно';
+            }
+            if (this.weatherDetails.rhmz.has_warning) {
+                return 'Пажња';
+            }
+            return 'Мирно';
+        },
+
+        weatherWarningStatusIcon() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz || this.weatherDetails.rhmz.error) {
+                return 'bi-question-circle';
+            }
+            if (this.weatherDetails.rhmz.has_meteorological_warning) {
+                return 'bi-exclamation-triangle-fill';
+            }
+            if (this.weatherDetails.rhmz.has_warning) {
+                return 'bi-exclamation-circle';
+            }
+            return 'bi-shield-check';
+        },
+
+        primaryWeatherWarningMessage() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) {
+                return 'RHMZ статус није доступан.';
+            }
+
+            const rhmz = this.weatherDetails.rhmz;
+            if (rhmz.error) {
+                return rhmz.error;
+            }
+
+            const section = rhmz.primary_section;
+            if (section && section.message) {
+                return section.message;
+            }
+
+            return 'Нема доступне поруке за метеоролошко упозорење.';
+        },
+
+        escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        },
+
+        formatWarningMessageHtml() {
+            const rawMessage = this.primaryWeatherWarningMessage();
+            if (!rawMessage) {
+                return '<p>Нема доступне поруке.</p>';
+            }
+
+            const normalized = rawMessage
+                .replace(/\s{2,}/g, ' ')
+                .replace(/\s*;\s*/g, ';\n')
+                .replace(/\.\s+(?=[A-ZА-ЯČĆŽŠĐ])/g, '.\n');
+
+            const parts = normalized
+                .split(/\n+/)
+                .map(part => part.trim())
+                .filter(Boolean)
+                .slice(0, 8);
+
+            if (!parts.length) {
+                return `<p>${this.escapeHtml(rawMessage)}</p>`;
+            }
+
+            return parts.map((part, index) => {
+                const safePart = this.escapeHtml(part);
+                if (index === 0) {
+                    return `<p><strong>Сажетак:</strong> ${safePart}</p>`;
+                }
+                return `<p>${safePart}</p>`;
+            }).join('');
+        },
+
+        weatherWarningMetaNote() {
+            if (!this.weatherDetails || !this.weatherDetails.rhmz) {
+                return '';
+            }
+
+            const rhmz = this.weatherDetails.rhmz;
+            const dateText = rhmz.primary_section && rhmz.primary_section.date
+                ? rhmz.primary_section.date
+                : null;
+            const checkedText = rhmz.checked_at ? `Последња провера: ${rhmz.checked_at}.` : '';
+
+            if (rhmz.stale) {
+                return `Приказан је последњи успешно учитан дневни статус.${checkedText ? ' ' + checkedText : ''}`.trim();
+            }
+
+            if (dateText) {
+                return `Датум упозорења: ${dateText}.${checkedText ? ' ' + checkedText : ''}`.trim();
+            }
+
+            return checkedText;
+        },
+
+        // Filter modules based on search
+        filterModules() {
+            const query = this.searchQuery.toLowerCase();
+            document.querySelectorAll('.module-col').forEach(col => {
+                const name = col.dataset.moduleName.toLowerCase();
+                col.style.display = name.includes(query) ? '' : 'none';
+            });
+        },
+
+        // Toggle card minimize/maximize
+        toggleCard(cardId) {
+            const card = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (!card) return;
+
+            const isMinimized = card.classList.toggle('minimized');
+            if (isMinimized) {
+                card.classList.remove('h-100');
+            } else {
+                card.classList.add('h-100');
+            }
+            this.saveCardStates();
+        },
+
+        // Save card states to localStorage
+        saveCardStates() {
+            const cards = document.querySelectorAll('.card-minimizable');
+            const states = {};
+            cards.forEach(card => {
+                const cardId = card.dataset.cardId;
+                if (cardId) {
+                    states[cardId] = card.classList.contains('minimized');
+                }
+            });
+            localStorage.setItem('dashboardCardStates', JSON.stringify(states));
+        },
+
+        // Load card states from localStorage
+        loadCardStates() {
+            const savedStates = localStorage.getItem('dashboardCardStates');
+            if (!savedStates) return;
+
+            try {
+                const states = JSON.parse(savedStates);
+                Object.keys(states).forEach(cardId => {
+                    if (states[cardId]) {
+                        const card = document.querySelector(`[data-card-id="${cardId}"]`);
+                        if (card) {
+                            card.classList.add('minimized');
+                            card.classList.remove('h-100');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Error loading card states:', e);
+            }
+        },
+
+        // Logout with confirmation
+        performLogout() {
+            if (confirm('Да ли сте сигурни да желите да се одјавите?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ url_for("logout") }}';
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = CSRF_TOKEN;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        },
+
+        // Load website news
+        loadWebsiteNews() {
+            const container = document.getElementById('website-news-container');
+
+            fetch('/api/website-news?limit=6')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.news && data.news.length > 0) {
+                        let html = '';
+                        data.news.forEach(item => {
+                            const imageHtml = item.image
+                                ? `<img src="${escapeHtml(item.image)}" class="card-img-top" alt="${escapeHtml(item.title)}" onerror="this.style.display='none'">`
+                                : `<div class="card-img-top bg-success bg-opacity-10 d-flex align-items-center justify-content-center">
+                                     <i class="bi bi-newspaper text-success" style="font-size: 3rem;"></i>
+                                   </div>`;
+
+                            html += `
+                                <div class="col-lg-4 col-md-6">
+                                    <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener" class="text-decoration-none">
+                                        <div class="card h-100 news-card card-glass card-shine shadow-sm">
+                                            ${imageHtml}
+                                            <div class="card-body">
+                                                <h6 class="card-title text-dark">${escapeHtml(item.title)}</h6>
+                                                ${item.excerpt ? `<p class="card-text text-muted">${escapeHtml(item.excerpt)}</p>` : ''}
+                                            </div>
+                                            ${item.date ? `
+                                            <div class="card-footer bg-transparent border-0 pt-0">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-calendar3 me-1"></i>
+                                                    ${escapeHtml(item.date)}
+                                                </small>
+                                            </div>
+                                            ` : ''}
+                                        </div>
+                                    </a>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Тренутно нема доступних вести са веб сајта.
+                                    <a href="https://nhmbeo.rs/vesti/" target="_blank" class="alert-link">
+                                        Посетите веб сајт директно
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading website news:', error);
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Није могуће учитати вести са веб сајта.
+                                <a href="https://nhmbeo.rs/vesti/" target="_blank" class="alert-link">
+                                    Посетите веб сајт директно
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+    };
+}
+</script>
+{% endblock %}

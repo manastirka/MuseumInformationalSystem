@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mineral.name }} - RRUFF База{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-info-circle-fill"></i>
+        <strong>Референтни научни подаци:</strong>
+        Ова страница приказује научне податке из RRUFF базе. Ови подаци се аутоматски интегришу у
+        детаље минерала музејске збирке. Вратите се на
+        <a href="{{ url_for('admin_mineral_collection') }}" class="alert-link">Минералошку збирку</a>
+        да управљате примерцима музеја.
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-diagram-3"></i> {{ mineral.name }}</h2>
+            <p class="text-muted mb-0">RRUFF ID: <strong>{{ mineral.rruff_id }}</strong></p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin_mineral_collection', search_mode='rruff') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Назад на RRUFF листу
+            </a>
+        </div>
+    </div>
+
+    <!-- Chemical Formula -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Хемијска формула</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-borderless">
+                <tr>
+                    <th width="30%">RRUFF формула:</th>
+                    <td>{{ mineral.formula_rruff or 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <th>IMA формула:</th>
+                    <td>{{ mineral.formula_ima or 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <th>Идеална хемија:</th>
+                    <td>{{ mineral.ideal_chemistry or 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <th>Елементи:</th>
+                    <td>{{ mineral.chemistry_elements or 'N/A' }}</td>
+                </tr>
+                {% if mineral.valence_elements %}
+                <tr>
+                    <th>Валентни елементи:</th>
+                    <td>{{ mineral.valence_elements }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Chemical Composition -->
+    {% if mineral.chemistry %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Хемијски састав (тежински %)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for comp in mineral.chemistry %}
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <strong>{{ comp.oxide }}:</strong>
+                        <span>{% if comp.weight_percent is not none %}{{ "%.2f"|format(comp.weight_percent) }}%{% else %}N/A{% endif %}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Crystallography -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Кристалографија</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Кристални систем:</th>
+                            <td><strong>{{ mineral.crystal_system or 'N/A' }}</strong></td>
+                        </tr>
+                        {% if mineral.crystal_systems %}
+                        <tr>
+                            <th>Сви системи:</th>
+                            <td>{{ mineral.crystal_systems }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Space Group:</th>
+                            <td>{{ mineral.space_group or 'N/A' }}</td>
+                        </tr>
+                        {% if mineral.space_groups %}
+                        <tr>
+                            <th>Све групе:</th>
+                            <td>{{ mineral.space_groups }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        {% if mineral.crystal_morphology %}
+                        <tr>
+                            <th width="40%">Морфологија:</th>
+                            <td>{{ mineral.crystal_morphology }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if mineral.structural_groupname %}
+                        <tr>
+                            <th>Структурна група:</th>
+                            <td>{{ mineral.structural_groupname }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if mineral.fleischers_groupname %}
+                        <tr>
+                            <th>Fleischer's група:</th>
+                            <td>{{ mineral.fleischers_groupname }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMA & Classification -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">IMA и класификација</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">IMA број:</th>
+                            <td><strong>{{ mineral.ima_number or 'N/A' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>IMA статус:</th>
+                            <td>
+                                {% if mineral.ima_status == 'Approved' %}
+                                <span class="badge bg-success">{{ mineral.ima_status }}</span>
+                                {% else %}
+                                {{ mineral.ima_status or 'N/A' }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>IMA минерал:</th>
+                            <td>{{ 'Да' if mineral.ima_mineral == 'Y' else 'Не' }}</td>
+                        </tr>
+                        {% if mineral.ima_mineral_symbol %}
+                        <tr>
+                            <th>IMA симбол:</th>
+                            <td><strong>{{ mineral.ima_mineral_symbol }}</strong></td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Прва публикација:</th>
+                            <td>{{ mineral.year_first_published or 'N/A' }}</td>
+                        </tr>
+                        {% if mineral.country_type_locality %}
+                        <tr>
+                            <th>Тип локалитет:</th>
+                            <td><strong>{{ mineral.country_type_locality }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        {% if mineral.oldest_known_age_ma %}
+                        <tr>
+                            <th>Најстарији узраст:</th>
+                            <td>{{ mineral.oldest_known_age_ma }} Ma</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paragenesis & Notes -->
+    {% if mineral.paragenetic_modes or mineral.status_notes %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Додатне информације</h5>
+        </div>
+        <div class="card-body">
+            {% if mineral.paragenetic_modes %}
+            <div class="mb-3">
+                <h6>Парагенетски модови:</h6>
+                <p>{{ mineral.paragenetic_modes }}</p>
+            </div>
+            {% endif %}
+            {% if mineral.status_notes %}
+            <div class="mb-3">
+                <h6>Напомене:</h6>
+                <p>{{ mineral.status_notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- System Information -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Системске информације</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>RRUFF ID:</strong> {{ mineral.rruff_id }}</p>
+                    <p><strong>Database ID:</strong> {{ mineral.database_id or 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if mineral.rruff_ids %}
+                    <p><strong>RRUFF IDs:</strong> {{ mineral.rruff_ids }}</p>
+                    {% endif %}
+                    <p><strong>Internal ID:</strong> {{ mineral.id }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 mb-4">
+        <a href="{{ url_for('admin_mineral_collection', search_mode='rruff') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад на RRUFF листу
+        </a>
+        <a href="{{ url_for('admin_mineral_collection', search_mode='collection') }}" class="btn btn-success">
+            <i class="bi bi-gem"></i> Минералошка збирка
+        </a>
+    </div>
+</div>
+{% endblock %}

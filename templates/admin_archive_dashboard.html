@@ -1,0 +1,919 @@
+{% extends "base.html" %}
+
+{% block title %}Архива и верификација - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+<div x-data="archiveDashboard()" x-init="init()" x-cloak>
+<style>
+/* ── Header ─────────────────────────────────────────── */
+.archive-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%);
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    padding: 2.5rem 2rem;
+}
+
+.archive-header::before {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.archive-header::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    left: 10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.archive-header h2 {
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
+}
+
+.archive-header .subtitle {
+    font-size: 0.925rem;
+    opacity: 0.8;
+}
+
+.btn-new-request {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 0.6rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    transition: all 0.25s ease;
+}
+
+.btn-new-request:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* ── Statistics ──────────────────────────────────────── */
+.stat-card {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.stat-card .card-body {
+    padding: 1.25rem;
+}
+
+.stat-card .accent-bar {
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+}
+
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 0.15rem;
+}
+
+.stat-card .stat-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── Section Cards ───────────────────────────────────── */
+.section-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: #fff;
+    overflow: hidden;
+}
+
+.section-card:hover {
+    transform: translateY(-6px);
+    border-color: transparent;
+}
+
+.section-card.card-zahtevi:hover {
+    box-shadow: 0 16px 40px rgba(16, 185, 129, 0.18);
+}
+
+.section-card.card-finansije:hover {
+    box-shadow: 0 16px 40px rgba(245, 158, 11, 0.18);
+}
+
+.section-card.card-terenska:hover {
+    box-shadow: 0 16px 40px rgba(139, 92, 246, 0.18);
+}
+
+.section-card .card-body {
+    padding: 2rem 1.5rem 1.75rem;
+}
+
+.section-card .section-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    margin: 0 auto 1.25rem;
+    transition: transform 0.35s ease;
+}
+
+.section-card:hover .section-icon {
+    transform: scale(1.08);
+}
+
+.icon-zahtevi {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #059669;
+}
+
+.icon-finansije {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #d97706;
+}
+
+.icon-terenska {
+    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #7c3aed;
+}
+
+.section-card h4 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+.section-card .section-desc {
+    font-size: 0.85rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+}
+
+/* Approval chain */
+.approval-chain {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.approval-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.approval-step i {
+    font-size: 0.7rem;
+}
+
+.approval-arrow {
+    color: #d1d5db;
+    font-size: 0.65rem;
+}
+
+.pending-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    min-width: 26px;
+    height: 26px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    padding: 0 6px;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 2px 16px rgba(239, 68, 68, 0.6); }
+}
+
+/* ── Activity & Pending Panels ───────────────────────── */
+.panel-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.panel-card .panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    background: #fafbfc;
+}
+
+.panel-card .panel-header h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.panel-card .panel-header .count-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 10px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.panel-body {
+    max-height: 440px;
+    overflow-y: auto;
+}
+
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.panel-body::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+.activity-item {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+    background: #f9fafb;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.priority-urgent { border-left: 3px solid #ef4444; }
+.priority-high   { border-left: 3px solid #f97316; }
+.priority-normal { border-left: 3px solid transparent; }
+.priority-low    { border-left: 3px solid transparent; }
+
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    display: block;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* ── Modal ───────────────────────────────────────────── */
+.modal-backdrop-custom {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #f3f4f6;
+    padding: 1rem 1.5rem;
+}
+
+.type-select-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.type-select-card:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+}
+
+.type-select-card.selected-zahtev  { border-color: #10b981; background: #ecfdf5; }
+.type-select-card.selected-finansije { border-color: #f59e0b; background: #fffbeb; }
+.type-select-card.selected-terenska  { border-color: #8b5cf6; background: #f5f3ff; }
+
+.type-select-card .card-body {
+    padding: 1.25rem;
+}
+
+.type-select-card i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* ── Animations ──────────────────────────────────────── */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+    animation: fadeInUp 0.4s ease-out both;
+}
+
+.animate-in-1 { animation-delay: 0.05s; }
+.animate-in-2 { animation-delay: 0.1s; }
+.animate-in-3 { animation-delay: 0.15s; }
+.animate-in-4 { animation-delay: 0.2s; }
+.animate-in-5 { animation-delay: 0.25s; }
+.animate-in-6 { animation-delay: 0.3s; }
+</style>
+
+<!-- Header -->
+<div class="archive-header mb-4 animate-in">
+    <div class="row align-items-center position-relative" style="z-index: 1;">
+        <div class="col-md-8">
+            <h2 class="text-white mb-2 fw-bold">
+                <i class="bi bi-shield-check me-2"></i>Архива и верификација
+            </h2>
+            <p class="subtitle text-white mb-0">Управљање захтевима, финансијама и теренским активностима</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-new-request" @click="showNewRequestModal = true">
+                <i class="bi bi-plus-lg me-2"></i>Нови захтев
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3 animate-in animate-in-1">
+        <div class="stat-card card shadow-sm">
+            <div class="accent-bar" style="background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;">
+                        <i class="bi bi-inbox-fill"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value" style="color: #1e40af;" x-text="stats.total">0</div>
+                        <div class="stat-label">Укупно</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3 animate-in animate-in-2">
+        <div class="stat-card card shadow-sm">
+            <div class="accent-bar" style="background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value" style="color: #92400e;" x-text="stats.pending + (stats.in_review || 0)">0</div>
+                        <div class="stat-label">На чекању</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3 animate-in animate-in-3">
+        <div class="stat-card card shadow-sm">
+            <div class="accent-bar" style="background: linear-gradient(90deg, #10b981, #34d399);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value" style="color: #065f46;" x-text="stats.approved">0</div>
+                        <div class="stat-label">Одобрено</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3 animate-in animate-in-4">
+        <div class="stat-card card shadow-sm">
+            <div class="accent-bar" style="background: linear-gradient(90deg, #ef4444, #f87171);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon" style="background: #fef2f2; color: #dc2626;">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-value" style="color: #991b1b;" x-text="stats.rejected">0</div>
+                        <div class="stat-label">Одбијено</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section Cards -->
+<div class="row g-4 mb-4">
+    <!-- Zahtevi -->
+    <div class="col-md-4 animate-in animate-in-4">
+        <a href="/admin/archive/zahtevi" class="text-decoration-none">
+            <div class="section-card card-zahtevi card shadow-sm h-100">
+                <div class="card-body text-center position-relative">
+                    <template x-if="pendingByType.zahtev > 0">
+                        <span class="pending-badge" x-text="pendingByType.zahtev"></span>
+                    </template>
+                    <div class="section-icon icon-zahtevi mx-auto">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <h4>Захтеви</h4>
+                    <p class="section-desc">Годишњи одмор, слободан дан, боловање, службени путеви, набавке</p>
+                    <div class="approval-chain">
+                        <span class="approval-step">
+                            <i class="bi bi-person-fill"></i> Шеф одељења
+                        </span>
+                        <i class="bi bi-chevron-right approval-arrow"></i>
+                        <span class="approval-step">
+                            <i class="bi bi-person-badge-fill"></i> Директор
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Finansije -->
+    <div class="col-md-4 animate-in animate-in-5">
+        <a href="/admin/archive/finansije" class="text-decoration-none">
+            <div class="section-card card-finansije card shadow-sm h-100">
+                <div class="card-body text-center position-relative">
+                    <template x-if="pendingByType.finansije > 0">
+                        <span class="pending-badge" x-text="pendingByType.finansije"></span>
+                    </template>
+                    <div class="section-icon icon-finansije mx-auto">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                    <h4>Финансије</h4>
+                    <p class="section-desc">Фактуре, исплате, буџет, финансијски планови, рефундације</p>
+                    <div class="approval-chain">
+                        <span class="approval-step">
+                            <i class="bi bi-calculator-fill"></i> Рачуноводство
+                        </span>
+                        <i class="bi bi-chevron-right approval-arrow"></i>
+                        <span class="approval-step">
+                            <i class="bi bi-person-fill"></i> Шеф одељења
+                        </span>
+                        <i class="bi bi-chevron-right approval-arrow"></i>
+                        <span class="approval-step">
+                            <i class="bi bi-person-badge-fill"></i> Директор
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Terenska aktivnost -->
+    <div class="col-md-4 animate-in animate-in-6">
+        <a href="/admin/archive/terenska" class="text-decoration-none">
+            <div class="section-card card-terenska card shadow-sm h-100">
+                <div class="card-body text-center position-relative">
+                    <template x-if="pendingByType.terenska_aktivnost > 0">
+                        <span class="pending-badge" x-text="pendingByType.terenska_aktivnost"></span>
+                    </template>
+                    <div class="section-icon icon-terenska mx-auto">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </div>
+                    <h4>Теренска активност</h4>
+                    <p class="section-desc">Путни налози, дневнице, гориво, теренски извештаји</p>
+                    <div class="approval-chain">
+                        <span class="approval-step">
+                            <i class="bi bi-person-fill"></i> Шеф одељења
+                        </span>
+                        <i class="bi bi-chevron-right approval-arrow"></i>
+                        <span class="approval-step">
+                            <i class="bi bi-person-badge-fill"></i> Директор
+                        </span>
+                        <i class="bi bi-chevron-right approval-arrow"></i>
+                        <span class="approval-step">
+                            <i class="bi bi-calculator-fill"></i> Рачуноводство
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Pending Approvals & Recent Activity -->
+<div class="row g-4">
+    <!-- Pending Approvals -->
+    <div class="col-lg-6 animate-in animate-in-5">
+        <div class="panel-card shadow-sm h-100">
+            <div class="panel-header">
+                <h5>
+                    <i class="bi bi-clock-history text-warning"></i>
+                    Чека на одобрење
+                    <span class="count-badge bg-warning text-dark" x-text="pendingApprovals.length">0</span>
+                </h5>
+            </div>
+            <div class="panel-body">
+                <template x-if="pendingApprovals.length === 0">
+                    <div class="empty-state">
+                        <i class="bi bi-check-circle"></i>
+                        <p>Нема захтева на чекању</p>
+                    </div>
+                </template>
+                <template x-for="item in pendingApprovals" :key="item.id">
+                    <div class="activity-item" :class="'priority-' + item.priority">
+                        <div class="d-flex align-items-start">
+                            <div class="activity-icon me-3" :style="{
+                                'background': item.request_type === 'zahtev' ? '#ecfdf5' : item.request_type === 'finansije' ? '#fffbeb' : '#f5f3ff',
+                                'color': item.request_type === 'zahtev' ? '#059669' : item.request_type === 'finansije' ? '#d97706' : '#7c3aed'
+                            }">
+                                <i class="bi" :class="{
+                                    'bi-file-earmark-text': item.request_type === 'zahtev',
+                                    'bi-cash-stack': item.request_type === 'finansije',
+                                    'bi-geo-alt-fill': item.request_type === 'terenska_aktivnost'
+                                }"></i>
+                            </div>
+                            <div class="flex-grow-1 min-width-0">
+                                <h6 class="mb-1 text-truncate" style="font-size: 0.9rem;" x-text="item.title"></h6>
+                                <small class="text-muted d-block" style="font-size: 0.78rem;">
+                                    <span x-text="item.created_by_name"></span>
+                                    <span class="mx-1">&middot;</span>
+                                    <span x-text="formatDate(item.created_at)"></span>
+                                </small>
+                                <div class="mt-1">
+                                    <span class="badge rounded-pill" style="font-size: 0.68rem; font-weight: 500;" :style="{
+                                        'background': item.request_type === 'zahtev' ? '#d1fae5' : item.request_type === 'finansije' ? '#fef3c7' : '#ede9fe',
+                                        'color': item.request_type === 'zahtev' ? '#065f46' : item.request_type === 'finansije' ? '#92400e' : '#5b21b6'
+                                    }" x-text="item.approval_role"></span>
+                                </div>
+                            </div>
+                            <a :href="'/admin/archive/' + (item.request_type === 'terenska_aktivnost' ? 'terenska' : item.request_type) + '?id=' + item.id" class="btn btn-sm btn-outline-secondary ms-2" style="border-radius: 10px;">
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-lg-6 animate-in animate-in-6">
+        <div class="panel-card shadow-sm h-100">
+            <div class="panel-header">
+                <h5>
+                    <i class="bi bi-activity text-primary"></i>
+                    Недавна активност
+                </h5>
+            </div>
+            <div class="panel-body">
+                <template x-if="stats.recent_activity && stats.recent_activity.length === 0">
+                    <div class="empty-state">
+                        <i class="bi bi-clock"></i>
+                        <p>Нема недавне активности</p>
+                    </div>
+                </template>
+                <template x-for="activity in (stats.recent_activity || [])" :key="activity.request_id + activity.created_at">
+                    <div class="activity-item">
+                        <div class="d-flex align-items-center">
+                            <div class="activity-icon me-3" :style="{
+                                'background': activity.action === 'approved' ? '#ecfdf5' : activity.action === 'rejected' ? '#fef2f2' : activity.action === 'created' ? '#eff6ff' : activity.action === 'commented' ? '#ecfeff' : '#f3f4f6',
+                                'color': activity.action === 'approved' ? '#059669' : activity.action === 'rejected' ? '#dc2626' : activity.action === 'created' ? '#2563eb' : activity.action === 'commented' ? '#0891b2' : '#6b7280'
+                            }">
+                                <i class="bi" :class="{
+                                    'bi-check-lg': activity.action === 'approved',
+                                    'bi-x-lg': activity.action === 'rejected',
+                                    'bi-plus-lg': activity.action === 'created',
+                                    'bi-chat-dots': activity.action === 'commented',
+                                    'bi-archive': activity.action === 'archived'
+                                }"></i>
+                            </div>
+                            <div class="flex-grow-1 min-width-0">
+                                <p class="mb-0" style="font-size: 0.875rem; line-height: 1.4;">
+                                    <strong x-text="activity.by_name || 'Систем'"></strong>
+                                    <span class="text-muted" x-text="getActionText(activity.action)"></span>
+                                    <a href="#" class="text-decoration-none fw-medium" x-text="activity.title"></a>
+                                </p>
+                                <small class="text-muted" style="font-size: 0.75rem;" x-text="formatDate(activity.created_at)"></small>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal fade" :class="{'show d-block': showNewRequestModal}" tabindex="-1" x-show="showNewRequestModal" @click.self="showNewRequestModal = false">
+    <div class="modal-backdrop-custom position-fixed top-0 start-0 w-100 h-100" style="z-index: -1;"></div>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-semibold">
+                    <i class="bi bi-plus-circle me-2 text-primary"></i>Нови захтев
+                </h5>
+                <button type="button" class="btn-close" @click="showNewRequestModal = false"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Request Type Selection -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Тип захтева</label>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="type-select-card card h-100" :class="{'selected-zahtev': newRequest.request_type === 'zahtev'}" @click="newRequest.request_type = 'zahtev'; newRequest.subtype = ''">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-text text-success"></i>
+                                    <h6 class="mb-0 fw-semibold">Захтеви</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="type-select-card card h-100" :class="{'selected-finansije': newRequest.request_type === 'finansije'}" @click="newRequest.request_type = 'finansije'; newRequest.subtype = ''">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-cash-stack text-warning"></i>
+                                    <h6 class="mb-0 fw-semibold">Финансије</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="type-select-card card h-100" :class="{'selected-terenska': newRequest.request_type === 'terenska_aktivnost'}" @click="newRequest.request_type = 'terenska_aktivnost'; newRequest.subtype = ''">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-geo-alt" style="color: #8b5cf6;"></i>
+                                    <h6 class="mb-0 fw-semibold">Теренска активност</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtype Selection -->
+                <template x-if="newRequest.request_type">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Подтип</label>
+                        <select class="form-select" x-model="newRequest.subtype" style="border-radius: 10px;">
+                            <option value="">-- Изаберите подтип --</option>
+                            <template x-for="st in subtypes[newRequest.request_type]" :key="st.value">
+                                <option :value="st.value" x-text="st.label"></option>
+                            </template>
+                        </select>
+                    </div>
+                </template>
+
+                <!-- Title -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Наслов</label>
+                    <input type="text" class="form-control" x-model="newRequest.title" placeholder="Унесите наслов захтева" style="border-radius: 10px;">
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Опис</label>
+                    <textarea class="form-control" rows="4" x-model="newRequest.description" placeholder="Детаљан опис захтева..." style="border-radius: 10px;"></textarea>
+                </div>
+
+                <!-- Priority -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Приоритет</label>
+                    <select class="form-select" x-model="newRequest.priority" style="border-radius: 10px;">
+                        <option value="low">Низак</option>
+                        <option value="normal" selected>Нормалан</option>
+                        <option value="high">Висок</option>
+                        <option value="urgent">Хитан</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" style="border-radius: 10px;" @click="showNewRequestModal = false">Откажи</button>
+                <button type="button" class="btn btn-primary" style="border-radius: 10px; padding: 0.5rem 1.5rem;" @click="createRequest()" :disabled="!canCreateRequest || creating">
+                    <span x-show="creating" class="spinner-border spinner-border-sm me-2"></span>
+                    <i class="bi bi-send me-1" x-show="!creating"></i>
+                    Креирај захтев
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+function archiveDashboard() {
+    return {
+        stats: {
+            total: 0,
+            pending: 0,
+            in_review: 0,
+            approved: 0,
+            rejected: 0,
+            by_type: {},
+            recent_activity: []
+        },
+        pendingApprovals: [],
+        pendingByType: {
+            zahtev: 0,
+            finansije: 0,
+            terenska_aktivnost: 0
+        },
+        showNewRequestModal: false,
+        creating: false,
+        subtypes: {{ subtypes | tojson }},
+        newRequest: {
+            request_type: '',
+            subtype: '',
+            title: '',
+            description: '',
+            priority: 'normal'
+        },
+
+        get canCreateRequest() {
+            return this.newRequest.request_type && this.newRequest.title.trim();
+        },
+
+        async init() {
+            await Promise.all([
+                this.loadStatistics(),
+                this.loadPendingApprovals()
+            ]);
+        },
+
+        async loadStatistics() {
+            try {
+                const response = await fetch('/api/archive/statistics');
+                const data = await response.json();
+                if (data.success) {
+                    this.stats = data.statistics;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        },
+
+        async loadPendingApprovals() {
+            try {
+                const response = await fetch('/api/archive/pending');
+                const data = await response.json();
+                if (data.success) {
+                    this.pendingApprovals = data.pending;
+                    this.pendingByType = { zahtev: 0, finansije: 0, terenska_aktivnost: 0 };
+                    data.pending.forEach(p => {
+                        if (this.pendingByType.hasOwnProperty(p.request_type)) {
+                            this.pendingByType[p.request_type]++;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading pending approvals:', error);
+            }
+        },
+
+        async createRequest() {
+            if (!this.canCreateRequest) return;
+
+            const requestType = this.newRequest.request_type;
+            this.creating = true;
+            try {
+                const response = await secureFetch('/api/archive/requests', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    },
+                    body: JSON.stringify(this.newRequest)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.showNewRequestModal = false;
+                    this.newRequest = {
+                        request_type: '',
+                        subtype: '',
+                        title: '',
+                        description: '',
+                        priority: 'normal'
+                    };
+                    const section = requestType === 'terenska_aktivnost' ? 'terenska' : (requestType || 'zahtevi');
+                    window.location.href = `/admin/archive/${section}?id=${data.id}`;
+                } else {
+                    alert(data.message || 'Грешка при креирању захтева');
+                }
+            } catch (error) {
+                console.error('Error creating request:', error);
+                alert('Грешка при креирању захтева');
+            } finally {
+                this.creating = false;
+            }
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return 'Управо сада';
+            if (minutes < 60) return `Пре ${minutes} мин`;
+            if (hours < 24) return `Пре ${hours}ч`;
+            if (days < 7) return `Пре ${days} дана`;
+
+            return date.toLocaleDateString('sr-Latn-RS');
+        },
+
+        getActionText(action) {
+            const texts = {
+                'created': 'је креирао/ла',
+                'approved': 'је одобрио/ла',
+                'rejected': 'је одбио/ла',
+                'commented': 'је коментарисао/ла',
+                'archived': 'је архивирао/ла'
+            };
+            return texts[action] || action;
+        }
+    };
+}
+</script>
+{% endblock %}

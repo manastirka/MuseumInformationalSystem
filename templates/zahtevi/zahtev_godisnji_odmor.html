@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Природњачки музеј{% endblock %}
+
+{% block content %}
+<style>
+.document-preview {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px;
+    background: white;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.document-preview .header-to {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.document-preview .body-text {
+    text-align: left;
+    margin-bottom: 40px;
+}
+
+.document-preview .signatures-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.document-preview .signature-block {
+    text-align: left;
+    width: 45%;
+}
+
+.document-preview .signature-block .label {
+    margin-bottom: 5px;
+}
+
+.document-preview .signature-block .name {
+    margin-bottom: 5px;
+}
+
+.document-preview .signature-block .line {
+    border-bottom: 1px solid #333;
+    width: 180px;
+    margin-top: 30px;
+}
+
+.document-preview .director-block {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.document-preview .director-block .line {
+    border-bottom: 1px solid #333;
+    width: 180px;
+    margin: 30px auto 5px auto;
+}
+
+.document-preview .date-block {
+    margin-top: 30px;
+    text-align: left;
+}
+
+.highlight-field {
+    background-color: #fff3cd;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+</style>
+
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-sun me-2"></i>
+                                {{ page_title }}
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                Креирање молбе за годишњи одмор
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Подаци за молбу
+                </div>
+                <div class="card-body">
+                    <form id="vacationForm">
+                        <div class="mb-3">
+                            <label class="form-label">Број дана годишњег одмора *</label>
+                            <input type="number" class="form-control" id="brojDana" min="1" max="30" value="1" required>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Од датума *</label>
+                                <input type="date" class="form-control" id="odDatuma" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">До датума *</label>
+                                <input type="date" class="form-control" id="doDatuma" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Шеф одељења *</label>
+                            <select class="form-select" id="sefOdeljenja" required>
+                                <option value="">Изаберите шефа одељења</option>
+                                <option value="др Биљана Митровић">др Биљана Митровић (шеф геолошког одељења)</option>
+                                <option value="Верица Стојановић">Верица Стојановић (шеф биолошког одељења)</option>
+                                <option value="Душица Ивић">Душица Ивић (помоћник директора-руководилац одељења финансија)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Датум документа</label>
+                            <input type="date" class="form-control" id="datumMolbe">
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100" onclick="updatePreview()">
+                            <i class="bi bi-eye me-1"></i>
+                            Ажурирај преглед
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Напомене
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small text-muted">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Попуните сва поља и кликните "Ажурирај преглед"
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Користите дугме "Штампај" за штампу документа
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Потпишите одштампану молбу пре предаје
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        Преглед молбе
+                    </span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" id="saveRequestBtn" onclick="saveRequest()">
+                            <i class="bi bi-save me-1"></i>
+                            Сачувај захтев
+                        </button>
+                        <button class="btn btn-success" onclick="printDocument()">
+                            <i class="bi bi-printer me-1"></i>
+                            Штампај
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="printArea">
+                        <div class="document-preview">
+                            <div class="header-to">
+                                Директору Природњачког музеја
+                            </div>
+
+                            <div class="body-text">
+                                Молим вас да ми одобрите <span id="previewBrojDana" class="highlight-field">__</span> дана од годишњег одмора које бих искористио/ла од <span id="previewPeriod" class="highlight-field">__-__.__.____</span> године.
+                            </div>
+
+                            <div class="signatures-row">
+                                <div class="signature-block">
+                                    <div class="label">Подносилац молбе:</div>
+                                    <div class="name" id="previewPodnosilac">{{ user_full_name if user_full_name else '________________' }}</div>
+                                    <div class="line"></div>
+                                </div>
+                                <div class="signature-block">
+                                    <div class="label">Шеф одељења:</div>
+                                    <div class="name" id="previewSef"><span class="highlight-field">________________</span></div>
+                                    <div class="line"></div>
+                                </div>
+                            </div>
+
+                            <div class="director-block">
+                                <div>Директор:</div>
+                                <div>MSc Славко Спасић</div>
+                                <div class="line"></div>
+                            </div>
+
+                            <div class="date-block">
+                                <span id="previewDatum">__.__.____.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const userFullName = "{{ user_full_name|e }}";
+const memorandumUrl = "{{ url_for('static', filename='images/memorandum.png') }}";
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('datumMolbe').value = today;
+
+    // Auto-update preview on input change
+    document.querySelectorAll('#vacationForm input, #vacationForm select').forEach(function(el) {
+        el.addEventListener('change', updatePreview);
+    });
+
+    // Initial preview update
+    updatePreview();
+});
+
+function updatePreview() {
+    const brojDana = document.getElementById('brojDana').value || '__';
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value || '________________';
+    const datumMolbe = document.getElementById('datumMolbe').value;
+
+    // Format period like in original: "3-5.12.2025"
+    let periodText = '__-__.__.____';
+    if (odDatuma && doDatuma) {
+        const odDate = new Date(odDatuma);
+        const doDate = new Date(doDatuma);
+        const odDay = odDate.getDate();
+        const doDay = doDate.getDate();
+        const month = (doDate.getMonth() + 1).toString().padStart(2, '0');
+        const year = doDate.getFullYear();
+        periodText = odDay + '-' + doDay + '.' + month + '.' + year;
+    }
+
+    let datumText = '__.__.____';
+    if (datumMolbe) {
+        datumText = formatDateSerbian(datumMolbe);
+    }
+
+    // Update preview
+    document.getElementById('previewBrojDana').textContent = brojDana;
+    document.getElementById('previewPeriod').textContent = periodText;
+    document.getElementById('previewSef').innerHTML = sefOdeljenja === '________________'
+        ? '<span class="highlight-field">________________</span>'
+        : sefOdeljenja;
+    document.getElementById('previewDatum').textContent = datumText;
+
+    // Update highlight on broj dana and period
+    const brojDanaEl = document.getElementById('previewBrojDana');
+    const periodEl = document.getElementById('previewPeriod');
+
+    if (brojDana !== '__') {
+        brojDanaEl.classList.remove('highlight-field');
+    } else {
+        brojDanaEl.classList.add('highlight-field');
+    }
+
+    if (periodText !== '__-__.__.____') {
+        periodEl.classList.remove('highlight-field');
+    } else {
+        periodEl.classList.add('highlight-field');
+    }
+}
+
+function formatDateSerbian(dateStr) {
+    const date = new Date(dateStr);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return day + '.' + month + '.' + year + '.';
+}
+
+function printDocument() {
+    // Validate form before printing
+    const brojDana = document.getElementById('brojDana').value;
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value;
+    const datumMolbe = document.getElementById('datumMolbe').value;
+
+    if (!brojDana || !odDatuma || !doDatuma || !sefOdeljenja) {
+        alert('Молимо попуните сва обавезна поља пре штампања.');
+        return;
+    }
+
+    // Format period like original: "3-5.12.2025"
+    const odDate = new Date(odDatuma);
+    const doDate = new Date(doDatuma);
+    const odDay = odDate.getDate();
+    const doDay = doDate.getDate();
+    const month = (doDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = doDate.getFullYear();
+    const periodText = odDay + '-' + doDay + '.' + month + '.' + year;
+
+    const datum = datumMolbe ? formatDateSerbian(datumMolbe) : formatDateSerbian(new Date().toISOString().split('T')[0]);
+
+    // Open new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Молба за годишњи одмор</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            margin: 0;
+            padding: 15px;
+        }
+        .memorandum-header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .memorandum-header img {
+            width: 100%;
+            max-width: 750px;
+            height: auto;
+        }
+        .memorandum-date-overlay {
+            position: absolute;
+            bottom: 13px;
+            right: 68px;
+            font-size: 11pt;
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            letter-spacing: 0.5px;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .header-to {
+            text-align: center;
+            margin-bottom: 35px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        .body-text {
+            text-align: justify;
+            text-indent: 30px;
+            margin-bottom: 45px;
+        }
+        .signatures-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .signatures-table td {
+            width: 50%;
+            vertical-align: top;
+            padding-top: 10px;
+        }
+        .signature-block {
+            text-align: left;
+        }
+        .signature-block .label {
+            font-weight: bold;
+        }
+        .signature-block .name {
+            margin-top: 5px;
+        }
+        .signature-block .line {
+            border-bottom: 1px solid #000;
+            width: 160px;
+            margin-top: 25px;
+        }
+        .director-block {
+            text-align: center;
+            margin-top: 35px;
+        }
+        .director-block .label {
+            font-weight: bold;
+        }
+        .director-block .line {
+            border-bottom: 1px solid #000;
+            width: 160px;
+            margin: 25px auto 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="memorandum-header">
+        <img src="${memorandumUrl}" alt="Меморандум">
+        <div class="memorandum-date-overlay">${datum}</div>
+    </div>
+
+    <div class="container">
+        <div class="header-to">
+            Директору Природњачког музеја
+        </div>
+
+        <div class="body-text">
+            Молим вас да ми одобрите ${brojDana} дана од годишњег одмора које бих искористио/ла од ${periodText} године.
+        </div>
+
+        <table class="signatures-table">
+            <tr>
+                <td>
+                    <div class="signature-block">
+                        <div class="label">Подносилац молбе:</div>
+                        <div class="name">${userFullName || '________________'}</div>
+                        <div class="line"></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="signature-block">
+                        <div class="label">Шеф одељења:</div>
+                        <div class="name">${sefOdeljenja}</div>
+                        <div class="line"></div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="director-block">
+            <div class="label">Директор:</div>
+            <div>MSc Славко Спасић</div>
+            <div class="line"></div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    <\/script>
+</body>
+</html>
+    `);
+
+    printWindow.document.close();
+}
+
+function saveRequest() {
+    const brojDana = document.getElementById('brojDana').value;
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const sefOdeljenja = document.getElementById('sefOdeljenja').value;
+    const datumMolbe = document.getElementById('datumMolbe').value;
+
+    if (!brojDana || !odDatuma || !doDatuma || !sefOdeljenja) {
+        alert('Молимо попуните сва обавезна поља пре чувања.');
+        return;
+    }
+
+    const btn = document.getElementById('saveRequestBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Чување...';
+
+    const payload = {
+        request_type: 'zahtev',
+        subtype: 'godisnji_odmor',
+        title: 'Молба за годишњи одмор - ' + brojDana + ' дана (' + formatDateSerbian(odDatuma) + ' - ' + formatDateSerbian(doDatuma) + ')',
+        description: 'Молба за ' + brojDana + ' дана годишњег одмора од ' + formatDateSerbian(odDatuma) + ' до ' + formatDateSerbian(doDatuma) + '.',
+        request_data: {
+            broj_dana: brojDana,
+            od_datuma: odDatuma,
+            do_datuma: doDatuma,
+            sef_odeljenja: sefOdeljenja,
+            datum_molbe: datumMolbe,
+            podnosilac: userFullName
+        }
+    };
+
+    secureFetch('/api/archive/requests', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.className = 'btn btn-success btn-sm';
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Сачувано (#' + data.id + ')';
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';
+            alert('Грешка: ' + (data.message || 'Непозната грешка'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';
+        alert('Грешка при чувању захтева: ' + err.message);
+    });
+}
+</script>
+{% endblock %}

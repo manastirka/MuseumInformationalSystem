@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Преглед упаривања слика{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-eye"></i> Преглед упаривања слика</h2>
+
+    <div class="alert alert-info">
+        <strong>Директоријум:</strong> {{ directory }}<br>
+        <strong>База података:</strong> {{ database_name or database }}<br>
+        <strong>Укупно слика:</strong> {{ preview.total_images }}
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3>{{ preview.matched_count }}</h3>
+                    <p class="mb-0">Упарено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3>{{ preview.ambiguous_count }}</h3>
+                    <p class="mb-0">Сумњиво</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h3>{{ preview.unmatched_count }}</h3>
+                    <p class="mb-0">Неупарено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h3>{{ preview.error_count }}</h3>
+                    <p class="mb-0">Грешке</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if preview.matched|length > 0 %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-check-circle"></i> Упарене слике (први 10)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Слика</th>
+                        <th>Инв. број</th>
+                        <th>Предмет</th>
+                        <th>Поузданост</th>
+                        <th>Резултат</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in preview.matched %}
+                    <tr>
+                        <td>{{ match.image_path.split('/')[-1] }}</td>
+                        <td><code>{{ match.metadata.inventory_number }}</code></td>
+                        <td>{{ match.item.get('naziv', match.item.get('name', 'N/A')) }}</td>
+                        <td>
+                            <span class="badge bg-success">{{ match.confidence }}</span>
+                        </td>
+                        <td>{{ match.score|round(1) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if preview.ambiguous|length > 0 %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Сумњива упаривања (први 10)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Слика</th>
+                        <th>Инв. број</th>
+                        <th>Предмет</th>
+                        <th>Поузданост</th>
+                        <th>Резултат</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in preview.ambiguous %}
+                    <tr>
+                        <td>{{ match.image_path.split('/')[-1] }}</td>
+                        <td><code>{{ match.metadata.inventory_number }}</code></td>
+                        <td>{{ match.item.get('naziv', match.item.get('name', 'N/A')) }}</td>
+                        <td>
+                            <span class="badge bg-warning">{{ match.confidence }}</span>
+                        </td>
+                        <td>{{ match.score|round(1) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if preview.unmatched|length > 0 %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-x-circle"></i> Неупарене слике (први 10)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Слика</th>
+                        <th>Инв. број</th>
+                        <th>Назив</th>
+                        <th>Локалитет</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in preview.unmatched %}
+                    <tr>
+                        <td>{{ item.image_path.split('/')[-1] }}</td>
+                        <td><code>{{ item.metadata.inventory_number or 'N/A' }}</code></td>
+                        <td>{{ item.metadata.name or 'N/A' }}</td>
+                        <td>{{ item.metadata.locality or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('batch_image_upload') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="action" value="upload">
+        <input type="hidden" name="directory" value="{{ directory }}">
+        <input type="hidden" name="database" value="{{ database }}">
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="auto_upload" name="auto_upload" value="true" checked>
+                    <label class="form-check-label" for="auto_upload">
+                        Аутоматски отпреми слике са високом поузданошћу
+                    </label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-cloud-upload"></i> Потврди и отпреми
+                    </button>
+                    <a href="{{ url_for('batch_image_upload', database=database) }}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-arrow-left"></i> Назад
+                    </a>
+                    <a href="{{ back_url }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-collection"></i> Збирка
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

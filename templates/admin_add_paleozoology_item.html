@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+
+{% block title %}Додај палеозоолошки примерак - Администрација{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-file-earmark-plus me-2"></i>
+                                Додај палеозоолошки примерак
+                            </h1>
+                            <p class="mb-0 opacity-75">
+                                {{ collection_name }} - Евиденција фосилних животињских остатака
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-light">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Назад на збирку
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Form -->
+    <form method="POST" id="addItemForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row">
+            <!-- Left Column - Basic Information -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Основни подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Catalog Number -->
+                            <div class="col-md-6">
+                                <label for="catalog_number" class="form-label">Каталошки број *</label>
+                                <input type="text" class="form-control" id="catalog_number" name="catalog_number" required
+                                       placeholder="нпр. PZ-2024-001">
+                            </div>
+
+                            <!-- Accession Number -->
+                            <div class="col-md-6">
+                                <label for="accession_number" class="form-label">Инвентарни број</label>
+                                <input type="text" class="form-control" id="accession_number" name="accession_number"
+                                       placeholder="нпр. INV-001">
+                            </div>
+
+                            <!-- Fossil Type -->
+                            <div class="col-12">
+                                <label for="fossil_type" class="form-label">Тип фосила *</label>
+                                <select class="form-select" id="fossil_type" name="fossil_type" required>
+                                    <option value="">Изаберите тип</option>
+                                    <optgroup label="Бескичмењаци (Invertebrata)">
+                                        <option value="Trilobita">Трилобити (Trilobita)</option>
+                                        <option value="Mollusca">Мекушци (Mollusca)</option>
+                                        <option value="Brachiopoda">Брахиоподе (Brachiopoda)</option>
+                                        <option value="Echinodermata">Бодљокошци (Echinodermata)</option>
+                                        <option value="Arthropoda">Зглавкари (Arthropoda)</option>
+                                        <option value="Cnidaria">Книдарије - корали (Cnidaria)</option>
+                                        <option value="Porifera">Сунђери (Porifera)</option>
+                                    </optgroup>
+                                    <optgroup label="Кичмењаци (Vertebrata)">
+                                        <option value="Pisces">Рибе (Pisces)</option>
+                                        <option value="Amphibia">Водоземци (Amphibia)</option>
+                                        <option value="Reptilia">Рептили (Reptilia)</option>
+                                        <option value="Aves">Птице (Aves)</option>
+                                        <option value="Mammalia">Сисари (Mammalia)</option>
+                                    </optgroup>
+                                    <optgroup label="Траговни фосили">
+                                        <option value="Ichnofossil">Трагови активности (Ichnofossils)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <!-- Scientific Name -->
+                            <div class="col-12">
+                                <label for="scientific_name" class="form-label">Научни назив *</label>
+                                <input type="text" class="form-control" id="scientific_name" name="scientific_name" required
+                                       placeholder="нпр. Archaeopteryx lithographica">
+                                <div class="form-text">Латински назив (род + врста)</div>
+                            </div>
+
+                            <!-- Common Name -->
+                            <div class="col-12">
+                                <label for="common_name" class="form-label">Народни назив</label>
+                                <input type="text" class="form-control" id="common_name" name="common_name"
+                                       placeholder="нпр. Прва птица">
+                            </div>
+
+                            <!-- Taxonomic Classification -->
+                            <div class="col-md-6">
+                                <label for="class" class="form-label">Класа</label>
+                                <input type="text" class="form-control" id="class" name="class"
+                                       placeholder="нпр. Mammalia">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="order" class="form-label">Ред</label>
+                                <input type="text" class="form-control" id="order" name="order"
+                                       placeholder="нпр. Carnivora">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="family" class="form-label">Фамилија</label>
+                                <input type="text" class="form-control" id="family" name="family"
+                                       placeholder="нпр. Felidae">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="genus" class="form-label">Род</label>
+                                <input type="text" class="form-control" id="genus" name="genus"
+                                       placeholder="нпр. Panthera">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Paleontological Details -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-layers me-2"></i>
+                            Палеонтолошки подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Anatomical Part -->
+                            <div class="col-12">
+                                <label for="anatomical_part" class="form-label">Анатомски део *</label>
+                                <select class="form-select" id="anatomical_part" name="anatomical_part" required>
+                                    <option value="">Изаберите</option>
+                                    <option value="Целокупан скелет">Целокупан скелет</option>
+                                    <option value="Лобања">Лобања (Cranium)</option>
+                                    <option value="Вилица">Вилица (Mandibula)</option>
+                                    <option value="Зуб/Зуби">Зуб/Зуби (Dentes)</option>
+                                    <option value="Кичмени стуб">Кичмени стуб</option>
+                                    <option value="Ребра">Ребра (Costae)</option>
+                                    <option value="Екстремитети">Екстремитети (предњи/задњи)</option>
+                                    <option value="Љуштура">Љуштура (Shell)</option>
+                                    <option value="Окоп">Окоп (Carapace)</option>
+                                    <option value="Шкољка">Шкољка (Valve)</option>
+                                    <option value="Тест">Тест (Test)</option>
+                                    <option value="Отисак">Отисак (Impression)</option>
+                                    <option value="Фрагмент">Фрагмент</option>
+                                </select>
+                            </div>
+
+                            <!-- Preservation Type -->
+                            <div class="col-12">
+                                <label for="preservation_type" class="form-label">Тип очувања *</label>
+                                <select class="form-select" id="preservation_type" name="preservation_type" required>
+                                    <option value="">Изаберите тип</option>
+                                    <option value="Пермине рализација">Пермине рализација (Permineralization)</option>
+                                    <option value="Замена">Замена (Replacement)</option>
+                                    <option value="Рекристализација">Рекристализација</option>
+                                    <option value="Карбонизација">Карбонизација (Carbonization)</option>
+                                    <option value="Отисак">Отисак (Impression/Mold)</option>
+                                    <option value="Трагови">Трагови активности (Trace fossils)</option>
+                                    <option value="Ћилибар">Конзервација у ћилибару (Amber)</option>
+                                    <option value="Мумификација">Мумификација</option>
+                                    <option value="Ледени фосили">Ледени фосили</option>
+                                </select>
+                            </div>
+
+                            <!-- Completeness -->
+                            <div class="col-md-6">
+                                <label for="completeness" class="form-label">Комплетност *</label>
+                                <select class="form-select" id="completeness" name="completeness" required>
+                                    <option value="">Изаберите</option>
+                                    <option value="Комплетан">Комплетан (>90%)</option>
+                                    <option value="Скоро комплетан">Скоро комплетан (70-90%)</option>
+                                    <option value="Делимичан">Делимичан (30-70%)</option>
+                                    <option value="Фрагментаран">Фрагментаран (<30%)</option>
+                                    <option value="Изолован елемент">Изолован елемент</option>
+                                </select>
+                            </div>
+
+                            <!-- Condition -->
+                            <div class="col-md-6">
+                                <label for="condition" class="form-label">Стање *</label>
+                                <select class="form-select" id="condition" name="condition" required>
+                                    <option value="">Изаберите</option>
+                                    <option value="Одлично">Одлично</option>
+                                    <option value="Добро">Добро</option>
+                                    <option value="Задовољавајуће">Задовољавајуће</option>
+                                    <option value="Лоше">Лоше</option>
+                                    <option value="Фрагментовано">Фрагментовано</option>
+                                </select>
+                            </div>
+
+                            <!-- Size -->
+                            <div class="col-md-6">
+                                <label for="size" class="form-label">Димензије</label>
+                                <input type="text" class="form-control" id="size" name="size"
+                                       placeholder="нпр. 45 x 30 x 12 cm">
+                            </div>
+
+                            <!-- Weight -->
+                            <div class="col-md-6">
+                                <label for="weight" class="form-label">Тежина</label>
+                                <input type="text" class="form-control" id="weight" name="weight"
+                                       placeholder="нпр. 2.5 kg">
+                            </div>
+
+                            <!-- Sediment Type -->
+                            <div class="col-12">
+                                <label for="sediment_type" class="form-label">Тип седимента *</label>
+                                <select class="form-select" id="sediment_type" name="sediment_type" required>
+                                    <option value="">Изаберите тип седимента</option>
+                                    <optgroup label="Кластични седименти">
+                                        <option value="Конгломерат">Конгломерат (Conglomerate)</option>
+                                        <option value="Пешчар">Пешчар (Sandstone)</option>
+                                        <option value="Алевролит">Алевролит (Siltstone)</option>
+                                        <option value="Глинац">Глинац (Mudstone/Claystone)</option>
+                                        <option value="Шкриљац">Шкриљац (Shale)</option>
+                                    </optgroup>
+                                    <optgroup label="Карбонатни седименти">
+                                        <option value="Кречњак">Кречњак (Limestone)</option>
+                                        <option value="Доломит">Доломит (Dolomite)</option>
+                                        <option value="Мергел">Мергел (Marl)</option>
+                                        <option value="Креда">Креда (Chalk)</option>
+                                    </optgroup>
+                                    <optgroup label="Органогени седименти">
+                                        <option value="Угаљ">Угаљ (Coal)</option>
+                                        <option value="Дијатомит">Дијатомит (Diatomite)</option>
+                                    </optgroup>
+                                    <optgroup label="Хемијски седименти">
+                                        <option value="Гипс">Гипс (Gypsum)</option>
+                                        <option value="Евапорити">Евапорити (Evaporites)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <!-- Sediment Description -->
+                            <div class="col-12">
+                                <label for="sediment_description" class="form-label">Опис седимента</label>
+                                <textarea class="form-control" id="sediment_description" name="sediment_description" rows="2"
+                                          placeholder="Детаљан опис литологије, боја, структуре седимента..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stratigraphic Information -->
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clock-history me-2"></i>
+                            Стратиграфски подаци
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <!-- Age Period -->
+                            <div class="col-md-4">
+                                <label for="age" class="form-label">Геолошка старост *</label>
+                                <input type="text" class="form-control" id="age" name="age" required readonly
+                                       placeholder="Кликните на стратиграфску табелу">
+                            </div>
+
+                            <!-- Estimated Age -->
+                            <div class="col-md-4">
+                                <label for="estimated_age_range" class="form-label">Процењена старост</label>
+                                <input type="text" class="form-control" id="estimated_age_range" name="estimated_age_range"
+                                       placeholder="нпр. 150-145 Ma">
+                            </div>
+
+                            <!-- Biozone -->
+                            <div class="col-md-4">
+                                <label for="biozone" class="form-label">Биозона</label>
+                                <input type="text" class="form-control" id="biozone" name="biozone"
+                                       placeholder="нпр. Oppel Zone">
+                            </div>
+                        </div>
+
+                        <!-- Stratigraphic Chart -->
+                        <div class="stratigraphic-chart">
+                            <h6 class="mb-3">Међународна стратиграфска табела</h6>
+
+                            <!-- Cenozoic -->
+                            <div class="era-section mb-3">
+                                <h6 class="era-title">Кенозоик (Cenozoic) - 66 Ma - данас</h6>
+                                <div class="period-buttons">
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Холоцен" style="background-color: #FEF2E0;">Холоцен (11.7 ka)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Плеистоцен" style="background-color: #FFF2AE;">Плеистоцен (2.58 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Плиоцен" style="background-color: #FFFFBE;">Плиоцен (5.33 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Миоцен" style="background-color: #FFFF00;">Миоцен (23.03 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Олигоцен" style="background-color: #FE9A33;">Олигоцен (33.9 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Еоцен" style="background-color: #FD9A52;">Еоцен (56 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Палеоцен" style="background-color: #FD8265;">Палеоцен (66 Ma)</button>
+                                </div>
+                            </div>
+
+                            <!-- Mesozoic -->
+                            <div class="era-section mb-3">
+                                <h6 class="era-title">Мезозоик (Mesozoic) - 252-66 Ma</h6>
+                                <div class="period-buttons">
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Горња креда" style="background-color: #8CFF74;">Горња креда</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Доња креда" style="background-color: #CCFFB3;">Доња креда</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Горња јура" style="background-color: #80CFFF;">Горња јура</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Средња јура" style="background-color: #99D7FF;">Средња јура</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Доња јура" style="background-color: #B3E0FF;">Доња јура</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Горњи тријас" style="background-color: #BE60DC;">Горњи тријас</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Средњи тријас" style="background-color: #CA8CDC;">Средњи тријас</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Доњи тријас" style="background-color: #D7B3DC;">Доњи тријас</button>
+                                </div>
+                            </div>
+
+                            <!-- Paleozoic -->
+                            <div class="era-section mb-3">
+                                <h6 class="era-title">Палеозоик (Paleozoic) - 541-252 Ma</h6>
+                                <div class="period-buttons">
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Перм" style="background-color: #F04028;">Перм (299-252 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Карбон" style="background-color: #67A599;">Карбон (359-299 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Девон" style="background-color: #CB8C37;">Девон (419-359 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Силур" style="background-color: #B3E1B6;">Силур (444-419 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Ордовицијум" style="background-color: #009270;">Ордовицијум (485-444 Ma)</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Камбријум" style="background-color: #7FA056;">Камбријум (541-485 Ma)</button>
+                                </div>
+                            </div>
+
+                            <!-- Precambrian -->
+                            <div class="era-section">
+                                <h6 class="era-title">Прекамбријум (Precambrian) - >541 Ma</h6>
+                                <div class="period-buttons">
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Протерозоик" style="background-color: #F74370;">Протерозоик</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Архејум" style="background-color: #F0819F;">Архејум</button>
+                                    <button type="button" class="btn btn-sm period-btn" data-age="Хадеј" style="background-color: #A5637D;">Хадеј</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collection Details -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-geo-alt me-2"></i>
+                            Подаци о налазишту
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Collection Location -->
+                            <div class="col-12">
+                                <label for="collection_location" class="form-label">Локалитет *</label>
+                                <input type="text" class="form-control" id="collection_location" name="collection_location" required
+                                       placeholder="нпр. Стара планина, село Топли До">
+                            </div>
+
+                            <!-- GPS Coordinates -->
+                            <div class="col-md-6">
+                                <label for="latitude" class="form-label">Географска ширина</label>
+                                <input type="text" class="form-control" id="latitude" name="latitude"
+                                       placeholder="нпр. 43.3209° N">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="longitude" class="form-label">Географска дужина</label>
+                                <input type="text" class="form-control" id="longitude" name="longitude"
+                                       placeholder="нпр. 22.5418° E">
+                            </div>
+
+                            <!-- Formation -->
+                            <div class="col-12">
+                                <label for="formation" class="form-label">Геолошка формација</label>
+                                <input type="text" class="form-control" id="formation" name="formation"
+                                       placeholder="нпр. Сенонске кредне наслаге">
+                            </div>
+
+                            <!-- Collection Date -->
+                            <div class="col-md-6">
+                                <label for="collection_date" class="form-label">Датум прикупљања *</label>
+                                <input type="date" class="form-control" id="collection_date" name="collection_date" required>
+                            </div>
+
+                            <!-- Collector -->
+                            <div class="col-md-6">
+                                <label for="collector" class="form-label">Прикупио *</label>
+                                <input type="text" class="form-control" id="collector" name="collector" required
+                                       placeholder="Име и презиме">
+                            </div>
+
+                            <!-- Acquisition Method -->
+                            <div class="col-12">
+                                <label for="acquisition_method" class="form-label">Начин прибављања *</label>
+                                <select class="form-select" id="acquisition_method" name="acquisition_method" required>
+                                    <option value="">Изаберите</option>
+                                    <option value="Теренски">Теренски (налаз на терену)</option>
+                                    <option value="Поклон">Поклон (донација)</option>
+                                    <option value="Откуп">Откуп (куповина)</option>
+                                    <option value="Размена">Размена</option>
+                                    <option value="Пренос">Пренос из друге институције</option>
+                                </select>
+                            </div>
+
+                            <!-- Determiner -->
+                            <div class="col-12">
+                                <label for="determiner" class="form-label">Детерминатор</label>
+                                <input type="text" class="form-control" id="determiner" name="determiner"
+                                       placeholder="Име стручњака који је идентификовао примерак">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage and Research -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-archive me-2"></i>
+                            Складиштење и истраживање
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Storage Location -->
+                            <div class="col-12">
+                                <label for="storage_location" class="form-label">Локација складишта *</label>
+                                <input type="text" class="form-control" id="storage_location" name="storage_location" required
+                                       placeholder="нпр. Депо 2, полица А-15">
+                            </div>
+
+                            <!-- Storage Type -->
+                            <div class="col-md-6">
+                                <label for="storage_type" class="form-label">Тип складиштења</label>
+                                <select class="form-select" id="storage_type" name="storage_type">
+                                    <option value="Отворена полица">Отворена полица</option>
+                                    <option value="Затворена витрина">Затворена витрина</option>
+                                    <option value="Кутија">Кутија</option>
+                                    <option value="Специјална амбалажа">Специјална амбалажа</option>
+                                    <option value="Изложба">На изложби</option>
+                                </select>
+                            </div>
+
+                            <!-- Preparation Method -->
+                            <div class="col-md-6">
+                                <label for="preparation_method" class="form-label">Метода препарације</label>
+                                <select class="form-select" id="preparation_method" name="preparation_method">
+                                    <option value="">Није препарисан</option>
+                                    <option value="Механичка">Механичка препарација</option>
+                                    <option value="Хемијска">Хемијска препарација</option>
+                                    <option value="Комбинована">Комбинована</option>
+                                    <option value="Конзолидација">Конзолидација</option>
+                                </select>
+                            </div>
+
+                            <!-- Research Project -->
+                            <div class="col-12">
+                                <label for="research_project" class="form-label">Истраживачки пројекат</label>
+                                <input type="text" class="form-control" id="research_project" name="research_project"
+                                       placeholder="Назив пројекта у оквиру којег је примерак прикупљен">
+                            </div>
+
+                            <!-- Publications -->
+                            <div class="col-12">
+                                <label for="publications" class="form-label">Публикације</label>
+                                <textarea class="form-control" id="publications" name="publications" rows="2"
+                                          placeholder="Референце на публикације у којима је примерак описан или поменут"></textarea>
+                            </div>
+
+                            <!-- Type Status -->
+                            <div class="col-12">
+                                <label for="type_status" class="form-label">Типски статус</label>
+                                <select class="form-select" id="type_status" name="type_status">
+                                    <option value="">Није тип</option>
+                                    <option value="Holotype">Холотип (Holotype)</option>
+                                    <option value="Paratype">Паратип (Paratype)</option>
+                                    <option value="Lectotype">Лектотип (Lectotype)</option>
+                                    <option value="Neotype">Неотип (Neotype)</option>
+                                    <option value="Syntype">Синтип (Syntype)</option>
+                                </select>
+                            </div>
+
+                            <!-- Special Notes -->
+                            <div class="col-12">
+                                <label for="special_notes" class="form-label">Напомене</label>
+                                <textarea class="form-control" id="special_notes" name="special_notes" rows="3"
+                                          placeholder="Додатне напомене, специфичности, патолошке карактеристике..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for(collection_route) }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Откажи
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Додај примерак
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Stratigraphic chart interaction
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const age = this.getAttribute('data-age');
+        document.getElementById('age').value = age;
+
+        // Visual feedback
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+
+// Set default collection date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const dateField = document.getElementById('collection_date');
+    if (!dateField.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateField.value = today;
+    }
+});
+
+// Form validation
+document.getElementById('addItemForm').addEventListener('submit', function(e) {
+    const catalogNumber = document.getElementById('catalog_number').value;
+
+    if (!catalogNumber) {
+        e.preventDefault();
+        alert('Молимо унесите каталошки број!');
+        return;
+    }
+
+    // Confirmation
+    if (!confirm(`Да ли сте сигурни да желите да додате примерак "${catalogNumber}"?`)) {
+        e.preventDefault();
+    }
+});
+</script>
+
+<style>
+.form-label {
+    font-weight: 500;
+    color: var(--museum-primary);
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid var(--museum-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--museum-primary);
+    box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+
+.stratigraphic-chart {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.era-section {
+    padding: 0.75rem;
+    background-color: white;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.era-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.period-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.period-btn {
+    border: 1px solid rgba(0,0,0,0.2);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.2s;
+}
+
+.period-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.period-btn.active {
+    border: 2px solid var(--museum-primary);
+    box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.25);
+}
+</style>
+{% endblock %}
