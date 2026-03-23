@@ -9,7 +9,7 @@ import re
 import logging
 import uuid
 from pathlib import Path
-from flask import Blueprint, request, jsonify, send_file, current_app
+from flask import Blueprint, request, jsonify, send_file, current_app, session
 from werkzeug.utils import secure_filename
 from image_storage_engine import get_image_storage
 from security_utils import login_required, admin_required
@@ -24,6 +24,25 @@ _BACKUP_ROOT = Path('./storage/backups').resolve()
 
 # Backup name must be a safe slug (alphanumeric, dash, underscore only)
 _SAFE_BACKUP_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
+
+def _can_upload_to_database(database: str) -> bool:
+    """Return True when the current user can upload images to the target database."""
+    user_role = session.get('user_role', '')
+    if user_role == 'admin':
+        return True
+
+    module_key_getter = getattr(current_app, 'get_image_upload_module_key', None)
+    access_checker = getattr(current_app, 'user_has_module_access', None)
+    if module_key_getter is None or access_checker is None:
+        current_app.logger.error("Image upload access helpers are not configured on the Flask app")
+        return False
+
+    module_key = module_key_getter(database)
+    if not module_key:
+        return False
+
+    return access_checker(session.get('user_email', ''), user_role, module_key)
 
 
 @image_api.route('/upload', methods=['POST'])
@@ -56,6 +75,9 @@ def upload_image():
 
         if not all([database, entity_type, entity_id]):
             return jsonify({'error': 'Missing required parameters'}), 400
+
+        if not _can_upload_to_database(database):
+            return jsonify({'error': 'You do not have permission to upload images for this collection'}), 403
 
         # Optional parameters
         description = request.form.get('description', '')
@@ -98,7 +120,7 @@ def upload_image():
 
 
 @image_api.route('/<image_id>', methods=['GET'])
-@login_required
+@admin_required
 def get_image(image_id):
     """
     Get an image file.
@@ -144,7 +166,7 @@ def get_image_metadata(image_id):
 
 
 @image_api.route('/entity/<database>/<entity_type>/<entity_id>', methods=['GET'])
-@login_required
+@admin_required
 def get_entity_images(database, entity_type, entity_id):
     """Get all images for a specific entity."""
     try:
@@ -276,9 +298,9 @@ def backup_to_server():
 
 
 @image_api.route('/stats', methods=['GET'])
-@login_required
+@admin_required
 def get_storage_stats():
-    """Get storage statistics."""
+    """Get storage statistics. Admin-only because it exposes internal paths."""
     try:
         storage = get_image_storage()
         stats = storage.get_storage_stats()
@@ -306,13 +328,10 @@ def _check_backup_token():
 def receive_backup():
     """
     Receive image backup from another instance.
-    Accepts either admin session auth or X-Backup-Token header.
+    Service-to-service endpoint authenticated via X-Backup-Token.
     """
-    # Allow service-to-service token auth OR admin session
-    from flask import session
-    is_admin = session.get('user_role') == 'admin' and 'user_id' in session
     has_token = _check_backup_token()
-    if not is_admin and not has_token:
+    if not has_token:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     try:
         if 'file' not in request.files:
@@ -345,9 +364,9 @@ def receive_backup():
 
             backup_id = backup_storage.store_image(
                 file_path=str(temp_path),
-                database=meta_dict.get('database', 'unknown'),
+                database=meta_dict.get('database_name', meta_dict.get('database', 'unknown')),
                 entity_type=meta_dict.get('entity_type', 'backup'),
-                entity_id=image_id,
+                entity_id=str(meta_dict.get('entity_id', image_id)),
                 description=f"Backup of {image_id}",
                 metadata=meta_dict
             )

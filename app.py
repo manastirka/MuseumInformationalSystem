@@ -120,6 +120,13 @@ from flask_limiter.util import get_remote_address
 from flask_session import Session
 from flask_babel import Babel, gettext as _, lazy_gettext as _l
 
+try:
+    import redis as redis_client_lib
+    REDIS_CLIENT_AVAILABLE = True
+except ImportError:
+    redis_client_lib = None
+    REDIS_CLIENT_AVAILABLE = False
+
 # Security headers
 try:
     from flask_talisman import Talisman
@@ -131,15 +138,35 @@ except ImportError:
 # Create logs directory before configuring file logging handlers.
 os.makedirs('logs', exist_ok=True)
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/museum_info_system.log'),
-        logging.StreamHandler()
-    ]
-)
+def configure_root_logging():
+    """Initialize process-wide logging once, even across repeated imports."""
+    root_logger = logging.getLogger()
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    log_path = os.path.abspath('logs/museum_info_system.log')
+
+    root_logger.setLevel(logging.INFO)
+
+    has_file_handler = any(
+        isinstance(handler, logging.FileHandler)
+        and getattr(handler, 'baseFilename', None) == log_path
+        for handler in root_logger.handlers
+    )
+    if not has_file_handler:
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+    has_stream_handler = any(
+        isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler)
+        for handler in root_logger.handlers
+    )
+    if not has_stream_handler:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        root_logger.addHandler(stream_handler)
+
+
+configure_root_logging()
 
 # Add paths for integrated apps
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -167,31 +194,91 @@ app = Flask(__name__)
 app.config.from_object(app_config)
 app_config.init_app(app)
 
-# Apply persisted admin security settings (shared across workers via JSON file)
-_settings_file = Path('data/system_settings.json')
-if _settings_file.exists():
+def apply_shared_system_settings(saved_settings):
+    """Apply persisted system/security settings to the current Flask process."""
+    if not saved_settings:
+        return
+
+    if 'min_password_length' in saved_settings:
+        app.config['PASSWORD_MIN_LENGTH'] = saved_settings['min_password_length']
+        password_validator.min_length = saved_settings['min_password_length']
+    if 'max_login_attempts' in saved_settings:
+        app.config['MAX_LOGIN_ATTEMPTS'] = saved_settings['max_login_attempts']
+    if 'lockout_duration' in saved_settings:
+        app.config['ACCOUNT_LOCKOUT_DURATION'] = int(saved_settings['lockout_duration']) * 60
+    if 'session_timeout' in saved_settings:
+        from datetime import timedelta as _td
+        app.config['PERMANENT_SESSION_LIFETIME'] = _td(minutes=int(saved_settings['session_timeout']))
+    if 'require_special_chars' in saved_settings:
+        app.config['PASSWORD_REQUIRE_SPECIAL'] = saved_settings['require_special_chars']
+        password_validator.require_special = bool(saved_settings['require_special_chars'])
+
+
+app.apply_shared_system_settings = apply_shared_system_settings
+
+
+def shared_settings_db_enabled(flask_app):
+    """Return True when this runtime should use PostgreSQL-backed shared settings."""
+    return bool(os.environ.get('DATABASE_URL')) and not flask_app.config.get('TESTING', False)
+
+
+@app.before_request
+def refresh_shared_runtime_settings():
+    """Refresh shared security settings from PostgreSQL-backed storage."""
+    if not shared_settings_db_enabled(app):
+        return
     try:
-        with _settings_file.open('r', encoding='utf-8') as _fh:
-            _saved = json.load(_fh)
-        if 'min_password_length' in _saved:
-            app.config['PASSWORD_MIN_LENGTH'] = _saved['min_password_length']
-        if 'max_login_attempts' in _saved:
-            app.config['MAX_LOGIN_ATTEMPTS'] = _saved['max_login_attempts']
-        if 'lockout_duration' in _saved:
-            app.config['ACCOUNT_LOCKOUT_DURATION'] = int(_saved['lockout_duration']) * 60
-        if 'session_timeout' in _saved:
-            from datetime import timedelta as _td
-            app.config['PERMANENT_SESSION_LIFETIME'] = _td(minutes=int(_saved['session_timeout']))
-        if 'require_special_chars' in _saved:
-            app.config['PASSWORD_REQUIRE_SPECIAL'] = _saved['require_special_chars']
-    except Exception as _exc:
-        logging.getLogger(__name__).warning("Could not load saved settings: %s", _exc)
+        apply_shared_system_settings(admin_system_views.load_saved_settings())
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Could not refresh shared system settings: %s", exc)
 
 # Trust proxy headers from nginx (1 proxy hop)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
+
+def configure_session_storage(flask_app):
+    """Configure the Flask-Session backend for the selected runtime."""
+    session_type = (flask_app.config.get('SESSION_TYPE') or 'filesystem').lower()
+    flask_app.config['SESSION_TYPE'] = session_type
+
+    if session_type == 'filesystem':
+        session_dir = flask_app.config.get('SESSION_FILE_DIR')
+        if session_dir:
+            os.makedirs(session_dir, exist_ok=True)
+        return
+
+    if session_type != 'redis':
+        raise RuntimeError(f"Unsupported SESSION_TYPE: {session_type}")
+
+    redis_url = flask_app.config.get('REDIS_URL')
+    if not redis_url:
+        raise RuntimeError('REDIS_URL is required when SESSION_TYPE=redis')
+    if not REDIS_CLIENT_AVAILABLE:
+        raise RuntimeError('redis package is required when SESSION_TYPE=redis')
+
+    session_redis = redis_client_lib.from_url(redis_url)
+    session_redis.ping()
+    flask_app.config['SESSION_REDIS'] = session_redis
+
+
+def initialize_shared_state(flask_app):
+    """Initialize shared-state clients used by the web tier."""
+    global _login_tracker_initialized
+
+    ratelimit_storage = str(flask_app.config.get('RATELIMIT_STORAGE_URL', ''))
+    redis_url = None
+    if flask_app.config.get('SESSION_TYPE') == 'redis' or ratelimit_storage.startswith('redis'):
+        redis_url = flask_app.config.get('REDIS_URL')
+    if not redis_url:
+        return login_tracker
+
+    init_login_tracker(redis_url)
+    _login_tracker_initialized = True
+    return login_tracker
+
 # Initialize security extensions
 # IMPORTANT: Session must be initialized BEFORE CSRF
+configure_session_storage(app)
 Session(app)
 csrf = CSRFProtect(app)
 
@@ -215,11 +302,14 @@ def get_locale():
 
 babel = Babel(app, locale_selector=get_locale)
 
-# Register image API blueprint (auth enforced per-route in image_api.py)
-# Exempt from CSRF — image uploads use multipart FormData which can't carry CSRF tokens;
-# all routes are now protected by @login_required or @admin_required instead.
-csrf.exempt(image_api)
+# Register image API blueprint.
+# Only the multipart upload endpoint and token-authenticated backup receiver are
+# exempt from CSRF. Admin/browser JSON endpoints keep CSRF protection enabled.
 app.register_blueprint(image_api)
+for _csrf_exempt_endpoint in ('image_api.upload_image', 'image_api.receive_backup'):
+    _view = app.view_functions.get(_csrf_exempt_endpoint)
+    if _view is not None:
+        csrf.exempt(_view)
 app.register_blueprint(archive_signature_bp)
 
 # Initialize rate limiter
@@ -374,6 +464,8 @@ auth_system = LazyServiceProxy(build_auth_system, 'authentication service')
 timesheet_repository = LazyServiceProxy(build_timesheet_repository, 'timesheet repository')
 _login_tracker_initialized = False
 _fallback_auth_warning_logged = False
+initialize_shared_state(app)
+apply_shared_system_settings(admin_system_views.load_saved_settings())
 
 # Module access configuration
 # NOTE: This controls dashboard widgets only. Navigation menu remains unchanged.
@@ -536,25 +628,29 @@ def load_module_access(force: bool = False):
     global MODULE_ACCESS, _module_access_mtime
 
     current_mtime = _get_file_mtime(MODULE_ACCESS_FILE)
-    if not force and current_mtime == _module_access_mtime:
+    use_shared_db = shared_settings_db_enabled(app)
+    if not use_shared_db and not force and current_mtime == _module_access_mtime:
         return MODULE_ACCESS
 
     MODULE_ACCESS = module_access_support.load_module_access_data(
         module_access_file=MODULE_ACCESS_FILE,
         current_mtime=current_mtime,
         default_access=MODULE_ACCESS_DEFAULTS,
+        get_postgres_connection=get_postgres_connection if use_shared_db else None,
     )
-    _module_access_mtime = current_mtime
+    _module_access_mtime = None if use_shared_db else current_mtime
     return MODULE_ACCESS
 
 def save_module_access():
     """Save module access settings to JSON file."""
     global _module_access_mtime
+    use_shared_db = shared_settings_db_enabled(app)
     if module_access_support.save_module_access_data(
         module_access_file=MODULE_ACCESS_FILE,
         module_access=MODULE_ACCESS,
+        get_postgres_connection=get_postgres_connection if use_shared_db else None,
     ):
-        _module_access_mtime = _get_file_mtime(MODULE_ACCESS_FILE)
+        _module_access_mtime = None if use_shared_db else _get_file_mtime(MODULE_ACCESS_FILE)
         return True
     return False
 
@@ -580,25 +676,29 @@ def load_dashboard_preferences(force: bool = False):
     global DASHBOARD_PREFERENCES, _dashboard_prefs_mtime
 
     current_mtime = _get_file_mtime(DASHBOARD_PREFS_FILE)
-    if not force and current_mtime == _dashboard_prefs_mtime:
+    use_shared_db = shared_settings_db_enabled(app)
+    if not use_shared_db and not force and current_mtime == _dashboard_prefs_mtime:
         return DASHBOARD_PREFERENCES
 
     DASHBOARD_PREFERENCES = module_access_support.load_dashboard_preferences_data(
         dashboard_prefs_file=DASHBOARD_PREFS_FILE,
         current_mtime=current_mtime,
         default_prefs=_DEFAULT_DASHBOARD_PREFS,
+        get_postgres_connection=get_postgres_connection if use_shared_db else None,
     )
-    _dashboard_prefs_mtime = current_mtime
+    _dashboard_prefs_mtime = None if use_shared_db else current_mtime
     return DASHBOARD_PREFERENCES
 
 def save_dashboard_preferences():
     """Save dashboard preferences to JSON file."""
     global _dashboard_prefs_mtime
+    use_shared_db = shared_settings_db_enabled(app)
     if module_access_support.save_dashboard_preferences_data(
         dashboard_prefs_file=DASHBOARD_PREFS_FILE,
         dashboard_preferences=DASHBOARD_PREFERENCES,
+        get_postgres_connection=get_postgres_connection if use_shared_db else None,
     ):
-        _dashboard_prefs_mtime = _get_file_mtime(DASHBOARD_PREFS_FILE)
+        _dashboard_prefs_mtime = None if use_shared_db else _get_file_mtime(DASHBOARD_PREFS_FILE)
         return True
     return False
 
@@ -640,8 +740,11 @@ def ensure_login_tracker_initialized():
     if _login_tracker_initialized:
         return login_tracker
 
-    redis_url = app.config.get('REDIS_URL')
-    init_login_tracker(redis_url if redis_url else None)
+    tracker = initialize_shared_state(app)
+    if _login_tracker_initialized:
+        return tracker
+
+    init_login_tracker(None)
     _login_tracker_initialized = True
     return login_tracker
 
@@ -1334,6 +1437,7 @@ get_accessible_image_upload_databases = _collection_access_support.get_accessibl
 normalize_image_upload_record = _collection_access_support.normalize_image_upload_record
 get_image_upload_records = _collection_access_support.get_image_upload_records
 ensure_image_upload_access = _collection_access_support.ensure_image_upload_access
+app.get_image_upload_module_key = get_image_upload_module_key
 
 @app.route('/admin/qr_generator')
 @login_required
@@ -2504,8 +2608,11 @@ def start_background_jobs():
 
 def create_app(start_background_services: bool = False):
     """Create the main application (simplified version)."""
-    if start_background_services and start_background_jobs():
-        logger.info("Started optional background services")
+    if start_background_services:
+        logger.warning(
+            "Background services are no longer started from the web app. "
+            "Run background_worker.py as a separate process instead."
+        )
 
     return app
 
@@ -3733,7 +3840,7 @@ if __name__ == '__main__':
     print("=" * 50)
 
     # Create the application
-    application = create_app(start_background_services=True)
+    application = create_app()
 
     # Run the application
     app.run(

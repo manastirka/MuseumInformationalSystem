@@ -8,9 +8,9 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-os.environ.setdefault('FLASK_ENV', 'testing')
-os.environ.setdefault('SECRET_KEY', 'test-secret')
-os.environ.setdefault('REDIS_URL', '')
+os.environ['FLASK_ENV'] = 'testing'
+os.environ['SECRET_KEY'] = 'test-secret'
+os.environ['REDIS_URL'] = ''
 
 import app as museum_app
 

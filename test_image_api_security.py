@@ -1,18 +1,32 @@
-"""
-Tests for image API authentication and authorization.
-
-Verifies that all image API endpoints require authentication,
-destructive endpoints require admin role, and CSRF is enforced
-on mutating endpoints.
-"""
+"""Tests for image API authentication, authorization, and CSRF behavior."""
 
 import unittest
-from unittest.mock import patch, MagicMock
 import os
 import sys
+import io
+import importlib.util
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
 import image_api as image_api_mod
+import image_storage_engine as image_storage_mod
+
+
+def _load_root_app_module():
+    """Load the repository root app.py deterministically for tests."""
+    os.environ['SECRET_KEY'] = 'test-key'
+    os.environ['FLASK_ENV'] = 'development'
+    module_name = 'museum_root_app_for_tests'
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+
+    app_path = Path(__file__).resolve().parent / 'app.py'
+    spec = importlib.util.spec_from_file_location(module_name, app_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
 
 
 class ImageAPIAuthTests(unittest.TestCase):
@@ -20,9 +34,8 @@ class ImageAPIAuthTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.environ.setdefault('SECRET_KEY', 'test-key')
-        os.environ.setdefault('WTF_CSRF_ENABLED', 'False')
-        import app as museum_app
+        os.environ['WTF_CSRF_ENABLED'] = 'False'
+        museum_app = _load_root_app_module()
         cls.app = museum_app.app
         cls.app.config['TESTING'] = True
         cls.app.config['WTF_CSRF_ENABLED'] = False
@@ -54,6 +67,20 @@ class ImageAPIAuthTests(unittest.TestCase):
     def test_upload_requires_auth(self):
         resp = self._post('/api/images/upload', data={'database': 'x'})
         self.assertEqual(resp.status_code, 401)
+
+    def test_upload_requires_collection_access(self):
+        self._login_as('employee')
+        resp = self._post(
+            '/api/images/upload',
+            data={
+                'database': 'x',
+                'entity_type': 'collection_item',
+                'entity_id': '1',
+                'file': (io.BytesIO(b'not-an-image'), 'test.jpg'),
+            },
+            content_type='multipart/form-data',
+        )
+        self.assertEqual(resp.status_code, 403)
 
     def test_get_image_requires_auth(self):
         resp = self._get('/api/images/test-id')
@@ -124,12 +151,11 @@ class ImageAPIAuthTests(unittest.TestCase):
                           json={'image_id': '1'})
         self.assertEqual(resp.status_code, 403)
 
-    def test_backup_receive_requires_admin_or_token(self):
+    def test_backup_receive_requires_token(self):
         self._login_as('employee')
         resp = self._post('/api/images/backup/receive',
                           data={'image_id': '1'})
-        # Employee without backup token should be rejected
-        self.assertIn(resp.status_code, (401, 403))
+        self.assertEqual(resp.status_code, 401)
 
     # --- Restore must reject path traversal ---
 
@@ -165,6 +191,21 @@ class ImageAPIAuthTests(unittest.TestCase):
         resp = self._get('/api/images/test-id/metadata')
         self.assertEqual(resp.status_code, 403)
 
+    def test_get_image_requires_admin(self):
+        self._login_as('employee')
+        resp = self._get('/api/images/test-id')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_entity_images_requires_admin(self):
+        self._login_as('employee')
+        resp = self._get('/api/images/entity/db/type/1')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_stats_requires_admin(self):
+        self._login_as('employee')
+        resp = self._get('/api/images/stats')
+        self.assertEqual(resp.status_code, 403)
+
     # --- Backup name sanitization ---
 
     def test_backup_create_rejects_unsafe_name(self):
@@ -186,6 +227,79 @@ class ImageAPIAuthTests(unittest.TestCase):
                           json={'backup_name': 'daily-2026-03-23'})
         # May fail for other reasons (no storage), but should NOT be 400
         self.assertNotEqual(resp.status_code, 400)
+
+
+class ImageAPICsrfTests(unittest.TestCase):
+    """Verify only intended image routes are exempt from CSRF."""
+
+    @classmethod
+    def setUpClass(cls):
+        museum_app = _load_root_app_module()
+        cls.app = museum_app.app
+        cls.app.config['TESTING'] = True
+        cls.app.config['WTF_CSRF_ENABLED'] = True
+
+    def setUp(self):
+        self.base_url = 'https://localhost'
+        self.client = self.app.test_client()
+
+    def _login_as(self, role='employee'):
+        with self.client.session_transaction() as sess:
+            sess['user_id'] = 'test@test.rs'
+            sess['user_email'] = 'test@test.rs'
+            sess['role'] = role
+            sess['user_role'] = role
+
+    def test_backup_create_enforces_csrf(self):
+        self._login_as('admin')
+        resp = self.client.post(
+            '/api/images/backup/create',
+            base_url=self.base_url,
+            json={'backup_name': 'safe_name'},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_backup_server_enforces_csrf(self):
+        self._login_as('admin')
+        resp = self.client.post(
+            '/api/images/backup/server',
+            base_url=self.base_url,
+            json={'image_id': 'test-id'},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upload_route_is_still_csrf_exempt(self):
+        self._login_as('employee')
+        resp = self.client.post(
+            '/api/images/upload',
+            base_url=self.base_url,
+            data={'database': 'x', 'entity_type': 'y', 'entity_id': '1'},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.get_json(), {'error': 'No file provided'})
+
+    def test_backup_receive_route_is_token_based_and_csrf_exempt(self):
+        resp = self.client.post(
+            '/api/images/backup/receive',
+            base_url=self.base_url,
+            data={'image_id': '1'},
+        )
+        self.assertEqual(resp.status_code, 401)
+
+
+class ImageStorageFactoryTests(unittest.TestCase):
+    """Ensure different storage paths receive isolated storage instances."""
+
+    def setUp(self):
+        image_storage_mod._image_storage_instances.clear()
+
+    def test_storage_instances_are_isolated_by_path(self):
+        storage_a = image_storage_mod.get_image_storage('/tmp/image-store-a')
+        storage_b = image_storage_mod.get_image_storage('/tmp/image-store-b')
+        storage_a_again = image_storage_mod.get_image_storage('/tmp/image-store-a')
+
+        self.assertIsNot(storage_a, storage_b)
+        self.assertIs(storage_a, storage_a_again)
 
 
 if __name__ == '__main__':

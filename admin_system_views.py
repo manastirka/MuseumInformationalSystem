@@ -13,6 +13,7 @@ import psutil
 from flask import current_app, jsonify, render_template, request, send_file
 from psycopg.rows import dict_row
 
+import module_access_support
 from postgres_service import get_database_url, get_postgres_connection
 
 logger = logging.getLogger(__name__)
@@ -22,18 +23,25 @@ MAIN_LOG_FILE = Path('logs/museum_info_system.log')
 BACKUP_DIR = Path('backups')
 
 
-def _load_saved_settings():
-    settings = {}
-    if SETTINGS_FILE.exists():
-        with SETTINGS_FILE.open('r', encoding='utf-8') as handle:
-            settings = json.load(handle)
-    return settings
+def load_saved_settings():
+    """Load shared system settings from PostgreSQL first, then file fallback."""
+    return module_access_support.load_json_settings_data(
+        setting_key='system_settings',
+        default_value={},
+        get_postgres_connection=get_postgres_connection if os.environ.get('DATABASE_URL') else None,
+        file_path=str(SETTINGS_FILE),
+        current_mtime=SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else None,
+    )
 
 
-def _save_settings(settings):
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with SETTINGS_FILE.open('w', encoding='utf-8') as handle:
-        json.dump(settings, handle, ensure_ascii=False, indent=2)
+def save_settings(settings):
+    """Persist shared system settings to PostgreSQL and file fallback."""
+    return module_access_support.save_json_settings_data(
+        setting_key='system_settings',
+        payload=settings,
+        get_postgres_connection=get_postgres_connection if os.environ.get('DATABASE_URL') else None,
+        file_path=str(SETTINGS_FILE),
+    )
 
 
 def _session_timeout_minutes(value):
@@ -119,7 +127,7 @@ def render_admin_system_settings():
     }
 
     try:
-        settings.update(_load_saved_settings())
+        settings.update(load_saved_settings())
     except Exception as exc:
         logger.error("Error loading settings: %s", exc)
 
@@ -136,7 +144,7 @@ def api_save_general_settings():
     """Save general settings."""
     try:
         data = request.get_json() or {}
-        settings = _load_saved_settings() if SETTINGS_FILE.exists() else {}
+        settings = load_saved_settings()
         settings.update(
             {
                 'institution_name': data.get('institution_name'),
@@ -145,7 +153,8 @@ def api_save_general_settings():
                 'timezone': data.get('timezone'),
             }
         )
-        _save_settings(settings)
+        if not save_settings(settings):
+            raise RuntimeError('Could not persist general settings')
         return jsonify({'success': True})
     except Exception as exc:
         logger.error("Error saving general settings: %s", exc)
@@ -184,7 +193,7 @@ def api_save_security_settings():
         if not isinstance(require_special_chars, bool):
             require_special_chars = bool(require_special_chars)
 
-        settings = _load_saved_settings() if SETTINGS_FILE.exists() else {}
+        settings = load_saved_settings()
         settings.update(
             {
                 'min_password_length': min_password_length,
@@ -194,13 +203,18 @@ def api_save_security_settings():
                 'require_special_chars': require_special_chars,
             }
         )
-        _save_settings(settings)
+        if not save_settings(settings):
+            raise RuntimeError('Could not persist security settings')
 
-        current_app.config['PASSWORD_MIN_LENGTH'] = min_password_length
-        current_app.config['MAX_LOGIN_ATTEMPTS'] = max_login_attempts
-        current_app.config['ACCOUNT_LOCKOUT_DURATION'] = int(lockout_duration) * 60
-        current_app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(session_timeout))
-        current_app.config['PASSWORD_REQUIRE_SPECIAL'] = require_special_chars
+        apply_settings = getattr(current_app, 'apply_shared_system_settings', None)
+        if apply_settings is not None:
+            apply_settings(settings)
+        else:
+            current_app.config['PASSWORD_MIN_LENGTH'] = min_password_length
+            current_app.config['MAX_LOGIN_ATTEMPTS'] = max_login_attempts
+            current_app.config['ACCOUNT_LOCKOUT_DURATION'] = int(lockout_duration) * 60
+            current_app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(session_timeout))
+            current_app.config['PASSWORD_REQUIRE_SPECIAL'] = require_special_chars
 
         return jsonify({
             'success': True,

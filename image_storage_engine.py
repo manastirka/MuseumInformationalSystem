@@ -10,7 +10,8 @@ import json
 import shutil
 import hashlib
 import logging
-from datetime import datetime
+import tempfile
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 from PIL import Image
@@ -21,6 +22,13 @@ logger = logging.getLogger(__name__)
 # Default path - can be overridden via IMAGE_STORAGE_PATH env variable
 # On server, set IMAGE_STORAGE_PATH to storage drive mount point
 DEFAULT_STORAGE_PATH = os.environ.get('IMAGE_STORAGE_PATH', './ImagesDatabase')
+BACKUP_METADATA_FILENAME = 'metadata.json'
+DEFAULT_IMAGE_STORAGE_BACKEND = os.environ.get('IMAGE_STORAGE_BACKEND', 'local').strip().lower() or 'local'
+
+
+def get_image_storage_backend_name() -> str:
+    """Read backend choice at runtime so tests and deployments can override it safely."""
+    return os.environ.get('IMAGE_STORAGE_BACKEND', DEFAULT_IMAGE_STORAGE_BACKEND).strip().lower() or 'local'
 
 
 def _get_db_connection():
@@ -40,6 +48,313 @@ def _get_db_connection():
         return None
 
 
+class ImageStorageBackend:
+    """Storage backend abstraction for image binaries."""
+
+    name = 'base'
+
+    def initialize(self):
+        raise NotImplementedError
+
+    def build_ref(self, category: str, filename: str) -> str:
+        raise NotImplementedError
+
+    def save_file(self, source_path: Path, category: str, filename: str) -> str:
+        raise NotImplementedError
+
+    def resolve_ref(self, ref: str) -> Optional[Path]:
+        raise NotImplementedError
+
+    def delete_ref(self, ref: str) -> None:
+        raise NotImplementedError
+
+    def is_managed_ref(self, ref: str) -> bool:
+        raise NotImplementedError
+
+    def category_dir(self, category: str) -> Path:
+        raise NotImplementedError
+
+    def export_category(self, category: str, destination: Path) -> None:
+        raise NotImplementedError
+
+    def import_category(self, source: Path, category: str) -> None:
+        raise NotImplementedError
+
+    def describe(self) -> str:
+        raise NotImplementedError
+
+
+class LocalFilesystemImageBackend(ImageStorageBackend):
+    """Current local-filesystem storage backend, behind an abstraction boundary."""
+
+    name = 'local'
+    SCHEME = 'local://'
+
+    def __init__(self, base_path: Path):
+        self.base_path = Path(base_path)
+
+    def initialize(self):
+        directories = [
+            self.base_path,
+            self.category_dir('originals'),
+            self.category_dir('thumbnails/small'),
+            self.category_dir('thumbnails/medium'),
+            self.category_dir('thumbnails/large'),
+            self.category_dir('temp'),
+            self.category_dir('backups'),
+        ]
+        for directory in directories:
+            directory.mkdir(parents=True, exist_ok=True)
+
+    def build_ref(self, category: str, filename: str) -> str:
+        return f"{self.SCHEME}{category.strip('/')}/{filename}"
+
+    def _relative_path_from_ref(self, ref: str) -> Optional[Path]:
+        if not ref.startswith(self.SCHEME):
+            return None
+        relative = ref[len(self.SCHEME):].lstrip('/')
+        if not relative:
+            return None
+        return Path(relative)
+
+    def resolve_ref(self, ref: str) -> Optional[Path]:
+        relative = self._relative_path_from_ref(ref)
+        if relative is not None:
+            return self.base_path / relative
+
+        # Backward compatibility with legacy absolute filesystem paths.
+        try:
+            return Path(ref)
+        except TypeError:
+            return None
+
+    def save_file(self, source_path: Path, category: str, filename: str) -> str:
+        destination = self.category_dir(category) / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, destination)
+        return self.build_ref(category, filename)
+
+    def delete_ref(self, ref: str) -> None:
+        resolved = self.resolve_ref(ref)
+        if resolved and resolved.exists():
+            resolved.unlink()
+
+    def is_managed_ref(self, ref: str) -> bool:
+        relative = self._relative_path_from_ref(ref)
+        if relative is not None:
+            return True
+
+        resolved = self.resolve_ref(ref)
+        if resolved is None:
+            return False
+        try:
+            return resolved.resolve().is_relative_to(self.base_path.resolve())
+        except OSError:
+            return False
+
+    def category_dir(self, category: str) -> Path:
+        return self.base_path / Path(category)
+
+    def export_category(self, category: str, destination: Path) -> None:
+        shutil.copytree(
+            self.category_dir(category),
+            destination,
+            dirs_exist_ok=True,
+        )
+
+    def import_category(self, source: Path, category: str) -> None:
+        shutil.copytree(
+            source,
+            self.category_dir(category),
+            dirs_exist_ok=True,
+        )
+
+    def describe(self) -> str:
+        return str(self.base_path)
+
+
+class ObjectStorageImageBackend(ImageStorageBackend):
+    """S3-compatible object storage backend with local cache and export/import support."""
+
+    name = 'object'
+    SCHEME = 'object://'
+
+    def __init__(self, base_path: Path):
+        self.base_path = Path(base_path)
+        self.bucket = (os.environ.get('AWS_S3_BUCKET') or '').strip()
+        if not self.bucket:
+            raise RuntimeError("AWS_S3_BUCKET is required for object image storage")
+
+        self.region = os.environ.get('AWS_REGION', 'eu-central-1').strip() or 'eu-central-1'
+        self.endpoint_url = (os.environ.get('AWS_S3_ENDPOINT_URL') or '').strip() or None
+        self.prefix = os.environ.get('IMAGE_STORAGE_OBJECT_PREFIX', 'museum-images').strip().strip('/')
+        self.cache_path = Path(
+            os.environ.get('IMAGE_STORAGE_CACHE_PATH', str(self.base_path / 'cache'))
+        )
+        self.backup_path = Path(
+            os.environ.get('IMAGE_STORAGE_BACKUP_PATH', str(self.base_path / 'backups'))
+        )
+
+        try:
+            import boto3
+        except ImportError as exc:
+            raise RuntimeError(
+                "boto3 is required for IMAGE_STORAGE_BACKEND=object"
+            ) from exc
+
+        client_kwargs = {'region_name': self.region}
+        if self.endpoint_url:
+            client_kwargs['endpoint_url'] = self.endpoint_url
+        self.client = boto3.client('s3', **client_kwargs)
+
+    def initialize(self):
+        for directory in (
+            self.cache_path,
+            self.category_dir('originals'),
+            self.category_dir('thumbnails/small'),
+            self.category_dir('thumbnails/medium'),
+            self.category_dir('thumbnails/large'),
+            self.category_dir('temp'),
+            self.backup_path,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
+    def _normalize_category(self, category: str) -> str:
+        return category.strip('/').replace('\\', '/')
+
+    def _object_key(self, category: str, filename: str) -> str:
+        key_parts = [part for part in (self.prefix, self._normalize_category(category), filename.strip('/')) if part]
+        return '/'.join(key_parts)
+
+    def build_ref(self, category: str, filename: str) -> str:
+        return f"{self.SCHEME}{self._normalize_category(category)}/{filename.strip('/')}"
+
+    def _relative_path_from_ref(self, ref: str) -> Optional[Path]:
+        if not ref.startswith(self.SCHEME):
+            return None
+        relative = ref[len(self.SCHEME):].lstrip('/')
+        if not relative:
+            return None
+        return Path(relative)
+
+    def _iter_category_keys(self, category: str):
+        prefix = self._object_key(category, '')
+        continuation_token = None
+        while True:
+            kwargs = {'Bucket': self.bucket, 'Prefix': prefix}
+            if continuation_token:
+                kwargs['ContinuationToken'] = continuation_token
+            response = self.client.list_objects_v2(**kwargs)
+            for item in response.get('Contents', []):
+                key = item.get('Key')
+                if key and not key.endswith('/'):
+                    yield key
+            if not response.get('IsTruncated'):
+                break
+            continuation_token = response.get('NextContinuationToken')
+
+    def resolve_ref(self, ref: str) -> Optional[Path]:
+        relative = self._relative_path_from_ref(ref)
+        if relative is not None:
+            cache_target = self.cache_path / relative
+            if cache_target.exists():
+                return cache_target
+
+            cache_target.parent.mkdir(parents=True, exist_ok=True)
+            category = relative.parent.as_posix()
+            filename = relative.name
+            object_key = self._object_key(category, filename)
+            try:
+                self.client.download_file(self.bucket, object_key, str(cache_target))
+            except Exception as exc:
+                logger.error("Failed to download image object %s: %s", object_key, exc)
+                return None
+            return cache_target
+
+        try:
+            return Path(ref)
+        except TypeError:
+            return None
+
+    def save_file(self, source_path: Path, category: str, filename: str) -> str:
+        object_key = self._object_key(category, filename)
+        self.client.upload_file(str(source_path), self.bucket, object_key)
+
+        cache_target = self.cache_path / self._normalize_category(category) / filename
+        cache_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, cache_target)
+        return self.build_ref(category, filename)
+
+    def delete_ref(self, ref: str) -> None:
+        relative = self._relative_path_from_ref(ref)
+        if relative is None:
+            resolved = self.resolve_ref(ref)
+            if resolved and resolved.exists():
+                resolved.unlink()
+            return
+
+        category = relative.parent.as_posix()
+        filename = relative.name
+        object_key = self._object_key(category, filename)
+        self.client.delete_object(Bucket=self.bucket, Key=object_key)
+
+        cache_target = self.cache_path / relative
+        if cache_target.exists():
+            cache_target.unlink()
+
+    def is_managed_ref(self, ref: str) -> bool:
+        return self._relative_path_from_ref(ref) is not None
+
+    def category_dir(self, category: str) -> Path:
+        normalized = self._normalize_category(category)
+        if normalized == 'backups':
+            return self.backup_path
+        return self.cache_path / normalized
+
+    def export_category(self, category: str, destination: Path) -> None:
+        destination.mkdir(parents=True, exist_ok=True)
+        category_prefix = self._normalize_category(category).rstrip('/')
+        for key in self._iter_category_keys(category):
+            object_path = Path(key)
+            relative_parts = object_path.parts[len(tuple(filter(None, self.prefix.split('/')))):]
+            if not relative_parts:
+                continue
+            relative = Path(*relative_parts)
+            if relative.parts[0] != category_prefix:
+                continue
+            relative_suffix = Path(*relative.parts[1:]) if len(relative.parts) > 1 else Path(relative.name)
+            destination_path = destination / relative_suffix
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            self.client.download_file(self.bucket, key, str(destination_path))
+
+    def import_category(self, source: Path, category: str) -> None:
+        source = Path(source)
+        if not source.exists():
+            return
+        for image_file in source.rglob('*'):
+            if not image_file.is_file():
+                continue
+            relative = image_file.relative_to(source).as_posix()
+            self.save_file(image_file, category, relative)
+
+    def describe(self) -> str:
+        base = f"s3://{self.bucket}"
+        if self.prefix:
+            return f"{base}/{self.prefix}"
+        return base
+
+
+def _build_storage_backend(base_storage_path: str) -> ImageStorageBackend:
+    """Construct the configured image binary storage backend."""
+    backend_name = get_image_storage_backend_name()
+    base_path = Path(base_storage_path or DEFAULT_STORAGE_PATH)
+    if backend_name == 'local':
+        return LocalFilesystemImageBackend(base_path)
+    if backend_name in {'object', 's3', 'minio'}:
+        return ObjectStorageImageBackend(base_path)
+    raise RuntimeError(f"Unsupported IMAGE_STORAGE_BACKEND: {backend_name}")
+
+
 class ImageStorageEngine:
     """
     Universal image storage engine for all museum databases.
@@ -57,22 +372,14 @@ class ImageStorageEngine:
     def __init__(self, base_storage_path: str = None, server_backup_url: str = None):
         self.base_path = Path(base_storage_path or DEFAULT_STORAGE_PATH)
         self.server_backup_url = server_backup_url
-        self._init_directories()
+        self.storage_backend = _build_storage_backend(self.base_path)
+        self.storage_backend.initialize()
         self._ensure_db_table()
-        logger.info(f"Image storage engine initialized at: {self.base_path}")
-
-    def _init_directories(self):
-        """Create ImagesDatabase directory structure."""
-        directories = [
-            self.base_path,
-            self.base_path / 'originals',
-            self.base_path / 'thumbnails' / 'small',
-            self.base_path / 'thumbnails' / 'medium',
-            self.base_path / 'thumbnails' / 'large',
-            self.base_path / 'temp',
-        ]
-        for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
+        logger.info(
+            "Image storage engine initialized at: %s (backend=%s)",
+            self.storage_backend.describe(),
+            self.storage_backend.name,
+        )
 
     def _ensure_db_table(self):
         """Ensure images table exists in PostgreSQL."""
@@ -163,9 +470,17 @@ class ImageStorageEngine:
                 for size_name, dimensions in self.THUMBNAIL_SIZES.items():
                     thumbnail = img.copy()
                     thumbnail.thumbnail(dimensions, Image.Resampling.LANCZOS)
-                    thumb_path = self.base_path / 'thumbnails' / size_name / f"{image_id}.jpg"
-                    thumbnail.save(thumb_path, 'JPEG', quality=85, optimize=True)
-                    thumb_paths[size_name] = str(thumb_path)
+                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                        temp_path = Path(temp_file.name)
+                    try:
+                        thumbnail.save(temp_path, 'JPEG', quality=85, optimize=True)
+                        thumb_paths[size_name] = self.storage_backend.save_file(
+                            temp_path,
+                            f'thumbnails/{size_name}',
+                            f"{image_id}.jpg",
+                        )
+                    finally:
+                        temp_path.unlink(missing_ok=True)
 
             logger.info(f"Generated thumbnails for image: {image_id}")
         except Exception as e:
@@ -173,15 +488,147 @@ class ImageStorageEngine:
             raise
         return thumb_paths
 
-    def _cleanup_stored_files(self, original_path: Path, thumb_paths: Dict[str, str]):
-        """Remove files written to disk when DB persistence fails."""
-        for label, path_str in [('original', str(original_path))] + list(thumb_paths.items()):
+    def _cleanup_stored_files(self, original_ref: str, thumb_paths: Dict[str, str]):
+        """Remove stored objects/files when DB persistence fails."""
+        for label, storage_ref in [('original', original_ref)] + list(thumb_paths.items()):
             try:
-                p = Path(path_str)
-                if p.exists():
-                    p.unlink()
-            except OSError as exc:
-                logger.warning("Could not clean up %s (%s): %s", label, path_str, exc)
+                self.storage_backend.delete_ref(storage_ref)
+            except Exception as exc:
+                logger.warning("Could not clean up %s (%s): %s", label, storage_ref, exc)
+
+    def _serialize_image_row(self, row: Dict) -> Dict:
+        """Convert DB row objects into JSON-safe backup metadata."""
+        result = dict(row)
+        for key in ('created_at', 'updated_at', 'backup_date'):
+            if result.get(key):
+                result[key] = result[key].isoformat()
+        return result
+
+    def _get_backup_manifest_path(self, backup_dir: Path) -> Path:
+        """Return the metadata manifest path for a backup directory."""
+        return backup_dir / BACKUP_METADATA_FILENAME
+
+    def _export_backup_metadata(self) -> Optional[List[Dict]]:
+        """Export metadata rows for images stored under this engine's base path."""
+        conn = _get_db_connection()
+        if not conn:
+            logger.error("Cannot create restorable image backup without PostgreSQL metadata access")
+            return None
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM images ORDER BY created_at")
+                rows = cur.fetchall()
+
+            metadata_rows = []
+            for row in rows:
+                serialized = self._serialize_image_row(row)
+                file_path = serialized.get('file_path')
+                if not file_path:
+                    continue
+
+                if self.storage_backend.is_managed_ref(file_path):
+                    metadata_rows.append(serialized)
+
+            return metadata_rows
+        except Exception as exc:
+            logger.error("Failed to export image metadata for backup: %s", exc)
+            return None
+        finally:
+            conn.close()
+
+    def _restore_backup_metadata(self, manifest_images: List[Dict]) -> bool:
+        """Restore PostgreSQL metadata rows for files present in the restored backup."""
+        conn = _get_db_connection()
+        if not conn:
+            logger.error("Cannot restore image backup metadata without PostgreSQL access")
+            return False
+
+        try:
+            with conn.cursor() as cur:
+                for image in manifest_images:
+                    image_id = image['image_id']
+                    file_extension = image.get('file_extension') or Path(image.get('file_path', '')).suffix or '.jpg'
+                    original_path = self.storage_backend.category_dir('originals') / f"{image_id}{file_extension}"
+                    if not original_path.exists():
+                        logger.error("Restored original file missing for image %s", image_id)
+                        conn.rollback()
+                        return False
+
+                    width = image.get('width')
+                    height = image.get('height')
+                    if not width or not height:
+                        width, height = self._get_image_dimensions(original_path)
+
+                    custom_metadata = image.get('custom_metadata') or {}
+                    if isinstance(custom_metadata, str):
+                        try:
+                            custom_metadata = json.loads(custom_metadata)
+                        except json.JSONDecodeError:
+                            custom_metadata = {}
+
+                    cur.execute("""
+                        INSERT INTO images (
+                            image_id, database_name, entity_type, entity_id,
+                            original_filename, file_extension, file_path,
+                            thumbnail_small, thumbnail_medium, thumbnail_large,
+                            description, file_size, file_hash, width, height,
+                            custom_metadata, backed_up, backup_date, created_at, updated_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        )
+                        ON CONFLICT (image_id) DO UPDATE SET
+                            database_name = EXCLUDED.database_name,
+                            entity_type = EXCLUDED.entity_type,
+                            entity_id = EXCLUDED.entity_id,
+                            original_filename = EXCLUDED.original_filename,
+                            file_extension = EXCLUDED.file_extension,
+                            file_path = EXCLUDED.file_path,
+                            thumbnail_small = EXCLUDED.thumbnail_small,
+                            thumbnail_medium = EXCLUDED.thumbnail_medium,
+                            thumbnail_large = EXCLUDED.thumbnail_large,
+                            description = EXCLUDED.description,
+                            file_size = EXCLUDED.file_size,
+                            file_hash = EXCLUDED.file_hash,
+                            width = EXCLUDED.width,
+                            height = EXCLUDED.height,
+                            custom_metadata = EXCLUDED.custom_metadata,
+                            backed_up = EXCLUDED.backed_up,
+                            backup_date = EXCLUDED.backup_date,
+                            created_at = EXCLUDED.created_at,
+                            updated_at = EXCLUDED.updated_at
+                    """, (
+                        image_id,
+                        image.get('database_name', image.get('database', 'unknown')),
+                        image.get('entity_type', 'unknown'),
+                        str(image.get('entity_id', '')),
+                        image.get('original_filename', ''),
+                        file_extension,
+                        self.storage_backend.build_ref('originals', f"{image_id}{file_extension}"),
+                        self.storage_backend.build_ref('thumbnails/small', f"{image_id}.jpg"),
+                        self.storage_backend.build_ref('thumbnails/medium', f"{image_id}.jpg"),
+                        self.storage_backend.build_ref('thumbnails/large', f"{image_id}.jpg"),
+                        image.get('description', ''),
+                        original_path.stat().st_size,
+                        image.get('file_hash', ''),
+                        width,
+                        height,
+                        json.dumps(custom_metadata),
+                        bool(image.get('backed_up', False)),
+                        image.get('backup_date'),
+                        image.get('created_at'),
+                        image.get('updated_at'),
+                    ))
+
+            conn.commit()
+            return True
+        except Exception as exc:
+            logger.error("Failed to restore image metadata from backup: %s", exc)
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
 
     def store_image(
         self,
@@ -221,8 +668,8 @@ class ImageStorageEngine:
 
             # Copy to ImagesDatabase/originals/
             original_filename = f"{image_id}{source_path.suffix}"
-            original_path = self.base_path / 'originals' / original_filename
-            shutil.copy2(source_path, original_path)
+            original_ref = self.storage_backend.save_file(source_path, 'originals', original_filename)
+            original_path = self.storage_backend.resolve_ref(original_ref)
 
             # Get image dimensions
             width, height = self._get_image_dimensions(original_path)
@@ -251,7 +698,7 @@ class ImageStorageEngine:
                         """, (
                             image_id, database, entity_type, str(entity_id),
                             source_path.name, source_path.suffix,
-                            str(original_path),
+                            original_ref,
                             thumb_paths.get('small', ''),
                             thumb_paths.get('medium', ''),
                             thumb_paths.get('large', ''),
@@ -264,14 +711,14 @@ class ImageStorageEngine:
                     logger.error(f"Error saving image reference to PostgreSQL: {e}")
                     conn.rollback()
                     # Clean up orphaned files on DB failure
-                    self._cleanup_stored_files(original_path, thumb_paths)
+                    self._cleanup_stored_files(original_ref, thumb_paths)
                     return None
                 finally:
                     conn.close()
             else:
                 logger.warning(f"No PostgreSQL connection - image {image_id} stored on disk only")
 
-            logger.info(f"Image stored: {image_id} -> {original_path}")
+            logger.info(f"Image stored: {image_id} -> {original_ref}")
             return image_id
 
         except Exception as e:
@@ -307,8 +754,8 @@ class ImageStorageEngine:
 
                     row = cur.fetchone()
                     if row and row['file_path']:
-                        path = Path(row['file_path'])
-                        if path.exists():
+                        path = self.storage_backend.resolve_ref(row['file_path'])
+                        if path and path.exists():
                             return path
             except Exception as e:
                 logger.error(f"Error querying image path: {e}")
@@ -318,12 +765,16 @@ class ImageStorageEngine:
         # Fallback: scan filesystem
         if size == 'original':
             for ext in self.ALLOWED_EXTENSIONS:
-                path = self.base_path / 'originals' / f"{image_id}{ext}"
-                if path.exists():
+                path = self.storage_backend.resolve_ref(
+                    self.storage_backend.build_ref('originals', f"{image_id}{ext}")
+                )
+                if path and path.exists():
                     return path
         else:
-            path = self.base_path / 'thumbnails' / size / f"{image_id}.jpg"
-            if path.exists():
+            path = self.storage_backend.resolve_ref(
+                self.storage_backend.build_ref(f'thumbnails/{size}', f"{image_id}.jpg")
+            )
+            if path and path.exists():
                 return path
 
         logger.warning(f"Image file not found: {image_id} (size={size})")
@@ -439,13 +890,11 @@ class ImageStorageEngine:
             for path_value in file_paths:
                 if not path_value:
                     continue
-                path = Path(path_value)
-                if path.exists():
-                    path.unlink()
+                self.storage_backend.delete_ref(path_value)
 
             # Legacy fallback for thumbnails if stored paths were incomplete.
             for size in self.THUMBNAIL_SIZES.keys():
-                thumb_path = self.base_path / 'thumbnails' / size / f"{image_id}.jpg"
+                thumb_path = self.storage_backend.category_dir(f'thumbnails/{size}') / f"{image_id}.jpg"
                 if thumb_path.exists():
                     thumb_path.unlink()
 
@@ -560,14 +1009,27 @@ class ImageStorageEngine:
             if not backup_name:
                 backup_name = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            backup_dir = self.base_path / 'backups' / backup_name
+            backup_dir = self.storage_backend.category_dir('backups') / backup_name
             backup_dir.mkdir(parents=True, exist_ok=True)
 
             originals_backup = backup_dir / 'originals'
-            shutil.copytree(
-                self.base_path / 'originals',
-                originals_backup,
-                dirs_exist_ok=True
+            self.storage_backend.export_category('originals', originals_backup)
+
+            metadata_rows = self._export_backup_metadata()
+            if metadata_rows is None:
+                shutil.rmtree(backup_dir, ignore_errors=True)
+                raise RuntimeError("Image metadata export failed; backup was not created")
+
+            manifest = {
+                'version': 1,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'storage_path': str(self.base_path),
+                'image_count': len(metadata_rows),
+                'images': metadata_rows,
+            }
+            self._get_backup_manifest_path(backup_dir).write_text(
+                json.dumps(manifest, indent=2),
+                encoding='utf-8',
             )
 
             logger.info(f"Local backup created: {backup_dir}")
@@ -585,18 +1047,25 @@ class ImageStorageEngine:
                 logger.error(f"Backup directory not found: {backup_path}")
                 return False
 
+            manifest_path = self._get_backup_manifest_path(backup_dir)
+            if not manifest_path.exists():
+                logger.error("Backup manifest not found: %s", manifest_path)
+                return False
+
+            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            manifest_images = manifest.get('images', [])
+
             originals_backup = backup_dir / 'originals'
             if originals_backup.exists():
-                for image_file in originals_backup.glob('*'):
-                    shutil.copy2(
-                        image_file,
-                        self.base_path / 'originals' / image_file.name
-                    )
+                self.storage_backend.import_category(originals_backup, 'originals')
 
             # Regenerate thumbnails for restored images
-            for image_file in (self.base_path / 'originals').glob('*'):
+            for image_file in self.storage_backend.category_dir('originals').glob('*'):
                 image_id = image_file.stem
                 self._generate_thumbnails(image_file, image_id)
+
+            if not self._restore_backup_metadata(manifest_images):
+                return False
 
             logger.info(f"Restored from backup: {backup_path}")
             return True
@@ -611,7 +1080,7 @@ class ImageStorageEngine:
             'total_images': 0,
             'total_size_mb': 0,
             'backed_up_count': 0,
-            'storage_path': str(self.base_path),
+            'storage_path': self.storage_backend.describe(),
             'databases': []
         }
 
@@ -672,12 +1141,17 @@ class ImageStorageEngine:
         return result
 
 
-# Singleton instance
-_image_storage = None
+# Cache storage engines by resolved storage path and backup URL so callers can
+# safely use isolated stores (for example a dedicated backup receiver path).
+_image_storage_instances: Dict[Tuple[str, Optional[str], str], ImageStorageEngine] = {}
+
 
 def get_image_storage(base_path: str = None, server_url: str = None) -> ImageStorageEngine:
-    """Get or create singleton ImageStorageEngine instance."""
-    global _image_storage
-    if _image_storage is None:
-        _image_storage = ImageStorageEngine(base_path or DEFAULT_STORAGE_PATH, server_url)
-    return _image_storage
+    """Get or create an ImageStorageEngine instance for the requested storage path."""
+    resolved_base = str(Path(base_path or DEFAULT_STORAGE_PATH).resolve())
+    cache_key = (resolved_base, server_url, get_image_storage_backend_name())
+    storage = _image_storage_instances.get(cache_key)
+    if storage is None:
+        storage = ImageStorageEngine(resolved_base, server_url)
+        _image_storage_instances[cache_key] = storage
+    return storage

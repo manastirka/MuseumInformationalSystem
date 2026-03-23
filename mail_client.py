@@ -40,6 +40,8 @@ DATA_DIR = Path(__file__).parent / 'data'
 SETTINGS_FILE = DATA_DIR / 'mail_settings.json'
 KEY_FILE = DATA_DIR / '.mail_key'
 CACHE_DIR = DATA_DIR / 'mail_cache'
+MAIL_SETTINGS_KEY_ENV = 'MAIL_SETTINGS_ENCRYPTION_KEY'
+MAIL_SETTINGS_TABLE = 'mail_user_settings'
 
 _settings_lock = threading.Lock()
 
@@ -81,6 +83,31 @@ _LOGIN_HINTS = ('login', 'signin', 'verify', 'password', 'auth', 'account', 'sso
 
 _fernet_instance = None
 _fernet_lock = threading.Lock()
+_mail_settings_initialized = False
+_mail_settings_init_lock = threading.Lock()
+
+
+def _production_mode() -> bool:
+    return os.environ.get('FLASK_ENV', '').strip().lower() == 'production'
+
+
+def _shared_mail_settings_enabled() -> bool:
+    return bool(os.environ.get('DATABASE_URL'))
+
+
+def _get_configured_mail_key() -> bytes | None:
+    configured = (os.environ.get(MAIL_SETTINGS_KEY_ENV) or '').strip()
+    return configured.encode() if configured else None
+
+
+def _get_legacy_file_fernet() -> Fernet | None:
+    if not KEY_FILE.exists():
+        return None
+    return Fernet(KEY_FILE.read_bytes().strip())
+
+
+def _legacy_settings_exist() -> bool:
+    return SETTINGS_FILE.exists()
 
 
 def _get_fernet():
@@ -90,6 +117,16 @@ def _get_fernet():
     with _fernet_lock:
         if _fernet_instance is not None:
             return _fernet_instance
+        configured_key = _get_configured_mail_key()
+        if configured_key:
+            _fernet_instance = Fernet(configured_key)
+            return _fernet_instance
+
+        if _production_mode():
+            raise RuntimeError(
+                f"{MAIL_SETTINGS_KEY_ENV} must be set in production to decrypt saved mail credentials."
+            )
+
         if not KEY_FILE.exists():
             # Check if there are existing saved settings that would become
             # undecryptable if we generate a new key
@@ -124,42 +161,192 @@ def _decrypt(token: str) -> str:
 
 # ===================== Settings =====================
 
-_settings_cache = None
-_settings_mtime = 0.0
+def _ensure_mail_settings_table(conn):
+    global _mail_settings_initialized
+    with _mail_settings_init_lock:
+        if _mail_settings_initialized:
+            return
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS {MAIL_SETTINGS_TABLE} (
+                    user_email CITEXT PRIMARY KEY,
+                    settings_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+        conn.commit()
+        _mail_settings_initialized = True
 
 
-def load_all_settings() -> dict:
-    global _settings_cache, _settings_mtime
+def _get_mail_settings_connection():
+    if not _shared_mail_settings_enabled():
+        return None
+    try:
+        conn = get_postgres_connection(row_factory=dict_row)
+        _ensure_mail_settings_table(conn)
+        return conn
+    except Exception as exc:
+        if _production_mode():
+            raise RuntimeError(
+                "PostgreSQL mail settings storage is unavailable in production."
+            ) from exc
+        logger.warning("Falling back to file-backed mail settings: %s", exc)
+        return None
+
+
+def _load_legacy_all_settings() -> dict:
     with _settings_lock:
         if not SETTINGS_FILE.exists():
-            _settings_cache = {}
-            _settings_mtime = 0.0
             return {}
-        mt = SETTINGS_FILE.stat().st_mtime
-        if _settings_cache is not None and mt == _settings_mtime:
-            return _settings_cache
-        _settings_cache = json.loads(SETTINGS_FILE.read_text('utf-8'))
-        _settings_mtime = mt
-        return _settings_cache
+        return json.loads(SETTINGS_FILE.read_text('utf-8'))
 
 
-def save_all_settings(data: dict):
-    global _settings_cache, _settings_mtime
+def _save_legacy_all_settings(data: dict):
     with _settings_lock:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), 'utf-8')
-        _settings_cache = data
-        _settings_mtime = SETTINGS_FILE.stat().st_mtime
+
+
+def _remove_legacy_user_settings(user_email: str):
+    with _settings_lock:
+        if not SETTINGS_FILE.exists():
+            return
+        data = json.loads(SETTINGS_FILE.read_text('utf-8'))
+        if user_email not in data:
+            return
+        del data[user_email]
+        if data:
+            SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), 'utf-8')
+        else:
+            SETTINGS_FILE.unlink(missing_ok=True)
+
+
+def _normalize_db_settings(row_value) -> dict | None:
+    if row_value is None:
+        return None
+    if isinstance(row_value, dict):
+        return row_value
+    if isinstance(row_value, str):
+        return json.loads(row_value)
+    return dict(row_value)
+
+
+def _reencrypt_legacy_settings(settings: dict) -> dict:
+    migrated = dict(settings)
+    legacy_fernet = _get_legacy_file_fernet()
+    if legacy_fernet and migrated.get('password'):
+        plaintext = legacy_fernet.decrypt(migrated['password'].encode()).decode()
+        migrated['password'] = _encrypt(plaintext)
+    return migrated
+
+
+def _load_db_user_settings(user_email: str) -> dict | None:
+    conn = _get_mail_settings_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT settings_json FROM {MAIL_SETTINGS_TABLE} WHERE user_email = %s",
+                (user_email,),
+            )
+            row = cur.fetchone()
+        return _normalize_db_settings(row['settings_json']) if row else None
+    finally:
+        conn.close()
+
+
+def _save_db_user_settings(user_email: str, settings: dict) -> bool:
+    conn = _get_mail_settings_connection()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {MAIL_SETTINGS_TABLE}(user_email, settings_json, updated_at)
+                VALUES(%s, %s, NOW())
+                ON CONFLICT (user_email) DO UPDATE SET
+                    settings_json = EXCLUDED.settings_json,
+                    updated_at = NOW()
+                """,
+                (user_email, json.dumps(settings, ensure_ascii=False)),
+            )
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def _migrate_legacy_user_settings(user_email: str) -> dict | None:
+    legacy_settings = _load_legacy_all_settings().get(user_email)
+    if not legacy_settings:
+        return None
+
+    migrated_settings = _reencrypt_legacy_settings(legacy_settings)
+    if _save_db_user_settings(user_email, migrated_settings):
+        _remove_legacy_user_settings(user_email)
+        logger.info("Migrated mail settings for %s into PostgreSQL shared storage", user_email)
+    return migrated_settings
+
+
+def load_all_settings() -> dict:
+    conn = _get_mail_settings_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT user_email, settings_json FROM {MAIL_SETTINGS_TABLE}")
+                rows = cur.fetchall()
+            return {
+                row['user_email']: _normalize_db_settings(row['settings_json']) or {}
+                for row in rows
+            }
+        finally:
+            conn.close()
+    return _load_legacy_all_settings()
+
+
+def save_all_settings(data: dict):
+    conn = _get_mail_settings_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                for user_email, settings in data.items():
+                    cur.execute(
+                        f"""
+                        INSERT INTO {MAIL_SETTINGS_TABLE}(user_email, settings_json, updated_at)
+                        VALUES(%s, %s, NOW())
+                        ON CONFLICT (user_email) DO UPDATE SET
+                            settings_json = EXCLUDED.settings_json,
+                            updated_at = NOW()
+                        """,
+                        (user_email, json.dumps(settings, ensure_ascii=False)),
+                    )
+            conn.commit()
+            return
+        finally:
+            conn.close()
+    _save_legacy_all_settings(data)
 
 
 def get_user_settings(user_email: str) -> dict | None:
-    return load_all_settings().get(user_email)
+    settings = _load_db_user_settings(user_email)
+    if settings is not None:
+        return settings
+    if _shared_mail_settings_enabled() and _legacy_settings_exist():
+        migrated = _migrate_legacy_user_settings(user_email)
+        if migrated is not None:
+            return migrated
+    return _load_legacy_all_settings().get(user_email)
 
 
 def save_user_settings(user_email: str, settings: dict):
-    s = load_all_settings().copy()
+    if _save_db_user_settings(user_email, settings):
+        _remove_legacy_user_settings(user_email)
+        return
+    s = _load_legacy_all_settings().copy()
     s[user_email] = settings
-    save_all_settings(s)
+    _save_legacy_all_settings(s)
 
 
 def get_user_settings_safe(user_email: str) -> dict | None:

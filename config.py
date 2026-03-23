@@ -97,7 +97,7 @@ class Config:
     # Server
     HOST: str = os.environ.get('HOST', '0.0.0.0')
     PORT: int = int(os.environ.get('PORT', '5555'))
-    WORKERS: int = int(os.environ.get('WORKERS', '4'))
+    WORKERS: int = int(os.environ.get('WORKERS', '1'))
 
     # File Upload
     MAX_CONTENT_LENGTH: int = int(os.environ.get('MAX_CONTENT_LENGTH', '52428800'))  # 50MB
@@ -145,6 +145,7 @@ class DevelopmentConfig(Config):
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-only-secret-key')
     DEBUG = True
     FLASK_ENV = 'development'
+    SESSION_TYPE = os.environ.get('SESSION_TYPE', 'filesystem')
     SESSION_COOKIE_SECURE = False  # Allow HTTP in development
     ENABLE_FALLBACK_AUTH = True  # Allow fallback auth in dev
 
@@ -154,6 +155,7 @@ class TestingConfig(Config):
 
     SECRET_KEY = os.environ.get('SECRET_KEY', 'test-secret-key')
     TESTING = True
+    SESSION_TYPE = os.environ.get('SESSION_TYPE', 'filesystem')
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
     RATELIMIT_ENABLED = False  # Disable rate limiting for testing
 
@@ -164,6 +166,7 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     FLASK_ENV = 'production'
+    SESSION_TYPE = 'redis'
     SESSION_COOKIE_SECURE = True  # Require HTTPS
     ENABLE_FALLBACK_AUTH = False  # No fallback auth in production
 
@@ -178,16 +181,26 @@ class ProductionConfig(Config):
             raise RuntimeError('ENABLE_FALLBACK_AUTH must be disabled in production')
         if not app.config.get('SESSION_COOKIE_SECURE'):
             raise RuntimeError('SESSION_COOKIE_SECURE must be enabled in production')
+        session_type = os.environ.get('SESSION_TYPE', app.config.get('SESSION_TYPE', 'redis')).lower()
+        redis_url = os.environ.get('REDIS_URL', app.config.get('REDIS_URL'))
+        app.config['SESSION_TYPE'] = session_type
+        app.config['REDIS_URL'] = redis_url
 
-        # Warn if rate limiting uses in-memory storage with multiple workers
+        if session_type != 'redis':
+            raise RuntimeError('Production session storage must use Redis (SESSION_TYPE=redis)')
+        if not redis_url:
+            raise RuntimeError('REDIS_URL must be set in production for Redis sessions/shared state')
+
+        if app.config.get('RATELIMIT_STORAGE_URL', 'memory://').startswith('memory'):
+            app.config['RATELIMIT_STORAGE_URL'] = redis_url
+
+        # Fail closed if in-memory rate limiting is used with multiple workers.
         ratelimit_url = app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
-        workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', '1')))
+        workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', app.config.get('WORKERS', 1))))
         if workers > 1 and ratelimit_url.startswith('memory'):
-            import logging
-            logging.getLogger(__name__).warning(
-                "Rate limiting uses in-memory storage with %d workers — "
-                "limits are per-worker, not global. Set RATELIMIT_STORAGE_URL "
-                "to a Redis URL for shared rate limiting.", workers
+            raise RuntimeError(
+                "RATELIMIT_STORAGE_URL must use shared storage when WORKERS > 1. "
+                f"Current workers={workers}, storage={ratelimit_url!r}."
             )
 
         # Log to syslog in production
