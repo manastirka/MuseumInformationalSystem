@@ -1034,10 +1034,11 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             museum_app.LIBRARY_DATABASE = original_library_database
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            library_database=active_library_database,
-            save_library_database=museum_app.save_library_database,
-        )
+        mocked_handler.assert_called_once()
+        call_kwargs = mocked_handler.call_args.kwargs
+        self.assertIs(call_kwargs['library_database'], active_library_database)
+        self.assertIs(call_kwargs['save_library_database'], museum_app.save_library_database)
+        self.assertIn('phase3a_databases', call_kwargs)
 
     def test_add_visitor_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
