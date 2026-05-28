@@ -1,10 +1,16 @@
 """Shared route implementations for collection, mineral, and inventory admin views."""
 
 import logging
+import json
+import tempfile
 import time
 from datetime import datetime
+from pathlib import Path
 
 from flask import current_app, flash, redirect, render_template, request, session, url_for
+from werkzeug.utils import secure_filename
+from image_storage_engine import get_image_storage
+from collection_registry import get_collection_form_info, get_collection_route_map
 
 logger = logging.getLogger(__name__)
 
@@ -36,34 +42,362 @@ _MINERAL_COLUMNS_SR = {
     'datum_unosa': 'Датум уноса',
 }
 _COLLECTION_ROUTES = {
-    'botany': 'botany_collection',
-    'ichthyology': 'ichthyology_collection',
-    'entomology': 'entomology_collection',
-    'mycology': 'mycology_collection',
-    'herpetology': 'herpetology_collection',
-    'ornithology': 'ornithology_collection',
-    'paleozoology': 'paleozoology_collection',
-    'paleobotany': 'paleobotany_collection',
-    'petrology': 'petrology_collection',
-    'meteorite': 'meteorite_collection',
+    **get_collection_route_map(),
     'conservation': 'conservation_biology',
 }
 _COLLECTION_FORM_INFO = {
-    'botany': {'name': 'Ботаничка збирка', 'route': 'botany_collection'},
-    'ichthyology': {'name': 'Ихтиолошка збирка', 'route': 'ichthyology_collection'},
-    'entomology': {'name': 'Ентомолошка збирка', 'route': 'entomology_collection'},
-    'mycology': {'name': 'Миколошка збирка', 'route': 'mycology_collection'},
-    'herpetology': {'name': 'Херпетолошка збирка', 'route': 'herpetology_collection'},
-    'ornithology': {'name': 'Орнитолошка збирка', 'route': 'ornithology_collection'},
+    **get_collection_form_info(),
     'general_zoology': {'name': 'Општа зоологија', 'route': 'general_zoology_collection'},
     'conservation': {'name': 'Конзервација биолошких збирки', 'route': 'conservation_biology'},
     'conservation_biology': {'name': 'Конзервациона биологија', 'route': 'conservation_biology_collection'},
-    'paleozoology': {'name': 'Палеозоолошка збирка', 'route': 'paleozoology_collection'},
-    'paleobotany': {'name': 'Палеоботаничка збирка', 'route': 'paleobotany_collection'},
-    'petrology': {'name': 'Петролошка збирка', 'route': 'petrology_collection'},
-    'meteorite': {'name': 'Збирка метеорита', 'route': 'meteorite_collection'},
     'geology_conservation': {'name': 'Геолошка конзервација', 'route': 'geology_conservation_collection'},
 }
+
+_CURATOR_DISPLAY_NAMES = {
+    'mniketic@nhmbeo.rs': 'Марјан Никетић',
+    'verica.stojanovic@nhmbeo.rs': 'Верица Стојановић',
+    'aleksandra.savic@nhmbeo.rs': 'Александра Савић',
+    'marko.nestorovic@nhmbeo.rs': 'Марко Несторовић',
+    'dubravka.vucic@nhmbeo.rs': 'Дубравка Вучић',
+    'milos.jovic@nhmbeo.rs': 'Милош Јовић',
+    'aleksandar@nhmbeo.rs': 'Александар Стојановић',
+    'boris@nhmbeo.rs': 'Борис Иванчевић',
+    'ana.paunovic@nhmbeo.rs': 'Ана Пауновић',
+    'vuk.popic@nhmbeo.rs': 'Вук Попић',
+    'zorana.markovic@nhmbeo.rs': 'Зорана Марковић',
+    'gorana.petkovski@nhmbeo.rs': 'Горана Петковски',
+    'milos.mrvaljevic@nhmbeo.rs': 'Милош Мрваљевић',
+    'jovan.kokotovic@nhmbeo.rs': 'Јован Кокотовић',
+    'biljana.mitrovic@nhmbeo.rs': 'Биљана Митровић',
+    'zoran.markovic@nhmbeo.rs': 'Зоран Марковић',
+    'sanja.pavic@nhmbeo.rs': 'Сања Алабурић',
+    'dragana.djuric@nhmbeo.rs': 'Драгана Ђурић',
+    'pejovic.ranko@nhmbeo.rs': 'Ранко Пејовић',
+    'milos.milivojevic@nhmbeo.rs': 'Милош Миливојевић',
+    'desadjm@nhmbeo.rs': 'Деса Ђорђевић-Милутиновић',
+    'tatjana.milicbabic@nhmbeo.rs': 'Татјана Милић Бабић',
+    'aca.lukovic@nhmbeo.rs': 'Александар Луковић',
+    'branko.radulovic@nhmbeo.rs': 'Бранко Радуловић',
+    'nenad.mladenovic@nhmbeo.rs': 'Ненад Младеновић',
+}
+
+_COLLECTION_CURATORS = {
+    'botany': ['mniketic@nhmbeo.rs', 'verica.stojanovic@nhmbeo.rs', 'aleksandra.savic@nhmbeo.rs', 'marko.nestorovic@nhmbeo.rs'],
+    'ichthyology': ['dubravka.vucic@nhmbeo.rs'],
+    'entomology': ['milos.jovic@nhmbeo.rs', 'aleksandar@nhmbeo.rs'],
+    'mycology': ['boris@nhmbeo.rs'],
+    'herpetology': ['ana.paunovic@nhmbeo.rs'],
+    'ornithology': ['vuk.popic@nhmbeo.rs'],
+    'paleozoology': ['biljana.mitrovic@nhmbeo.rs', 'zoran.markovic@nhmbeo.rs', 'sanja.pavic@nhmbeo.rs', 'dragana.djuric@nhmbeo.rs', 'pejovic.ranko@nhmbeo.rs', 'milos.milivojevic@nhmbeo.rs'],
+    'paleobotany': ['desadjm@nhmbeo.rs'],
+    'petrology': ['tatjana.milicbabic@nhmbeo.rs'],
+    'meteorite': ['aca.lukovic@nhmbeo.rs'],
+    'conservation': ['gorana.petkovski@nhmbeo.rs', 'milos.mrvaljevic@nhmbeo.rs', 'jovan.kokotovic@nhmbeo.rs'],
+}
+
+_SANJA_DATABASE_PATH = Path('Sanja/sanja_paleogene_neogene_mammals.json')
+_SANJA_COLLECTION_GROUP = 'Крупни сисари - палеоген/неоген'
+_SANJA_TEXT_FIELDS = (
+    'collection_number',
+    'collector_number',
+    'catalog_number',
+    'specimen_name',
+    'taxon_name',
+    'level',
+    'acquisition_method',
+    'acquisition_date',
+    'database_entry_date',
+    'entered_by',
+    'donor_collector',
+    'identified_by',
+    'comment',
+    'description',
+    'location_found',
+    'country',
+    'locality_text',
+    'exposure',
+    'specimen_part_2',
+    'specimen_part_3',
+    'specimen_part_4',
+    'specimen_part_5',
+    'storage_location',
+    'material',
+    'uncertain_determination',
+    'biostratigraphic_zone',
+    'bibliography_flag',
+)
+_SANJA_NUMBER_FIELDS = (
+    'inventory_sequence',
+    'quantity',
+    'utm_x',
+    'utm_y',
+    'utm_z',
+    'length_mm',
+    'width_mm',
+)
+
+
+def _coerce_sanja_number(value):
+    value = (value or '').strip()
+    if value == '':
+        return ''
+    try:
+        parsed = float(value)
+    except ValueError:
+        return value
+    if parsed.is_integer():
+        return int(parsed)
+    return parsed
+
+
+def _curator_display_value(email_or_name):
+    value = str(email_or_name or '').strip()
+    return _CURATOR_DISPLAY_NAMES.get(value.lower(), value)
+
+
+def _collection_curator_display(collection_type):
+    curators = _COLLECTION_CURATORS.get(collection_type, [])
+    return ', '.join(_curator_display_value(curator) for curator in curators if curator)
+
+
+def normalize_collection_curators_for_display(collection_type, records):
+    """Replace placeholder curator emails with authoritative display names."""
+    official_curators = set(_COLLECTION_CURATORS.get(collection_type, []))
+    official_display = _collection_curator_display(collection_type)
+    normalized = []
+
+    for record in records or []:
+        item = dict(record)
+        if 'curator' in item:
+            curator = str(item.get('curator') or '').strip().lower()
+            if curator in official_curators:
+                item['curator'] = _curator_display_value(curator)
+            elif official_display:
+                item['curator'] = official_display
+            else:
+                item['curator'] = _curator_display_value(curator)
+        normalized.append(item)
+
+    return normalized
+
+
+def _build_sanja_statistics(records):
+    localities = sorted({record.get('location_found') for record in records if record.get('location_found')})
+    taxa = sorted({record.get('specimen_name') for record in records if record.get('specimen_name')})
+    identified_by = sorted({record.get('identified_by') for record in records if record.get('identified_by')})
+
+    return {
+        'total_specimens': len(records),
+        'total_taxa': len(taxa),
+        'total_localities': len(localities),
+        'identified_by_count': len(identified_by),
+    }
+
+
+def _load_sanja_database_payload():
+    try:
+        return json.loads(_SANJA_DATABASE_PATH.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError):
+        return {
+            'metadata': {
+                'name': 'Крупни сисари палеогена и неогена',
+                'source_file': 'Sanja/sanja BAZA KRUPNI SISAri paleogen neogen.xls',
+            },
+            'specimens': [],
+            'statistics': {},
+        }
+
+
+def _save_sanja_database_payload(payload):
+    payload['statistics'] = _build_sanja_statistics(payload.get('specimens', []))
+    payload.setdefault('metadata', {})['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    _SANJA_DATABASE_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + '\n',
+        encoding='utf-8',
+    )
+
+    try:
+        import app as museum_app
+        museum_app.SANJA_PALEOGENE_NEOGENE_MAMMALS_DATABASE = payload
+    except Exception as exc:
+        logger.warning("Could not refresh Sanja database cache after save: %s", exc)
+
+
+def _find_sanja_record(records, record_id):
+    target = str(record_id)
+    for record in records:
+        if str(record.get('id')) == target:
+            return record
+    return None
+
+
+def _apply_sanja_form_data(item_data):
+    for field in _SANJA_TEXT_FIELDS:
+        item_data[field] = request.form.get(field, '').strip()
+    for field in _SANJA_NUMBER_FIELDS:
+        item_data[field] = _coerce_sanja_number(request.form.get(field, ''))
+    return item_data
+
+
+def _store_sanja_uploaded_image(record_id):
+    image_file = request.files.get('image')
+    if not image_file or not image_file.filename:
+        return None
+
+    storage = get_image_storage()
+    safe_name = secure_filename(image_file.filename)
+    suffix = Path(safe_name).suffix or '.jpg'
+    temp_dir = storage.base_path / 'temp'
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=temp_dir) as temp_file:
+        temp_path = Path(temp_file.name)
+
+    try:
+        image_file.save(temp_path)
+        image_id = storage.store_image(
+            file_path=str(temp_path),
+            database='sanja_paleogene_neogene_mammals',
+            entity_type='sanja_paleogene_neogene_mammals',
+            entity_id=str(record_id),
+            description='Слика примерка',
+            metadata={'collection': 'sanja_paleogene_neogene_mammals'},
+        )
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    if not image_id:
+        flash('Примерак је сачуван, али слика није могла да се сачува.', 'warning')
+    return image_id
+
+
+def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None):
+    is_edit = record_id is not None
+    payload = _load_sanja_database_payload()
+    records = payload.setdefault('specimens', [])
+    item_data = _find_sanja_record(records, record_id) if is_edit else None
+
+    if is_edit and item_data is None:
+        flash('Примерак није пронађен.', 'danger')
+        return redirect(url_for(collection_info['route']))
+
+    if request.method == 'POST':
+        if not is_edit:
+            next_id = max((int(record.get('id') or 0) for record in records), default=0) + 1
+            next_source_row = max((int(record.get('source_row') or 1) for record in records), default=1) + 1
+            item_data = {
+                'id': next_id,
+                'source_row': next_source_row,
+                'collection_group': _SANJA_COLLECTION_GROUP,
+            }
+            records.append(item_data)
+
+        _apply_sanja_form_data(item_data)
+        _save_sanja_database_payload(payload)
+        _store_sanja_uploaded_image(item_data['id'])
+
+        flash_message = (
+            'Примерак је успешно ажуриран.'
+            if is_edit
+            else 'Предмет је успешно додат у базу крупних сисара палеогена и неогена!'
+        )
+        flash(flash_message, 'success')
+        return redirect(url_for(collection_info['route']))
+
+    return render_template(
+        'admin_add_sanja_paleogene_neogene_mammal.html',
+        collection_type='sanja_paleogene_neogene_mammals',
+        collection_name=collection_info['name'],
+        collection_route=collection_info['route'],
+        item=item_data or {},
+        is_edit=is_edit,
+    )
+
+
+def _handle_add_sanja_paleogene_neogene_mammal_item(collection_info):
+    return _handle_sanja_paleogene_neogene_mammal_form(collection_info)
+
+
+def handle_edit_sanja_paleogene_neogene_mammal_item(record_id):
+    collection_info = _COLLECTION_FORM_INFO['sanja_paleogene_neogene_mammals']
+    return _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=record_id)
+
+
+# ---------------------------------------------------------------------------
+# Bilja mollusc collections (PostgreSQL-backed, schema-driven form)
+# ---------------------------------------------------------------------------
+
+def _handle_bilja_collection_form(collection_key, collection_info, record_id=None):
+    """Generic add/edit/delete handler for any Bilja collection."""
+    import bilja_collections_db as bilja_db
+
+    cfg = bilja_db.COLLECTIONS[collection_key]
+    is_edit = record_id is not None
+
+    item_data = None
+    if is_edit:
+        item_data = bilja_db.find_specimen(collection_key, int(record_id))
+        if item_data is None:
+            flash('Примерак није пронађен.', 'danger')
+            return redirect(url_for(collection_info['route']))
+
+    if request.method == 'POST':
+        action = (request.form.get('_action') or '').strip()
+        if is_edit and action == 'delete':
+            bilja_db.delete_specimen(collection_key, int(record_id))
+            flash('Примерак је обрисан.', 'success')
+            return redirect(url_for(collection_info['route']))
+
+        form = {k: request.form.get(k, '') for k in
+                (tuple(cfg['int_fields']) + tuple(cfg['text_fields']))}
+
+        if is_edit:
+            bilja_db.update_specimen(collection_key, int(record_id), form)
+            flash('Примерак је успешно ажуриран.', 'success')
+        else:
+            bilja_db.add_specimen(collection_key, form)
+            flash(f'Примерак је додат у збирку: {collection_info["name"]}.', 'success')
+
+        return redirect(url_for(collection_info['route']))
+
+    # Build a field list the template can render generically.
+    ordered_fields = [
+        {
+            'key': field,
+            'label': bilja_db.FIELD_LABELS_SR.get(field, field),
+            'type': 'int' if field in cfg['int_fields'] else 'text',
+            'value': (item_data or {}).get(field, ''),
+        }
+        for field in (tuple(cfg['int_fields']) + tuple(cfg['text_fields']))
+    ]
+
+    return render_template(
+        'admin_add_bilja_item.html',
+        collection_type=collection_key,
+        collection_name=collection_info['name'],
+        collection_route=collection_info['route'],
+        collection_description=cfg.get('description_sr', ''),
+        collection_icon=cfg.get('icon', 'bi-collection'),
+        item=item_data or {},
+        fields=ordered_fields,
+        is_edit=is_edit,
+    )
+
+
+def handle_add_bilja_item(collection_key):
+    info = _COLLECTION_FORM_INFO.get(collection_key)
+    if not info:
+        flash('Непозната збирка.', 'danger')
+        return redirect(url_for('museum_databases'))
+    return _handle_bilja_collection_form(collection_key, info)
+
+
+def handle_edit_bilja_item(collection_key, record_id):
+    info = _COLLECTION_FORM_INFO.get(collection_key)
+    if not info:
+        flash('Непозната збирка.', 'danger')
+        return redirect(url_for('museum_databases'))
+    return _handle_bilja_collection_form(collection_key, info, record_id=record_id)
 
 
 def handle_add_heritage_item(*, get_cultural_heritage_database):
@@ -106,6 +440,12 @@ def handle_add_collection_item(collection_type, *, museum_databases_endpoint='mu
         return redirect(url_for(museum_databases_endpoint))
 
     collection_info = _COLLECTION_FORM_INFO[collection_type]
+
+    if collection_type == 'sanja_paleogene_neogene_mammals':
+        return _handle_add_sanja_paleogene_neogene_mammal_item(collection_info)
+
+    if collection_type.startswith('bilja_'):
+        return handle_add_bilja_item(collection_type)
 
     if request.method == 'POST':
         item_data = {
@@ -218,9 +558,13 @@ def render_standard_collection_database(
     get_qr_collection_action_url,
     get_image_upload_action_url,
     image_upload_database=None,
+    collection_actions_enabled=True,
+    collection_add_enabled=None,
+    collection_export_enabled=None,
 ):
     """Render a standard collection database page with QR highlight support."""
     specimens, highlight = prepare_collection_records_for_display(collection_type, records)
+    specimens = normalize_collection_curators_for_display(collection_type, specimens)
     return render_template(
         'admin_collection_database.html',
         collection_name=collection_name,
@@ -231,6 +575,9 @@ def render_standard_collection_database(
         highlight=highlight,
         qr_action_url=get_qr_collection_action_url(collection_type),
         image_upload_url=get_image_upload_action_url(image_upload_database or collection_type),
+        collection_actions_enabled=collection_actions_enabled,
+        collection_add_enabled=collection_actions_enabled if collection_add_enabled is None else collection_add_enabled,
+        collection_export_enabled=collection_actions_enabled if collection_export_enabled is None else collection_export_enabled,
     )
 
 
@@ -292,10 +639,11 @@ def render_meteorite_collection(
     """Render meteorite collection database."""
     meteorite_db = get_meteorite_collection_database()
     specimens, highlight = prepare_collection_records_for_display('meteorite', meteorite_db['specimens'])
+    specimens = normalize_collection_curators_for_display('meteorite', specimens)
     return render_template(
         'admin_collection_database.html',
         collection_name='Збирка метеорита',
-        collection_icon='bi-stars',
+        collection_icon='museum-icon-shooting-star',
         specimens=specimens,
         statistics=meteorite_db['statistics'],
         collection_type='meteorite',
@@ -318,9 +666,12 @@ def render_mineral_collection(*, get_mineral_database, get_image_upload_action_u
     sort_by = request.args.get('sort_by', 'id')
     sort_order = request.args.get('sort_order', 'asc')
 
-    columns_param = request.args.get('columns', '')
-    selected_columns = columns_param.split(',') if columns_param else list(_MINERAL_DEFAULT_COLUMNS)
     available_columns = _MINERAL_COLUMNS_EN if is_english else _MINERAL_COLUMNS_SR
+    columns_param = request.args.get('columns', '')
+    requested_columns = columns_param.split(',') if columns_param else list(_MINERAL_DEFAULT_COLUMNS)
+    selected_columns = [col for col in requested_columns if col in available_columns]
+    if not selected_columns:
+        selected_columns = list(_MINERAL_DEFAULT_COLUMNS)
     is_rruff_mode = search_mode == 'rruff'
 
     elements = request.args.get('elements', '').strip()

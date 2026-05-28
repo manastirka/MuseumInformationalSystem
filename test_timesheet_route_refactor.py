@@ -5,12 +5,16 @@ import os
 import unittest
 from datetime import timedelta
 from unittest.mock import patch
+from flask import url_for
 
 os.environ.setdefault('FLASK_ENV', 'testing')
 os.environ.setdefault('SECRET_KEY', 'test-secret')
 os.environ.setdefault('REDIS_URL', '')
+os.environ.setdefault('SESSION_TYPE', 'filesystem')
+os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-flask-session')
 
 import app as museum_app
+import collection_registry
 
 
 class TimesheetRouteRefactorTests(unittest.TestCase):
@@ -106,6 +110,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             password_validator=museum_app.password_validator,
             dashboard_endpoint='dashboard',
             log_security_event=museum_app.log_security_event,
+            authenticate_fallback_user=museum_app.authenticate_fallback_user,
         )
 
     def test_dashboard_route_delegates_to_core_module(self):
@@ -233,6 +238,20 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
+
+    def test_timesheet_entry_route_redirects_admin_to_reports(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.timesheet_employee_views,
+            'render_timesheet_entry',
+            return_value=museum_app.app.response_class('ok', status=200),
+        ) as mocked_handler:
+            response = self.client.get('/timesheet/entry', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/admin/timesheet_reports', response.headers['Location'])
+        mocked_handler.assert_not_called()
 
     def test_timesheet_save_api_delegates_to_employee_module(self):
         self._login(role='employee')
@@ -1115,6 +1134,23 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             research_projects=museum_app.RESEARCH_PROJECTS,
         )
 
+    def test_export_research_pdf_route_delegates_to_museum_content_module(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.museum_content_views,
+            'export_research_to_pdf',
+            return_value=museum_app.app.response_class('ok', status=200),
+        ) as mocked_handler:
+            response = self.client.get('/admin/export_research_to_pdf/7', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        mocked_handler.assert_called_once_with(
+            research_projects=museum_app.RESEARCH_PROJECTS,
+            project_id=7,
+            list_endpoint='research_database',
+        )
+
     def test_projekti_route_delegates_to_project_module(self):
         self._login(role='employee')
 
@@ -1269,6 +1305,25 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             'botany',
             museum_databases_endpoint='museum_databases',
         )
+
+    def test_add_collection_item_route_blocks_other_specialty_collection_access(self):
+        self._login(role='employee')
+        original_checker = museum_app.app.user_has_module_access
+        museum_app.app.user_has_module_access = lambda email, role, key: key == 'museum_databases'
+
+        try:
+            with patch.object(
+                museum_app.collection_management_views,
+                'handle_add_collection_item',
+                return_value=museum_app.app.response_class('ok', status=200),
+            ) as mocked_handler:
+                response = self.client.get('/admin/add_collection_item/botany', base_url=self.base_url)
+        finally:
+            museum_app.app.user_has_module_access = original_checker
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dashboard', response.headers['Location'])
+        mocked_handler.assert_not_called()
 
     def test_botany_collection_route_delegates_to_collection_management_module(self):
         self._login(role='admin')
@@ -1437,6 +1492,27 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
 
+    def test_inventory_reconciliation_legacy_endpoint_alias_is_available(self):
+        with museum_app.app.test_request_context(base_url=self.base_url):
+            self.assertEqual(
+                url_for('inventory_reconciliation'),
+                '/admin/inventory_reconciliation',
+            )
+
+    def test_rruff_minerals_legacy_endpoint_alias_is_available(self):
+        with museum_app.app.test_request_context(base_url=self.base_url):
+            self.assertEqual(
+                url_for('rruff_minerals'),
+                '/admin/rruff_minerals',
+            )
+
+    def test_admin_generate_box_qr_codes_legacy_endpoint_alias_is_available(self):
+        with museum_app.app.test_request_context(base_url=self.base_url):
+            self.assertEqual(
+                url_for('admin_generate_box_qr_codes'),
+                '/admin/qr_boxes/minerals/generate',
+            )
+
     def test_export_collection_pdf_route_delegates_to_collection_management_module(self):
         self._login(role='admin')
 
@@ -1472,21 +1548,12 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_employee_directory=museum_app.get_employee_directory,
             get_museum_employees=museum_app.get_museum_employees,
             get_mineral_database=museum_app.get_mineral_database,
-            get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             get_cultural_heritage_database=museum_app.get_cultural_heritage_database,
             get_exhibit_statistics=museum_app.get_exhibit_statistics,
             get_exhibition_statistics=museum_app.get_exhibition_statistics,
             bird_ringing_database=museum_app.bird_ringing_database,
             scientific_papers_database=museum_app.scientific_papers_database,
-            botany_collection_database=museum_app.BOTANY_COLLECTION_DATABASE,
-            ichthyology_collection_database=museum_app.ICHTHYOLOGY_COLLECTION_DATABASE,
-            entomology_collection_database=museum_app.ENTOMOLOGY_COLLECTION_DATABASE,
-            mycology_collection_database=museum_app.MYCOLOGY_COLLECTION_DATABASE,
-            herpetology_collection_database=museum_app.HERPETOLOGY_COLLECTION_DATABASE,
-            ornithology_collection_database=museum_app.ORNITHOLOGY_COLLECTION_DATABASE,
-            paleozoology_collection_database=museum_app.PALEOZOOLOGY_COLLECTION_DATABASE,
-            paleobotany_collection_database=museum_app.PALEOBOTANY_COLLECTION_DATABASE,
-            petrology_collection_database=museum_app.PETROLOGY_COLLECTION_DATABASE,
+            collection_databases=collection_registry.build_collection_database_map(museum_app),
             conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
             visitor_records=museum_app.VISITOR_RECORDS,
             research_projects=museum_app.RESEARCH_PROJECTS,
@@ -2548,22 +2615,12 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             save_reservations=museum_app.save_reservations,
         )
 
-    def test_accommodation_search_api_delegates_to_travel_finance_module(self):
+    def test_accommodation_search_api_is_not_registered(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.travel_finance_views,
-            'api_accommodation_search',
-            return_value=museum_app.app.response_class(
-                response='{"success": true}',
-                status=200,
-                mimetype='application/json',
-            ),
-        ) as mocked_handler:
-            response = self.client.post('/api/accommodation/search', json={}, base_url=self.base_url)
+        response = self.client.post('/api/accommodation/search', json={}, base_url=self.base_url)
 
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with()
+        self.assertEqual(response.status_code, 404)
 
     def test_route_calculate_api_delegates_to_travel_finance_module(self):
         self._login(role='employee')
@@ -2684,6 +2741,27 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             get_postgres_connection=museum_app.get_postgres_connection,
             current_user_is_admin=museum_app.current_user_is_admin,
+        )
+
+    def test_financial_plan_get_api_delegates_to_travel_finance_module(self):
+        self._login(role='employee')
+
+        with patch.object(
+            museum_app.travel_finance_views,
+            'api_finansijski_plan_get',
+            return_value=museum_app.app.response_class(
+                response='{"success": true}',
+                status=200,
+                mimetype='application/json',
+            ),
+        ) as mocked_handler:
+            response = self.client.get('/api/finansijski-plan/11', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        mocked_handler.assert_called_once_with(
+            11,
+            get_postgres_connection=museum_app.get_postgres_connection,
+            can_access_owned_record=museum_app.can_access_owned_record,
         )
 
     def test_financial_plan_export_api_delegates_to_travel_finance_module(self):
@@ -2877,15 +2955,37 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
 
-    def test_mail_settings_page_route_delegates_to_mail_module(self):
-        self._login(role='employee')
+    def test_mail_client_page_route_redirects_admin_to_dashboard(self):
+        self._login(role='admin')
 
         with patch.object(
             museum_app.mail_views,
-            'render_mail_settings_page',
+            'render_mail_client_page',
             return_value=museum_app.app.response_class('ok', status=200),
         ) as mocked_handler:
-            response = self.client.get('/mail/settings', base_url=self.base_url)
+            response = self.client.get('/mail', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dashboard', response.headers['Location'])
+        mocked_handler.assert_not_called()
+
+    def test_mail_settings_page_route_redirects_to_admin_mail_configuration(self):
+        self._login(role='admin')
+
+        response = self.client.get('/mail/settings', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/admin/mail-settings', response.headers['Location'])
+
+    def test_admin_mail_settings_page_route_delegates_to_admin_user_module(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.admin_user_management_views,
+            'render_admin_mail_configuration',
+            return_value=museum_app.app.response_class('ok', status=200),
+        ) as mocked_handler:
+            response = self.client.get('/admin/mail-settings', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -3088,6 +3188,30 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
 
+    def test_mail_check_api_forbids_admin(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.mail_views,
+            'api_mail_check',
+            return_value=museum_app.app.response_class(
+                response='{"success": true}',
+                status=200,
+                mimetype='application/json',
+            ),
+        ) as mocked_handler:
+            response = self.client.get('/api/mail/check', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json(),
+            {
+                'success': False,
+                'message': museum_app.MAILBOX_ADMIN_FORBIDDEN_MESSAGE,
+            },
+        )
+        mocked_handler.assert_not_called()
+
     def test_mail_sync_api_delegates_to_mail_module(self):
         self._login(role='employee')
 
@@ -3106,7 +3230,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with()
 
     def test_mail_settings_get_api_delegates_to_mail_module(self):
-        self._login(role='employee')
+        self._login(role='admin')
 
         with patch.object(
             museum_app.mail_views,
@@ -3123,7 +3247,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with()
 
     def test_mail_settings_save_api_delegates_to_mail_module(self):
-        self._login(role='employee')
+        self._login(role='admin')
 
         with patch.object(
             museum_app.mail_views,
@@ -3140,7 +3264,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with()
 
     def test_mail_test_connection_api_delegates_to_mail_module(self):
-        self._login(role='employee')
+        self._login(role='admin')
 
         with patch.object(
             museum_app.mail_views,
@@ -3156,15 +3280,67 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
 
+    def test_admin_mail_settings_state_api_delegates_to_admin_user_module(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.admin_user_management_views,
+            'api_admin_mail_settings_state',
+            return_value=museum_app.app.response_class(
+                response='{"success": true}',
+                status=200,
+                mimetype='application/json',
+            ),
+        ) as mocked_handler:
+            response = self.client.get('/api/admin/mail-settings/state', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        mocked_handler.assert_called_once_with()
+
+    def test_admin_mail_settings_save_api_delegates_to_admin_user_module(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.admin_user_management_views,
+            'api_admin_mail_settings_save',
+            return_value=museum_app.app.response_class(
+                response='{"success": true}',
+                status=200,
+                mimetype='application/json',
+            ),
+        ) as mocked_handler:
+            response = self.client.post('/api/admin/mail-settings', json={}, base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        mocked_handler.assert_called_once_with()
+
+    def test_admin_mail_test_connection_api_delegates_to_admin_user_module(self):
+        self._login(role='admin')
+
+        with patch.object(
+            museum_app.admin_user_management_views,
+            'api_admin_mail_test_connection',
+            return_value=museum_app.app.response_class(
+                response='{"success": true}',
+                status=200,
+                mimetype='application/json',
+            ),
+        ) as mocked_handler:
+            response = self.client.post('/api/admin/mail-settings/test', json={}, base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        mocked_handler.assert_called_once_with()
+
     def test_chat_room_page_route_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'render_chat_room_page',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/chat', base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'render_chat_room_page',
+                return_value=museum_app.app.response_class('ok', status=200),
+            ) as mocked_handler:
+                response = self.client.get('/chat', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -3172,16 +3348,17 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
     def test_chat_messages_api_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'api_chat_messages',
-            return_value=museum_app.app.response_class(
-                response='{"success": true}',
-                status=200,
-                mimetype='application/json',
-            ),
-        ) as mocked_handler:
-            response = self.client.get('/api/chat/messages', base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'api_chat_messages',
+                return_value=museum_app.app.response_class(
+                    response='{"success": true}',
+                    status=200,
+                    mimetype='application/json',
+                ),
+            ) as mocked_handler:
+                response = self.client.get('/api/chat/messages', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -3189,16 +3366,17 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
     def test_chat_send_api_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'api_chat_send',
-            return_value=museum_app.app.response_class(
-                response='{"success": true}',
-                status=200,
-                mimetype='application/json',
-            ),
-        ) as mocked_handler:
-            response = self.client.post('/api/chat/send', json={}, base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'api_chat_send',
+                return_value=museum_app.app.response_class(
+                    response='{"success": true}',
+                    status=200,
+                    mimetype='application/json',
+                ),
+            ) as mocked_handler:
+                response = self.client.post('/api/chat/send', json={}, base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -3206,16 +3384,17 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
     def test_chat_status_api_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'api_chat_status',
-            return_value=museum_app.app.response_class(
-                response='{"success": true}',
-                status=200,
-                mimetype='application/json',
-            ),
-        ) as mocked_handler:
-            response = self.client.post('/api/chat/status', json={}, base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'api_chat_status',
+                return_value=museum_app.app.response_class(
+                    response='{"success": true}',
+                    status=200,
+                    mimetype='application/json',
+                ),
+            ) as mocked_handler:
+                response = self.client.post('/api/chat/status', json={}, base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -3223,12 +3402,13 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
     def test_chat_file_api_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'api_chat_file',
-            return_value=museum_app.app.response_class(b'ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/api/chat/file/test.bin', base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'api_chat_file',
+                return_value=museum_app.app.response_class(b'ok', status=200),
+            ) as mocked_handler:
+                response = self.client.get('/api/chat/file/test.bin', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with('test.bin')
@@ -3236,19 +3416,35 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
     def test_chat_leave_api_delegates_to_chat_module(self):
         self._login(role='employee')
 
-        with patch.object(
-            museum_app.chat_views,
-            'api_chat_leave',
-            return_value=museum_app.app.response_class(
-                response='{"success": true}',
-                status=200,
-                mimetype='application/json',
-            ),
-        ) as mocked_handler:
-            response = self.client.post('/api/chat/leave', base_url=self.base_url)
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}):
+            with patch.object(
+                museum_app.chat_views,
+                'api_chat_leave',
+                return_value=museum_app.app.response_class(
+                    response='{"success": true}',
+                    status=200,
+                    mimetype='application/json',
+                ),
+            ) as mocked_handler:
+                response = self.client.post('/api/chat/leave', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
+
+    def test_chat_service_returns_503_when_disabled(self):
+        self._login(role='employee')
+
+        with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': False}):
+            response = self.client.get('/api/chat/messages', base_url=self.base_url)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.get_json(),
+            {
+                'success': False,
+                'message': 'Ћаскаоница је привремено искључена до наредне имплементације.',
+            },
+        )
 
     def test_admin_maps_route_delegates_to_maps_module(self):
         self._login(role='admin')
