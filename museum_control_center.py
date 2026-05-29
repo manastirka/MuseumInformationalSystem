@@ -9,13 +9,340 @@ from tkinter import ttk, messagebox, scrolledtext, simpledialog
 import subprocess
 import os
 import signal
+import shutil
+import queue
+import json
 import psutil
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
 import requests
 import secrets
 import string
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+SYSTEMD_UNIT_DIRS = (
+    Path('/etc/systemd/system'),
+    Path('/usr/lib/systemd/system'),
+    Path('/lib/systemd/system'),
+)
+QA_ENV_FILE = PROJECT_ROOT / '.env.qa'
+QA_REQUIRED_CYPRESS_ENV_VARS = (
+    'CYPRESS_ADMIN_EMAIL',
+    'CYPRESS_ADMIN_PASSWORD',
+    'CYPRESS_EMPLOYEE_EMAIL',
+    'CYPRESS_EMPLOYEE_PASSWORD',
+)
+QA_OPTIONAL_ENV_VARS = (
+    'CYPRESS_FIRST_LOGIN_EMAIL',
+    'CYPRESS_FIRST_LOGIN_PASSWORD',
+    'CYPRESS_RESET_TARGET_EMAIL',
+    'CYPRESS_ARCHIVE_EMAIL',
+    'CYPRESS_ARCHIVE_PASSWORD',
+)
+QA_EMAIL_FIELDS = (
+    'CYPRESS_ADMIN_EMAIL',
+    'CYPRESS_EMPLOYEE_EMAIL',
+    'CYPRESS_FIRST_LOGIN_EMAIL',
+    'CYPRESS_RESET_TARGET_EMAIL',
+    'CYPRESS_ARCHIVE_EMAIL',
+)
+
+
+def load_env_values(env_path=None):
+    """Read simple KEY=VALUE pairs from a local .env file."""
+    env_file = Path(env_path or PROJECT_ROOT / '.env')
+    values = {}
+
+    if not env_file.exists():
+        return values
+
+    def strip_inline_comment(value):
+        in_single = False
+        in_double = False
+
+        for idx, char in enumerate(value):
+            if char == "'" and not in_double:
+                in_single = not in_single
+            elif char == '"' and not in_single:
+                in_double = not in_double
+            elif char == '#' and not in_single and not in_double:
+                if idx == 0 or value[idx - 1].isspace():
+                    return value[:idx].rstrip()
+
+        return value.strip()
+
+    for raw_line in env_file.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        value = strip_inline_comment(value.strip())
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            value = value[1:-1]
+        values[key.strip()] = value
+
+    return values
+
+
+def systemd_unit_exists(unit_name):
+    return any((unit_dir / f'{unit_name}.service').exists() for unit_dir in SYSTEMD_UNIT_DIRS)
+
+
+def production_uses_local_cache(env_path=None):
+    env_values = load_env_values(env_path)
+    session_type = (
+        env_values.get('SESSION_TYPE')
+        or os.environ.get('SESSION_TYPE')
+        or 'filesystem'
+    ).lower()
+
+    if session_type != 'redis':
+        return False
+
+    redis_url = env_values.get('REDIS_URL') or os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
+    parsed = urlparse(redis_url)
+
+    if parsed.scheme == 'unix':
+        return True
+
+    hostname = (parsed.hostname or '').lower()
+    return hostname in ('', 'localhost', '127.0.0.1')
+
+
+def detect_cache_service(env_path=None):
+    if not production_uses_local_cache(env_path):
+        return None
+
+    candidates = (
+        ('valkey', 'valkey-server', 'Valkey / Redis Cache'),
+        ('redis', 'redis-server', 'Redis Cache'),
+        ('redis-server', 'redis-server', 'Redis Cache'),
+    )
+
+    for systemd_service, executable, name in candidates:
+        if systemd_unit_exists(systemd_service) and shutil.which(executable):
+            return {
+                'name': name,
+                'port': 6379,
+                'path': '/var/lib/redis',
+                'service_type': 'systemd',
+                'systemd_service': systemd_service,
+                'log': None,
+                'icon': '🧠',
+                'status': 'stopped',
+                'description': 'Локални Redis-компатибилни кеш за продукциони рад',
+                'order': 2,
+                'bulk_start': True,
+            }
+
+    return None
+
+
+def build_services_config(project_root=None, env_path=None):
+    root = Path(project_root or PROJECT_ROOT)
+
+    services = {
+        'postgresql': {
+            'name': 'PostgreSQL База података',
+            'port': 5432,
+            'path': '/var/lib/pgsql',
+            'service_type': 'systemd',
+            'systemd_service': 'postgresql',
+            'log': None,
+            'icon': '🐘',
+            'status': 'stopped',
+            'description': 'PostgreSQL сервер за све музејске базе података',
+            'order': 1,
+            'bulk_start': True,
+        },
+        'museum_system': {
+            'name': 'Музејски Информациони Систем',
+            'port': 8000,
+            'path': str(root),
+            'service_type': 'systemd',
+            'systemd_service': 'museum-system',
+            'log': 'logs/gunicorn_error.log',
+            'icon': '🏛️',
+            'status': 'stopped',
+            'description': 'Главни музејски систем (укључује базу минерала и радне листе)',
+            'order': 3,
+            'bulk_start': True,
+        },
+        'nginx': {
+            'name': 'Nginx Web Server',
+            'port': 80,
+            'path': '/etc/nginx',
+            'service_type': 'systemd',
+            'systemd_service': 'nginx',
+            'log': '/var/log/nginx/museum_error.log',
+            'icon': '🌐',
+            'status': 'stopped',
+            'description': 'Веб сервер који служи музејски систем на порту 80',
+            'order': 4,
+            'bulk_start': True,
+        },
+        'main_app_dev': {
+            'name': 'Развојни Сервер (Dev Mode)',
+            'port': 5000,
+            'path': str(root),
+            'command': ['python3', 'app.py'],
+            'log': 'logs/main_app.log',
+            'pid_file': 'logs/main_app.pid',
+            'icon': '🔧',
+            'status': 'stopped',
+            'service_type': 'process',
+            'description': 'Само за развој и тестирање (не користити у продукцији)',
+            'order': 99,
+            'bulk_start': False,
+        }
+    }
+
+    cache_service = detect_cache_service(env_path or root / '.env')
+    if cache_service:
+        services['cache'] = cache_service
+
+    return services
+
+
+def build_qa_environment(env_path=None, overrides=None):
+    env = os.environ.copy()
+    env.update(load_env_values(env_path))
+    env.update(load_env_values(QA_ENV_FILE))
+    env['PYTHONUNBUFFERED'] = '1'
+    env['TERM'] = env.get('TERM', 'dumb')
+
+    if overrides:
+        env.update({key: str(value) for key, value in overrides.items()})
+
+    if not env.get('CYPRESS_ADMIN_EMAIL') and env.get('ADMIN_EMAIL'):
+        env['CYPRESS_ADMIN_EMAIL'] = env['ADMIN_EMAIL']
+    if not env.get('CYPRESS_ARCHIVE_EMAIL') and env.get('CYPRESS_EMPLOYEE_EMAIL'):
+        env['CYPRESS_ARCHIVE_EMAIL'] = env['CYPRESS_EMPLOYEE_EMAIL']
+    if not env.get('CYPRESS_ARCHIVE_PASSWORD') and env.get('CYPRESS_EMPLOYEE_PASSWORD'):
+        env['CYPRESS_ARCHIVE_PASSWORD'] = env['CYPRESS_EMPLOYEE_PASSWORD']
+
+    return env
+
+
+def get_missing_qa_env_vars(env):
+    return [var_name for var_name in QA_REQUIRED_CYPRESS_ENV_VARS if not env.get(var_name)]
+
+
+def qa_run_needs_browser_credentials(options):
+    return str(options.get('QA_INCLUDE_CYPRESS', '1')) == '1'
+
+
+def is_email_candidate(value):
+    if not value:
+        return False
+    value = str(value).strip()
+    return '@' in value and '.' in value.split('@', 1)[-1]
+
+
+def load_employee_directory_entries(directory_path=None):
+    directory_file = Path(directory_path or PROJECT_ROOT / 'data' / 'employee_directory.json')
+    if not directory_file.exists():
+        return []
+
+    try:
+        data = json.loads(directory_file.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    return data if isinstance(data, list) else []
+
+
+def build_qa_email_defaults(env, directory_entries=None, db_rows=None):
+    defaults = {}
+    rows = db_rows or []
+    entries = directory_entries or []
+
+    admin_email = env.get('CYPRESS_ADMIN_EMAIL')
+    if not is_email_candidate(admin_email):
+        admin_email = env.get('ADMIN_EMAIL')
+    if not is_email_candidate(admin_email):
+        for role, email in rows:
+            if role == 'admin' and is_email_candidate(email):
+                admin_email = email
+                break
+    if not is_email_candidate(admin_email):
+        for entry in entries:
+            role = str(entry.get('role', '')).strip().lower()
+            email = entry.get('email', '')
+            if role == 'admin' and is_email_candidate(email):
+                admin_email = email
+                break
+    if is_email_candidate(admin_email):
+        defaults['CYPRESS_ADMIN_EMAIL'] = admin_email.strip()
+
+    employee_email = env.get('CYPRESS_EMPLOYEE_EMAIL')
+    if not is_email_candidate(employee_email):
+        for role, email in rows:
+            if role != 'admin' and is_email_candidate(email):
+                employee_email = email
+                break
+    if not is_email_candidate(employee_email):
+        for entry in entries:
+            role = str(entry.get('role', '')).strip().lower()
+            email = entry.get('email', '')
+            if role != 'admin' and is_email_candidate(email):
+                employee_email = email
+                break
+    if is_email_candidate(employee_email):
+        employee_email = employee_email.strip()
+        defaults['CYPRESS_EMPLOYEE_EMAIL'] = employee_email
+        defaults['CYPRESS_FIRST_LOGIN_EMAIL'] = env.get('CYPRESS_FIRST_LOGIN_EMAIL', '').strip() or employee_email
+        defaults['CYPRESS_RESET_TARGET_EMAIL'] = env.get('CYPRESS_RESET_TARGET_EMAIL', '').strip() or employee_email
+        defaults['CYPRESS_ARCHIVE_EMAIL'] = env.get('CYPRESS_ARCHIVE_EMAIL', '').strip() or employee_email
+
+    return defaults
+
+
+def hash_password_for_storage(password):
+    """Hash a password in-process and return (password_hash, salt).
+
+    Hashing happens in-process via PasswordHasher so the password is never
+    templated into a python3 -c source string (which would allow code
+    injection for passwords containing quotes, backslashes or newlines).
+    """
+    import sys as _sys
+
+    project_root = str(PROJECT_ROOT)
+    if project_root not in _sys.path:
+        _sys.path.insert(0, project_root)
+    from security_utils import PasswordHasher
+
+    return PasswordHasher.hash_password(password)
+
+
+def build_user_update_command(set_clause, email, variables=None):
+    """Build a (psql argv, sql) pair for an UPDATE on users keyed by email.
+
+    Dynamic values are passed as psql variables via -v and referenced inside
+    the SQL through the auto-escaping :'name' form, so no user-controlled
+    value is interpolated into the SQL text (prevents SQL injection).
+    set_clause must reference any extra values via :'name' placeholders.
+
+    The SQL is returned separately (NOT appended via -c) because psql only
+    expands :'name' / :name bindings when the statement is read from stdin or
+    -f; the caller must feed the returned sql to psql via stdin.
+    """
+    command = ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system']
+
+    bindings = {'target_email': email}
+    if variables:
+        bindings.update(variables)
+
+    for name, value in bindings.items():
+        command.extend(['-v', f"{name}={value}"])
+
+    sql = f"UPDATE users SET {set_clause} WHERE email = :'target_email'"
+    return command, sql
+
 
 class MuseumControlCenter:
     def __init__(self, root):
@@ -25,61 +352,13 @@ class MuseumControlCenter:
 
         # Cache for sudo password (valid for session)
         self.sudo_password = None
+        self.qa_process = None
+        self.qa_output_queue = queue.Queue()
+        self.qa_log_handle = None
+        self.qa_log_path = PROJECT_ROOT / 'logs' / 'control_center_qa.log'
+        self.qa_credential_vars = {}
         
-        # Service configurations
-        # Note: Mineral Database and Timesheet are now integrated into the main Museum System
-        # Access them at: http://192.168.144.48/mineral_database and http://192.168.144.48/timesheet
-        self.services = {
-            'postgresql': {
-                'name': 'PostgreSQL База података',
-                'port': 5432,
-                'path': '/var/lib/pgsql',
-                'service_type': 'systemd',
-                'systemd_service': 'postgresql',
-                'log': None,  # Uses journalctl
-                'icon': '🐘',
-                'status': 'stopped',
-                'description': 'PostgreSQL сервер за све музејске базе података',
-                'order': 1  # Start first
-            },
-            'nginx': {
-                'name': 'Nginx Web Server',
-                'port': 80,
-                'path': '/etc/nginx',
-                'service_type': 'systemd',
-                'systemd_service': 'nginx',
-                'log': '/var/log/nginx/museum_error.log',
-                'icon': '🌐',
-                'status': 'stopped',
-                'description': 'Веб сервер који служи музејски систем на порту 80',
-                'order': 3
-            },
-            'museum_system': {
-                'name': 'Музејски Информациони Систем',
-                'port': 8000,  # Internal port, accessed via nginx on port 80
-                'path': '/home/aleksandarlukovic/MuseumInfoSystem',
-                'service_type': 'systemd',
-                'systemd_service': 'museum-system',
-                'log': 'logs/gunicorn_error.log',
-                'icon': '🏛️',
-                'status': 'stopped',
-                'description': 'Главни музејски систем (укључује базу минерала и радне листе)',
-                'order': 2
-            },
-            'main_app_dev': {
-                'name': 'Развојни Сервер (Dev Mode)',
-                'port': 5000,
-                'path': '/home/aleksandarlukovic/MuseumInfoSystem',
-                'command': ['python3', 'app.py'],
-                'log': 'logs/main_app.log',
-                'pid_file': 'logs/main_app.pid',
-                'icon': '🔧',
-                'status': 'stopped',
-                'service_type': 'process',
-                'description': 'Само за развој и тестирање (не користити у продукцији)',
-                'order': 99
-            }
-        }
+        self.services = build_services_config()
         
         self.setup_ui()
         self.update_status_thread = threading.Thread(target=self.auto_update_status, daemon=True)
@@ -135,7 +414,12 @@ class MuseumControlCenter:
         self.notebook.add(self.db_tab, text='  Базе података  ')
         self.setup_database_tab()
 
-        # Tab 5: User Management / Password Manager
+        # Tab 5: QA Test Suite
+        self.qa_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.qa_tab, text='  QA  ')
+        self.setup_qa_tab()
+
+        # Tab 6: User Management / Password Manager
         self.users_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.users_tab, text='  Корисници  ')
         self.setup_users_tab()
@@ -220,7 +504,26 @@ class MuseumControlCenter:
             padx=20,
             pady=5
         ).pack(side='right', padx=5)
-    
+
+        self.root.protocol('WM_DELETE_WINDOW', self.on_window_close)
+
+    def on_window_close(self):
+        """Terminate a running QA process and close its log handle before exit."""
+        if self.qa_process and self.qa_process.poll() is None:
+            try:
+                self.qa_process.terminate()
+            except Exception:
+                pass
+
+        if self.qa_log_handle:
+            try:
+                self.qa_log_handle.close()
+            except Exception:
+                pass
+            self.qa_log_handle = None
+
+        self.root.destroy()
+
     def setup_services_tab(self):
         """Setup services control tab"""
         # Services control frame
@@ -229,7 +532,7 @@ class MuseumControlCenter:
         
         self.service_widgets = {}
         
-        for service_id, service in self.services.items():
+        for service_id, service in self.get_sorted_services():
             frame = tk.LabelFrame(
                 services_frame,
                 text=f"{service['icon']} {service['name']}",
@@ -360,11 +663,12 @@ class MuseumControlCenter:
         
         tk.Label(control_frame, text="Изабери сервис:", font=('Arial', 10)).pack(side='left', padx=5)
 
-        self.log_service_var = tk.StringVar(value='postgresql')
+        default_log_service = self.get_sorted_services()[0][0]
+        self.log_service_var = tk.StringVar(value=default_log_service)
         service_combo = ttk.Combobox(
             control_frame,
             textvariable=self.log_service_var,
-            values=['postgresql', 'nginx', 'museum_system', 'main_app_dev'],
+            values=[service_id for service_id, _ in self.get_sorted_services()],
             state='readonly',
             width=30
         )
@@ -468,6 +772,207 @@ class MuseumControlCenter:
             height=15
         )
         self.db_status_text.pack(fill='both', expand=True, pady=20)
+
+    def setup_qa_tab(self):
+        """Setup QA test runner tab"""
+        qa_frame = tk.Frame(self.qa_tab)
+        qa_frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        header_frame = tk.Frame(qa_frame)
+        header_frame.pack(fill='x', pady=(0, 10))
+
+        tk.Label(
+            header_frame,
+            text="🧪 QA тест пакет",
+            font=('Arial', 14, 'bold')
+        ).pack(side='left')
+
+        self.qa_status_var = tk.StringVar(value="Спреман за покретање")
+        tk.Label(
+            header_frame,
+            textvariable=self.qa_status_var,
+            font=('Arial', 10),
+            fg='#2c5d84'
+        ).pack(side='right')
+
+        options_frame = tk.LabelFrame(qa_frame, text="Подешавања", font=('Arial', 11, 'bold'), padx=10, pady=10)
+        options_frame.pack(fill='x', pady=(0, 10))
+
+        row1 = tk.Frame(options_frame)
+        row1.pack(fill='x', pady=5)
+
+        tk.Label(row1, text="Режим сервера:", font=('Arial', 10)).pack(side='left', padx=(0, 5))
+        self.qa_server_mode_var = tk.StringVar(value='gunicorn')
+        ttk.Combobox(
+            row1,
+            textvariable=self.qa_server_mode_var,
+            values=['flask', 'gunicorn'],
+            state='readonly',
+            width=12
+        ).pack(side='left', padx=(0, 15))
+
+        self.qa_include_lint_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(row1, text="Lint", variable=self.qa_include_lint_var).pack(side='left', padx=5)
+
+        self.qa_include_cypress_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(row1, text="Cypress E2E", variable=self.qa_include_cypress_var).pack(side='left', padx=5)
+
+        self.qa_include_playwright_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(row1, text="Playwright", variable=self.qa_include_playwright_var).pack(side='left', padx=5)
+
+        self.qa_include_k6_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(row1, text="k6 load test", variable=self.qa_include_k6_var).pack(side='left', padx=5)
+
+        self.qa_use_redis_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(row1, text="Покрени локални Redis/Valkey", variable=self.qa_use_redis_var).pack(side='left', padx=5)
+
+        row2 = tk.Frame(options_frame)
+        row2.pack(fill='x', pady=5)
+
+        info_text = (
+            "Покреће постојећи `run_qa.sh` пакет. За gunicorn smoke тест "
+            "искључите Cypress E2E. Ако је Cypress укључен, QA креденцијали морају "
+            "бити подешени у окружењу или `.env`."
+        )
+        tk.Label(
+            row2,
+            text=info_text,
+            font=('Arial', 9),
+            fg='#555555',
+            wraplength=900,
+            justify='left'
+        ).pack(anchor='w')
+
+        credentials_frame = tk.LabelFrame(qa_frame, text="Cypress креденцијали", font=('Arial', 11, 'bold'), padx=10, pady=10)
+        credentials_frame.pack(fill='x', pady=(0, 10))
+
+        credential_fields = [
+            ('CYPRESS_ADMIN_EMAIL', 'Admin email', False),
+            ('CYPRESS_ADMIN_PASSWORD', 'Admin лозинка', True),
+            ('CYPRESS_EMPLOYEE_EMAIL', 'Employee email', False),
+            ('CYPRESS_EMPLOYEE_PASSWORD', 'Employee лозинка', True),
+            ('CYPRESS_FIRST_LOGIN_EMAIL', 'First-login email', False),
+            ('CYPRESS_FIRST_LOGIN_PASSWORD', 'First-login лозинка', True),
+            ('CYPRESS_RESET_TARGET_EMAIL', 'Reset target email', False),
+            ('CYPRESS_ARCHIVE_EMAIL', 'Archive email', False),
+            ('CYPRESS_ARCHIVE_PASSWORD', 'Archive лозинка', True),
+        ]
+
+        for index, (env_key, label, is_secret) in enumerate(credential_fields):
+            row = index // 2
+            column = (index % 2) * 2
+            tk.Label(credentials_frame, text=label + ':', font=('Arial', 9)).grid(
+                row=row,
+                column=column,
+                sticky='w',
+                padx=(0, 5),
+                pady=4,
+            )
+            var = tk.StringVar()
+            self.qa_credential_vars[env_key] = var
+            tk.Entry(
+                credentials_frame,
+                textvariable=var,
+                width=34,
+                show='*' if is_secret else '',
+            ).grid(row=row, column=column + 1, sticky='we', padx=(0, 12), pady=4)
+
+        credentials_frame.columnconfigure(1, weight=1)
+        credentials_frame.columnconfigure(3, weight=1)
+
+        credentials_actions = tk.Frame(credentials_frame)
+        credentials_actions.grid(row=5, column=0, columnspan=4, sticky='w', pady=(8, 0))
+
+        tk.Button(
+            credentials_actions,
+            text="💾 Сачувај .env.qa",
+            command=self.save_qa_credentials,
+            padx=12,
+            pady=4
+        ).pack(side='left', padx=(0, 8))
+
+        tk.Button(
+            credentials_actions,
+            text="⚡ Попуни email",
+            command=self.autofill_qa_credentials,
+            padx=12,
+            pady=4
+        ).pack(side='left', padx=(0, 8))
+
+        tk.Button(
+            credentials_actions,
+            text="🔄 Учитај",
+            command=self.load_qa_credentials,
+            padx=12,
+            pady=4
+        ).pack(side='left', padx=(0, 8))
+
+        tk.Button(
+            credentials_actions,
+            text="🧹 Очисти",
+            command=self.clear_qa_credentials,
+            padx=12,
+            pady=4
+        ).pack(side='left')
+
+        buttons_frame = tk.Frame(qa_frame)
+        buttons_frame.pack(fill='x', pady=(0, 10))
+
+        self.qa_start_button = tk.Button(
+            buttons_frame,
+            text="▶️ Покрени QA",
+            command=self.start_qa_suite,
+            bg='#4CAF50',
+            fg='white',
+            font=('Arial', 10, 'bold'),
+            padx=20,
+            pady=6
+        )
+        self.qa_start_button.pack(side='left', padx=(0, 8))
+
+        self.qa_stop_button = tk.Button(
+            buttons_frame,
+            text="⏹️ Заустави QA",
+            command=self.stop_qa_suite,
+            bg='#f44336',
+            fg='white',
+            font=('Arial', 10, 'bold'),
+            padx=20,
+            pady=6,
+            state='disabled'
+        )
+        self.qa_stop_button.pack(side='left', padx=(0, 8))
+
+        tk.Button(
+            buttons_frame,
+            text="🗑️ Очисти излаз",
+            command=self.clear_qa_output,
+            padx=15,
+            pady=6
+        ).pack(side='left', padx=(0, 8))
+
+        tk.Button(
+            buttons_frame,
+            text="📂 Отвори лог",
+            command=self.open_qa_log,
+            padx=15,
+            pady=6
+        ).pack(side='left')
+
+        self.qa_output_text = scrolledtext.ScrolledText(
+            qa_frame,
+            wrap=tk.WORD,
+            font=('Courier', 9),
+            bg='#111111',
+            fg='#e6e6e6'
+        )
+        self.qa_output_text.pack(fill='both', expand=True)
+
+        self.append_qa_output(
+            "QA интеграција је спремна.\n"
+            f"Лог фајл: {self.qa_log_path}\n"
+        )
+        self.load_qa_credentials()
     
     def is_systemd_service(self, service):
         """Check if service is systemd-managed"""
@@ -654,14 +1159,14 @@ class MuseumControlCenter:
         if port is None:
             return False
         for conn in psutil.net_connections():
-            if conn.laddr.port == port and conn.status == 'LISTEN':
+            if conn.laddr and conn.laddr.port == port and conn.status == 'LISTEN':
                 return True
         return False
-    
+
     def get_pid_on_port(self, port):
         """Get PID of process using a port"""
         for conn in psutil.net_connections():
-            if conn.laddr.port == port and conn.status == 'LISTEN':
+            if conn.laddr and conn.laddr.port == port and conn.status == 'LISTEN':
                 return conn.pid
         return None
     
@@ -712,6 +1217,51 @@ class MuseumControlCenter:
         running = sum(1 for s in self.services.values() if s['status'] == 'running')
         total = len(self.services)
         self.status_bar.config(text=f"Статус: {running}/{total} сервиса активно | {datetime.now().strftime('%H:%M:%S')}")
+
+    def get_bulk_services(self, reverse=False):
+        services = [
+            (service_id, service)
+            for service_id, service in self.get_sorted_services()
+            if service.get('bulk_start', True)
+        ]
+        return list(reversed(services)) if reverse else services
+
+    def get_sorted_services(self):
+        services = [
+            (service_id, service)
+            for service_id, service in self.services.items()
+        ]
+        return sorted(
+            services,
+            key=lambda item: item[1].get('order', 50),
+        )
+
+    def summarize_bulk_results(self, action_title, results):
+        changed = [result for result in results if result['status'] == 'changed']
+        skipped = [result for result in results if result['status'] == 'skipped']
+        failed = [result for result in results if result['status'] == 'error']
+
+        lines = []
+        if changed:
+            lines.append("Успешно:")
+            lines.extend(f"• {result['service']}" for result in changed)
+        if skipped:
+            lines.append("")
+            lines.append("Без измена:")
+            lines.extend(f"• {result['service']} ({result['message']})" for result in skipped)
+        if failed:
+            lines.append("")
+            lines.append("Грешке:")
+            lines.extend(f"• {result['service']}: {result['message']}" for result in failed)
+
+        message = '\n'.join(line for line in lines if line is not None).strip()
+        if not message:
+            message = "Нема сервиса за обраду."
+
+        if failed:
+            messagebox.showerror(action_title, message)
+        else:
+            messagebox.showinfo(action_title, message)
     
     def auto_update_status(self):
         """Auto-update status in background"""
@@ -724,19 +1274,21 @@ class MuseumControlCenter:
                 pass
             time.sleep(2)
     
-    def start_service(self, service_id):
+    def start_service(self, service_id, show_dialogs=True):
         """Start a service"""
         service = self.services[service_id]
 
         # Check if already running
         if self.is_systemd_service(service):
             if self.check_systemd_status(service['systemd_service']):
-                messagebox.showwarning("Упозорење", f"{service['name']} је већ покренут!")
-                return
+                if show_dialogs:
+                    messagebox.showwarning("Упозорење", f"{service['name']} је већ покренут!")
+                return {'status': 'skipped', 'service': service['name'], 'message': 'већ је покренут'}
         else:
             if self.check_port(service['port']):
-                messagebox.showwarning("Упозорење", f"{service['name']} је већ покренут!")
-                return
+                if show_dialogs:
+                    messagebox.showwarning("Упозорење", f"{service['name']} је већ покренут!")
+                return {'status': 'skipped', 'service': service['name'], 'message': 'већ је покренут'}
 
         try:
             if self.is_systemd_service(service):
@@ -744,25 +1296,27 @@ class MuseumControlCenter:
                 result = self.run_sudo_command(['systemctl', 'start', service['systemd_service']])
 
                 if result is None:
-                    return  # User cancelled password prompt
+                    return {'status': 'error', 'service': service['name'], 'message': 'отказана sudo ауторизација'}
 
                 if result.returncode != 0:
                     error_msg = result.stderr if result.stderr else result.stdout
-                    messagebox.showerror("Грешка", f"Грешка при покретању:\n{error_msg}")
-                    return
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Грешка при покретању:\n{error_msg}")
+                    return {'status': 'error', 'service': service['name'], 'message': error_msg.strip() or 'неуспешно покретање'}
 
                 time.sleep(2)
 
                 if self.check_systemd_status(service['systemd_service']):
-                    messagebox.showinfo("Успех", f"{service['name']} је успешно покренут!")
                     self.update_service_status()
+                    if show_dialogs:
+                        messagebox.showinfo("Успех", f"{service['name']} је успешно покренут!")
+                    return {'status': 'changed', 'service': service['name'], 'message': 'покренут'}
                 else:
-                    messagebox.showerror("Грешка", f"Проблем приликом покретања {service['name']}")
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Проблем приликом покретања {service['name']}")
+                    return {'status': 'error', 'service': service['name'], 'message': 'сервис није постао активан'}
             else:
                 # Start regular process
-                os.chdir(service['path'])
-
-                # Start process
                 log_path = os.path.join(service['path'], service['log'])
                 os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
@@ -777,28 +1331,36 @@ class MuseumControlCenter:
                 time.sleep(2)
 
                 if self.check_port(service['port']):
-                    messagebox.showinfo("Успех", f"{service['name']} је успешно покренут!")
                     self.update_service_status()
+                    if show_dialogs:
+                        messagebox.showinfo("Успех", f"{service['name']} је успешно покренут!")
+                    return {'status': 'changed', 'service': service['name'], 'message': 'покренут'}
                 else:
-                    messagebox.showerror("Грешка", f"Проблем приликом покретања {service['name']}")
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Проблем приликом покретања {service['name']}")
+                    return {'status': 'error', 'service': service['name'], 'message': 'порт није активан'}
 
         except Exception as e:
-            messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            if show_dialogs:
+                messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            return {'status': 'error', 'service': service['name'], 'message': str(e)}
     
-    def stop_service(self, service_id):
+    def stop_service(self, service_id, show_dialogs=True):
         """Stop a service"""
         service = self.services[service_id]
 
         # Check if running
         if self.is_systemd_service(service):
             if not self.check_systemd_status(service['systemd_service']):
-                messagebox.showwarning("Упозорење", f"{service['name']} није покренут!")
-                return
+                if show_dialogs:
+                    messagebox.showwarning("Упозорење", f"{service['name']} није покренут!")
+                return {'status': 'skipped', 'service': service['name'], 'message': 'није покренут'}
         else:
             pid = self.get_pid_on_port(service['port'])
             if not pid:
-                messagebox.showwarning("Упозорење", f"{service['name']} није покренут!")
-                return
+                if show_dialogs:
+                    messagebox.showwarning("Упозорење", f"{service['name']} није покренут!")
+                return {'status': 'skipped', 'service': service['name'], 'message': 'није покренут'}
 
         try:
             if self.is_systemd_service(service):
@@ -806,33 +1368,47 @@ class MuseumControlCenter:
                 result = self.run_sudo_command(['systemctl', 'stop', service['systemd_service']])
 
                 if result is None:
-                    return  # User cancelled password prompt
+                    return {'status': 'error', 'service': service['name'], 'message': 'отказана sudo ауторизација'}
 
                 if result.returncode != 0:
                     error_msg = result.stderr if result.stderr else result.stdout
-                    messagebox.showerror("Грешка", f"Грешка при заустављању:\n{error_msg}")
-                    return
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Грешка при заустављању:\n{error_msg}")
+                    return {'status': 'error', 'service': service['name'], 'message': error_msg.strip() or 'неуспешно заустављање'}
 
                 time.sleep(1)
-                messagebox.showinfo("Успех", f"{service['name']} је заустављен!")
                 self.update_service_status()
+                if show_dialogs:
+                    messagebox.showinfo("Успех", f"{service['name']} је заустављен!")
+                return {'status': 'changed', 'service': service['name'], 'message': 'заустављен'}
             else:
                 # Kill regular process
                 pid = self.get_pid_on_port(service['port'])
-                os.kill(pid, signal.SIGTERM)
-                time.sleep(1)
+                if pid:
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                    time.sleep(1)
 
-                # Force kill if still running
-                if self.check_port(service['port']):
-                    os.kill(pid, signal.SIGKILL)
+                    # Force kill if still running
+                    if self.check_port(service['port']):
+                        try:
+                            os.kill(pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
 
-                messagebox.showinfo("Успех", f"{service['name']} је заустављен!")
                 self.update_service_status()
+                if show_dialogs:
+                    messagebox.showinfo("Успех", f"{service['name']} је заустављен!")
+                return {'status': 'changed', 'service': service['name'], 'message': 'заустављен'}
 
         except Exception as e:
-            messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            if show_dialogs:
+                messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            return {'status': 'error', 'service': service['name'], 'message': str(e)}
     
-    def restart_service(self, service_id):
+    def restart_service(self, service_id, show_dialogs=True):
         """Restart a service"""
         service = self.services[service_id]
 
@@ -842,50 +1418,75 @@ class MuseumControlCenter:
                 result = self.run_sudo_command(['systemctl', 'restart', service['systemd_service']])
 
                 if result is None:
-                    return  # User cancelled password prompt
+                    return {'status': 'error', 'service': service['name'], 'message': 'отказана sudo ауторизација'}
 
                 if result.returncode != 0:
                     error_msg = result.stderr if result.stderr else result.stdout
-                    messagebox.showerror("Грешка", f"Грешка при рестартовању:\n{error_msg}")
-                    return
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Грешка при рестартовању:\n{error_msg}")
+                    return {'status': 'error', 'service': service['name'], 'message': error_msg.strip() or 'неуспешан рестарт'}
 
                 time.sleep(2)
-                messagebox.showinfo("Успех", f"{service['name']} је рестартован!")
                 self.update_service_status()
+                if show_dialogs:
+                    messagebox.showinfo("Успех", f"{service['name']} је рестартован!")
+                return {'status': 'changed', 'service': service['name'], 'message': 'рестартован'}
             else:
                 # Regular process - stop then start
-                self.stop_service(service_id)
+                stop_result = self.stop_service(service_id, show_dialogs=False)
+                if stop_result['status'] == 'error':
+                    if show_dialogs:
+                        messagebox.showerror("Грешка", f"Грешка при рестартовању:\n{stop_result['message']}")
+                    return stop_result
                 time.sleep(2)
-                self.start_service(service_id)
+                return self.start_service(service_id, show_dialogs=show_dialogs)
 
         except Exception as e:
-            messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            if show_dialogs:
+                messagebox.showerror("Грешка", f"Грешка: {str(e)}")
+            return {'status': 'error', 'service': service['name'], 'message': str(e)}
     
     def start_all_services(self):
         """Start all services in correct order"""
-        # Sort services by order field (PostgreSQL first, then museum system, then nginx)
-        sorted_services = sorted(
-            self.services.items(),
-            key=lambda x: x[1].get('order', 50)
-        )
+        self.update_service_status()
+        results = []
 
-        for service_id, service in sorted_services:
-            if service['status'] != 'running':
-                self.start_service(service_id)
-                time.sleep(3)
+        for service_id, _service in self.get_bulk_services():
+            results.append(self.start_service(service_id, show_dialogs=False))
+            time.sleep(2)
+
+        self.update_service_status()
+        self.summarize_bulk_results("Покретање сервиса", results)
     
     def stop_all_services(self):
         """Stop all services"""
-        for service_id in self.services.keys():
-            if self.services[service_id]['status'] == 'running':
-                self.stop_service(service_id)
-                time.sleep(1)
+        self.update_service_status()
+        results = []
+
+        for service_id, _service in self.get_bulk_services(reverse=True):
+            results.append(self.stop_service(service_id, show_dialogs=False))
+            time.sleep(1)
+
+        self.update_service_status()
+        self.summarize_bulk_results("Заустављање сервиса", results)
     
     def restart_all_services(self):
         """Restart all services"""
-        self.stop_all_services()
-        time.sleep(3)
-        self.start_all_services()
+        self.update_service_status()
+        results = []
+
+        for service_id, _service in self.get_bulk_services(reverse=True):
+            results.append(self.stop_service(service_id, show_dialogs=False))
+            time.sleep(1)
+
+        time.sleep(2)
+
+        for service_id, _service in self.get_bulk_services():
+            results.append(self.start_service(service_id, show_dialogs=False))
+            time.sleep(2)
+
+        self.update_service_status()
+        self.summarize_bulk_results("Рестарт сервиса", results)
     
     def show_service_logs(self, service_id):
         """Show logs for a specific service"""
@@ -1028,7 +1629,12 @@ class MuseumControlCenter:
                         timeout=2
                     )
                     if result.returncode == 0:
-                        version_line = result.stdout.split('\n')[2].strip()
+                        version_candidates = [
+                            line.strip()
+                            for line in result.stdout.split('\n')
+                            if 'PostgreSQL' in line
+                        ]
+                        version_line = version_candidates[0] if version_candidates else 'непознато'
                         self.db_status_text.insert(tk.END, f"   ✅ Верзија: {version_line}\n")
 
                         # Get database size
@@ -1152,20 +1758,38 @@ Wants=postgresql.service
 
 [Service]
 Type=exec
-User=aleksandarlukovic
-Group=aleksandarlukovic
+User=nginx
+Group=nginx
 WorkingDirectory=/home/aleksandarlukovic/MuseumInfoSystem
 Environment="PATH=/home/aleksandarlukovic/.local/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONPATH=/home/aleksandarlukovic/MuseumInfoSystem"
-Environment="ENABLE_FALLBACK_AUTH=True"
-Environment="FLASK_ENV=development"
-ExecStart=/usr/bin/python3 -m gunicorn --config gunicorn.conf.py wsgi:application
+Environment="FLASK_ENV=production"
+Environment="GUNICORN_BIND=127.0.0.1:8000"
+Environment="GUNICORN_PIDFILE=/run/museum/museum_info_system.pid"
+Environment="LOG_DIR=/var/log/museum-info-system"
+Environment="LOG_FILE=/var/log/museum-info-system/museum_info_system.log"
+Environment="GUNICORN_RUN_USER=nginx"
+Environment="GUNICORN_RUN_GROUP=nginx"
+ExecStartPre=/usr/bin/mkdir -p /home/aleksandarlukovic/MuseumInfoSystem/storage/uploads
+ExecStartPre=/usr/bin/rm -f /run/museum/museum_info_system.pid
+ExecStart=/bin/bash /home/aleksandarlukovic/MuseumInfoSystem/systemd_start.sh
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
-TimeoutStopSec=5
-PrivateTmp=false
+TimeoutStopSec=35
+PrivateTmp=true
 Restart=always
 RestartSec=10
+ProtectSystem=strict
+ProtectHome=read-only
+NoNewPrivileges=true
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/data
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/exports
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/storage
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/flask_session
+ReadWritePaths=/var/log/museum-info-system
+ReadWritePaths=/run/museum
+RuntimeDirectory=museum
+LogsDirectory=museum-info-system
 
 [Install]
 WantedBy=multi-user.target
@@ -1275,6 +1899,241 @@ WantedBy=multi-user.target
     def open_browser(self, url):
         """Open URL in browser"""
         subprocess.Popen(['xdg-open', url])
+
+    def append_qa_output(self, text):
+        self.qa_output_text.insert(tk.END, text)
+        self.qa_output_text.see(tk.END)
+
+    def clear_qa_output(self):
+        self.qa_output_text.delete('1.0', tk.END)
+
+    def open_qa_log(self):
+        if self.qa_log_path.exists():
+            subprocess.Popen(['xdg-open', str(self.qa_log_path)])
+        else:
+            messagebox.showinfo("Информација", f"Лог фајл још не постоји:\n{self.qa_log_path}")
+
+    def build_qa_runner_options(self):
+        options = {
+            'QA_SERVER_MODE': self.qa_server_mode_var.get(),
+            'QA_INCLUDE_LINT': '1' if self.qa_include_lint_var.get() else '0',
+            'QA_INCLUDE_CYPRESS': '1' if self.qa_include_cypress_var.get() else '0',
+            'QA_INCLUDE_PLAYWRIGHT': '1' if self.qa_include_playwright_var.get() else '0',
+            'QA_INCLUDE_K6': '1' if self.qa_include_k6_var.get() else '0',
+            'QA_USE_REDIS': '1' if self.qa_use_redis_var.get() else '0',
+        }
+        for env_key, var in self.qa_credential_vars.items():
+            value = var.get().strip()
+            if value:
+                options[env_key] = value
+        return options
+
+    def load_qa_credentials(self):
+        env = build_qa_environment(PROJECT_ROOT / '.env')
+        for env_key, var in self.qa_credential_vars.items():
+            var.set(env.get(env_key, ''))
+        self.autofill_qa_credentials(show_dialog=False)
+
+    def clear_qa_credentials(self):
+        for var in self.qa_credential_vars.values():
+            var.set('')
+
+    def save_qa_credentials(self):
+        lines = [
+            "# QA credentials for Cypress/Playwright runs",
+            "# Stored separately from the main .env on purpose.",
+        ]
+        for env_key, var in self.qa_credential_vars.items():
+            value = var.get().strip()
+            if value:
+                lines.append(f"{env_key}={value}")
+
+        QA_ENV_FILE.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        messagebox.showinfo("Успех", f"QA креденцијали су сачувани у:\n{QA_ENV_FILE}")
+
+    def fetch_qa_db_candidate_rows(self):
+        try:
+            result = subprocess.run(
+                [
+                    'psql',
+                    '-U', 'aleksandarlukovic',
+                    '-d', 'museum_system',
+                    '-t', '-A', '-F', '|',
+                    '-c',
+                    """SELECT COALESCE(r.name, 'employee') AS role, u.email
+                       FROM users u
+                       LEFT JOIN roles r ON u.role_id = r.id
+                       WHERE u.is_active = TRUE
+                       ORDER BY CASE WHEN COALESCE(r.name, 'employee') = 'admin' THEN 0 ELSE 1 END,
+                                u.full_name"""
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return []
+
+        if result.returncode != 0:
+            return []
+
+        rows = []
+        for raw_line in result.stdout.strip().splitlines():
+            if not raw_line:
+                continue
+            role, _, email = raw_line.partition('|')
+            rows.append((role.strip().lower() or 'employee', email.strip()))
+        return rows
+
+    def autofill_qa_credentials(self, show_dialog=True):
+        env = build_qa_environment(PROJECT_ROOT / '.env')
+        defaults = build_qa_email_defaults(
+            env,
+            directory_entries=load_employee_directory_entries(),
+            db_rows=self.fetch_qa_db_candidate_rows(),
+        )
+
+        updated_fields = []
+        for env_key, value in defaults.items():
+            if env_key not in QA_EMAIL_FIELDS:
+                continue
+            current = self.qa_credential_vars[env_key].get().strip()
+            if current:
+                continue
+            self.qa_credential_vars[env_key].set(value)
+            updated_fields.append(env_key)
+
+        if show_dialog:
+            if updated_fields:
+                messagebox.showinfo(
+                    "Аутопопуна QA",
+                    "QA email поља су попуњена из локалне конфигурације и базе."
+                )
+            else:
+                messagebox.showinfo(
+                    "Аутопопуна QA",
+                    "Нема нових QA email вредности за попуну.\n"
+                    "Очистите поља ако желите поновну аутопопуну."
+                )
+
+    def start_qa_suite(self):
+        if self.qa_process and self.qa_process.poll() is None:
+            messagebox.showwarning("Упозорење", "QA пакет је већ покренут.")
+            return
+
+        runner_options = self.build_qa_runner_options()
+        env = build_qa_environment(PROJECT_ROOT / '.env', runner_options)
+        if qa_run_needs_browser_credentials(runner_options):
+            missing_vars = get_missing_qa_env_vars(env)
+        else:
+            missing_vars = []
+        if missing_vars:
+            messagebox.showerror(
+                "Недостају QA променљиве",
+                "QA пакет захтева следеће променљиве окружења:\n\n"
+                + '\n'.join(missing_vars)
+            )
+            return
+
+        log_dir = self.qa_log_path.parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        self.qa_log_handle = open(self.qa_log_path, 'w', encoding='utf-8')
+
+        command = ['/bin/bash', str(PROJECT_ROOT / 'run_qa.sh')]
+        self.clear_qa_output()
+        self.append_qa_output("Покрећем QA пакет...\n")
+        self.append_qa_output(f"Команда: {' '.join(command)}\n")
+        self.append_qa_output(f"Режим: {env['QA_SERVER_MODE']}\n\n")
+
+        try:
+            self.qa_process = subprocess.Popen(
+                command,
+                cwd=str(PROJECT_ROOT),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                env=env,
+            )
+        except Exception as exc:
+            if self.qa_log_handle:
+                self.qa_log_handle.close()
+                self.qa_log_handle = None
+            self.qa_status_var.set("Неуспешно покретање QA пакета")
+            messagebox.showerror("Грешка", f"Не могу да покренем QA пакет:\n{exc}")
+            return
+
+        self.qa_status_var.set("QA пакет је у току...")
+        self.qa_start_button.config(state='disabled')
+        self.qa_stop_button.config(state='normal')
+
+        reader_thread = threading.Thread(target=self._stream_qa_output, daemon=True)
+        reader_thread.start()
+        self.root.after(150, self.poll_qa_output)
+
+    def _stream_qa_output(self):
+        if not self.qa_process or not self.qa_process.stdout:
+            return
+
+        try:
+            for line in self.qa_process.stdout:
+                self.qa_output_queue.put(line)
+                if self.qa_log_handle and not self.qa_log_handle.closed:
+                    self.qa_log_handle.write(line)
+                    self.qa_log_handle.flush()
+        finally:
+            if self.qa_process.stdout:
+                self.qa_process.stdout.close()
+
+    def poll_qa_output(self):
+        while True:
+            try:
+                line = self.qa_output_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.append_qa_output(line)
+
+        if self.qa_process and self.qa_process.poll() is None:
+            self.root.after(150, self.poll_qa_output)
+            return
+
+        if self.qa_process:
+            exit_code = self.qa_process.poll()
+            self.finish_qa_suite(exit_code if exit_code is not None else 1)
+
+    def finish_qa_suite(self, exit_code):
+        while True:
+            try:
+                line = self.qa_output_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.append_qa_output(line)
+
+        if self.qa_log_handle:
+            self.qa_log_handle.close()
+            self.qa_log_handle = None
+
+        self.qa_process = None
+        self.qa_start_button.config(state='normal')
+        self.qa_stop_button.config(state='disabled')
+
+        if exit_code == 0:
+            self.qa_status_var.set("QA пакет је успешно завршен")
+            self.append_qa_output("\nQA пакет је успешно завршен.\n")
+        else:
+            self.qa_status_var.set(f"QA пакет је неуспешан (код {exit_code})")
+            self.append_qa_output(f"\nQA пакет је завршен са грешком (код {exit_code}).\n")
+
+    def stop_qa_suite(self):
+        if not self.qa_process or self.qa_process.poll() is not None:
+            self.qa_status_var.set("Нема активног QA процеса")
+            self.qa_stop_button.config(state='disabled')
+            self.qa_start_button.config(state='normal')
+            return
+
+        self.append_qa_output("\nПокушавам да зауставим QA пакет...\n")
+        self.qa_process.terminate()
+        self.qa_status_var.set("QA пакет се зауставља...")
 
     def setup_users_tab(self):
         """Setup user management / password manager tab"""
@@ -1532,39 +2391,27 @@ WantedBy=multi-user.target
         )
 
         try:
-            # Hash the password using bcrypt via Python
-            hash_script = f'''
-import sys
-sys.path.insert(0, '/home/aleksandarlukovic/MuseumInfoSystem')
-from security_utils import PasswordHasher
-hasher = PasswordHasher()
-password_hash, salt = hasher.hash_password("{new_password}")
-print(f"{{password_hash}}|{{salt}}")
-'''
-            result = subprocess.run(
-                ['python3', '-c', hash_script],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-
-            if result.returncode != 0:
-                messagebox.showerror("Грешка", f"Грешка при хеширању лозинке:\n{result.stderr}")
-                return
-
-            password_hash, salt = result.stdout.strip().split('|')
+            # Hash the password using bcrypt via Python (in-process)
+            password_hash, salt = hash_password_for_storage(new_password)
 
             # Update in database
             is_first_login = 'TRUE' if force_change else 'FALSE'
-            update_sql = f"""UPDATE users
-                SET password_hash = '{password_hash}',
-                    salt = '{salt}',
-                    is_first_login = {is_first_login},
-                    updated_at = NOW()
-                WHERE email = '{email}'"""
+            update_command, update_sql = build_user_update_command(
+                set_clause="password_hash = :'password_hash', "
+                           "salt = :'salt', "
+                           "is_first_login = :first_login, "
+                           "updated_at = NOW()",
+                email=email,
+                variables={
+                    'password_hash': password_hash,
+                    'salt': salt,
+                    'first_login': is_first_login,
+                },
+            )
 
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c', update_sql],
+                update_command,
+                input=update_sql,
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -1598,9 +2445,14 @@ print(f"{{password_hash}}|{{salt}}")
             return
 
         try:
+            update_command, update_sql = build_user_update_command(
+                set_clause="is_first_login = TRUE, updated_at = NOW()",
+                email=email,
+            )
+
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c',
-                 f"UPDATE users SET is_first_login = TRUE, updated_at = NOW() WHERE email = '{email}'"],
+                update_command,
+                input=update_sql,
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -1635,9 +2487,15 @@ print(f"{{password_hash}}|{{salt}}")
             return
 
         try:
+            update_command, update_sql = build_user_update_command(
+                set_clause="is_active = :is_active, updated_at = NOW()",
+                email=email,
+                variables={'is_active': str(new_status).upper()},
+            )
+
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c',
-                 f"UPDATE users SET is_active = {str(new_status).upper()}, updated_at = NOW() WHERE email = '{email}'"],
+                update_command,
+                input=update_sql,
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -1671,38 +2529,25 @@ print(f"{{password_hash}}|{{salt}}")
         new_password = self.generate_strong_password()
 
         try:
-            # Hash the password using bcrypt via Python
-            hash_script = f'''
-import sys
-sys.path.insert(0, '/home/aleksandarlukovic/MuseumInfoSystem')
-from security_utils import PasswordHasher
-hasher = PasswordHasher()
-password_hash, salt = hasher.hash_password("{new_password}")
-print(f"{{password_hash}}|{{salt}}")
-'''
-            result = subprocess.run(
-                ['python3', '-c', hash_script],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-
-            if result.returncode != 0:
-                messagebox.showerror("Грешка", f"Грешка при хеширању лозинке:\n{result.stderr}")
-                return
-
-            password_hash, salt = result.stdout.strip().split('|')
+            # Hash the password using bcrypt via Python (in-process)
+            password_hash, salt = hash_password_for_storage(new_password)
 
             # Update in database with force change on next login
-            update_sql = f"""UPDATE users
-                SET password_hash = '{password_hash}',
-                    salt = '{salt}',
-                    is_first_login = TRUE,
-                    updated_at = NOW()
-                WHERE email = '{email}'"""
+            update_command, update_sql = build_user_update_command(
+                set_clause="password_hash = :'password_hash', "
+                           "salt = :'salt', "
+                           "is_first_login = TRUE, "
+                           "updated_at = NOW()",
+                email=email,
+                variables={
+                    'password_hash': password_hash,
+                    'salt': salt,
+                },
+            )
 
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c', update_sql],
+                update_command,
+                input=update_sql,
                 capture_output=True,
                 text=True,
                 timeout=5
@@ -1769,38 +2614,25 @@ print(f"{{password_hash}}|{{salt}}")
             return
 
         try:
-            # Hash the password using bcrypt via Python
-            hash_script = f'''
-import sys
-sys.path.insert(0, '/home/aleksandarlukovic/MuseumInfoSystem')
-from security_utils import PasswordHasher
-hasher = PasswordHasher()
-password_hash, salt = hasher.hash_password("{temp_password}")
-print(f"{{password_hash}}|{{salt}}")
-'''
-            result = subprocess.run(
-                ['python3', '-c', hash_script],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-
-            if result.returncode != 0:
-                messagebox.showerror("Грешка", f"Грешка при хеширању лозинке:\n{result.stderr}")
-                return
-
-            password_hash, salt = result.stdout.strip().split('|')
+            # Hash the password using bcrypt via Python (in-process)
+            password_hash, salt = hash_password_for_storage(temp_password)
 
             # Update in database with force change on next login
-            update_sql = f"""UPDATE users
-                SET password_hash = '{password_hash}',
-                    salt = '{salt}',
-                    is_first_login = TRUE,
-                    updated_at = NOW()
-                WHERE email = '{email}'"""
+            update_command, update_sql = build_user_update_command(
+                set_clause="password_hash = :'password_hash', "
+                           "salt = :'salt', "
+                           "is_first_login = TRUE, "
+                           "updated_at = NOW()",
+                email=email,
+                variables={
+                    'password_hash': password_hash,
+                    'salt': salt,
+                },
+            )
 
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c', update_sql],
+                update_command,
+                input=update_sql,
                 capture_output=True,
                 text=True,
                 timeout=5

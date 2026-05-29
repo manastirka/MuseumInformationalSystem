@@ -14,9 +14,9 @@ import logging
 import re
 import concurrent.futures
 from typing import List, Dict, Optional
-from functools import lru_cache
 from urllib.parse import quote
 from pathlib import Path
+from runtime_lock_utils import load_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ class CrystalStructureSearch:
         })
         self.timeout = 10
         self._local_db = None
+        self._cif_cache = {}
 
     def _get_local_db(self):
         """Get local mineral database instance."""
@@ -163,9 +164,7 @@ class CrystalStructureSearch:
             # Search in COD filename index if exists
             index_file = COD_CIF_DIR / 'mineral_index.json'
             if index_file.exists():
-                import json
-                with open(index_file) as f:
-                    index = json.load(f)
+                index = load_json_file(index_file, default={})
                 if mineral_name.lower() in index:
                     for cod_id in index[mineral_name.lower()][:limit]:
                         cif_path = COD_CIF_DIR / f"{cod_id}.cif"
@@ -386,11 +385,13 @@ class CrystalStructureSearch:
 
         return results
 
-    @lru_cache(maxsize=200)
     def get_cif_data(self, cif_url: str) -> Optional[str]:
         """Fetch CIF file content from URL."""
         if not cif_url:
             return None
+
+        if cif_url in self._cif_cache:
+            return self._cif_cache[cif_url]
 
         try:
             response = self.session.get(cif_url, timeout=self.timeout)
@@ -398,6 +399,11 @@ class CrystalStructureSearch:
                 content = response.text
                 # Verify it looks like a CIF file
                 if 'data_' in content or '_cell_' in content or '_atom_' in content:
+                    # Cache only successful fetches so a transient failure is
+                    # never memoized as a permanent "not found".
+                    if len(self._cif_cache) >= 200:
+                        self._cif_cache.clear()
+                    self._cif_cache[cif_url] = content
                     return content
             return None
 

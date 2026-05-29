@@ -197,7 +197,8 @@ def _build_sanja_statistics(records):
 def _load_sanja_database_payload():
     try:
         return json.loads(_SANJA_DATABASE_PATH.read_text(encoding='utf-8'))
-    except (OSError, json.JSONDecodeError):
+    except FileNotFoundError:
+        # No database yet: legitimately start from an empty payload.
         return {
             'metadata': {
                 'name': 'Крупни сисари палеогена и неогена',
@@ -206,15 +207,22 @@ def _load_sanja_database_payload():
             'specimens': [],
             'statistics': {},
         }
+    except (OSError, json.JSONDecodeError) as exc:
+        # A transient read failure or a corrupt/partial file must NOT be treated
+        # as an empty database — saving on top of that would wipe every record.
+        logger.error("Could not load Sanja database from %s: %s", _SANJA_DATABASE_PATH, exc)
+        raise
 
 
 def _save_sanja_database_payload(payload):
+    from runtime_lock_utils import write_json_file
+
     payload['statistics'] = _build_sanja_statistics(payload.get('specimens', []))
     payload.setdefault('metadata', {})['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    _SANJA_DATABASE_PATH.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + '\n',
-        encoding='utf-8',
-    )
+    # Write atomically (temp file + fsync + os.replace under an exclusive lock)
+    # so a crash, full disk, or concurrent writer can never truncate the live
+    # database into a corrupt/partial file.
+    write_json_file(_SANJA_DATABASE_PATH, payload, indent=2)
 
     try:
         import app as museum_app
@@ -273,7 +281,17 @@ def _store_sanja_uploaded_image(record_id):
 
 def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None):
     is_edit = record_id is not None
-    payload = _load_sanja_database_payload()
+    try:
+        payload = _load_sanja_database_payload()
+    except (OSError, json.JSONDecodeError):
+        # Refuse to proceed on a failed/corrupt read: saving on top of an empty
+        # fallback would silently wipe every existing record.
+        flash(
+            'База крупних сисара палеогена и неогена тренутно није доступна, па '
+            'измена није сачувана. Обратите се администратору.',
+            'danger',
+        )
+        return redirect(url_for(collection_info['route']))
     records = payload.setdefault('specimens', [])
     item_data = _find_sanja_record(records, record_id) if is_edit else None
 
@@ -403,9 +421,7 @@ def handle_edit_bilja_item(collection_key, record_id):
 def handle_add_heritage_item(*, get_cultural_heritage_database):
     """Handle cultural heritage item creation form."""
     if request.method == 'POST':
-        heritage_db = get_cultural_heritage_database()
         heritage_data = {
-            'id': len(heritage_db['heritage_items']) + 1,
             'name': request.form.get('name', '').strip(),
             'registry_number': request.form.get('registry_number', '').strip(),
             'type': request.form.get('type', '').strip(),
@@ -426,8 +442,20 @@ def handle_add_heritage_item(*, get_cultural_heritage_database):
             'weight': request.form.get('weight', '').strip(),
             'protection_status': request.form.get('protection_status', 'заштићено').strip(),
         }
-        heritage_db['heritage_items'].append(heritage_data)
-        flash('Културно добро је успешно додато!', 'success')
+        # Persistence for cultural heritage items is not implemented: appending
+        # to the cached dict from get_cultural_heritage_database() never reaches
+        # the heritage_items table and is lost on the next cache refresh.
+        # Do NOT flash success — that silently discards the curator's input.
+        logger.warning(
+            'handle_add_heritage_item: persistence not implemented; %d submitted '
+            'fields were not saved.',
+            len(heritage_data),
+        )
+        flash(
+            'Чување културног добра тренутно није омогућено, па предмет није '
+            'сачуван. Обратите се администратору.',
+            'error',
+        )
         return redirect(url_for('cultural_heritage_database'))
 
     return render_template('admin_add_heritage_item.html')
@@ -524,8 +552,19 @@ def handle_add_collection_item(collection_type, *, museum_databases_endpoint='mu
             'date_added': datetime.now().strftime('%Y-%m-%d'),
             'added_by': session.get('user_email', 'system'),
         }
-        _ = item_data
-        flash(f'Предмет је успешно додат у збирку {collection_info["name"]}!', 'success')
+        # Persistence for these generic collection types is not implemented.
+        # Do NOT flash success — that silently discards the curator's input while
+        # showing a green confirmation. Log the attempt and report honestly.
+        logger.warning(
+            'handle_add_collection_item: persistence not implemented for collection '
+            '"%s"; %d submitted fields were not saved.',
+            collection_type, len(item_data),
+        )
+        flash(
+            f'Чување предмета за збирку {collection_info["name"]} тренутно није '
+            'омогућено, па предмет није сачуван. Обратите се администратору.',
+            'error',
+        )
         return redirect(url_for(collection_info['route']))
 
     if collection_type == 'meteorite':
@@ -595,21 +634,21 @@ def render_cultural_heritage_database(
     statistics = dict(heritage_db['statistics'])
     statistics['total_heritage_items'] = len(all_heritage_items)
     statistics['exceptional_significance'] = len(
-        [item for item in all_heritage_items if item['significance'] == 'Културно добро од изузетног значаја']
+        [item for item in all_heritage_items if item.get('significance') == 'Културно добро од изузетног значаја']
     )
     statistics['great_significance'] = len(
-        [item for item in all_heritage_items if item['significance'] == 'Културно добро од великог значаја']
+        [item for item in all_heritage_items if item.get('significance') == 'Културно добро од великог значаја']
     )
     statistics['regular_significance'] = len(
-        [item for item in all_heritage_items if item['significance'] == 'Културно добро']
+        [item for item in all_heritage_items if item.get('significance') == 'Културно добро']
     )
     statistics['natural_heritage'] = len(
-        [item for item in all_heritage_items if item['category'] == 'Природњачко наслеђе']
+        [item for item in all_heritage_items if item.get('category') == 'Природњачко наслеђе']
     )
-    statistics['displayed_items'] = len([item for item in all_heritage_items if 'Сала' in item['location']])
-    statistics['storage_items'] = len([item for item in all_heritage_items if 'Депо' in item['location']])
-    statistics['excellent_condition'] = len([item for item in all_heritage_items if item['condition'] == 'Одлично'])
-    statistics['good_condition'] = len([item for item in all_heritage_items if item['condition'] == 'Добро'])
+    statistics['displayed_items'] = len([item for item in all_heritage_items if 'Сала' in (item.get('location') or '')])
+    statistics['storage_items'] = len([item for item in all_heritage_items if 'Депо' in (item.get('location') or '')])
+    statistics['excellent_condition'] = len([item for item in all_heritage_items if item.get('condition') == 'Одлично'])
+    statistics['good_condition'] = len([item for item in all_heritage_items if item.get('condition') == 'Добро'])
 
     return render_template(
         'admin_cultural_heritage_database.html',

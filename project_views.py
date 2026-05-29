@@ -4,10 +4,12 @@ import json
 import logging
 import os
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
 from flask import jsonify, render_template, request, send_from_directory, session, url_for
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -313,6 +315,97 @@ PROJECT_COMMON_TERMS = {
     'equipment': ['radni sto', 'sudopera', 'digestor', 'ormar za hemikalije', 'regali', 'mikroskopi', 'BMS panel'],
     'utilities': ['UPS', 'трофазно напајање', 'data priključci', 'дестилована вода', 'компримован ваздух', 'сливник'],
 }
+
+# ---------------------------------------------------------------------------
+# Curator auto-assignment: keyword patterns → curator name
+# Each rule is (keywords_in_name_or_purpose, curator_full_name).
+# First matching rule wins; order = most specific first.
+# ---------------------------------------------------------------------------
+_ROOM_CURATOR_RULES = [
+    # Geology — minerals & meteorites
+    (['mineral', 'метеорит', 'минерал'],
+     'Александар Луковић'),
+    # Geology — petrology
+    (['petrolo', 'петроло', 'стенск'],
+     'Татјана Милић Бабић'),
+    # Geology — paleoflora / paleobotany
+    (['paleoflor', 'палеофлор', 'палеобот', 'окамењено дрвеће', 'фосилизован.*флор', 'отисци биљака'],
+     'Деса Ђорђевић-Милутиновић'),
+    # Geology — fossilized invertebrates (beskičmenjaci)
+    (['beskičmenjak', 'бескичмењак', 'фосилизован.*бескичмењ'],
+     'Биљана Митровић'),
+    # Geology — conservation workshop
+    (['geološk.*konzerv', 'геолошк.*конзерв', 'konzerv.*radion', 'конзерв.*радион',
+      'конзервација.*геолошк', 'конзервација.*палеонтолошк', 'стабилизација.*музејск'],
+     'Ненад Младеновић'),
+    # Biology — ichthyology
+    (['ihtiolo', 'ихтиоло'],
+     'Дубравка Вучић'),
+    # Biology — entomology depot/lab
+    (['entomolo.*labor', 'ентомоло.*лаб', 'entomolo.*depo', 'ентомоло.*депо',
+      'ентомолошк.*збирк', 'инсект'],
+     'Милош Јовић'),
+    # Biology — entomology workshop / conservation
+    (['entomolo.*radion', 'ентомоло.*радион', 'препарирање.*инсек',
+      'конзерватор.*ентомол'],
+     'Александар Стојановић'),
+    # Biology — ornithology
+    (['ornitolo', 'орнитоло', 'птиц', 'перје', 'јаја'],
+     'Вук Попић'),
+    # Biology — herpetology
+    (['herpetolo', 'херпетоло', 'гмизав', 'водоземац'],
+     'Ана Пауновић'),
+    # Biology — mycology (fungarium, lab, work room)
+    (['mikolo', 'миколо', 'fungarij', 'фунгариј', 'гљив'],
+     'Борис Иванчевић'),
+    # Biology — herbarium
+    (['herbar', 'хербар'],
+     'Марјан Никетић'),
+    # Biology — mammals (sisari)
+    (['sisar', 'сисар', 'дермопласт', 'крзн', 'лобањ'],
+     'Верица Стојановић'),
+    # Biology — malacology (modern mollusks)
+    (['malakolo', 'малаколо', 'мекушц', 'шкољк', 'пужев'],
+     'Биљана Митровић'),
+    # Biology — molecular lab
+    (['molekular', 'молекулар', 'ДНК', 'PCR', 'електрофореза'],
+     'Зорана Марковић'),
+    # Shared biology workrooms
+    (['radne sobe za bio', 'радне собе.*био', 'обрада биолошк'],
+     'Верица Стојановић'),
+    # Hunting collection
+    (['lovačk', 'ловачк', 'oružj', 'оружј', 'трофеј'],
+     'Верица Стојановић'),
+    # Public-facing depots — director oversight
+    (['otvoreni za publiku', 'отворен.*публик', 'видљиви депо'],
+     'Славко Спасић'),
+    # Cold rooms / anoxia — shared conservation
+    (['hladnjač', 'хладњач', 'hladna komora', 'хладна комора', 'анокси', 'anoksij'],
+     'Горана Петковски'),
+    # Reception / intake of specimens
+    (['prijemni', 'пријемн', 'тријаж'],
+     'Горана Петковски'),
+    # Geology — fossilized vertebrates (kičmenjaci) — after prijemni to avoid matching intake rooms
+    (['kičmenjak', 'кичмењак', 'фосилизован.*кичмењ', 'диносаурус'],
+     'Зоран Марковић'),
+]
+
+
+def _assign_curator_for_space(space):
+    """Return curator name based on room name and purpose keyword matching."""
+    import re
+    name = (space.get('name') or '').lower()
+    specs = space.get('specs') or {}
+    purpose = (specs.get('purpose') or '').lower()
+    search_text = name + ' ' + purpose
+
+    for keywords, curator_name in _ROOM_CURATOR_RULES:
+        for kw in keywords:
+            if re.search(kw.lower(), search_text):
+                return curator_name
+    return ''
+
+
 PROJECT_DEPOT_AUTO_DETECTED_SPACES = [
     {'id': 'depot-6.8', 'name': '6.8 Depo fosilizovanih kičmenjaka', 'room_type': 'specimen_storage', 'area_m2': 247.32, 'x': 22.21, 'y': 31.0, 'width': 6.35, 'height': 8.98,
      'specs': {'purpose': 'Чување фосилизованих кичмењака — контролисана температура и влажност', 'floor_materials': 'Епоксидни под са заптивком', 'wall_materials': 'Глатка перива боја, PVC зидна заштита', 'ventilation': 'Контрола температуре и релативне влажности, 24/7 мониторинг микроклиме', 'equipment': 'Компактни регали, даталогери, дехумидификатор', 'utilities': 'Резервно напајање, аларм за влагу, RFID инфраструктура'}},
@@ -498,7 +591,7 @@ def sanitize_project_space(raw_space, *, project_space_library):
         area_m2 = 0.0
 
     return {
-        'id': str(raw_space.get('id', '')).strip() or f"space-{int(time.time() * 1000)}",
+        'id': str(raw_space.get('id', '')).strip() or f"space-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}",
         'name': str(raw_space.get('name', '')).strip(),
         'room_type': room_type,
         'shape': shape,
@@ -516,6 +609,7 @@ def sanitize_project_space(raw_space, *, project_space_library):
             'equipment': str(specs.get('equipment', '')).strip(),
             'utilities': str(specs.get('utilities', '')).strip(),
             'notes': str(specs.get('notes', '')).strip(),
+            'curator': str(specs.get('curator', '')).strip(),
         },
     }
 
@@ -632,10 +726,7 @@ def save_project_space_planner_state(
         state.get('last_active_view'),
         sample_positions,
     )
-    temp_path = planner_file.with_suffix('.tmp')
-    with temp_path.open('w', encoding='utf-8') as handle:
-        json.dump(state, handle, ensure_ascii=False, indent=2)
-    temp_path.replace(planner_file)
+    write_json_file(planner_file, state)
     return state
 
 
@@ -658,8 +749,7 @@ def load_project_space_planner_state(
         )
 
     try:
-        with planner_file.open('r', encoding='utf-8') as handle:
-            data = json.load(handle)
+        data = load_json_file(planner_file, default={})
         if not isinstance(data, dict):
             logger.warning("Space planner LOAD: file is not a dict, returning defaults")
             return default_project_space_planner_state(
@@ -716,20 +806,23 @@ def load_project_space_planner_state(
                         if str(stored_space.get(field, '')).strip():
                             detected_space[field] = stored_space.get(field)
                     for field in ('x', 'y', 'width', 'height'):
+                        if field not in stored_space:
+                            continue
                         try:
-                            value = float(stored_space.get(field, 0))
-                            if value > 0:
+                            value = float(stored_space.get(field))
+                            if value >= 0:
                                 detected_space[field] = value
                         except (TypeError, ValueError):
                             pass
                     if isinstance(stored_space.get('points'), list) and stored_space['points']:
                         detected_space['points'] = stored_space['points']
-                    try:
-                        stored_area = float(stored_space.get('area_m2', 0))
-                        if stored_area > 0:
-                            detected_space['area_m2'] = stored_area
-                    except (TypeError, ValueError):
-                        pass
+                    if 'area_m2' in stored_space:
+                        try:
+                            stored_area = float(stored_space.get('area_m2'))
+                            if stored_area >= 0:
+                                detected_space['area_m2'] = stored_area
+                        except (TypeError, ValueError):
+                            pass
                     for field, value in stored_specs.items():
                         if str(value).strip():
                             detected_space['specs'][field] = str(value).strip()
@@ -740,7 +833,7 @@ def load_project_space_planner_state(
             state['auto_layout_version'] = auto_layout_version
             try:
                 save_project_space_planner_state(
-                    {'spaces': synced_spaces},
+                    {'spaces': synced_spaces, 'last_active_view': state.get('last_active_view')},
                     state.get('last_updated_by', 'auto-sync'),
                     planner_file=planner_file,
                     auto_layout_version=auto_layout_version,
@@ -779,11 +872,19 @@ def api_project_space_planner_get(
         project_auto_detected_spaces=project_auto_detected_spaces,
         project_depot_auto_detected_spaces=project_depot_auto_detected_spaces,
     )
+    for space in state.get('spaces', []):
+        specs = space.get('specs') or {}
+        if not specs.get('curator'):
+            assigned = _assign_curator_for_space(space)
+            if assigned:
+                specs['curator'] = assigned
+                space['specs'] = specs
+
     views_with_urls = []
     for view in project_space_plan_views:
         normalized_view = dict(view)
         if 'plan_image' in normalized_view:
-            normalized_view['plan_image_url'] = url_for('projekti_file', filename=normalized_view['plan_image'])
+            normalized_view['plan_image_url'] = url_for('projects.projekti_file', filename=normalized_view['plan_image'])
         views_with_urls.append(normalized_view)
 
     curators = []
@@ -816,7 +917,7 @@ def api_project_space_planner_get(
     return jsonify(
         {
             'success': True,
-            'plan_image_url': url_for('projekti_file', filename=project_space_plan_file),
+            'plan_image_url': url_for('projects.projekti_file', filename=project_space_plan_file),
             'plan_image_size': project_space_plan_image_size,
             'plan_views': views_with_urls,
             'state': state,
@@ -864,7 +965,7 @@ def api_project_space_planner_save(
         save_payload['last_active_view'] = str(payload['last_active_view']).strip()
     state = save_project_space_planner_state(
         save_payload,
-        session.get('user_name', session.get('user_email', '')),
+        session.get('user_name') or session.get('user_email') or 'unknown',
         planner_file=planner_file,
         auto_layout_version=auto_layout_version,
         project_space_plan_file=project_space_plan_file,

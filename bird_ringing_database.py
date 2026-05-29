@@ -59,7 +59,7 @@ _PG_BASE_QUERY = """
     SELECT
         br.id,
         br.ring_number,
-        NULL AS color_ring,
+        NULL AS color_ring,  -- deployed table lacks this column; run migration/008 to enable it
         br.age,
         br.sex,
         br.location,
@@ -145,6 +145,8 @@ def _pg_get_all_records(page=1, per_page=50, search=None, species_filter=None,
     where_sql, filter_params = _build_pg_filters(
         search, species_filter, location_filter, ringer_filter, year_filter
     )
+    page = max(1, _safe_int(page) or 1)
+    per_page = max(1, _safe_int(per_page) or 50)
     offset = (page - 1) * per_page
     query = f"""{_PG_BASE_QUERY}
         WHERE {where_sql}

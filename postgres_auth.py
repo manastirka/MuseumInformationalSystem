@@ -75,10 +75,11 @@ class PostgresAuthSystem:
                             u.is_active,
                             u.is_first_login,
                             r.name as role,
-                            d.name as department
+                            COALESCE(d.name, ep.department) as department
                         FROM users u
                         LEFT JOIN roles r ON u.role_id = r.id
                         LEFT JOIN departments d ON u.department_id = d.id
+                        LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(u.email)
                         WHERE LOWER(u.email) = LOWER(%s)
                           AND u.is_active = TRUE
                     """, (email,))

@@ -6,6 +6,7 @@ Migrate all employees to PostgreSQL authentication
 - Set admin privileges for slavko.spasic, biljan.mitrovic, verica.stojanovic
 """
 
+import logging
 import os
 import sys
 
@@ -13,6 +14,86 @@ import sys
 os.environ['DATABASE_URL'] = 'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system'
 
 from postgres_auth import get_postgres_auth
+
+logger = logging.getLogger(__name__)
+
+# Tables whose id is resolved by free-text name lookup. Whitelisted so the
+# table name can never be interpolated from untrusted input.
+_LOOKUP_TABLES = ('departments', 'roles')
+
+
+def resolve_lookup_id(cur, table, name):
+    """Resolve a row id by name from a whitelisted lookup table.
+
+    Returns the integer id, or None when no row matches the given name. A
+    scalar subquery that matches no row yields NULL in SQL, so callers MUST
+    treat a None result as "do not write" rather than silently storing NULL.
+    """
+    if table not in _LOOKUP_TABLES:
+        raise ValueError(f"Unsupported lookup table: {table}")
+    cur.execute(f"SELECT id FROM {table} WHERE name = %s", (name,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return row['id']
+    except (TypeError, KeyError):
+        return row[0]
+
+
+def update_existing_user(cur, email, name, position, department, role):
+    """Update an existing user, validating role/department before writing.
+
+    Resolves role_id and department_id up front. If either name does not
+    resolve to a real row, the update is SKIPPED (logged) so we never null
+    out role_id (which would silently revoke permissions) or department_id.
+    Returns True when the update ran, False when it was skipped.
+    """
+    role_id = resolve_lookup_id(cur, 'roles', role)
+    if role_id is None:
+        logger.error(
+            "Skipping %s: role %r not found in roles table; "
+            "refusing to null role_id", email, role)
+        return False
+
+    department_id = resolve_lookup_id(cur, 'departments', department)
+    if department_id is None:
+        logger.error(
+            "Skipping %s: department %r not found in departments table; "
+            "refusing to null department_id", email, department)
+        return False
+
+    cur.execute("""
+        UPDATE users
+        SET is_active = TRUE,
+            full_name = %s,
+            position = %s,
+            department_id = %s,
+            role_id = %s
+        WHERE LOWER(email) = LOWER(%s)
+    """, (name, position, department_id, role_id, email))
+    return True
+
+
+def update_new_user_department(cur, user_id, department):
+    """Set department_id for a freshly created user, validating it first.
+
+    Returns True when the update ran, False when the department name did not
+    resolve (so department_id is left untouched rather than nulled).
+    """
+    department_id = resolve_lookup_id(cur, 'departments', department)
+    if department_id is None:
+        logger.error(
+            "User id=%s: department %r not found in departments table; "
+            "leaving department_id unchanged", user_id, department)
+        return False
+
+    cur.execute("""
+        UPDATE users
+        SET department_id = %s
+        WHERE id = %s
+    """, (department_id, user_id))
+    return True
 
 # Admin emails (in addition to 'admin')
 ADMIN_EMAILS = [
@@ -66,7 +147,6 @@ EMPLOYEES = [
     {'email': 'biljana.mitrovic@nhmbeo.rs', 'name': 'Биљана Митровић', 'position': 'начелник Геолошког одељења, музејски саветник палеозоолог', 'department': 'Геолошко одељење'},
     {'email': 'zoran.markovic@nhmbeo.rs', 'name': 'Зоран Марковић', 'position': 'музејски саветник палеозоолог', 'department': 'Геолошко одељење'},
     {'email': 'sanja.pavic@nhmbeo.rs', 'name': 'Сања Алабурић', 'position': 'музејски саветник палеозоолог', 'department': 'Геолошко одељење'},
-    {'email': 'amaran@nhmbeo.rs', 'name': 'Александра Маран Стевановић', 'position': 'музејски саветник палеозоолог', 'department': 'Геолошко одељење'},
     {'email': 'desadjm@nhmbeo.rs', 'name': 'Деса Ђорђевић-Милутиновић', 'position': 'музејски саветник, палеоботаничар', 'department': 'Геолошко одељење'},
     {'email': 'aca.lukovic@nhmbeo.rs', 'name': 'Александар Луковић', 'position': 'кустос минералог', 'department': 'Геолошко одељење'},
     {'email': 'dragana.djuric@nhmbeo.rs', 'name': 'Драгана Ђурић', 'position': 'музејски саветник палеозоолог', 'department': 'Геолошко одељење'},
@@ -135,18 +215,13 @@ def main():
 
                 with psycopg.connect(pg_url) as conn:
                     with conn.cursor() as cur:
-                        cur.execute("""
-                            UPDATE users
-                            SET is_active = TRUE,
-                                full_name = %s,
-                                position = %s,
-                                department_id = (SELECT id FROM departments WHERE name = %s),
-                                role_id = (SELECT id FROM roles WHERE name = %s)
-                            WHERE LOWER(email) = LOWER(%s)
-                        """, (name, position, department, role, email))
-                        conn.commit()
-                        updated_count += 1
-                        print(f"   ✓ Updated: {email} ({name}) - Role: {role}")
+                        if update_existing_user(cur, email, name, position, department, role):
+                            conn.commit()
+                            updated_count += 1
+                            print(f"   ✓ Updated: {email} ({name}) - Role: {role}")
+                        else:
+                            error_count += 1
+                            print(f"   ✗ Skipped (unresolved role/department): {email} ({name}) - Role: {role}")
             else:
                 # Create new user
                 user_id = auth.create_user(
@@ -164,11 +239,8 @@ def main():
 
                     with psycopg.connect(pg_url) as conn:
                         with conn.cursor() as cur:
-                            cur.execute("""
-                                UPDATE users
-                                SET department_id = (SELECT id FROM departments WHERE name = %s)
-                                WHERE id = %s
-                            """, (department, user_id))
+                            if not update_new_user_department(cur, user_id, department):
+                                print(f"   ⚠ Department not set for {email}: {department} not found")
                             conn.commit()
 
                     added_count += 1

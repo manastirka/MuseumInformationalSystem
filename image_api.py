@@ -6,10 +6,11 @@ Flask endpoints for image management and server backup
 
 import os
 import re
+import json
 import logging
 import uuid
 from pathlib import Path
-from flask import Blueprint, request, jsonify, send_file, current_app, session
+from flask import Blueprint, request, jsonify, current_app, session
 from werkzeug.utils import secure_filename
 from image_storage_engine import get_image_storage
 from security_utils import login_required, admin_required
@@ -24,6 +25,11 @@ _BACKUP_ROOT = Path('./storage/backups').resolve()
 
 # Backup name must be a safe slug (alphanumeric, dash, underscore only)
 _SAFE_BACKUP_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
+
+def _server_error_response():
+    """Return a sanitized 500 response while details stay in server logs."""
+    return jsonify({'error': 'Internal server error'}), 500
 
 
 def _can_upload_to_database(database: str) -> bool:
@@ -81,11 +87,21 @@ def upload_image():
 
         # Optional parameters
         description = request.form.get('description', '')
-        metadata = request.form.get('metadata', {})
+        raw_metadata = request.form.get('metadata')
+        try:
+            metadata = json.loads(raw_metadata) if raw_metadata else {}
+        except (ValueError, TypeError):
+            return jsonify({'error': 'metadata must be a valid JSON string'}), 400
 
-        # Save file to a unique temp path to prevent concurrent overwrites
+        # Save file to a unique temp path to prevent concurrent overwrites.
+        # secure_filename can strip a non-ASCII (e.g. Serbian Cyrillic) name down
+        # to nothing or drop its extension, which would make the storage engine
+        # reject a valid image; preserve the original extension explicitly.
         storage = get_image_storage()
-        safe_name = secure_filename(file.filename)
+        ext = Path(file.filename).suffix
+        safe_name = secure_filename(file.filename) or 'image'
+        if not Path(safe_name).suffix:
+            safe_name = f"{safe_name}{ext}"
         temp_name = f"{uuid.uuid4().hex}_{safe_name}"
         temp_path = storage.base_path / 'temp' / temp_name
         try:
@@ -114,33 +130,17 @@ def upload_image():
         else:
             return jsonify({'error': 'Failed to store image'}), 500
 
-    except Exception as e:
-        logger.error(f"Error uploading image: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error uploading image")
+        return _server_error_response()
 
 
-@image_api.route('/<image_id>', methods=['GET'])
-@admin_required
-def get_image(image_id):
-    """
-    Get an image file.
-
-    Query parameters:
-        - size: 'original', 'small', 'medium', or 'large' (default: 'original')
-    """
-    try:
-        size = request.args.get('size', 'original')
-        storage = get_image_storage()
-
-        image_path = storage.get_image_path(image_id, size)
-        if not image_path:
-            return jsonify({'error': 'Image not found'}), 404
-
-        return send_file(image_path, mimetype='image/jpeg')
-
-    except Exception as e:
-        logger.error(f"Error retrieving image: {e}")
-        return jsonify({'error': str(e)}), 500
+# GET /<image_id> is intentionally served by blueprints/media.py
+# (get_image_by_id, @login_required) so authorized non-admins (curators,
+# map users) can view images. A duplicate admin-only handler here previously
+# shadowed that route by registration order and broke non-admin image views.
+# Per-object access scoping is enforced in the media handler. Do not re-add a
+# GET-by-id handler in this blueprint.
 
 
 @image_api.route('/<image_id>/metadata', methods=['GET'])
@@ -160,9 +160,9 @@ def get_image_metadata(image_id):
         else:
             return jsonify({'error': 'Image not found'}), 404
 
-    except Exception as e:
-        logger.error(f"Error retrieving metadata: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error retrieving metadata")
+        return _server_error_response()
 
 
 @image_api.route('/entity/<database>/<entity_type>/<entity_id>', methods=['GET'])
@@ -179,9 +179,9 @@ def get_entity_images(database, entity_type, entity_id):
             'images': images
         }), 200
 
-    except Exception as e:
-        logger.error(f"Error retrieving entity images: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error retrieving entity images")
+        return _server_error_response()
 
 
 @image_api.route('/<image_id>', methods=['DELETE'])
@@ -200,9 +200,9 @@ def delete_image(image_id):
         else:
             return jsonify({'error': 'Failed to delete image'}), 500
 
-    except Exception as e:
-        logger.error(f"Error deleting image: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error deleting image")
+        return _server_error_response()
 
 
 @image_api.route('/backup/create', methods=['POST'])
@@ -228,9 +228,9 @@ def create_backup():
         else:
             return jsonify({'error': 'Failed to create backup'}), 500
 
-    except Exception as e:
-        logger.error(f"Error creating backup: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error creating backup")
+        return _server_error_response()
 
 
 def _validate_backup_path(backup_path):
@@ -269,9 +269,9 @@ def restore_backup():
         else:
             return jsonify({'error': 'Failed to restore backup'}), 500
 
-    except Exception as e:
-        logger.error(f"Error restoring backup: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error restoring backup")
+        return _server_error_response()
 
 
 @image_api.route('/backup/server', methods=['POST'])
@@ -292,9 +292,9 @@ def backup_to_server():
         else:
             return jsonify({'error': 'Server backup failed'}), 500
 
-    except Exception as e:
-        logger.error(f"Error backing up to server: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error backing up to server")
+        return _server_error_response()
 
 
 @image_api.route('/stats', methods=['GET'])
@@ -310,9 +310,9 @@ def get_storage_stats():
             'stats': stats
         }), 200
 
-    except Exception as e:
-        logger.error(f"Error retrieving stats: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error retrieving stats")
+        return _server_error_response()
 
 
 def _check_backup_token():
@@ -349,8 +349,13 @@ def receive_backup():
         backup_base.mkdir(parents=True, exist_ok=True)
         backup_storage = get_image_storage(base_path=str(backup_base))
 
-        # Save to unique temp path
-        safe_name = secure_filename(file.filename)
+        # Save to unique temp path. Preserve the original extension so a
+        # non-ASCII (Serbian Cyrillic) filename keeps a valid suffix for the
+        # storage engine's image validation.
+        ext = Path(file.filename).suffix
+        safe_name = secure_filename(file.filename) or 'image'
+        if not Path(safe_name).suffix:
+            safe_name = f"{safe_name}{ext}"
         temp_name = f"{uuid.uuid4().hex}_{safe_name}"
         temp_dir = backup_base / 'temp'
         temp_dir.mkdir(parents=True, exist_ok=True)
@@ -383,9 +388,9 @@ def receive_backup():
         else:
             return jsonify({'error': 'Failed to store backup'}), 500
 
-    except Exception as e:
-        logger.error(f"Error receiving backup: {e}")
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        logger.exception("Error receiving backup")
+        return _server_error_response()
 
 
 def init_image_api(app, storage_path=None, server_backup_url=None):

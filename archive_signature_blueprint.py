@@ -3,13 +3,13 @@
 import hashlib
 import json
 import logging
-import traceback
 from datetime import datetime
 from pathlib import Path
 
 import psycopg
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
+from observability import add_sentry_breadcrumb, capture_observability_exception
 from postgres_service import get_postgres_connection
 from security_utils import admin_required, login_required
 
@@ -22,6 +22,16 @@ SIGNATURE_DOCUMENT_ROOTS = (
 )
 
 archive_signature_bp = Blueprint('archive_signature', __name__)
+
+# Distinct namespaces for per-year pg_advisory_xact_lock keys so the archive
+# reference and delovodni number generators never contend on the same lock.
+_ARCHIVE_REF_LOCK_NS = 0x4152
+_REGISTRATION_LOCK_NS = 0x5245
+
+
+def _server_error_response():
+    """Return a sanitized 500 payload while details stay in server logs."""
+    return jsonify({'success': False, 'message': 'Дошло је до грешке на серверу.'}), 500
 
 # Approval chain configurations
 APPROVAL_CHAINS = {
@@ -158,6 +168,14 @@ def admin_archive_finansije():
     )
 
 
+@archive_signature_bp.route('/admin/archive/approvals')
+@login_required
+@admin_required
+def admin_archive_approvals():
+    """Central approvals page for admins."""
+    return render_template('admin_archive_approvals.html')
+
+
 @archive_signature_bp.route('/admin/archive/terenska')
 @login_required
 def admin_archive_terenska():
@@ -180,8 +198,13 @@ def api_get_archive_requests():
         request_type = request.args.get('type', '')
         status = request.args.get('status', '')
         subtype = request.args.get('subtype', '')
-        page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 20))
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = int(request.args.get('per_page', 20))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Неисправни параметри странице'}), 400
+        page = max(1, page)
+        per_page = max(1, min(per_page, 100))
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
@@ -301,9 +324,9 @@ def api_get_archive_requests():
                         'total_pages': (total + per_page - 1) // per_page,
                     }
                 )
-    except Exception as exc:
-        logger.error("Error getting archive requests: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error getting archive requests")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests', methods=['POST'])
@@ -322,6 +345,11 @@ def api_create_archive_request():
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
         approval_chain = APPROVAL_CHAINS.get(request_type, [])
+        add_sentry_breadcrumb(
+            category='archive',
+            message='Archive request creation started',
+            data={'request_type': request_type, 'subtype': data.get('subtype', '')},
+        )
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
@@ -380,8 +408,17 @@ def api_create_archive_request():
             }
         )
     except Exception as exc:
-        logger.error("Error creating archive request: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+        logger.exception("Error creating archive request")
+        capture_observability_exception(
+            exc,
+            tags={'component': 'archive', 'operation': 'create_request'},
+            extra={
+                'user_email': session.get('user_email'),
+                'request_type': (request.get_json(silent=True) or {}).get('request_type'),
+            },
+            user={'email': session.get('user_email')},
+        )
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests/<int:request_id>', methods=['GET'])
@@ -507,9 +544,9 @@ def api_get_archive_request(request_id):
                 ]
 
         return jsonify({'success': True, 'request': req})
-    except Exception as exc:
-        logger.error("Error getting archive request: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error getting archive request")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests/<int:request_id>/approve', methods=['POST'])
@@ -523,13 +560,20 @@ def api_approve_archive_request(request_id):
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
         user_role = session.get('user_role', 'employee')
+        add_sentry_breadcrumb(
+            category='archive',
+            message='Archive request approval started',
+            data={'request_id': request_id, 'user_role': user_role},
+        )
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT request_type, status, current_approval_step, approval_chain
+                    SELECT request_type, status, current_approval_step, approval_chain,
+                           created_by_email, title
                     FROM archive_requests WHERE id = %s
+                    FOR UPDATE
                     """,
                     (request_id,),
                 )
@@ -538,15 +582,26 @@ def api_approve_archive_request(request_id):
                 if not row:
                     return jsonify({'success': False, 'message': 'Захтев није пронађен'}), 404
 
-                request_type, status, current_step, approval_chain = row
+                request_type = row[0]
+                status = row[1]
+                current_step = row[2]
+                creator_email = row[4] if len(row) > 4 else None
+                req_title = row[5] if len(row) > 5 else ''
 
                 if status not in ['pending', 'in_review']:
                     return jsonify({'success': False, 'message': 'Захтев није у статусу чекања'}), 400
 
+                if creator_email and creator_email == user_email:
+                    return jsonify({'success': False, 'message': 'Не можете одобрити сопствени захтев'}), 403
+
                 if not can_approve_request(user_role, request_type, current_step):
                     return jsonify({'success': False, 'message': 'Немате дозволу за одобрење у овој фази'}), 403
 
-                chain = approval_chain or []
+                # Derive the chain from the authoritative APPROVAL_CHAINS constant
+                # (the same source used for authorization) so the finalize/advance
+                # decision and the notification label never drift from the stored,
+                # per-row approval_chain snapshot.
+                chain = APPROVAL_CHAINS.get(request_type, [])
                 cur.execute(
                     """
                     UPDATE approval_signatures
@@ -588,6 +643,28 @@ def api_approve_archive_request(request_id):
                     """,
                     (request_id, user_email, user_name, f"Одобрено у кораку {current_step + 1}. {comments}"),
                 )
+
+                # Notify request creator about approval
+                if creator_email:
+                    step_label = chain[current_step].get('label', '') if current_step < len(chain) else ''
+                    if next_step >= len(chain):
+                        notif_title = 'Захтев одобрен'
+                        notif_msg = f'Ваш захтев „{req_title or ""}" је потпуно одобрен.'
+                        notif_icon = 'bi-check-circle-fill'
+                        notif_type = 'success'
+                    else:
+                        notif_title = 'Захтев одобрен у кораку'
+                        notif_msg = f'{step_label} је одобрио/ла ваш захтев „{req_title or ""}". Чека се следећи ниво одобрења.'
+                        notif_icon = 'bi-check-circle'
+                        notif_type = 'info'
+                    cur.execute(
+                        """
+                        INSERT INTO user_notifications (user_email, title, message, icon, type)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (creator_email, notif_title, notif_msg, notif_icon, notif_type),
+                    )
+
                 conn.commit()
 
         return jsonify(
@@ -598,9 +675,14 @@ def api_approve_archive_request(request_id):
             }
         )
     except Exception as exc:
-        logger.error("Error approving request: %s", exc)
-        logger.error(traceback.format_exc())
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'}), 500
+        logger.exception("Error approving request")
+        capture_observability_exception(
+            exc,
+            tags={'component': 'archive', 'operation': 'approve_request'},
+            extra={'request_id': request_id, 'user_role': session.get('user_role')},
+            user={'email': session.get('user_email')},
+        )
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests/<int:request_id>/reject', methods=['POST'])
@@ -621,8 +703,10 @@ def api_reject_archive_request(request_id):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT request_type, status, current_approval_step
+                    SELECT request_type, status, current_approval_step,
+                           approval_chain, created_by_email, title
                     FROM archive_requests WHERE id = %s
+                    FOR UPDATE
                     """,
                     (request_id,),
                 )
@@ -631,10 +715,17 @@ def api_reject_archive_request(request_id):
                 if not row:
                     return jsonify({'success': False, 'message': 'Захтев није пронађен'}), 404
 
-                request_type, status, current_step = row
+                request_type = row[0]
+                status = row[1]
+                current_step = row[2]
+                creator_email = row[4] if len(row) > 4 else None
+                req_title = row[5] if len(row) > 5 else ''
 
                 if status not in ['pending', 'in_review']:
                     return jsonify({'success': False, 'message': 'Захтев није у статусу чекања'}), 400
+
+                if creator_email and creator_email == user_email:
+                    return jsonify({'success': False, 'message': 'Не можете одбити сопствени захтев'}), 403
 
                 if not can_approve_request(user_role, request_type, current_step):
                     return jsonify({'success': False, 'message': 'Немате дозволу за одбијање'}), 403
@@ -668,12 +759,31 @@ def api_reject_archive_request(request_id):
                     """,
                     (request_id, user_email, user_name, comments),
                 )
+
+                # Notify request creator about rejection
+                if creator_email:
+                    chain = APPROVAL_CHAINS.get(request_type, [])
+                    step_label = chain[current_step].get('label', '') if current_step < len(chain) else ''
+                    cur.execute(
+                        """
+                        INSERT INTO user_notifications (user_email, title, message, icon, type)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (
+                            creator_email,
+                            'Захтев одбијен',
+                            f'{step_label} је одбио/ла ваш захтев „{req_title or ""}". Разлог: {comments}',
+                            'bi-x-circle-fill',
+                            'error',
+                        ),
+                    )
+
                 conn.commit()
 
         return jsonify({'success': True, 'message': 'Захтев је одбијен'})
-    except Exception as exc:
-        logger.error("Error rejecting request: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error rejecting request")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests/<int:request_id>/comment', methods=['POST'])
@@ -718,9 +828,9 @@ def api_add_request_comment(request_id):
                 'comment_id': comment_id,
             }
         )
-    except Exception as exc:
-        logger.error("Error adding comment: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error adding comment")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/pending', methods=['GET'])
@@ -778,9 +888,9 @@ def api_get_pending_approvals():
                 'count': len(pending_requests),
             }
         )
-    except Exception as exc:
-        logger.error("Error getting pending approvals: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error getting pending approvals")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/statistics', methods=['GET'])
@@ -831,9 +941,9 @@ def api_get_archive_statistics():
                     )
 
         return jsonify({'success': True, 'statistics': stats})
-    except Exception as exc:
-        logger.error("Error getting statistics: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error getting statistics")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/archive/requests/<int:request_id>/archive', methods=['POST'])
@@ -854,10 +964,22 @@ def api_archive_request(request_id):
                     return jsonify({'success': False, 'message': 'Само одобрени захтеви могу бити архивирани'}), 400
 
                 year = datetime.now().year
+                # Serialize reference allocation for this year within the
+                # transaction so concurrent archivings cannot mint duplicates.
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s, %s)",
+                    (_ARCHIVE_REF_LOCK_NS, year),
+                )
+                # Derive the next sequence from the highest existing reference
+                # for the year (not COUNT(*), which drifts if a row is later
+                # un-archived or deleted).
                 cur.execute(
                     """
-                    SELECT COUNT(*) FROM archive_requests
-                    WHERE archive_year = %s AND archived_at IS NOT NULL
+                    SELECT COALESCE(MAX(
+                        CAST(SUBSTRING(archive_reference FROM '([0-9]+)$') AS INTEGER)
+                    ), 0)
+                    FROM archive_requests
+                    WHERE archive_year = %s AND archive_reference IS NOT NULL
                     """,
                     (year,),
                 )
@@ -893,9 +1015,9 @@ def api_archive_request(request_id):
                 'archive_reference': archive_ref,
             }
         )
-    except Exception as exc:
-        logger.error("Error archiving request: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error archiving request")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/admin/digital-signatures')
@@ -981,9 +1103,9 @@ def api_get_digital_signatures():
                     )
 
         return jsonify({'success': True, 'signatures': signatures})
-    except Exception as exc:
-        logger.error("Error fetching digital signatures: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error fetching digital signatures")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/templates', methods=['GET'])
@@ -1019,9 +1141,9 @@ def api_get_signature_templates():
                 ]
 
         return jsonify({'success': True, 'templates': templates})
-    except Exception as exc:
-        logger.error("Error fetching signature templates: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error fetching signature templates")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures', methods=['POST'])
@@ -1103,9 +1225,9 @@ def api_create_digital_signature():
                 'signature_id': sig_id,
             }
         )
-    except Exception as exc:
-        logger.error("Error creating digital signature: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error creating digital signature")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/sign', methods=['POST'])
@@ -1169,9 +1291,9 @@ def api_sign_document(sig_id):
                 'message': 'Документ је потписан и прослеђен на верификацију',
             }
         )
-    except Exception as exc:
-        logger.error("Error signing document: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error signing document")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/verify', methods=['POST'])
@@ -1257,9 +1379,9 @@ def api_verify_signature(sig_id):
         if new_status != 'verified':
             message = 'Потпис је верификован и прослеђен на одобрење'
         return jsonify({'success': True, 'message': message, 'new_status': new_status})
-    except Exception as exc:
-        logger.error("Error verifying signature: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error verifying signature")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/reject', methods=['POST'])
@@ -1308,9 +1430,9 @@ def api_reject_signature(sig_id):
                 conn.commit()
 
         return jsonify({'success': True, 'message': 'Захтев је одбијен'})
-    except Exception as exc:
-        logger.error("Error rejecting signature: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error rejecting signature")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/approve', methods=['POST'])
@@ -1378,9 +1500,9 @@ def api_approve_signature(sig_id):
                 conn.commit()
 
         return jsonify({'success': True, 'message': 'Документ је одобрен и верификован'})
-    except Exception as exc:
-        logger.error("Error approving signature: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error approving signature")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/register', methods=['POST'])
@@ -1412,9 +1534,21 @@ def api_register_signature(sig_id):
                     reg_number = manual_number
                 else:
                     year = datetime.now().year
+                    # Serialize delovodni-number allocation for this year within
+                    # the transaction so concurrent registrations cannot collide.
+                    cur.execute(
+                        "SELECT pg_advisory_xact_lock(%s, %s)",
+                        (_REGISTRATION_LOCK_NS, year),
+                    )
+                    # Derive the next sequence from the highest existing number
+                    # for the year (not COUNT(*), which would reuse a number
+                    # after any deletion).
                     cur.execute(
                         """
-                        SELECT COUNT(*) FROM document_signatures
+                        SELECT COALESCE(MAX(
+                            CAST(SUBSTRING(registration_number FROM '-([0-9]+)/') AS INTEGER)
+                        ), 0)
+                        FROM document_signatures
                         WHERE registration_number IS NOT NULL
                         AND EXTRACT(YEAR FROM registered_at) = %s
                         """,
@@ -1458,9 +1592,9 @@ def api_register_signature(sig_id):
                 'registration_number': reg_number,
             }
         )
-    except Exception as exc:
-        logger.error("Error registering signature: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error registering signature")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/<int:sig_id>/audit', methods=['GET'])
@@ -1504,9 +1638,9 @@ def api_get_signature_audit(sig_id):
                 ]
 
         return jsonify({'success': True, 'audit': audit})
-    except Exception as exc:
-        logger.error("Error fetching audit log: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error fetching audit log")
+        return _server_error_response()
 
 
 @archive_signature_bp.route('/api/digital-signatures/statistics', methods=['GET'])
@@ -1551,6 +1685,6 @@ def api_get_signature_statistics():
                     stats['by_type'][row[0]] = row[1]
 
         return jsonify({'success': True, 'statistics': stats})
-    except Exception as exc:
-        logger.error("Error fetching statistics: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error fetching statistics")
+        return _server_error_response()

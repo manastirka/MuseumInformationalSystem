@@ -6,9 +6,9 @@ Provides functions to access Library, Exhibitions, Heritage, Meteorites, Employe
 
 import os
 import logging
-import psycopg
 from dotenv import load_dotenv
 from typing import List, Dict, Optional, Any
+from postgres_service import get_postgres_connection
 
 # Load environment variables
 load_dotenv()
@@ -16,9 +16,6 @@ load_dotenv()
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable not set")
-
-# Convert SQLAlchemy-style URL to psycopg format
-DB_URL = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +26,7 @@ logger = logging.getLogger(__name__)
 def get_db_connection():
     """Get a database connection."""
     try:
-        return psycopg.connect(DB_URL)
+        return get_postgres_connection()
     except Exception as e:
         logger.error(f"Failed to connect to PostgreSQL: {e}")
         raise
@@ -43,6 +40,7 @@ def get_library_database():
     Load library database from PostgreSQL.
     Returns structure compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -121,12 +119,16 @@ def get_library_database():
                 'total_categories': 0
             }
         }
+    finally:
+        if conn is not None:
+            conn.close()
 
 def save_library_book(book_data: Dict[str, Any]) -> Optional[int]:
     """
     Save a library book to PostgreSQL.
     Returns the book ID if successful, None otherwise.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -175,7 +177,12 @@ def save_library_book(book_data: Dict[str, Any]) -> Optional[int]:
 
     except Exception as e:
         logger.error(f"Error saving library book: {e}")
+        if conn is not None:
+            conn.rollback()
         return None
+    finally:
+        if conn is not None:
+            conn.close()
 
 # ============================================================================
 # 2. EXHIBITIONS DATABASE
@@ -186,6 +193,7 @@ def load_exhibitions_data():
     Load exhibitions from PostgreSQL.
     Returns list of exhibitions compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -233,6 +241,9 @@ def load_exhibitions_data():
     except Exception as e:
         logger.error(f"Error loading exhibitions from PostgreSQL: {e}")
         return []
+    finally:
+        if conn is not None:
+            conn.close()
 
 # ============================================================================
 # 3. CULTURAL HERITAGE DATABASE
@@ -243,6 +254,7 @@ def get_cultural_heritage_database():
     Load cultural heritage database from PostgreSQL.
     Returns structure compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -270,10 +282,10 @@ def get_cultural_heritage_database():
         for row in cur.fetchall():
             item = dict(zip(columns, row))
             # Rename fields to match old structure
-            item['name'] = item['item_name']
-            item['type'] = item['heritage_type']
-            item['significance'] = item['significance_level']
-            item['location'] = item['current_location']
+            item['name'] = item.get('item_name')
+            item['type'] = item.get('heritage_type')
+            item['significance'] = item.get('significance_level')
+            item['location'] = item.get('current_location')
 
             # Convert dates to strings
             if item.get('inscription_date'):
@@ -365,6 +377,9 @@ def get_cultural_heritage_database():
                 'great_significance': 0
             }
         }
+    finally:
+        if conn is not None:
+            conn.close()
 
 # ============================================================================
 # 4. METEORITE COLLECTION DATABASE
@@ -375,6 +390,7 @@ def get_meteorite_collection_database():
     Load meteorite collection from PostgreSQL.
     Returns structure compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -412,14 +428,14 @@ def get_meteorite_collection_database():
         for row in cur.fetchall():
             specimen = dict(zip(columns, row))
             # Rename fields to match old structure
-            specimen['meteorite_name'] = specimen['specimen_name']
-            specimen['classification'] = specimen['meteorite_class']
-            specimen['type'] = specimen['meteorite_type']
-            specimen['location_found'] = specimen['fall_location']
-            specimen['country'] = specimen['fall_country']
-            specimen['curator'] = specimen['collector']
-            specimen['source'] = specimen['acquisition_method']
-            specimen['storage'] = specimen['storage_location']
+            specimen['meteorite_name'] = specimen.get('specimen_name')
+            specimen['classification'] = specimen.get('meteorite_class')
+            specimen['type'] = specimen.get('meteorite_type')
+            specimen['location_found'] = specimen.get('fall_location')
+            specimen['country'] = specimen.get('fall_country')
+            specimen['curator'] = specimen.get('collector')
+            specimen['source'] = specimen.get('acquisition_method')
+            specimen['storage'] = specimen.get('storage_location')
 
             # Convert dates to strings
             if specimen.get('fall_date'):
@@ -497,6 +513,9 @@ def get_meteorite_collection_database():
                 'finds': 0
             }
         }
+    finally:
+        if conn is not None:
+            conn.close()
 
 # ============================================================================
 # 5. EMPLOYEE DIRECTORY
@@ -507,6 +526,7 @@ def load_employee_directory():
     Load employee directory from PostgreSQL.
     Returns list of employee profiles.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -581,6 +601,9 @@ def load_employee_directory():
     except Exception as e:
         logger.error(f"Error loading employee directory from PostgreSQL: {e}")
         return []
+    finally:
+        if conn is not None:
+            conn.close()
 
 # ============================================================================
 # 6. NEWS/EXHIBITIONS ARTICLES
@@ -591,6 +614,7 @@ def get_news_database():
     Load news/exhibitions articles from PostgreSQL.
     Returns structure compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -637,6 +661,9 @@ def get_news_database():
     except Exception as e:
         logger.error(f"Failed to load news articles from PostgreSQL: {e}")
         return []
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def load_news_data():
@@ -659,6 +686,7 @@ def get_collection_by_type(collection_type: str):
         collection_type: One of 'botany', 'ichthyology', 'entomology', 'mycology',
                         'herpetology', 'ornithology', 'paleozoology', 'paleobotany', 'petrology'
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -734,6 +762,9 @@ def get_collection_by_type(collection_type: str):
             'specimens': [],
             'statistics': {'total_specimens': 0, 'endemic_species': 0, 'threatened_species': 0}
         }
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 # Collection type accessors
@@ -791,6 +822,7 @@ def get_vehicles_list():
     Load all vehicles from PostgreSQL.
     Returns list of vehicles compatible with existing code.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -800,7 +832,10 @@ def get_vehicles_list():
             SELECT
                 id, name, registration, type, capacity, status,
                 year, make_model, notes, image_ids,
-                created_at, updated_at
+                created_at, updated_at,
+                vin, model_variant, max_mass_kg, curb_mass_kg,
+                engine_displacement_cc, engine_power_kw,
+                fuel_type, fuel_consumption
             FROM vehicles
             ORDER BY name
         """)
@@ -817,7 +852,15 @@ def get_vehicles_list():
                 'year': row[6],
                 'make_model': row[7],
                 'notes': row[8],
-                'image_ids': row[9] if row[9] else []
+                'image_ids': row[9] if row[9] else [],
+                'vin': row[12],
+                'model_variant': row[13],
+                'max_mass_kg': row[14],
+                'curb_mass_kg': row[15],
+                'engine_displacement_cc': row[16],
+                'engine_power_kw': row[17],
+                'fuel_type': row[18],
+                'fuel_consumption': row[19],
             }
             vehicles.append(vehicle)
 
@@ -830,12 +873,16 @@ def get_vehicles_list():
     except Exception as e:
         logger.error(f"Error loading vehicles from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_vehicle_by_id(vehicle_id: int) -> Optional[Dict[str, Any]]:
     """
     Load a specific vehicle by ID from PostgreSQL.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -876,6 +923,9 @@ def get_vehicle_by_id(vehicle_id: int) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error loading vehicle {vehicle_id} from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_vehicle_reservations(vehicle_id: Optional[int] = None, status: Optional[str] = None):
@@ -884,6 +934,7 @@ def get_vehicle_reservations(vehicle_id: Optional[int] = None, status: Optional[
     If vehicle_id is provided, returns reservations for that vehicle only.
     If status is provided, filters by status.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -945,6 +996,9 @@ def get_vehicle_reservations(vehicle_id: Optional[int] = None, status: Optional[
     except Exception as e:
         logger.error(f"Error loading reservations from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_active_vehicle_reservations():
@@ -952,6 +1006,7 @@ def get_active_vehicle_reservations():
     Load active vehicle reservations using the database view.
     Returns reservations with vehicle information.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1001,6 +1056,9 @@ def get_active_vehicle_reservations():
     except Exception as e:
         logger.error(f"Error loading active reservations from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_vehicle_availability():
@@ -1008,6 +1066,7 @@ def get_vehicle_availability():
     Get vehicle availability status using the database view.
     Returns vehicles with their availability information.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1041,6 +1100,9 @@ def get_vehicle_availability():
     except Exception as e:
         logger.error(f"Error loading vehicle availability from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def get_vehicle_usage_stats(vehicle_id: Optional[int] = None):
@@ -1048,6 +1110,7 @@ def get_vehicle_usage_stats(vehicle_id: Optional[int] = None):
     Get vehicle usage statistics using the database view.
     If vehicle_id is provided, returns stats for that vehicle only.
     """
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1099,6 +1162,9 @@ def get_vehicle_usage_stats(vehicle_id: Optional[int] = None):
     except Exception as e:
         logger.error(f"Error loading vehicle usage stats from PostgreSQL: {e}")
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 # ============================================================================
@@ -1107,6 +1173,7 @@ def get_vehicle_usage_stats(vehicle_id: Optional[int] = None):
 
 def test_connection():
     """Test database connection."""
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -1119,6 +1186,9 @@ def test_connection():
     except Exception as e:
         logger.error(f"PostgreSQL connection failed: {e}")
         return False
+    finally:
+        if conn is not None:
+            conn.close()
 
 # Test connection on import
 if __name__ == '__main__':

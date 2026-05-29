@@ -12,11 +12,20 @@ def api_website_news(*, fetch_website_news):
     """Return cached website news items for the dashboard."""
     try:
         limit = request.args.get('limit', 6, type=int)
-        news = fetch_website_news(limit=min(limit, 12))
+        news = fetch_website_news(limit=max(1, min(limit, 12)))
         return jsonify({'success': True, 'news': news})
     except Exception as exc:
         logger.error("Error in website news API: %s", exc)
-        return jsonify({'success': False, 'message': str(exc), 'news': []})
+        return (
+            jsonify(
+                {
+                    'success': False,
+                    'message': 'Није могуће учитати вести са сајта.',
+                    'news': [],
+                }
+            ),
+            500,
+        )
 
 
 def api_weather_details(
@@ -27,46 +36,66 @@ def api_weather_details(
     rhmz_warning_url,
 ):
     """Return current weather, forecast, and RHMZ warning status."""
-    try:
-        forecast_days = request.args.get('days', 7, type=int)
-        current_weather = get_current_weather()
-        forecast = get_weather_forecast(days=forecast_days)
-        rhmz_warnings = get_rhmz_weather_warnings()
+    forecast_days = max(1, min(request.args.get('days', 7, type=int), 7))
+    errors = []
 
-        return jsonify(
-            {
-                'success': True,
-                'location': forecast.get('location', 'Београд'),
-                'current': current_weather,
-                'forecast': forecast.get('days', []),
-                'forecast_updated_at': forecast.get('updated_at'),
-                'forecast_source': forecast.get('source'),
-                'forecast_stale': forecast.get('stale', False),
-                'rhmz': rhmz_warnings,
-            }
-        )
+    try:
+        current_weather = get_current_weather()
     except Exception as exc:
-        logger.error("Weather details API failed: %s", exc)
-        return (
-            jsonify(
-                {
-                    'success': False,
-                    'message': 'Није могуће учитати временске податке.',
-                    'location': 'Београд',
-                    'current': get_current_weather(),
-                    'forecast': [],
-                    'rhmz': {
-                        'source': 'РХМЗ Србије',
-                        'source_url': rhmz_warning_url,
-                        'checked_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
-                        'has_warning': False,
-                        'has_meteorological_warning': False,
-                        'sections': [],
-                    },
-                }
-            ),
-            500,
-        )
+        logger.error("Weather current fetch failed: %s", exc)
+        current_weather = {
+            'condition': 'none',
+            'temperature': None,
+            'windspeed': None,
+            'description': '',
+        }
+        errors.append('current')
+
+    try:
+        forecast = get_weather_forecast(days=forecast_days)
+    except Exception as exc:
+        logger.error("Weather forecast fetch failed: %s", exc)
+        forecast = {
+            'location': 'Београд',
+            'days': [],
+            'updated_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
+            'source': 'RHMZ Србије',
+            'stale': True,
+            'error': 'Прогноза тренутно није доступна.',
+        }
+        errors.append('forecast')
+
+    try:
+        rhmz_warnings = get_rhmz_weather_warnings()
+    except Exception as exc:
+        logger.error("Weather warning fetch failed: %s", exc)
+        rhmz_warnings = {
+            'source': 'РХМЗ Србије',
+            'source_url': rhmz_warning_url,
+            'checked_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
+            'has_warning': False,
+            'has_meteorological_warning': False,
+            'sections': [],
+            'error': 'RHMZ упозорења тренутно нису доступна.',
+        }
+        errors.append('warnings')
+
+    payload = {
+        'success': not errors,
+        'location': forecast.get('location', 'Београд'),
+        'current': current_weather,
+        'forecast': forecast.get('days', []),
+        'forecast_updated_at': forecast.get('updated_at'),
+        'forecast_source': forecast.get('source'),
+        'forecast_stale': forecast.get('stale', False) or bool(errors),
+        'rhmz': rhmz_warnings,
+    }
+
+    if errors:
+        logger.error("Weather details API degraded response: %s", ','.join(errors))
+        payload['message'] = 'Неке временске податке тренутно није могуће учитати.'
+
+    return jsonify(payload)
 
 
 def render_library_database(*, get_library_database):
@@ -79,7 +108,7 @@ def render_library_database(*, get_library_database):
     statistics['total_books'] = len(books)
     statistics['available_books'] = len([book for book in books if book['status'] == 'доступна'])
     statistics['borrowed_books'] = len([book for book in books if book['status'] == 'позајмљена'])
-    statistics['total_categories'] = len({book['category'] for book in books})
+    statistics['total_categories'] = len({book['category'] for book in books if book.get('category')})
 
     return render_template(
         'admin_library_database.html',

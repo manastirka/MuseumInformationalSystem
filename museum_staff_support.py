@@ -4,6 +4,7 @@ import json
 import logging
 import os
 
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,12 @@ def load_library_database(*, library_path, database_url=None, phase3a_databases=
         return phase3a_databases.get_library_database()
 
     try:
-        with open(library_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
-            logger.info(
-                "Loaded library database: %s books",
-                data.get('statistics', {}).get('total_books', 0),
-            )
-            return data
+        data = load_json_file(library_path, default=default_library_database())
+        logger.info(
+            "Loaded library database: %s books",
+            data.get('statistics', {}).get('total_books', 0),
+        )
+        return data
     except FileNotFoundError:
         logger.warning("Library database file not found at %s, using default data", library_path)
     except json.JSONDecodeError as exc:
@@ -61,19 +61,19 @@ def save_library_database(*, library_path, library_database):
     try:
         os.makedirs(os.path.dirname(library_path), exist_ok=True)
 
+        books = library_database.get('books', [])
         library_database['statistics'] = {
-            'total_books': len(library_database['books']),
+            'total_books': len(books),
             'available_books': len(
-                [book for book in library_database['books'] if book.get('status') == 'доступна']
+                [book for book in books if book.get('status') == 'доступна']
             ),
             'borrowed_books': len(
-                [book for book in library_database['books'] if book.get('status') == 'позајмљена']
+                [book for book in books if book.get('status') == 'позајмљена']
             ),
             'total_categories': len(library_database.get('categories', [])),
         }
 
-        with open(library_path, 'w', encoding='utf-8') as handle:
-            json.dump(library_database, handle, ensure_ascii=False, indent=2)
+        write_json_file(library_path, library_database)
 
         logger.info(
             "Saved library database: %s books",
@@ -91,10 +91,9 @@ def load_employee_directory(*, directory_path, database_url=None, phase3a_databa
         return phase3a_databases.load_employee_directory()
 
     try:
-        with open(directory_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
-            logger.info("Loaded employee directory with %d profiles.", len(data))
-            return data
+        data = load_json_file(directory_path, default=[])
+        logger.info("Loaded employee directory with %d profiles.", len(data))
+        return data
     except FileNotFoundError:
         logger.warning("Employee directory not found at %s", directory_path)
     except json.JSONDecodeError as exc:

@@ -7,7 +7,14 @@ from urllib.parse import quote
 
 from flask import Response, jsonify, render_template, request, session
 
+import admin_system_views
+from observability import add_sentry_breadcrumb, capture_observability_exception
+
 logger = logging.getLogger(__name__)
+
+
+def _server_error_response(message):
+    return jsonify({'success': False, 'message': message}), 500
 
 
 def render_mail_client_page():
@@ -47,11 +54,19 @@ def api_mail_contacts(*, get_employee_directory):
 def api_mail_init():
     """Return folders and first message page in one call."""
     folder = request.args.get('folder', 'INBOX')
-    page = int(request.args.get('page', 1))
+    try:
+        page = int(request.args.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
     search = request.args.get('search', '').strip() or None
     sort_by = request.args.get('sort', 'date')
     sort_dir = request.args.get('dir', 'desc')
     try:
+        add_sentry_breadcrumb(
+            category='mail',
+            message='Mail init requested',
+            data={'folder': folder, 'page': page, 'search': bool(search)},
+        )
         from mail_client import MailClient
 
         mc = MailClient(session['user_email'])
@@ -70,12 +85,22 @@ def api_mail_init():
         return jsonify({'success': False, 'message': str(exc)}), 400
     except Exception as exc:
         logger.error("Mail init error: %s", exc)
+        capture_observability_exception(
+            exc,
+            tags={'component': 'mail', 'operation': 'init'},
+            extra={'folder': folder, 'page': page, 'search': bool(search)},
+            user={'email': session.get('user_email')},
+        )
         return jsonify({'success': False, 'message': 'Грешка при повезивању на сервер поште.'}), 500
 
 
 def api_mail_folders():
     """List IMAP folders with unread counts."""
     try:
+        add_sentry_breadcrumb(
+            category='mail',
+            message='Mail folders requested',
+        )
         from mail_client import MailClient
 
         mc = MailClient(session['user_email'])
@@ -94,7 +119,10 @@ def api_mail_folders():
 def api_mail_messages():
     """Return paginated messages for a folder."""
     folder = request.args.get('folder', 'INBOX')
-    page = int(request.args.get('page', 1))
+    try:
+        page = int(request.args.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
     search = request.args.get('search', '').strip() or None
     sort_by = request.args.get('sort', 'date')
     sort_dir = request.args.get('dir', 'desc')
@@ -267,7 +295,13 @@ def api_mail_send():
         return jsonify({'success': False, 'message': str(exc)}), 400
     except Exception as exc:
         logger.error("Mail send error: %s", exc)
-        return jsonify({'success': False, 'message': f'Грешка при слању: {exc}'}), 500
+        capture_observability_exception(
+            exc,
+            tags={'component': 'mail', 'operation': 'send'},
+            extra={'to': to, 'cc': cc, 'attachment_count': len(attachments)},
+            user={'email': session.get('user_email')},
+        )
+        return _server_error_response('Грешка при слању поруке.')
 
 
 def api_mail_delete():
@@ -290,7 +324,7 @@ def api_mail_delete():
             mc.close()
     except Exception as exc:
         logger.error("Mail delete error: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+        return _server_error_response('Грешка при брисању поруке.')
 
 
 def api_mail_read_state():
@@ -322,7 +356,7 @@ def api_mail_read_state():
             mc.close()
     except Exception as exc:
         logger.error("Mail read-state error: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+        return _server_error_response('Грешка при промени статуса поруке.')
 
 
 def api_mail_move():
@@ -345,7 +379,7 @@ def api_mail_move():
             mc.close()
     except Exception as exc:
         logger.error("Mail move error: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+        return _server_error_response('Грешка при премештању поруке.')
 
 
 def api_mail_check():
@@ -379,34 +413,59 @@ def api_mail_sync():
         return jsonify({'success': False, 'message': str(exc)}), 400
     except Exception as exc:
         logger.error("Mail sync error: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+        return _server_error_response('Грешка при синхронизацији поште.')
 
 
 def api_mail_settings_get():
     """Return mail settings for the current user."""
-    from mail_client import get_user_settings_safe
+    from mail_client import MAIL_ALLOWED_HOSTS_KEY, get_allowed_mail_hosts, get_user_settings_safe
 
     settings = get_user_settings_safe(session['user_email'])
-    return jsonify({'success': True, 'settings': settings})
+    saved_settings = admin_system_views.load_saved_settings() or {}
+    return jsonify(
+        {
+            'success': True,
+            'settings': settings,
+            'allowed_hosts': saved_settings.get(MAIL_ALLOWED_HOSTS_KEY, get_allowed_mail_hosts()),
+        }
+    )
 
 
 def api_mail_settings_save():
     """Save mail settings for the current user."""
     data = request.get_json(force=True)
-    from mail_client import _encrypt, get_user_settings, save_user_settings
+    from mail_client import (
+        MAIL_ALLOWED_HOSTS_KEY,
+        _encrypt,
+        get_user_settings,
+        get_allowed_mail_hosts,
+        normalize_allowed_mail_hosts,
+        save_user_settings,
+        validate_mail_server_settings,
+    )
 
     user_email = session['user_email']
     existing = get_user_settings(user_email) or {}
+    saved_settings = admin_system_views.load_saved_settings() or {}
+    raw_allowed_hosts = (
+        data.get('allowed_hosts')
+        if 'allowed_hosts' in data
+        else saved_settings.get(MAIL_ALLOWED_HOSTS_KEY, get_allowed_mail_hosts())
+    )
+    allowed_hosts = normalize_allowed_mail_hosts(raw_allowed_hosts)
 
-    settings = {
-        'imap_server': data.get('imap_server', '').strip(),
-        'imap_port': int(data.get('imap_port', 993)),
-        'imap_ssl': bool(data.get('imap_ssl', True)),
-        'smtp_server': data.get('smtp_server', '').strip(),
-        'smtp_port': int(data.get('smtp_port', 587)),
-        'smtp_starttls': bool(data.get('smtp_starttls', True)),
-        'email_address': data.get('email_address', '').strip(),
-    }
+    try:
+        settings = {
+            'imap_server': data.get('imap_server', '').strip(),
+            'imap_port': int(data.get('imap_port', 993)),
+            'imap_ssl': bool(data.get('imap_ssl', True)),
+            'smtp_server': data.get('smtp_server', '').strip(),
+            'smtp_port': int(data.get('smtp_port', 587)),
+            'smtp_starttls': bool(data.get('smtp_starttls', True)),
+            'email_address': data.get('email_address', '').strip(),
+        }
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Порт мора бити број.'}), 400
 
     password = data.get('password', '').strip()
     if password:
@@ -416,46 +475,77 @@ def api_mail_settings_save():
     else:
         return jsonify({'success': False, 'message': 'Лозинка је обавезна.'}), 400
 
+    try:
+        settings = validate_mail_server_settings(settings, allowed_hosts=allowed_hosts)
+    except ValueError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+
+    saved_settings[MAIL_ALLOWED_HOSTS_KEY] = allowed_hosts
+    if not admin_system_views.save_settings(saved_settings):
+        return jsonify({'success': False, 'message': 'Није могуће сачувати листу дозвољених host-ова.'}), 500
+
     save_user_settings(user_email, settings)
     return jsonify({'success': True, 'message': 'Подешавања су сачувана.'})
 
 
 def api_mail_test_connection():
     """Test IMAP or SMTP connectivity."""
-    data = request.get_json(force=True)
-    conn_type = data.get('type', 'imap')
-    email_address = data.get('email_address', '').strip()
-    password = data.get('password', '').strip()
+    try:
+        data = request.get_json(force=True)
+        conn_type = data.get('type', 'imap')
+        email_address = data.get('email_address', '').strip()
+        password = data.get('password', '').strip()
+        from mail_client import MAIL_ALLOWED_HOSTS_KEY, get_allowed_mail_hosts, normalize_allowed_mail_hosts
 
-    if not password:
-        from mail_client import _decrypt, get_user_settings
+        if not password:
+            from mail_client import _decrypt, get_user_settings
 
-        existing = get_user_settings(session['user_email'])
-        if existing and 'password' in existing:
-            try:
-                password = _decrypt(existing['password'])
-            except Exception:
+            existing = get_user_settings(session['user_email'])
+            if existing and 'password' in existing:
+                try:
+                    password = _decrypt(existing['password'])
+                except Exception:
+                    return jsonify({'success': False, 'message': 'Лозинка је потребна за тест.'}), 400
+            else:
                 return jsonify({'success': False, 'message': 'Лозинка је потребна за тест.'}), 400
+
+        saved_settings = admin_system_views.load_saved_settings() or {}
+        raw_allowed_hosts = (
+            data.get('allowed_hosts')
+            if 'allowed_hosts' in data
+            else saved_settings.get(MAIL_ALLOWED_HOSTS_KEY, get_allowed_mail_hosts())
+        )
+        allowed_hosts = normalize_allowed_mail_hosts(raw_allowed_hosts)
+        from mail_client import test_imap_connection, test_smtp_connection
+
+        if conn_type == 'imap':
+            result = test_imap_connection(
+                server=data.get('imap_server', ''),
+                port=int(data.get('imap_port', 993)),
+                ssl=bool(data.get('imap_ssl', True)),
+                email_address=email_address,
+                password=password,
+                allowed_hosts=allowed_hosts,
+            )
         else:
-            return jsonify({'success': False, 'message': 'Лозинка је потребна за тест.'}), 400
+            result = test_smtp_connection(
+                server=data.get('smtp_server', ''),
+                port=int(data.get('smtp_port', 587)),
+                starttls=bool(data.get('smtp_starttls', True)),
+                email_address=email_address,
+                password=password,
+                allowed_hosts=allowed_hosts,
+            )
 
-    from mail_client import test_imap_connection, test_smtp_connection
-
-    if conn_type == 'imap':
-        result = test_imap_connection(
-            server=data.get('imap_server', ''),
-            port=int(data.get('imap_port', 993)),
-            ssl=bool(data.get('imap_ssl', True)),
-            email_address=email_address,
-            password=password,
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+    except Exception as exc:
+        logger.error("Mail test connection error: %s", exc)
+        capture_observability_exception(
+            exc,
+            tags={'component': 'mail', 'operation': 'test_connection'},
+            extra={'connection_type': conn_type, 'email_address': email_address},
+            user={'email': session.get('user_email')},
         )
-    else:
-        result = test_smtp_connection(
-            server=data.get('smtp_server', ''),
-            port=int(data.get('smtp_port', 587)),
-            starttls=bool(data.get('smtp_starttls', True)),
-            email_address=email_address,
-            password=password,
-        )
-
-    return jsonify(result)
+        return _server_error_response('Грешка при тестирању mail конекције.')

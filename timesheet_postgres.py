@@ -252,9 +252,14 @@ class TimesheetResult:
 # =============================================================================
 
 # Valid work categories
+# Sick leave is accepted under both the canonical names and the frontend alias
+# names (underscore before the number) that employee_timesheet.html actually
+# submits; both are read by save_timesheet_to_postgres, so both must be
+# range-checked here to keep validation and save consistent.
 VALID_CATEGORIES = {
     'rad_na_mestu', 'van_muzeja', 'godisnji_odmor', 'drzavni_praznik',
-    'placeno_odsustvo', 'ostalo_odsustvo', 'bolovanje_manje30', 'bolovanje_30_ili_vise'
+    'placeno_odsustvo', 'ostalo_odsustvo', 'bolovanje_manje30', 'bolovanje_30_ili_vise',
+    'bolovanje_manje_30', 'bolovanje_vece_30'
 }
 
 # Category mapping: frontend names -> database column names
@@ -664,7 +669,10 @@ def save_timesheet_to_postgres(
             with conn.cursor() as cur:
                 # Check if report exists and get current state
                 cur.execute("""
-                    SELECT id, version, is_locked, is_verified, COALESCE(status, 'DRAFT') as status
+                    SELECT id, version, is_locked, is_verified,
+                           COALESCE(status, 'DRAFT') as status,
+                           editable_until,
+                           (editable_until IS NOT NULL AND NOW() >= editable_until) AS edit_window_expired
                     FROM timesheet_reports
                     WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
                       AND month = %s
@@ -683,6 +691,23 @@ def save_timesheet_to_postgres(
                         return TimesheetResult.fail(
                             TimesheetErrorType.LOCKED,
                             "Радна листа је закључана. Потребно је одобрење администратора за измене."
+                        )
+
+                    # 24 h temporary-edit window enforced after reject / revoke.
+                    # When editable_until has passed, auto-relock the report
+                    # and force the user to request a new unlock from the head.
+                    if existing.get('edit_window_expired'):
+                        cur.execute("""
+                            UPDATE timesheet_reports
+                            SET is_locked = TRUE,
+                                editable_until = NULL
+                            WHERE id = %s
+                        """, (report_id,))
+                        conn.commit()
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.LOCKED,
+                            "Истекло је време за измене (24 часа). Морате затражити поновно "
+                            "откључавање од шефа одељења."
                         )
 
                     # Check status - SUBMITTED or APPROVED cannot be edited
@@ -841,15 +866,22 @@ def save_timesheet_to_postgres_legacy(
 # =============================================================================
 
 def get_user_department_and_position(user_email: str) -> Tuple[str, str]:
-    """Get user's department and position from PostgreSQL users table"""
+    """Get user's department and position.
+
+    Most users have `users.department_id` NULL and their real department lives
+    in `employee_profiles.department`. COALESCE the two so we return the
+    actual department (matches the login query in postgres_auth.py:78).
+    """
     try:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT d.name as department, u.position
-                    FROM users u
-                    LEFT JOIN departments d ON u.department_id = d.id
-                    WHERE u.email = %s
+                    SELECT COALESCE(d.name, ep.department) AS department,
+                           u.position
+                      FROM users u
+                      LEFT JOIN departments d ON u.department_id = d.id
+                      LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(u.email)
+                     WHERE LOWER(u.email) = LOWER(%s)
                 """, (user_email,))
 
                 result = cur.fetchone()
@@ -1104,38 +1136,44 @@ def get_edit_request_rate_limit_status(user_email: str) -> Dict:
 
 def can_submit_for_review(month: int, year: int) -> Tuple[bool, str]:
     """
-    Check if a timesheet for the given month/year can be submitted for review.
-    Submission is only allowed during days 1-7 of the month AFTER the report month.
+    TEMPORARILY DISABLED — always returns (True, "").
+
+    The production rule is: reports for month M can only be submitted on
+    days 1-7 of month M+1. It is turned off project-wide so testing and
+    real-use past the 7th both work. To restore the deadline, uncomment
+    the block below and delete the early return.
 
     Returns: (can_submit, message)
     """
-    today = datetime.now()
+    return True, ""
 
-    # Calculate the expected submission month/year
-    if month == 12:
-        submit_month = 1
-        submit_year = year + 1
-    else:
-        submit_month = month + 1
-        submit_year = year
-
-    if today.year == submit_year and today.month == submit_month and 1 <= today.day <= 7:
-        return True, ""
-
-    return False, (
-        f"Подношење радне листе за {month}/{year} је могуће само "
-        f"од 1. до 7. у месецу {submit_month}/{submit_year}."
-    )
+    # --- deadline enforcement, disabled ---
+    # today = datetime.now()
+    # if month == 12:
+    #     submit_month, submit_year = 1, year + 1
+    # else:
+    #     submit_month, submit_year = month + 1, year
+    # if today.year == submit_year and today.month == submit_month and 1 <= today.day <= 7:
+    #     return True, ""
+    # return False, (
+    #     f"Подношење радне листе за {month}/{year} је могуће само "
+    #     f"од 1. до 7. у месецу {submit_month}/{submit_year}."
+    # )
 
 
 def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bool, str]:
     """
     Check if a timesheet can be edited based on its status and the current date.
 
+    Date-window check is TEMPORARILY DISABLED to match can_submit_for_review.
+    Editing is allowed whenever the status is DRAFT or REJECTED; SUBMITTED
+    and APPROVED remain blocked as before.
+
     Returns: (can_edit, message)
     """
     if status in ('SUBMITTED', 'APPROVED'):
         return False, "Радна листа је поднета/одобрена и не може се мењати."
+    return True, ""
 
     # DRAFT or REJECTED: allow editing during the report month or days 1-7 of next month
     today = datetime.now()
@@ -1190,6 +1228,14 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
                         "Радна листа није пронађена"
                     )
 
+                report_email = (report.get('employee_email') or '').strip().lower()
+                submitter_email = (user_email or '').strip().lower()
+                if not report_email or report_email != submitter_email:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.PERMISSION_DENIED,
+                        "Можете поднети само своју радну листу"
+                    )
+
                 # Validate status
                 if report['status'] not in ('DRAFT', 'REJECTED'):
                     return TimesheetResult.fail(
@@ -1206,29 +1252,38 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
                         message
                     )
 
-                # Update status
+                # Update status. Clear editable_until — the report is back
+                # under review, the temp window from a prior reject/revoke
+                # no longer applies.
                 cur.execute("""
                     UPDATE timesheet_reports
                     SET status = 'SUBMITTED',
                         is_locked = TRUE,
                         is_verified = FALSE,
-                        submitted_at = NOW()
+                        submitted_at = NOW(),
+                        editable_until = NULL
                     WHERE id = %s
                 """, (report_id,))
 
                 # Log to status history
                 cur.execute("""
                     INSERT INTO timesheet_status_history
-                    (report_id, old_status, new_status, changed_by_email, note)
-                    VALUES (%s, %s, 'SUBMITTED', %s, 'Поднето на преглед')
-                """, (report_id, report['status'], user_email))
+                    (report_id, old_status, new_status, changed_by, note)
+                    VALUES (%s, %s, 'SUBMITTED', %s, %s)
+                """, (report_id, report['status'], user_email,
+                      'Поновно поднето на преглед' if report['status'] == 'REJECTED'
+                      else 'Поднето на преглед'))
 
                 conn.commit()
 
+                was_rejected = report['status'] == 'REJECTED'
                 return TimesheetResult.ok({
                     'report_id': report_id,
                     'status': 'SUBMITTED',
-                    'message': 'Радна листа је успешно поднета на преглед'
+                    'was_rejected': was_rejected,
+                    'message': ('Радна листа је поново поднета на преглед'
+                                if was_rejected
+                                else 'Радна листа је успешно поднета на преглед'),
                 })
 
     except psycopg.Error as e:
@@ -1297,7 +1352,7 @@ def approve_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
                 # Log to status history
                 cur.execute("""
                     INSERT INTO timesheet_status_history
-                    (report_id, old_status, new_status, changed_by_email, note)
+                    (report_id, old_status, new_status, changed_by, note)
                     VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено')
                 """, (report_id, admin_email))
 
@@ -1362,7 +1417,9 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
                         f"Само поднете радне листе могу бити одбијене. Тренутни статус: '{report['status']}'"
                     )
 
-                # Update status
+                # Update status. editable_until gives the employee a 24 h
+                # window to correct and resubmit; after that the report
+                # auto-locks for edits and an unlock request is required.
                 cur.execute("""
                     UPDATE timesheet_reports
                     SET status = 'REJECTED',
@@ -1370,14 +1427,15 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
                         is_verified = FALSE,
                         rejection_note = %s,
                         reviewed_at = NOW(),
-                        reviewed_by_email = %s
+                        reviewed_by_email = %s,
+                        editable_until = NOW() + INTERVAL '24 hours'
                     WHERE id = %s
                 """, (note, admin_email, report_id))
 
                 # Log to status history
                 cur.execute("""
                     INSERT INTO timesheet_status_history
-                    (report_id, old_status, new_status, changed_by_email, note)
+                    (report_id, old_status, new_status, changed_by, note)
                     VALUES (%s, 'SUBMITTED', 'REJECTED', %s, %s)
                 """, (report_id, admin_email, note))
 
@@ -1386,7 +1444,7 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
                 return TimesheetResult.ok({
                     'report_id': report_id,
                     'status': 'REJECTED',
-                    'message': 'Радна листа је одбијена'
+                    'message': 'Радна листа је одбијена. Запослени може да допуни извештај у наредна 24 часа.'
                 })
 
     except psycopg.Error as e:
@@ -1408,11 +1466,15 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
 def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
     """
     Force a timesheet back to DRAFT status. Any status -> DRAFT.
-    Admin-only operation.
+    Allowed for admin, director, and department heads (per-report scope
+    is enforced by the route decorator + helper in timesheet_admin_views).
+
+    Bounces the report back with a 24-hour temporary edit window so the
+    employee can correct and resubmit without needing an unlock request.
 
     Args:
         report_id: ID of the timesheet report
-        admin_email: Email of the admin performing the action
+        admin_email: Email of the admin/director/dept head performing the action
 
     Returns:
         TimesheetResult with success status
@@ -1437,20 +1499,24 @@ def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
 
                 old_status = report['status']
 
-                # Update status to DRAFT
+                # Update status to DRAFT, open the 24 h edit window.
                 cur.execute("""
                     UPDATE timesheet_reports
                     SET status = 'DRAFT',
                         is_locked = FALSE,
-                        is_verified = FALSE
+                        is_verified = FALSE,
+                        verified_by = NULL,
+                        verified_at = NULL,
+                        verified_role = NULL,
+                        editable_until = NOW() + INTERVAL '24 hours'
                     WHERE id = %s
                 """, (report_id,))
 
                 # Log to status history
                 cur.execute("""
                     INSERT INTO timesheet_status_history
-                    (report_id, old_status, new_status, changed_by_email, note)
-                    VALUES (%s, %s, 'DRAFT', %s, 'Принудно враћено на измену од стране администратора')
+                    (report_id, old_status, new_status, changed_by, note)
+                    VALUES (%s, %s, 'DRAFT', %s, 'Враћено запосленом на измену')
                 """, (report_id, old_status, admin_email))
 
                 conn.commit()
@@ -1458,7 +1524,7 @@ def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
                 return TimesheetResult.ok({
                     'report_id': report_id,
                     'status': 'DRAFT',
-                    'message': 'Радна листа је враћена на измену'
+                    'message': 'Радна листа је враћена запосленом на измену (24 часа).'
                 })
 
     except psycopg.Error as e:

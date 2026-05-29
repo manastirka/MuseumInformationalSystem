@@ -11,11 +11,13 @@ import shutil
 import hashlib
 import logging
 import tempfile
+import threading
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 from PIL import Image
 import requests
+from postgres_service import get_postgres_connection
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +35,9 @@ def get_image_storage_backend_name() -> str:
 
 def _get_db_connection():
     """Get PostgreSQL connection for image metadata."""
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        return None
     try:
-        import psycopg
         from psycopg.rows import dict_row
-        # Convert SQLAlchemy-style URL to psycopg format
-        db_url = database_url.replace('postgresql+psycopg://', 'postgresql://')
-        conn = psycopg.connect(db_url, row_factory=dict_row)
-        return conn
+        return get_postgres_connection(row_factory=dict_row)
     except Exception as e:
         logger.error(f"Failed to connect to PostgreSQL: {e}")
         return None
@@ -663,8 +658,8 @@ class ImageStorageEngine:
 
             # Generate unique image ID
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            file_hash = self._calculate_hash(source_path)[:8]
-            image_id = f"{database}_{entity_type}_{entity_id}_{timestamp}_{file_hash}"
+            file_hash = self._calculate_hash(source_path)
+            image_id = f"{database}_{entity_type}_{entity_id}_{timestamp}_{file_hash[:8]}"
 
             # Copy to ImagesDatabase/originals/
             original_filename = f"{image_id}{source_path.suffix}"
@@ -702,7 +697,7 @@ class ImageStorageEngine:
                             thumb_paths.get('small', ''),
                             thumb_paths.get('medium', ''),
                             thumb_paths.get('large', ''),
-                            description, file_size, self._calculate_hash(source_path),
+                            description, file_size, file_hash,
                             width, height,
                             json.dumps(metadata or {})
                         ))
@@ -736,6 +731,10 @@ class ImageStorageEngine:
         Returns:
             Path to image file or None if not found
         """
+        if size not in ('original', 'small', 'medium', 'large'):
+            logger.warning(f"Unknown image size requested: {size} (image_id={image_id})")
+            return None
+
         # First try PostgreSQL
         conn = _get_db_connection()
         if conn:
@@ -747,10 +746,8 @@ class ImageStorageEngine:
                         cur.execute("SELECT thumbnail_small AS file_path FROM images WHERE image_id = %s", (image_id,))
                     elif size == 'medium':
                         cur.execute("SELECT thumbnail_medium AS file_path FROM images WHERE image_id = %s", (image_id,))
-                    elif size == 'large':
-                        cur.execute("SELECT thumbnail_large AS file_path FROM images WHERE image_id = %s", (image_id,))
                     else:
-                        cur.execute("SELECT file_path FROM images WHERE image_id = %s", (image_id,))
+                        cur.execute("SELECT thumbnail_large AS file_path FROM images WHERE image_id = %s", (image_id,))
 
                     row = cur.fetchone()
                     if row and row['file_path']:
@@ -778,6 +775,63 @@ class ImageStorageEngine:
                 return path
 
         logger.warning(f"Image file not found: {image_id} (size={size})")
+        return None
+
+    def get_primary_entity_image_path(self, database: str, entity_type: str, entity_id: str, size: str = 'original') -> Optional[Path]:
+        """Return the first available image path for an entity using one bounded query."""
+        conn = _get_db_connection()
+        if not conn:
+            return None
+
+        size_column = {
+            'small': 'thumbnail_small',
+            'medium': 'thumbnail_medium',
+            'large': 'thumbnail_large',
+        }.get(size, 'file_path')
+
+        try:
+            with conn.cursor() as cur:
+                entity_id = str(entity_id)
+                select_clause = f"""
+                    SELECT image_id, file_path, {size_column} AS requested_path
+                    FROM images
+                """
+
+                if database in ('mineral', 'minerals') and entity_type in ('mineral', 'collection_item'):
+                    cur.execute(f"""
+                        {select_clause}
+                        WHERE entity_id = %s
+                          AND (
+                                (database_name = 'minerals' AND entity_type = 'mineral')
+                             OR (database_name = 'mineral' AND entity_type = 'collection_item')
+                             OR (database_name = 'mineral' AND entity_type = 'mineral')
+                             OR (database_name = 'minerals' AND entity_type = 'collection_item')
+                          )
+                        ORDER BY created_at NULLS LAST, image_id
+                        LIMIT 1
+                    """, (entity_id,))
+                else:
+                    cur.execute(f"""
+                        {select_clause}
+                        WHERE database_name = %s AND entity_type = %s AND entity_id = %s
+                        ORDER BY created_at NULLS LAST, image_id
+                        LIMIT 1
+                    """, (database, entity_type, entity_id))
+
+                row = cur.fetchone()
+                if not row:
+                    return None
+
+                for ref in (row.get('requested_path'), row.get('file_path')):
+                    if not ref:
+                        continue
+                    path = self.storage_backend.resolve_ref(ref)
+                    if path and path.exists():
+                        return path
+        except Exception as e:
+            logger.error(f"Error getting primary entity image path: {e}")
+        finally:
+            conn.close()
         return None
 
     def get_image_metadata(self, image_id: str) -> Optional[Dict]:
@@ -1059,10 +1113,24 @@ class ImageStorageEngine:
             if originals_backup.exists():
                 self.storage_backend.import_category(originals_backup, 'originals')
 
-            # Regenerate thumbnails for restored images
-            for image_file in self.storage_backend.category_dir('originals').glob('*'):
-                image_id = image_file.stem
-                self._generate_thumbnails(image_file, image_id)
+            # Regenerate thumbnails only for images named in the restored manifest.
+            # A single undecodable file, stray entry, or directory must not abort
+            # the whole restore.
+            originals_dir = self.storage_backend.category_dir('originals')
+            for image in manifest_images:
+                image_id = image.get('image_id')
+                if not image_id:
+                    continue
+                file_extension = image.get('file_extension') or Path(image.get('file_path', '')).suffix or '.jpg'
+                image_file = originals_dir / f"{image_id}{file_extension}"
+                if not image_file.is_file():
+                    logger.warning("Restored original file missing for image %s", image_id)
+                    continue
+                try:
+                    self._generate_thumbnails(image_file, image_id)
+                except Exception as exc:
+                    logger.warning("Skipping thumbnail generation for %s: %s", image_file, exc)
+                    continue
 
             if not self._restore_backup_metadata(manifest_images):
                 return False
@@ -1144,6 +1212,7 @@ class ImageStorageEngine:
 # Cache storage engines by resolved storage path and backup URL so callers can
 # safely use isolated stores (for example a dedicated backup receiver path).
 _image_storage_instances: Dict[Tuple[str, Optional[str], str], ImageStorageEngine] = {}
+_image_storage_instances_lock = threading.Lock()
 
 
 def get_image_storage(base_path: str = None, server_url: str = None) -> ImageStorageEngine:
@@ -1152,6 +1221,9 @@ def get_image_storage(base_path: str = None, server_url: str = None) -> ImageSto
     cache_key = (resolved_base, server_url, get_image_storage_backend_name())
     storage = _image_storage_instances.get(cache_key)
     if storage is None:
-        storage = ImageStorageEngine(resolved_base, server_url)
-        _image_storage_instances[cache_key] = storage
+        with _image_storage_instances_lock:
+            storage = _image_storage_instances.get(cache_key)
+            if storage is None:
+                storage = ImageStorageEngine(resolved_base, server_url)
+                _image_storage_instances[cache_key] = storage
     return storage

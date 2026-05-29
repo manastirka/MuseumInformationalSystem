@@ -77,13 +77,19 @@ class TimesheetRepository:
         per_page: int = 25,
         month: Optional[int] = None,
         year: Optional[int] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        department: Optional[str] = None,
     ) -> Dict:
-        """Return paginated list of reports with category totals."""
+        """Return paginated list of reports with category totals.
+
+        When `department` is supplied, only reports whose employee (matched by
+        full_name in `employee_profiles`) belongs to that department are
+        returned. This supports department-head-scoped verification.
+        """
         if not self.available:
             return {'reports': [], 'total': 0, 'page': page, 'total_pages': 0}
 
-        where_sql, params = self._build_filters(month, year, search)
+        where_sql, params = self._build_filters(month, year, search, department)
         offset = (page - 1) * per_page
 
         query = text(
@@ -92,6 +98,7 @@ class TimesheetRepository:
             "tr.organization_unit, tr.position, "
             "tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, "
             "COALESCE(tr.status, 'DRAFT') AS status, tr.reviewed_at, "
+            "tr.rejection_note, "
             "SUM(CASE WHEN te.category = 'rad_na_mestu' THEN te.hours ELSE 0 END) AS work_in_museum, "
             "SUM(CASE WHEN te.category = 'van_muzeja' THEN te.hours ELSE 0 END) AS work_outside, "
             "SUM(CASE WHEN te.category = 'godisnji_odmor' THEN te.hours ELSE 0 END) AS vacation, "
@@ -105,7 +112,7 @@ class TimesheetRepository:
             "LEFT JOIN timesheet_entries te ON te.report_id = tr.id "
             "WHERE " + where_sql + " "
             "GROUP BY tr.id, tr.employee_name, tr.month, tr.year, tr.organization_unit, "
-            "tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at "
+            "tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at, tr.rejection_note "
             "ORDER BY tr.year DESC, tr.month DESC, tr.employee_name "
             "LIMIT :limit OFFSET :offset"
         )
@@ -268,7 +275,13 @@ class TimesheetRepository:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _build_filters(self, month: Optional[int], year: Optional[int], search: Optional[str]) -> Tuple[str, Dict]:
+    def _build_filters(
+        self,
+        month: Optional[int],
+        year: Optional[int],
+        search: Optional[str],
+        department: Optional[str] = None,
+    ) -> Tuple[str, Dict]:
         clauses = []
         params: Dict[str, object] = {}
         if month:
@@ -280,6 +293,16 @@ class TimesheetRepository:
         if search:
             clauses.append("tr.employee_name ILIKE :f_search")
             params['f_search'] = f"%{search}%"
+        if department:
+            # Match by canonical employee_email, not full_name — names drift
+            # (legacy rows, renames, case differences) and would silently
+            # exclude reports from the dept head's view.
+            clauses.append(
+                "LOWER(tr.employee_email) IN "
+                "(SELECT LOWER(ep.email) FROM employee_profiles ep "
+                " WHERE ep.department = :f_department)"
+            )
+            params['f_department'] = department
         where_sql = " AND ".join(clauses) if clauses else "TRUE"
         return where_sql, params
 
@@ -295,6 +318,8 @@ class TimesheetRepository:
             'is_locked': bool(row.is_locked) if hasattr(row, 'is_locked') else False,
             'verified_by': row.verified_by if hasattr(row, 'verified_by') else None,
             'verified_at': row.verified_at if hasattr(row, 'verified_at') else None,
+            'status': row.status if hasattr(row, 'status') else 'DRAFT',
+            'rejection_note': row.rejection_note if hasattr(row, 'rejection_note') else None,
             'work_in_museum': self._to_float(row.work_in_museum),
             'work_outside': self._to_float(row.work_outside),
             'vacation': self._to_float(row.vacation),

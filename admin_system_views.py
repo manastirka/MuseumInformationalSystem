@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import subprocess
+from copy import deepcopy
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -19,29 +20,56 @@ from postgres_service import get_database_url, get_postgres_connection
 logger = logging.getLogger(__name__)
 
 SETTINGS_FILE = Path('data/system_settings.json')
-MAIN_LOG_FILE = Path('logs/museum_info_system.log')
+MAIN_LOG_FILE = Path(os.environ.get('LOG_FILE', os.path.join(os.environ.get('LOG_DIR', 'logs'), 'museum_info_system.log')))
 BACKUP_DIR = Path('backups')
+_saved_settings_cache = {
+    'data': None,
+    'timestamp': None,
+    'db_enabled': None,
+}
+_SAVED_SETTINGS_CACHE_TTL_SECONDS = float(os.environ.get('SYSTEM_SETTINGS_CACHE_TTL_SECONDS', '60'))
 
 
-def load_saved_settings():
+def load_saved_settings(force: bool = False):
     """Load shared system settings from PostgreSQL first, then file fallback."""
-    return module_access_support.load_json_settings_data(
+    db_enabled = bool(os.environ.get('DATABASE_URL'))
+    if (
+        not force
+        and _saved_settings_cache['data'] is not None
+        and _saved_settings_cache['timestamp'] is not None
+        and _saved_settings_cache['db_enabled'] == db_enabled
+    ):
+        age = datetime.now().timestamp() - _saved_settings_cache['timestamp']
+        if age < _SAVED_SETTINGS_CACHE_TTL_SECONDS:
+            return deepcopy(_saved_settings_cache['data'])
+
+    loaded = module_access_support.load_json_settings_data(
         setting_key='system_settings',
         default_value={},
-        get_postgres_connection=get_postgres_connection if os.environ.get('DATABASE_URL') else None,
+        get_postgres_connection=get_postgres_connection if db_enabled else None,
         file_path=str(SETTINGS_FILE),
         current_mtime=SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else None,
     )
+    _saved_settings_cache['data'] = deepcopy(loaded)
+    _saved_settings_cache['timestamp'] = datetime.now().timestamp()
+    _saved_settings_cache['db_enabled'] = db_enabled
+    return loaded
 
 
 def save_settings(settings):
     """Persist shared system settings to PostgreSQL and file fallback."""
-    return module_access_support.save_json_settings_data(
+    db_enabled = bool(os.environ.get('DATABASE_URL'))
+    saved = module_access_support.save_json_settings_data(
         setting_key='system_settings',
         payload=settings,
-        get_postgres_connection=get_postgres_connection if os.environ.get('DATABASE_URL') else None,
+        get_postgres_connection=get_postgres_connection if db_enabled else None,
         file_path=str(SETTINGS_FILE),
     )
+    if saved:
+        _saved_settings_cache['data'] = deepcopy(settings)
+        _saved_settings_cache['timestamp'] = datetime.now().timestamp()
+        _saved_settings_cache['db_enabled'] = db_enabled
+    return saved
 
 
 def _session_timeout_minutes(value):

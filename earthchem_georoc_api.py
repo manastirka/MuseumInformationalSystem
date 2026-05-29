@@ -21,10 +21,29 @@ from functools import lru_cache
 import time
 import os
 
-# Create SSL context
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+# Create SSL context. Certificate verification is ON by default and can only
+# be disabled by explicitly opting in via ALLOW_INSECURE_UPSTREAM_TLS.
+def _verify_tls_enabled() -> bool:
+    return os.environ.get('ALLOW_INSECURE_UPSTREAM_TLS', '').strip().lower() not in ('1', 'true', 'yes')
+
+
+_VERIFY_TLS = _verify_tls_enabled()
+
+
+def build_ssl_context() -> ssl.SSLContext:
+    """Build the SSL context used for outbound requests.
+
+    Verifies the upstream certificate and hostname unless
+    ALLOW_INSECURE_UPSTREAM_TLS is explicitly set.
+    """
+    context = ssl.create_default_context()
+    if not _verify_tls_enabled():
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    return context
+
+
+ssl_context = build_ssl_context()
 
 # API Keys (load from environment or config)
 GEOROC_API_KEY = os.environ.get('GEOROC_API_KEY', '')
@@ -592,7 +611,7 @@ MINERAL_ROCK_ASSOCIATIONS = {
     'calcite': ['limestone', 'marble', 'carbonatite'],
     'dolomite': ['dolostone', 'marble', 'carbonatite'],
     'aragonite': ['limestone', 'travertine'],
-    'magneite': ['dolostone', 'serpentinite'],
+    'magnesite': ['dolostone', 'serpentinite'],
 
     # Oxides
     'magnetite': ['basalt', 'gabbro', 'banded iron formation', 'skarn'],

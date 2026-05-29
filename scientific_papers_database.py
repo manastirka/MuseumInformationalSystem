@@ -304,6 +304,9 @@ def get_all_papers(page=1, per_page=50, search=None, locality_filter=None,
     Get scientific papers with pagination and filters.
     Returns: (papers, total_count, total_pages)
     """
+    page = max(1, int(page))
+    per_page = max(1, min(int(per_page), 200))
+
     conn = get_connection()
     try:
         where_sql, params = _build_search_where(
@@ -381,6 +384,9 @@ def get_paper_by_id(paper_id: int) -> Optional[Dict]:
 def get_papers_by_locality(locality_name: str, page=1, per_page=50,
                            sort_by='cited_by_count', sort_order='DESC'):
     """Get papers linked to a specific locality with pagination."""
+    page = max(1, int(page))
+    per_page = max(1, min(int(per_page), 200))
+
     conn = get_connection()
     try:
         allowed_sorts = {'cited_by_count', 'publication_year', 'title', 'journal_name', 'id'}

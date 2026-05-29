@@ -86,6 +86,12 @@ class ImageAPIAuthTests(unittest.TestCase):
         resp = self._get('/api/images/test-id')
         self.assertEqual(resp.status_code, 401)
 
+    def test_http_login_cookie_respects_non_secure_session_config(self):
+        resp = self.client.get('/login', base_url='http://localhost')
+        set_cookie = resp.headers.get('Set-Cookie', '')
+        self.assertNotIn('Secure;', set_cookie)
+        self.assertIn('HttpOnly', set_cookie)
+
     def test_get_metadata_requires_auth(self):
         resp = self._get('/api/images/test-id/metadata')
         self.assertEqual(resp.status_code, 401)
@@ -191,10 +197,20 @@ class ImageAPIAuthTests(unittest.TestCase):
         resp = self._get('/api/images/test-id/metadata')
         self.assertEqual(resp.status_code, 403)
 
-    def test_get_image_requires_admin(self):
-        self._login_as('employee')
-        resp = self._get('/api/images/test-id')
-        self.assertEqual(resp.status_code, 403)
+    def test_get_image_served_by_login_required_media_handler(self):
+        # Policy: GET image-by-id is served by the @login_required media handler
+        # so authorized non-admins (curators, map users) can view images; it is
+        # NOT admin-only. Verified at the routing layer (the deferred `import app`
+        # in the handler body is not exercisable under this test bootstrap).
+        rules = [
+            rule for rule in self.app.url_map.iter_rules()
+            if rule.rule == '/api/images/<image_id>' and 'GET' in rule.methods
+        ]
+        view_funcs = {self.app.view_functions[rule.endpoint] for rule in rules}
+        self.assertEqual(len(view_funcs), 1, f'conflicting handlers: {[r.endpoint for r in rules]}')
+        (view_func,) = view_funcs
+        self.assertEqual(view_func.__module__, 'blueprints.media')
+        self.assertEqual(view_func.__name__, 'get_image_by_id')
 
     def test_entity_images_requires_admin(self):
         self._login_as('employee')

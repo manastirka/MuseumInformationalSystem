@@ -7,6 +7,7 @@ import os
 import time
 
 import maps_terrain_support
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -35,21 +36,18 @@ def load_zone_map_cached(folder_name, sheet_bounds):
 
     try:
         image = Image.open(map_path)
-        with open(meta_path, 'r', encoding='utf-8') as handle:
-            meta = json.load(handle)
+        meta = load_json_file(meta_path, default=[])
 
         legend_path = os.path.join(zone_dir, 'enhanced_legend.json')
         legend = []
         if os.path.isfile(legend_path):
-            with open(legend_path, 'r', encoding='utf-8') as handle:
-                legend = json.load(handle)
+            legend = load_json_file(legend_path, default=[])
 
         calib_path = os.path.join(zone_dir, 'manual_calibration.json')
         calibration = []
         if os.path.isfile(calib_path):
-            with open(calib_path, 'r', encoding='utf-8') as handle:
-                calib_data = json.load(handle)
-                calibration = calib_data.get('entries', [])
+            calib_data = load_json_file(calib_path, default={})
+            calibration = calib_data.get('entries', [])
 
         groups = meta.get('groups', meta) if isinstance(meta, dict) else meta
         id_to_group = {}
@@ -239,7 +237,7 @@ def classify_geo_color(r, g, b, sheet_data=None):
 
     if 12 <= hue <= 52 and 18 <= saturation <= 75 and 20 <= value <= 62:
         if allowed(['Jura', 'Kreda', 'Trijas']):
-            return result('Серпентинит', 'Serpentinite', 'Se', 'Офиолити', '#795548')
+            return result('Серпентинит', 'Serpentinite', 'Se', 'Офиолити', '#00695c')
         if allowed(['Devon', 'Paleozoik']):
             return result('Девон', 'Devonian', 'D', 'Devon', '#0d47a1')
         if allowed(['Perm']):
@@ -504,16 +502,14 @@ def load_digitized_profiles(profiles_path=DIGITIZED_PROFILES_PATH):
     if not os.path.isfile(profiles_path):
         return []
     try:
-        with open(profiles_path, 'r', encoding='utf-8') as handle:
-            return json.load(handle)
+        return load_json_file(profiles_path, default=[])
     except Exception:
         return []
 
 
 def save_digitized_profiles(profiles, profiles_path=DIGITIZED_PROFILES_PATH):
     """Save digitized profiles to JSON."""
-    with open(profiles_path, 'w', encoding='utf-8') as handle:
-        json.dump(profiles, handle, ensure_ascii=False, indent=2)
+    write_json_file(profiles_path, profiles)
 
 
 def interpolate_subsurface(lat1, lon1, lat2, lon2, surface_points, total_distance_km):
@@ -528,7 +524,12 @@ def interpolate_subsurface(lat1, lon1, lat2, lon2, surface_points, total_distanc
     for profile in profiles:
         endpoint_a = profile.get('endpoint_a', {})
         endpoint_b = profile.get('endpoint_b', {})
-        if not endpoint_a.get('lat') or not endpoint_b.get('lat'):
+        if None in (
+            endpoint_a.get('lat'),
+            endpoint_a.get('lon'),
+            endpoint_b.get('lat'),
+            endpoint_b.get('lon'),
+        ):
             continue
         profile_mid_lat = (endpoint_a['lat'] + endpoint_b['lat']) / 2
         profile_mid_lon = (endpoint_a['lon'] + endpoint_b['lon']) / 2
@@ -575,19 +576,22 @@ def interpolate_subsurface(lat1, lon1, lat2, lon2, surface_points, total_distanc
                     if len(points) < 2:
                         continue
 
-                    layer_distances = [point[0] for point in points]
-                    min_dist = min(layer_distances)
-                    max_dist = max(layer_distances)
-                    if projected_distance < min_dist or projected_distance > max_dist:
-                        continue
+                    try:
+                        layer_distances = [point[0] for point in points]
+                        min_dist = min(layer_distances)
+                        max_dist = max(layer_distances)
+                        if projected_distance < min_dist or projected_distance > max_dist:
+                            continue
 
-                    boundary_elevation = None
-                    for idx in range(len(points) - 1):
-                        if points[idx][0] <= projected_distance <= points[idx + 1][0]:
-                            denominator = points[idx + 1][0] - points[idx][0]
-                            ratio = (projected_distance - points[idx][0]) / denominator if denominator != 0 else 0
-                            boundary_elevation = points[idx][1] + ratio * (points[idx + 1][1] - points[idx][1])
-                            break
+                        boundary_elevation = None
+                        for idx in range(len(points) - 1):
+                            if points[idx][0] <= projected_distance <= points[idx + 1][0]:
+                                denominator = points[idx + 1][0] - points[idx][0]
+                                ratio = (projected_distance - points[idx][0]) / denominator if denominator != 0 else 0
+                                boundary_elevation = points[idx][1] + ratio * (points[idx + 1][1] - points[idx][1])
+                                break
+                    except (TypeError, IndexError, KeyError):
+                        continue
 
                     if boundary_elevation is not None and elevation <= boundary_elevation:
                         weight = 1.0 / max(profile_distance ** 2, 0.01)
@@ -630,7 +634,7 @@ def interpolate_subsurface(lat1, lon1, lat2, lon2, surface_points, total_distanc
                     'distance_km': fault.get('distance_km', 0),
                     'points': fault.get('points', []),
                     'type': fault.get('type', 'normal'),
-                    'source_profile': profile['id'],
+                    'source_profile': profile.get('id', ''),
                     'source_distance': nearby_profile['distance'],
                 }
             )

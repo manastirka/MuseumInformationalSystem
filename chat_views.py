@@ -1,6 +1,7 @@
 """Shared route implementations for the chat room."""
 
 import re
+import time
 import uuid
 
 from flask import jsonify, render_template, request, send_file, session
@@ -22,13 +23,21 @@ def api_chat_messages():
         touch_presence,
     )
 
-    since = float(request.args.get('since', 0))
+    raw_since = request.args.get('since', 0)
+    try:
+        since = float(raw_since or 0)
+    except (TypeError, ValueError):
+        since = 0.0
     channel = request.args.get('channel', 'general')
     user_id = session['user_id']
 
     if channel.startswith('dm:'):
         parts = channel.split(':')
-        if len(parts) != 3 or user_id not in (int(parts[1]), int(parts[2])):
+        try:
+            channel_ids = (int(parts[1]), int(parts[2]))
+        except (IndexError, ValueError):
+            return jsonify({'success': False, 'message': 'Невалидан канал.'}), 400
+        if len(parts) != 3 or user_id not in channel_ids:
             return jsonify({'success': False, 'message': 'Немате приступ овом каналу.'}), 403
 
     touch_presence(
@@ -37,10 +46,11 @@ def api_chat_messages():
         session['user_email'],
         session.get('user_department', ''),
     )
+    fetch_start = time.time()
     messages = get_messages(since_epoch=since, limit=100, channel=channel)
     online = get_online_users()
     channels = get_user_channels(user_id)
-    mark_channel_read(user_id, channel)
+    mark_channel_read(user_id, channel, up_to_epoch=fetch_start)
 
     return jsonify(
         {
@@ -68,14 +78,20 @@ def api_chat_send():
         channel = request.form.get('channel', 'general')
         uploaded = request.files.get('file')
     else:
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'message': 'Невалидан захтев.'}), 400
         text = (data.get('message') or '').strip()
         channel = data.get('channel', 'general')
         uploaded = None
 
     if channel.startswith('dm:'):
         parts = channel.split(':')
-        if len(parts) != 3 or user_id not in (int(parts[1]), int(parts[2])):
+        try:
+            channel_ids = (int(parts[1]), int(parts[2]))
+        except (IndexError, ValueError):
+            return jsonify({'success': False, 'message': 'Невалидан канал.'}), 400
+        if len(parts) != 3 or user_id not in channel_ids:
             return jsonify({'success': False, 'message': 'Немате приступ овом каналу.'}), 403
 
     file_name = None
@@ -142,7 +158,9 @@ def api_chat_status():
     """Set the current user's chat status."""
     from chat_room import VALID_STATUSES, set_user_status, touch_presence
 
-    data = request.get_json(force=True)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'message': 'Невалидан захтев.'}), 400
     status = data.get('status', '')
     if status not in VALID_STATUSES:
         return jsonify({'success': False, 'message': 'Невалидан статус.'}), 400

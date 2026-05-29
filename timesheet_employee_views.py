@@ -262,27 +262,99 @@ def _resolve_employee_profile(user_email, user_full_name, user_department='', us
     return resolved_department, resolved_position
 
 
-def _notify_admins_about_submission(user_name):
+def _notify_verifiers_about_submission(
+    user_name,
+    submitter_email,
+    submitter_department,
+    is_resubmission: bool = False,
+):
+    """Notify only the leadership users who can ACTUALLY verify THIS report.
+
+    Rule (reuses `can_user_verify_report_for_department` so policy lives in
+    one place):
+    - Admin: always.
+    - Department head: only if their own department == submitter's department
+      (and they are not the submitter themselves).
+    - Director: only when the submission is one the director verifies —
+      i.e., the submitter's department has no designated head, OR the
+      submitter IS a department head (director signs off head reports).
+
+    The submitter is always excluded.
+    """
     try:
+        # Local import avoids a module-level circular dependency and keeps
+        # this helper self-contained.
+        from timesheet_admin_views import (
+            _get_department_heads,
+            can_user_verify_report_for_department,
+        )
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT email FROM users WHERE role = 'admin' AND is_active = TRUE")
-                admins = cur.fetchall()
-                for admin in admins:
+                cur.execute(
+                    """
+                    SELECT DISTINCT u.email, r.name AS role,
+                           COALESCE(d.name, ep.department) AS department
+                      FROM users u
+                      JOIN roles r ON u.role_id = r.id
+                      LEFT JOIN departments d ON u.department_id = d.id
+                      LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(u.email)
+                     WHERE u.is_active = TRUE
+                       AND r.name IN (
+                           'admin',
+                           'direktor',
+                           'sef_odeljenja',
+                           'sef_pravne_sluzbe',
+                           'sef_racunovodstva'
+                       )
+                       AND LOWER(u.email) <> LOWER(%s)
+                    """,
+                    (submitter_email or '',),
+                )
+                candidates = cur.fetchall()
+
+                heads = _get_department_heads(cur)
+                for candidate in candidates:
+                    cand_role = candidate['role']
+                    cand_session = {
+                        'user_role': cand_role,
+                        'user_email': candidate['email'],
+                        'user_department': candidate.get('department') or '',
+                        'is_department_head': cand_role in (
+                            'sef_odeljenja', 'sef_pravne_sluzbe', 'sef_racunovodstva'
+                        ),
+                    }
+                    if not can_user_verify_report_for_department(
+                        cand_session,
+                        submitter_department,
+                        target_employee_email=submitter_email,
+                        department_heads=heads,
+                    ):
+                        continue
+                    if is_resubmission:
+                        title = 'Радна листа поново поднета (реевалуација)'
+                        message = (
+                            f'{user_name} је поново поднео/ла радну листу после '
+                            f'враћања на измену — потребно је проверити поново.'
+                        )
+                        icon = 'bi-arrow-repeat'
+                        ntype = 'warning'
+                    else:
+                        title = 'Нова радна листа за преглед'
+                        message = f'{user_name} је поднео/ла радну листу на преглед.'
+                        icon = 'bi-send-check'
+                        ntype = 'info'
                     cur.execute(
                         """
                         INSERT INTO user_notifications (user_email, title, message, icon, type)
-                        VALUES (%s, %s, %s, 'bi-send-check', 'info')
+                        VALUES (%s, %s, %s, %s, %s)
                         """,
-                        (
-                            admin['email'],
-                            'Нова радна листа за преглед',
-                            f'{user_name} је поднео/ла радну листу на преглед.',
-                        ),
+                        (candidate['email'], title, message, icon, ntype),
                     )
                 conn.commit()
     except Exception as exc:
-        logger.warning("Failed to notify admins about timesheet submission: %s", exc)
+        logger.warning("Failed to notify verifiers about timesheet submission: %s", exc)
+
+
 
 
 def _notify_employee_about_review_outcome(report_id, title, icon, message_template):
@@ -297,7 +369,7 @@ def _notify_employee_about_review_outcome(report_id, title, icon, message_templa
                 if report and report['employee_email']:
                     month_name = (
                         MONTH_NAMES_LOWER[report['month']]
-                        if report['month'] <= 12
+                        if 1 <= report['month'] <= 12
                         else str(report['month'])
                     )
                     cur.execute(
@@ -373,20 +445,42 @@ def render_timesheet_entry():
     can_submit = False
     submit_message = ''
 
+    # Submit button shows for any pre-review state regardless of whether
+    # the deadline/edit helpers imported successfully — users must always
+    # have a way to submit a DRAFT/REJECTED report. The backend /submit
+    # endpoint re-checks deadlines and returns a clear error if they fail.
+    show_submit_button = status in ('DRAFT', 'REJECTED')
     try:
         if can_edit_timesheet_by_status and can_submit_for_review:
             can_edit, edit_restriction_message = can_edit_timesheet_by_status(month, year, status)
             can_submit, submit_message = can_submit_for_review(month, year)
-            show_submit_button = status in ('DRAFT', 'REJECTED')
     except Exception as exc:
         logger.warning("Error checking edit/submit permissions: %s", exc)
         can_edit = True
         can_submit = False
 
+    report_locked = bool(timesheet_data and timesheet_data.get('is_locked'))
+    has_pending_request = bool(
+        (timesheet_data and timesheet_data.get('has_pending_request')) or status == 'SUBMITTED'
+    )
+    has_approved_request = bool(timesheet_data and timesheet_data.get('has_approved_request'))
+
+    if report_locked:
+        can_edit = False
+        can_submit = False
+        show_submit_button = False
+        if has_pending_request:
+            edit_restriction_message = (
+                "Захтев за измену је послат и радна листа остаје закључана "
+                "док администратор не обради захтев."
+            )
+        else:
+            edit_restriction_message = (
+                "Радна листа је закључана. Потребно је одобрење администратора за измене."
+            )
+
     if status == 'APPROVED':
         is_approved = True
-    elif status == 'SUBMITTED':
-        has_pending_request = True
 
     user_department, user_position = _resolve_employee_profile(
         user_email,
@@ -443,8 +537,10 @@ def render_timesheet_view():
     """Employee historical timesheet view page."""
     month_param = request.args.get('month', '').strip()
     year_param = request.args.get('year', '').strip()
-    month = int(month_param) if month_param.isdigit() else datetime.now().month
-    year = int(year_param) if year_param.isdigit() else datetime.now().year
+    now = datetime.now()
+    month = int(month_param) if month_param.isdigit() and 1 <= int(month_param) <= 12 else now.month
+    valid_years = _year_choices()
+    year = int(year_param) if year_param.isdigit() and int(year_param) in valid_years else now.year
 
     timesheet_data = None
     error_message = None
@@ -656,6 +752,7 @@ def api_save_timesheet():
         if not month or not year:
             return jsonify({'success': False, 'message': 'Недостају подаци за месец/годину'})
 
+        report_row = None
         try:
             month_check = int(month)
             year_check = int(year)
@@ -719,12 +816,44 @@ def api_save_timesheet():
         )
 
         if result.success:
+            # If the employee is fixing a report that was RETURNED (REJECTED),
+            # the save is also the act of resubmitting. Flip status →
+            # SUBMITTED and ping the head/director with the re-evaluation
+            # notification so the return-and-fix cycle closes in one click.
+            auto_resubmitted = False
+            if report_row and report_row['status'] == 'REJECTED':
+                try:
+                    from timesheet_postgres import submit_timesheet
+                    submit_result = submit_timesheet(
+                        result.data.get('report_id'), user_email,
+                    )
+                    if submit_result.success:
+                        auto_resubmitted = True
+                        submitter_department = organization_unit or ''
+                        _notify_verifiers_about_submission(
+                            user_full_name or user_email,
+                            user_email,
+                            submitter_department,
+                            is_resubmission=True,
+                        )
+                    else:
+                        logger.warning(
+                            "Auto-resubmit after save of REJECTED report failed: %s",
+                            submit_result.error.message if submit_result.error else '',
+                        )
+                except Exception as exc:
+                    logger.warning("Auto-resubmit after save failed: %s", exc)
+
+            message = result.data.get('message', 'Сачувано')
+            if auto_resubmitted:
+                message = 'Измене сачуване и извештај је поново поднет на преглед.'
             return jsonify(
                 {
                     'success': True,
-                    'message': result.data.get('message', 'Сачувано'),
+                    'message': message,
                     'version': result.data.get('version'),
                     'report_id': result.data.get('report_id'),
+                    'auto_resubmitted': auto_resubmitted,
                 }
             )
 
@@ -760,7 +889,34 @@ def api_timesheet_submit(report_id):
 
     result = submit_timesheet(report_id, user_email)
     if result.success:
-        _notify_admins_about_submission(session.get('user_name', user_email))
+        # Look up the submitter's department so we can notify the right
+        # verifiers (admin + director + that department's head).
+        submitter_department = ''
+        try:
+            with get_postgres_connection(row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(d.name, ep.department) AS department
+                          FROM users u
+                          LEFT JOIN departments d ON u.department_id = d.id
+                          LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(u.email)
+                         WHERE LOWER(u.email) = LOWER(%s)
+                        """,
+                        (user_email,),
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        submitter_department = row.get('department') or ''
+        except Exception as exc:
+            logger.warning("Failed to look up submitter department: %s", exc)
+
+        _notify_verifiers_about_submission(
+            session.get('user_name', user_email),
+            user_email,
+            submitter_department,
+            is_resubmission=bool(result.data.get('was_rejected')),
+        )
         return jsonify({'success': True, 'message': result.data.get('message', 'Поднето на преглед')})
     return jsonify({'success': False, 'message': result.error.message}), 400
 
@@ -782,12 +938,41 @@ def api_timesheet_approve(report_id):
 
 
 def api_timesheet_reject(report_id):
-    """Admin rejects a submitted timesheet with a note."""
+    """Return a SUBMITTED timesheet to the employee with a note.
+
+    Admin/director/dept head only, with per-report scope enforced. Dept
+    heads may only return reports in their own department (not their own
+    report). The director returns Edu/Gallery reports and heads' own
+    reports. The employee gets a 24 h correction window via the reject
+    path's editable_until update.
+    """
     from timesheet_postgres import reject_timesheet
+    from timesheet_admin_views import (
+        _get_department_heads,
+        _lookup_report_department,
+        can_user_verify_report_for_department,
+    )
 
     note = (request.get_json() or {}).get('note', '').strip()
     if not note:
         return jsonify({'success': False, 'message': 'Молимо унесите разлог враћања'}), 400
+
+    if session.get('user_role') != 'admin':
+        try:
+            with get_postgres_connection(row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    report_department, employee_email = _lookup_report_department(cur, report_id)
+                    heads = _get_department_heads(cur)
+        except Exception as exc:
+            logger.error("reject scope lookup failed: %s", exc)
+            return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
+
+        if not can_user_verify_report_for_department(
+            session, report_department,
+            target_employee_email=employee_email,
+            department_heads=heads,
+        ):
+            return jsonify({'success': False, 'message': 'Немате дозволу за ову радњу.'}), 403
 
     result = reject_timesheet(report_id, session.get('user_email'), note)
     if result.success:
@@ -804,8 +989,35 @@ def api_timesheet_reject(report_id):
 
 
 def api_timesheet_force_edit(report_id):
-    """Admin forces a timesheet back to DRAFT for editing."""
+    """Return a report to the employee for re-entry. Admin/director/dept
+    head scope is enforced against the current session — dept heads may
+    only return reports from their own department (not their own report);
+    the director returns Edu/Gallery reports and heads' own reports."""
     from timesheet_postgres import force_edit_timesheet
+    from timesheet_admin_views import (
+        _get_department_heads,
+        _lookup_report_department,
+        can_user_verify_report_for_department,
+    )
+
+    # Per-report authorization. Admin short-circuits via the decorator; we
+    # still re-check here so the scope is enforced at the business layer.
+    if session.get('user_role') != 'admin':
+        try:
+            with get_postgres_connection(row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    report_department, employee_email = _lookup_report_department(cur, report_id)
+                    heads = _get_department_heads(cur)
+        except Exception as exc:
+            logger.error("force_edit scope lookup failed: %s", exc)
+            return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
+
+        if not can_user_verify_report_for_department(
+            session, report_department,
+            target_employee_email=employee_email,
+            department_heads=heads,
+        ):
+            return jsonify({'success': False, 'message': 'Немате дозволу за ову радњу.'}), 403
 
     result = force_edit_timesheet(report_id, session.get('user_email'))
     if result.success:

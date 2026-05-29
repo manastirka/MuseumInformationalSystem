@@ -12,6 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from image_storage_engine import get_image_storage
 from image_matcher import get_image_matcher
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -277,8 +278,7 @@ class BatchImageUploader:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             log_file = self.upload_log_path / f"{database}_{timestamp}.json"
 
-            with open(log_file, 'w', encoding='utf-8') as f:
-                json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+            write_json_file(log_file, results, default=str)
 
             logger.info(f"Upload log saved: {log_file}")
         except Exception as e:
@@ -293,11 +293,10 @@ class BatchImageUploader:
                 continue
 
             try:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    log_data = json.load(f)
-                    log_data['log_file'] = log_file.name
-                    log_data['timestamp'] = log_file.stem.split('_', 1)[-1]
-                    logs.append(log_data)
+                log_data = load_json_file(log_file, default={})
+                log_data['log_file'] = log_file.name
+                log_data['timestamp'] = log_file.stem.split('_', 1)[-1]
+                logs.append(log_data)
             except Exception as e:
                 logger.error(f"Error reading log {log_file}: {e}")
 

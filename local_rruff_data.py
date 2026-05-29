@@ -12,6 +12,7 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from functools import lru_cache
 from pathlib import Path
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,11 @@ class LocalRRUFFData:
         """Load existing index or build new one."""
         if os.path.exists(self._index_file):
             try:
-                with open(self._index_file, 'r') as f:
-                    self._index = json.load(f)
+                self._index = load_json_file(self._index_file, default={})
+                if not isinstance(self._index, dict) or not all(
+                    key in self._index for key in ('minerals', 'rruff_ids', 'stats')
+                ):
+                    raise ValueError("index file missing required keys")
                 logger.info(f"Loaded RRUFF index: {len(self._index.get('minerals', {}))} minerals")
                 return
             except Exception as e:
@@ -88,8 +92,7 @@ class LocalRRUFFData:
 
         # Save index
         try:
-            with open(self._index_file, 'w') as f:
-                json.dump(self._index, f)
+            write_json_file(self._index_file, self._index, indent=None)
             logger.info(f"Saved RRUFF index: {len(self._index['minerals'])} minerals")
         except Exception as e:
             logger.error(f"Could not save index: {e}")
@@ -238,10 +241,16 @@ class LocalRRUFFData:
                 found_data = data
                 break
 
-        # Try partial match if no exact match
+        # Try partial match if no exact match. Restrict to forward-substring
+        # only (query is a substring of the indexed name) after normalizing
+        # dashes/spaces; the reverse direction would let a related query
+        # (e.g. 'Ferro-actinolite') resolve to a different mineral's dataset
+        # ('Actinolite').
         if not found_name:
+            name_norm = name_lower.replace('-', ' ').replace('_', ' ')
             for indexed_name, data in self._index['minerals'].items():
-                if name_lower in indexed_name.lower() or indexed_name.lower() in name_lower:
+                indexed_norm = indexed_name.lower().replace('-', ' ').replace('_', ' ')
+                if name_norm in indexed_norm:
                     found_name = indexed_name
                     found_data = data
                     break
@@ -608,12 +617,12 @@ class LocalRRUFFData:
             if query_lower in mineral_name.lower():
                 results.append({
                     'mineral_name': mineral_name,
-                    'rruff_ids': data['rruff_ids'],
-                    'has_powder': len(data['powder']) > 0,
-                    'has_raman': len(data['raman']) > 0,
-                    'has_infrared': len(data['infrared']) > 0,
-                    'has_chemistry': len(data['chemistry']) > 0,
-                    'has_images': len(data['images']) > 0
+                    'rruff_ids': data.get('rruff_ids', []),
+                    'has_powder': len(data.get('powder', [])) > 0,
+                    'has_raman': len(data.get('raman', [])) > 0,
+                    'has_infrared': len(data.get('infrared', [])) > 0,
+                    'has_chemistry': len(data.get('chemistry', [])) > 0,
+                    'has_images': len(data.get('images', [])) > 0
                 })
 
                 if len(results) >= limit:
@@ -651,8 +660,37 @@ class LocalRRUFFData:
                 expanded_atoms = self._generate_supercell_atoms(expanded_atoms, nx, ny, nz)
 
             atoms_to_use = expanded_atoms
+            atoms_are_expanded = True
         else:
             atoms_to_use = atoms
+            atoms_are_expanded = False
+
+        # Build symmetry block. When atoms were pre-expanded to literal
+        # positions we keep P 1 (identity) so a viewer does not re-apply
+        # symmetry and duplicate atoms. In the default path only the
+        # asymmetric-unit atoms are listed, so we must declare the real space
+        # group and its symmetry-equivalent positions for the viewer to fill
+        # the cell.
+        if atoms_are_expanded:
+            symmetry_lines = [
+                "# Symmetry",
+                f"_symmetry_space_group_name_H-M 'P 1'",
+                f"_symmetry_Int_Tables_number 1",
+                ""
+            ]
+        else:
+            sg_number = self._get_space_group_number(space_group)
+            symmetry_lines = [
+                "# Symmetry",
+                f"_symmetry_space_group_name_H-M '{space_group}'",
+                f"_symmetry_Int_Tables_number {sg_number}",
+                "",
+                "loop_",
+                "_symmetry_equiv_pos_as_xyz"
+            ]
+            for op in symops:
+                symmetry_lines.append(f"'{op}'")
+            symmetry_lines.append("")
 
         # Build CIF content
         cif_lines = [
@@ -666,12 +704,9 @@ class LocalRRUFFData:
             f"_cell_angle_beta {cell.get('beta', 90):.2f}",
             f"_cell_angle_gamma {cell.get('gamma', 90):.2f}",
             f"_cell_volume {self._calculate_cell_volume(cell):.2f}",
-            "",
-            "# Symmetry",
-            f"_symmetry_space_group_name_H-M 'P 1'",
-            f"_symmetry_Int_Tables_number 1",
             ""
         ]
+        cif_lines.extend(symmetry_lines)
 
         # Add atom sites
         cif_lines.extend([
@@ -840,10 +875,11 @@ class LocalRRUFFData:
         cos_beta = math.cos(beta)
         cos_gamma = math.cos(gamma)
 
-        volume = a * b * c * math.sqrt(
+        discriminant = (
             1 - cos_alpha**2 - cos_beta**2 - cos_gamma**2 +
             2 * cos_alpha * cos_beta * cos_gamma
         )
+        volume = a * b * c * math.sqrt(max(discriminant, 0.0))
         return volume
 
     def _get_space_group_number(self, space_group: str) -> int:
@@ -1173,7 +1209,7 @@ class LocalRRUFFData:
                         result['elements'].append({
                             'element': element,
                             'measurements': measurements[:15],  # Limit to 15
-                            'average': average or (sum(measurements)/len(measurements) if measurements else 0),
+                            'average': average if average is not None else (sum(measurements)/len(measurements) if measurements else 0),
                             'stdev': stdev or 0,
                             'unit': 'wt%'
                         })

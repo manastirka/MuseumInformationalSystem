@@ -3,10 +3,11 @@
 import logging
 import os
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
+from pdf_export import export_research_project_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +55,12 @@ def handle_add_visitor(*, visitor_records):
     """Handle visitor record creation form."""
     if request.method == 'POST':
         visitor_data = {
-            'id': len(visitor_records) + 1,
+            'id': max((record.get('id', 0) for record in visitor_records), default=0) + 1,
             'date': request.form.get('date', '').strip(),
             'visitor_type': request.form.get('visitor_type', '').strip(),
-            'group_size': int(request.form.get('group_size', 1)),
+            'group_size': int(request.form.get('group_size', '').strip())
+            if request.form.get('group_size', '').strip().isdigit()
+            else 1,
             'age_category': request.form.get('age_category', '').strip(),
             'nationality': request.form.get('nationality', 'Србија').strip(),
             'ticket_type': request.form.get('ticket_type', '').strip(),
@@ -77,7 +80,7 @@ def handle_add_research(*, research_projects):
     """Handle research project creation form."""
     if request.method == 'POST':
         research_data = {
-            'id': len(research_projects) + 1,
+            'id': max((project.get('id', 0) for project in research_projects), default=0) + 1,
             'title': request.form.get('title', '').strip(),
             'project_code': request.form.get('project_code', '').strip(),
             'principal_investigator': request.form.get('principal_investigator', '').strip(),
@@ -121,6 +124,25 @@ def render_research_database(*, research_projects):
         'admin_research_database.html',
         projects=research_projects,
         total_projects=len(research_projects),
+    )
+
+
+def export_research_to_pdf(*, research_projects, project_id, list_endpoint='research_database'):
+    """Export a single research project to PDF."""
+    project = next(
+        (entry for entry in research_projects if str(entry.get('id')) == str(project_id)),
+        None,
+    )
+    if project is None:
+        flash('Истраживачки пројекат није пронађен.', 'error')
+        return redirect(url_for(list_endpoint))
+
+    pdf_buffer = export_research_project_pdf(project)
+    return send_file(
+        pdf_buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"research_project_{project_id}.pdf",
     )
 
 

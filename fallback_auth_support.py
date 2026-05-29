@@ -1,5 +1,12 @@
 """Shared fallback employee and authentication helpers."""
 
+import secrets
+
+
+_DISALLOWED_FALLBACK_PASSWORDS = {
+    'Museum2025!Secure',
+}
+
 
 def get_fallback_employees(app_config):
     """
@@ -36,31 +43,37 @@ def authenticate_fallback_user(email, password, *, app_config, logger):
 
     admin_email = app_config.get('ADMIN_EMAIL', 'admin@nhmbeo.rs')
     admin_password = app_config.get('ADMIN_DEFAULT_PASSWORD')
-    admin_username = app_config.get('ADMIN_USERNAME', 'admin')
+    admin_username = (app_config.get('ADMIN_USERNAME') or '').strip()
 
     if not admin_password:
         logger.error(
             "Fallback authentication is enabled but ADMIN_DEFAULT_PASSWORD is not configured"
         )
         return None
-
-    normalized_email = email.strip().lower()
-    admin_aliases = {
-        admin_email.lower(),
-        admin_username.lower(),
-        'admin',
-    }
-
-    if normalized_email not in admin_aliases or password != admin_password:
+    if admin_password in _DISALLOWED_FALLBACK_PASSWORDS:
+        logger.error(
+            "Fallback authentication is enabled with a blocked bootstrap password; rotate ADMIN_DEFAULT_PASSWORD"
+        )
         return None
 
-    stored_email = admin_email if normalized_email == admin_email.lower() else (admin_username or admin_email)
+    normalized_email = email.strip().lower()
+    admin_aliases = {admin_email.lower()}
+    if admin_username:
+        admin_aliases.add(admin_username.lower())
+
+    if normalized_email not in admin_aliases:
+        return None
+    if not secrets.compare_digest(password, admin_password):
+        return None
+
     return {
         'user_id': 1,
-        'email': stored_email.lower(),
+        'email': admin_email.lower(),
         'full_name': 'System Administrator',
         'department': 'Administration',
         'position': 'Administrator',
         'role': 'admin',
         'is_first_login': True,
+        'auth_source': 'fallback',
+        'login_identifier': normalized_email,
     }

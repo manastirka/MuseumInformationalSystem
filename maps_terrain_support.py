@@ -4,6 +4,7 @@ import io
 import logging
 import os
 import re
+import tempfile
 import zipfile
 from xml.etree import ElementTree as ET
 
@@ -13,10 +14,24 @@ logger = logging.getLogger(__name__)
 
 APP_ROOT = os.path.dirname(__file__)
 KMZ_PATH = os.path.join(APP_ROOT, 'Karte', 'srbija korigovana.kmz')
-TILE_CACHE_DIR = os.path.join(APP_ROOT, 'static', 'map_tiles')
 DEM_DIR = os.path.join(APP_ROOT, 'data', 'dem_serbia')
 
 _kmz_tile_index = None
+
+
+def resolve_tile_cache_dir():
+    """Return a writable cache directory for extracted geological tiles."""
+    preferred = os.path.join(APP_ROOT, 'static', 'map_tiles')
+    parent = os.path.dirname(preferred)
+    if os.access(parent, os.W_OK):
+        return preferred
+    return os.environ.get(
+        'MUSEUM_TILE_CACHE_DIR',
+        os.path.join(tempfile.gettempdir(), 'museum_info_system_map_tiles'),
+    )
+
+
+TILE_CACHE_DIR = resolve_tile_cache_dir()
 
 
 def build_tile_index():

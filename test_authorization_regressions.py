@@ -10,6 +10,8 @@ from unittest.mock import patch
 os.environ.setdefault('FLASK_ENV', 'testing')
 os.environ.setdefault('SECRET_KEY', 'test-secret')
 os.environ.setdefault('REDIS_URL', '')
+os.environ.setdefault('SESSION_TYPE', 'filesystem')
+os.environ.setdefault('SESSION_FILE_DIR', 'logs/qa_flask_session')
 
 import app as museum_app
 
@@ -83,13 +85,23 @@ class AuthorizationRegressionTests(unittest.TestCase):
             self.assertEqual(error, 'Путања документа није дозвољена')
 
     def test_resolve_signature_document_path_allows_exports_file(self):
-        exports_dir = museum_app.APP_ROOT / 'exports' / 'signature-tests'
-        exports_dir.mkdir(parents=True, exist_ok=True)
-        pdf_path = exports_dir / 'sample.pdf'
-        pdf_path.write_bytes(b'%PDF-1.4 test')
-        self.addCleanup(lambda: pdf_path.unlink(missing_ok=True))
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            app_root = Path(tmp_dir)
+            exports_dir = app_root / 'exports' / 'signature-tests'
+            exports_dir.mkdir(parents=True, exist_ok=True)
+            pdf_path = exports_dir / 'sample.pdf'
+            pdf_path.write_bytes(b'%PDF-1.4 test')
 
-        resolved, relative, error = museum_app.resolve_signature_document_path('exports/signature-tests/sample.pdf')
+            signature_globals = museum_app.resolve_signature_document_path.__globals__
+            with patch.dict(signature_globals, {
+                'APP_ROOT': app_root,
+                'SIGNATURE_DOCUMENT_ROOTS': (
+                    app_root / 'exports',
+                    app_root / 'storage' / 'uploads',
+                ),
+            }):
+                resolved, relative, error = museum_app.resolve_signature_document_path('exports/signature-tests/sample.pdf')
+
         self.assertEqual(resolved, pdf_path.resolve())
         self.assertEqual(relative, 'exports/signature-tests/sample.pdf')
         self.assertIsNone(error)
@@ -139,6 +151,36 @@ class AuthorizationRegressionTests(unittest.TestCase):
         ])
         with patch.object(museum_app, 'get_postgres_connection', return_value=FakeConnection(fake_cursor)):
             response = self.client.get('/api/finansijski-plan/export-word/9', base_url=self.base_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_financial_plan_get_blocks_non_owner(self):
+        self._login(email='viewer@example.com', role='employee')
+        fake_cursor = FakeCursor(fetchone_values=[
+            ('odeljenje', 'Odeljenje', 'Kustos', None, {}, 'owner@example.com'),
+        ])
+        with patch.object(museum_app, 'get_postgres_connection', return_value=FakeConnection(fake_cursor)):
+            response = self.client.get('/api/finansijski-plan/9', base_url=self.base_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_financial_plan_save_update_blocks_non_owner(self):
+        self._login(email='viewer@example.com', role='employee')
+        fake_cursor = FakeCursor(fetchone_values=[
+            ('owner@example.com',),
+        ])
+        with patch.object(museum_app, 'get_postgres_connection', return_value=FakeConnection(fake_cursor)):
+            response = self.client.post(
+                '/api/finansijski-plan/save',
+                json={
+                    'id': 9,
+                    'kustos': 'Viewer',
+                    'odeljenje': 'geolosko',
+                    'odeljenjeText': 'Геолошко',
+                    'datumIzrade': '2026-04-07',
+                    'selectedYear': '2028',
+                    'years': {'2028': {'oprema': [{'activity': 'Test', 'amount': 1}]}}
+                },
+                base_url=self.base_url,
+            )
         self.assertEqual(response.status_code, 403)
 
     def test_signature_audit_blocks_other_requesters(self):

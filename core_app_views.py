@@ -3,8 +3,18 @@
 import logging
 
 from flask import flash, jsonify, make_response, redirect, render_template, request, session, url_for
+from observability import add_sentry_breadcrumb, capture_observability_exception
 
 logger = logging.getLogger(__name__)
+
+# Roles that authorize cross-employee timesheet verification scoped to the
+# user's own department. Director and admin have broader (cross-department)
+# access through separate checks and are not included here.
+DEPARTMENT_HEAD_ROLES = frozenset({
+    'sef_odeljenja',       # Head of a science department (Biology, Geology, ...)
+    'sef_pravne_sluzbe',   # Head of General and Legal Affairs
+    'sef_racunovodstva',   # Head of Accounting / Finance group
+})
 
 
 def set_language_preference():
@@ -15,7 +25,15 @@ def set_language_preference():
     if lang in allowed:
         session['museum_lang'] = lang
         response = jsonify({'status': 'ok', 'language': lang})
-        response.set_cookie('museum_lang', lang, max_age=31536000, samesite='Lax', path='/')
+        response.set_cookie(
+            'museum_lang',
+            lang,
+            max_age=31536000,
+            samesite='Lax',
+            path='/',
+            secure=request.is_secure,
+            httponly=False,
+        )
         return response
     return jsonify({'status': 'error', 'message': 'Invalid language'}), 400
 
@@ -70,10 +88,19 @@ def handle_login(
 
         authenticated_user = None
         try:
+            add_sentry_breadcrumb(
+                category='auth',
+                message='Login attempt started',
+                data={'email': email},
+            )
             if auth_system.available:
                 authenticated_user = auth_system.verify_credentials(email, password)
 
-            if not authenticated_user and app_config.get('ENABLE_FALLBACK_AUTH', False):
+            if (
+                not authenticated_user
+                and not auth_system.available
+                and app_config.get('ENABLE_FALLBACK_AUTH', False)
+            ):
                 log_fallback_auth_warning_once()
                 logger.warning("Using fallback auth for: %s", email)
                 authenticated_user = authenticate_fallback_user(email, password)
@@ -87,6 +114,12 @@ def handle_login(
                 return render_template('login.html')
         except Exception as exc:
             logger.error("Authentication error for %s: %s", email, exc)
+            capture_observability_exception(
+                exc,
+                tags={'component': 'auth', 'operation': 'login'},
+                extra={'email': email, 'auth_system_available': bool(auth_system.available)},
+                user={'email': email},
+            )
             flash('Грешка при пријављивању. Покушајте поново.', 'error')
             return render_template('login.html')
 
@@ -95,10 +128,13 @@ def handle_login(
             user_id = authenticated_user.get('user_id') or authenticated_user.get('id')
             session['user_id'] = user_id
             session['user_email'] = authenticated_user['email']
+            session['login_identifier'] = authenticated_user.get('login_identifier', email)
+            session['auth_source'] = authenticated_user.get('auth_source', 'primary')
             session['user_name'] = authenticated_user['full_name']
             session['user_role'] = authenticated_user['role']
             session['is_admin'] = authenticated_user['role'] == 'admin'
             session['user_department'] = authenticated_user.get('department', '')
+            session['is_department_head'] = authenticated_user.get('role') in DEPARTMENT_HEAD_ROLES
             session.permanent = True
 
             tracker.record_attempt(email, success=True)
@@ -156,6 +192,8 @@ def handle_change_password(
     password_validator,
     dashboard_endpoint,
     log_security_event,
+    authenticate_fallback_user,
+    change_password_endpoint='change_password',
 ):
     """Change the current user's password after validating the request."""
     if request.method == 'POST':
@@ -179,20 +217,45 @@ def handle_change_password(
 
         user_id = session.get('user_id')
         user_email = session.get('user_email')
+        login_identifier = session.get('login_identifier', user_email)
+        auth_source = session.get('auth_source', 'primary')
 
         try:
-            if auth_system.available:
-                if auth_system.verify_credentials(user_email, current_password):
-                    success = auth_system.update_password(user_email, new_password)
-                else:
-                    flash('Тренутна лозинка није тачна.', 'error')
-                    return redirect(url_for('change_password'))
+            success = False
+            current_password_valid = False
+
+            if auth_system.available and auth_system.verify_credentials(user_email, current_password):
+                current_password_valid = True
+                success = auth_system.update_password(user_email, new_password)
             elif app_config.get('ENABLE_FALLBACK_AUTH', False):
-                flash('Промена лозинке није доступна у режиму развоја.', 'warning')
-                return redirect(url_for(dashboard_endpoint))
-            else:
+                fallback_user = None
+                for candidate in (login_identifier, user_email):
+                    if not candidate:
+                        continue
+                    fallback_user = authenticate_fallback_user(candidate, current_password)
+                    if fallback_user:
+                        break
+
+                if fallback_user:
+                    current_password_valid = True
+                    if auth_system.available:
+                        success = auth_system.update_password(fallback_user['email'], new_password)
+                        if success:
+                            session['user_email'] = fallback_user['email']
+                            session['auth_source'] = 'primary'
+                    else:
+                        flash('Промена лозинке није доступна у режиму развоја.', 'warning')
+                        return redirect(url_for(dashboard_endpoint))
+                elif auth_source == 'fallback':
+                    flash('Тренутна лозинка није тачна.', 'error')
+                    return redirect(url_for(change_password_endpoint))
+            elif not auth_system.available:
                 flash('Систем аутентикације није доступан.', 'error')
                 return render_template('change_password.html')
+
+            if not current_password_valid:
+                flash('Тренутна лозинка није тачна.', 'error')
+                return redirect(url_for(change_password_endpoint))
 
             if success:
                 log_security_event(
@@ -205,7 +268,7 @@ def handle_change_password(
                 flash('Лозинка је успешно промењена!', 'success')
                 return redirect(url_for(dashboard_endpoint))
 
-            flash('Неисправна тренутна лозинка.', 'error')
+            flash('Грешка при промени лозинке.', 'error')
             return render_template('change_password.html')
         except Exception as exc:
             logger.error("Password change error: %s", exc)

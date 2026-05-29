@@ -2,9 +2,21 @@
 
 import logging
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_endpoint(endpoint):
+    """Map legacy scientific paper endpoints to blueprint endpoints when needed."""
+    if endpoint in current_app.view_functions:
+        return endpoint
+    endpoint_aliases = {
+        'scientific_papers_view': 'science.scientific_papers_view',
+        'scientific_paper_detail': 'science.scientific_paper_detail',
+        'scientific_papers_by_locality': 'science.scientific_papers_by_locality',
+    }
+    return endpoint_aliases.get(endpoint, endpoint)
 
 
 def render_scientific_papers(*, scientific_papers_database, museum_databases_endpoint):
@@ -63,12 +75,12 @@ def render_scientific_paper_detail(*, paper_id, scientific_papers_database, list
         paper = scientific_papers_database.get_paper_by_id(paper_id)
         if not paper:
             flash('Рад није пронађен.', 'error')
-            return redirect(url_for(list_endpoint))
+            return redirect(url_for(_resolve_endpoint(list_endpoint)))
         return render_template('admin_scientific_paper_detail.html', paper=paper)
     except Exception as exc:
         logger.error("Error loading scientific paper %s: %s", paper_id, exc)
         flash('Грешка при учитавању рада.', 'error')
-        return redirect(url_for(list_endpoint))
+        return redirect(url_for(_resolve_endpoint(list_endpoint)))
 
 
 def render_scientific_papers_by_locality(
@@ -113,7 +125,7 @@ def render_scientific_papers_by_locality(
     except Exception as exc:
         logger.error("Error loading papers for locality %s: %s", locality_name, exc)
         flash('Грешка при учитавању радова за локалитет.', 'error')
-        return redirect(url_for('scientific_papers_view'))
+        return redirect(url_for(_resolve_endpoint('scientific_papers_view')))
 
 
 def api_locality_papers(*, locality_name, scientific_papers_database):

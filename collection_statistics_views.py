@@ -73,7 +73,7 @@ def render_admin_statistics(
                 'meteorites': {
                     'name': 'Метеорити',
                     'count': meteorite_count,
-                    'icon': 'bi-moon-stars',
+                    'icon': 'museum-icon-shooting-star',
                     'color': 'warning',
                     'url': '/admin/collection_database/meteorites',
                 },
@@ -87,7 +87,7 @@ def render_admin_statistics(
                 'paleozoology': {
                     'name': 'Палеозоологија',
                     'count': paleozoology_count,
-                    'icon': 'bi-bones',
+                    'icon': 'museum-icon-dinosaur',
                     'color': 'secondary',
                     'url': '/admin/collection_database/paleozoology',
                 },

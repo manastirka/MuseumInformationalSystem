@@ -12,6 +12,8 @@ from typing import Dict, Optional, List
 import ssl
 import time
 
+from runtime_lock_utils import load_json_file, update_json_file
+
 # SSL context
 ssl_context = ssl.create_default_context()
 ssl_context.check_hostname = False
@@ -22,26 +24,35 @@ CACHE_FILE = os.path.join(os.path.dirname(__file__), 'data', 'locality_geocache.
 
 # Geocoding cache (in memory)
 _geocache = {}
+_geocache_loaded = False
 
 
 def _load_geocache():
     """Load geocache from file."""
-    global _geocache
+    global _geocache_loaded
     if os.path.exists(CACHE_FILE):
         try:
-            with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-                _geocache = json.load(f)
-        except:
-            _geocache = {}
+            loaded = load_json_file(CACHE_FILE, default={})
+        except (OSError, ValueError):
+            loaded = {}
+        _geocache.clear()
+        _geocache.update(loaded)
+    _geocache_loaded = True
     return _geocache
+
+
+def _merge_geocache(current):
+    """Merge on-disk entries with in-memory cache (in-memory wins on conflict)."""
+    merged = {**(current or {}), **_geocache}
+    _geocache.clear()
+    _geocache.update(merged)
+    return merged
 
 
 def _save_geocache():
     """Save geocache to file."""
-    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
     try:
-        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(_geocache, f, ensure_ascii=False, indent=2)
+        update_json_file(CACHE_FILE, _merge_geocache, default={})
     except Exception as e:
         print(f"Error saving geocache: {e}")
 
@@ -67,7 +78,7 @@ def geocode_locality(locality_name: str) -> Optional[Dict]:
     """
     global _geocache
 
-    if not _geocache:
+    if not _geocache_loaded:
         _load_geocache()
 
     # Check cache first
@@ -400,7 +411,7 @@ def get_locality_data_local_only(locality_name: str) -> Optional[Dict]:
         return None
 
     # Load cache
-    if not _geocache:
+    if not _geocache_loaded:
         _load_geocache()
 
     # Try local database

@@ -299,8 +299,10 @@ class LoginAttemptTracker:
         # Check attempt count
         attempt_count = self.redis_client.llen(attempts_key)
         if attempt_count >= max_attempts:
-            # Lock out the account
+            # Lock out the account and clear the counter so the lockout does
+            # not re-trigger from the stale attempts list once it expires.
             self.redis_client.setex(lockout_key, lockout_duration, "locked")
+            self.redis_client.delete(attempts_key)
             return True, lockout_duration
 
         return False, None
@@ -405,6 +407,71 @@ def admin_required(f):
     return decorated_function
 
 
+def admin_or_department_head_required(f):
+    """Allow admins, directors, or non-admins with `is_department_head=True`.
+
+    Use on timesheet admin routes that a department head is permitted to reach
+    in order to view or verify reports for their own department. The per-report
+    department scoping happens inside the view itself. Directors see all
+    departments (same scope as admins).
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from flask import request, jsonify
+
+        is_api_request = request.path.startswith('/api/')
+
+        if 'user_id' not in session:
+            if is_api_request:
+                return jsonify({'success': False, 'message': 'Морате бити пријављени'}), 401
+            flash('Морате бити пријављени да бисте приступили овој страници.', 'warning')
+            return redirect(url_for('login'))
+
+        if session.get('user_role') in ('admin', 'direktor'):
+            return f(*args, **kwargs)
+
+        if session.get('is_department_head'):
+            return f(*args, **kwargs)
+
+        if is_api_request:
+            return jsonify({'success': False, 'message': 'Немате дозволу за приступ'}), 403
+        flash('Немате дозволу за приступ овој страници.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    return decorated_function
+
+
+def admin_or_director_required(f):
+    """Allow admins or the museum director.
+
+    Use on business/oversight admin routes (statistics, org-wide views) that
+    the director legitimately needs, but that are not purely technical. Kept
+    separate from admin-only routes (password manager, SMTP, system settings,
+    DB ops) which remain `admin_required`.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from flask import request, jsonify
+
+        is_api_request = request.path.startswith('/api/')
+
+        if 'user_id' not in session:
+            if is_api_request:
+                return jsonify({'success': False, 'message': 'Морате бити пријављени'}), 401
+            flash('Морате бити пријављени да бисте приступили овој страници.', 'warning')
+            return redirect(url_for('login'))
+
+        if session.get('user_role') in ('admin', 'direktor'):
+            return f(*args, **kwargs)
+
+        if is_api_request:
+            return jsonify({'success': False, 'message': 'Немате дозволу за приступ'}), 403
+        flash('Немате дозволу за приступ овој страници.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    return decorated_function
+
+
 def module_access_required(module_key):
     """Decorator to require module access for a route.
 
@@ -453,11 +520,18 @@ def module_access_required(module_key):
 
 
 def csrf_exempt(f):
-    """Decorator to exempt a route from CSRF protection."""
+    """Mark a view as CSRF-exempt for introspection only.
+
+    NOTE: Flask-WTF's CSRFProtect does NOT honor the ``csrf_exempt`` attribute
+    set here; this decorator alone does not exempt a route. Real exemption is
+    applied at app init by ``app_blueprint_support.apply_csrf_exemptions``,
+    which calls ``csrf.exempt(view)`` for every endpoint listed in
+    ``CSRF_EXEMPT_ENDPOINTS``. To exempt a route, add its endpoint name there.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         return f(*args, **kwargs)
-    # Mark function as CSRF exempt
+    # Mark function as CSRF exempt (introspection flag; see note above)
     decorated_function.csrf_exempt = True
     return decorated_function
 

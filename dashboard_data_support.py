@@ -3,11 +3,17 @@
 import logging
 import os
 import re
+import threading
+import tempfile
 import time
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -15,23 +21,59 @@ DEFAULT_WEATHER_CONDITION = os.environ.get('WEATHER_FALLBACK_CONDITION', 'none')
 FORCED_WEATHER_CONDITION = os.environ.get('WEATHER_FORCE_CONDITION', '').strip().lower()
 
 RHMZ_WARNING_URL = 'https://www.hidmet.gov.rs/ciril/upozorenja/index.php'
+RHMZ_FORECAST_URL = 'https://www.hidmet.gov.rs/latin/prognoza/stanica.php?mp_id=13274'
+RHMZ_OBSERVED_URL = 'https://www.hidmet.gov.rs/latin/osmotreni/index.php'
 
 _weather_cache = {
     'data': None,
     'timestamp': None,
+    'cache_date': None,
 }
+_weather_cache_lock = threading.Lock()
 _weather_forecast_cache = {
     'data': None,
     'timestamp': None,
+    'cache_date': None,
 }
+_weather_forecast_cache_lock = threading.Lock()
+_weather_daily_bundle_cache = {
+    'data': None,
+    'timestamp': None,
+    'cache_date': None,
+}
+_weather_daily_bundle_lock = threading.Lock()
 _rhmz_warning_cache = {
     'data': None,
     'timestamp': None,
 }
+_rhmz_warning_cache_lock = threading.Lock()
 _website_news_cache = {
     'data': None,
     'timestamp': None,
 }
+_website_news_cache_lock = threading.Lock()
+_website_news_refresh_lock = threading.Lock()
+_WEBSITE_NEWS_CACHE_TTL_SECONDS = int(os.environ.get('WEBSITE_NEWS_CACHE_TTL_SECONDS', '300'))
+_WEBSITE_NEWS_CONNECT_TIMEOUT_SECONDS = float(os.environ.get('WEBSITE_NEWS_CONNECT_TIMEOUT_SECONDS', '2'))
+_WEBSITE_NEWS_READ_TIMEOUT_SECONDS = float(os.environ.get('WEBSITE_NEWS_READ_TIMEOUT_SECONDS', '3'))
+
+
+def _default_weather_cache_path():
+    """Return a runtime-writable weather cache path outside the repository tree."""
+    configured_path = os.environ.get('WEATHER_FORECAST_CACHE_PATH', '').strip()
+    if configured_path:
+        return Path(configured_path)
+
+    runtime_root = Path(
+        os.environ.get(
+            'MUSEUM_RUNTIME_CACHE_DIR',
+            os.path.join(tempfile.gettempdir(), 'museum_info_system_runtime'),
+        )
+    )
+    return runtime_root / 'weather_forecast_daily_cache.json'
+
+
+_WEATHER_FORECAST_CACHE_PATH = _default_weather_cache_path()
 
 _WMO_DESCRIPTIONS = {
     0: 'Ведро', 1: 'Претежно ведро', 2: 'Делимично облачно', 3: 'Облачно',
@@ -50,6 +92,29 @@ _SR_WEEKDAYS_SHORT = ['Пон', 'Уто', 'Сре', 'Чет', 'Пет', 'Суб'
 _SR_WEEKDAYS_FULL = ['Понедељак', 'Уторак', 'Среда', 'Четвртак', 'Петак', 'Субота', 'Недеља']
 _RHMZ_SECTION_META = [
     {'key': 'meteorological', 'title': 'Метеоролошка упозорења'},
+]
+_RHMZ_HEADERS = {
+    'User-Agent': (
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    ),
+    'Accept-Language': 'sr,en;q=0.8',
+}
+_RHMZ_FORECAST_RULES = [
+    (('vedro', 'suncan', 'sunčan', 'ведро', 'сунчан'), 'clear', 'Ведро'),
+    (('nepogod', 'grmljav', 'olu', 'непогод', 'грмљав', 'олу'), 'thunderstorm', 'Грмљавина'),
+    (('slab sneg', 'sneg', 'susnez', 'vejav', 'снег', 'суснеж', 'вејав'), 'snow', 'Снег'),
+    (
+        ('kisa koja se ledi', 'ledena kisa', 'slaba kisa', 'kisa', 'pljus', 'rosulj', 'киша', 'пљус', 'росуљ'),
+        'rain',
+        'Киша',
+    ),
+    (('magla', 'магла'), 'fog', 'Магла'),
+    (
+        ('oblac', 'obla', 'delimicno', 'delimično', 'promenljivo', 'pretežno', 'pretezn', 'umereno', 'jak vetar', 'облач', 'делимично', 'променљиво', 'претежно', 'умерено', 'јак ветар'),
+        'cloudy',
+        'Облачно',
+    ),
 ]
 
 
@@ -91,6 +156,148 @@ def _weather_snapshot_from_wmo(code, temperature=None, windspeed=None):
     }
 
 
+def _weather_fallback_snapshot():
+    """Return the configured fallback weather payload."""
+    return {
+        'condition': DEFAULT_WEATHER_CONDITION,
+        'temperature': None,
+        'windspeed': None,
+        'description': '',
+    }
+
+
+def _parse_float(value):
+    """Convert a dashboard numeric string to float when possible."""
+    normalized = _normalize_space(value).replace(',', '.')
+    if not normalized or normalized == '-':
+        return None
+
+    match = re.search(r'-?\d+(?:\.\d+)?', normalized)
+    if not match:
+        return None
+
+    try:
+        return float(match.group(0))
+    except ValueError:
+        return None
+
+
+def _format_display_number(value):
+    """Return an int when the float is whole, otherwise keep one decimal."""
+    if value is None:
+        return None
+    rounded = round(float(value), 1)
+    if float(rounded).is_integer():
+        return int(rounded)
+    return rounded
+
+
+def _rhmz_description_to_snapshot(description, *, temperature=None, windspeed=None):
+    """Map RHMZ textual descriptions to dashboard weather conditions."""
+    normalized = _normalize_space(description).lower()
+    if not normalized or normalized == '-':
+        return _weather_fallback_snapshot() | {
+            'temperature': temperature,
+            'windspeed': windspeed,
+            'description': '',
+        }
+
+    for keywords, condition, label in _RHMZ_FORECAST_RULES:
+        if any(keyword in normalized for keyword in keywords):
+            return {
+                'condition': condition,
+                'temperature': temperature,
+                'windspeed': windspeed,
+                'description': label,
+            }
+
+    return {
+        'condition': DEFAULT_WEATHER_CONDITION,
+        'temperature': temperature,
+        'windspeed': windspeed,
+        'description': description,
+    }
+
+
+def _rhmz_icon_to_description(img):
+    """Infer a forecast description from an RHMZ icon tag."""
+    candidates = [
+        img.get('title'),
+        img.get('alt'),
+        Path(urlparse(img.get('src') or '').path).stem,
+    ]
+    normalized = _normalize_space(' '.join(filter(None, candidates))).lower()
+    normalized = normalized.replace('_', ' ').replace('-', ' ')
+
+    if not normalized or normalized == 'pojava':
+        return ''
+
+    if 'pretezno vedro' in normalized or 'pretežno vedro' in normalized:
+        return 'Претежно ведро'
+    if 'pretezno suncano' in normalized or 'pretežno sunčano' in normalized:
+        return 'Претежно сунчано'
+    if 'vedro' in normalized:
+        return 'Ведро'
+    if 'suncano' in normalized or 'sunčano' in normalized:
+        return 'Сунчано'
+    if 'malo i umereno oblacno' in normalized or 'malo i umereno oblačno' in normalized:
+        return 'Мало и умерено облачно'
+    if 'promenljivo oblacno' in normalized or 'promenljivo oblačno' in normalized:
+        return 'Променљиво облачно'
+    if 'delimicno oblacno' in normalized or 'delimično oblačno' in normalized:
+        return 'Делимично облачно'
+    if 'oblacno' in normalized or 'oblačno' in normalized:
+        return 'Облачно'
+    if 'slaba kisa' in normalized or 'slaba kiša' in normalized:
+        return 'Слаба киша'
+    if 'kisa koja se ledi' in normalized or 'kiša koja se ledi' in normalized:
+        return 'Киша која се леди'
+    if 'poslepodnevni pljuskovi' in normalized:
+        return 'Послеподневни пљускови'
+    if 'moguci kratkotrajni pljuskovi' in normalized or 'mogući kratkotrajni pljuskovi' in normalized:
+        return 'Могући краткотрајни пљускови'
+    if 'moguci pljuskovi' in normalized or 'mogući pljuskovi' in normalized:
+        return 'Могући пљускови'
+    if 'pljusak i grmljavina' in normalized:
+        return 'Пљусак и грмљавина'
+    if 'pljusak' in normalized:
+        return 'Пљусак'
+    if 'kisa' in normalized or 'kiša' in normalized:
+        return 'Киша'
+    if 'susnezica' in normalized or 'susnežica' in normalized:
+        return 'Суснежица'
+    if 'slab sneg' in normalized:
+        return 'Слаб снег'
+    if 'sneg' in normalized:
+        return 'Снег'
+    if 'magla' in normalized:
+        return 'Магла'
+    if 'jak vetar' in normalized:
+        return 'Јак ветар'
+    if 'nepogode' in normalized:
+        return 'Непогоде'
+
+    return ''
+
+
+def _extract_current_weather_payload(data):
+    """Normalize current weather payloads from legacy and current Open-Meteo formats."""
+    current = data.get('current') or {}
+    if current:
+        return {
+            'code': current.get('weather_code', current.get('weathercode', -1)),
+            'temperature': current.get('temperature_2m', current.get('temperature')),
+            'windspeed': current.get('wind_speed_10m', current.get('windspeed')),
+        }
+
+    current_weather = data.get('current_weather') or {}
+    return {
+        'code': current_weather.get('weathercode', current_weather.get('weather_code', -1)),
+        'temperature': current_weather.get('temperature', current_weather.get('temperature_2m')),
+        'windspeed': current_weather.get('windspeed', current_weather.get('wind_speed_10m')),
+    }
+
+
 def _format_weather_day_label(date_value):
     """Return Serbian display labels for one ISO date string."""
     try:
@@ -126,8 +333,196 @@ def _warning_has_content(message):
     return not any(marker in normalized for marker in no_warning_markers)
 
 
-def get_current_weather():
-    """Fetch current weather for Belgrade from Open-Meteo."""
+def _get_cached_weather_snapshot():
+    """Return the current-weather snapshot for the active day when available."""
+    with _weather_cache_lock:
+        cached_data = _weather_cache['data']
+        cached_date = _weather_cache.get('cache_date')
+
+    if not cached_data or cached_date != datetime.now().strftime('%Y-%m-%d'):
+        return None, False
+
+    return cached_data, True
+
+
+def _today_weather_cache_key():
+    """Return the daily cache key for the current local date."""
+    return datetime.now().strftime('%Y-%m-%d')
+
+
+def _extract_numeric_series(cells):
+    """Extract a row of numeric values from a mixed RHMZ table row."""
+    values = []
+    for cell in cells[1:]:
+        parsed = _parse_float(cell)
+        if parsed is not None:
+            values.append(_format_display_number(parsed))
+    if values:
+        return values
+
+    row_text = ' '.join(cells)
+    for match in re.findall(r'-?\d+(?:[.,]\d+)?', row_text):
+        parsed = _parse_float(match)
+        if parsed is not None:
+            values.append(_format_display_number(parsed))
+    return values
+
+
+def _extract_forecast_dates_and_days(soup):
+    """Collect forecast dates from the RHMZ 5-day page."""
+    text = soup.get_text(' ', strip=True)
+    dates = re.findall(r'\d{2}\.\d{2}\.\d{4}\.', text)
+    unique_dates = []
+    for date_value in dates:
+        if date_value not in unique_dates:
+            unique_dates.append(date_value)
+        if len(unique_dates) == 5:
+            break
+    return unique_dates
+
+
+def _parse_rhmz_forecast_page(html):
+    """Parse the official RHMZ 5-day forecast page for Belgrade."""
+    soup = BeautifulSoup(html, 'lxml')
+    rows = []
+    for row in soup.find_all('tr'):
+        cells = [_normalize_space(cell.get_text(' ', strip=True)) for cell in row.find_all(['td', 'th'])]
+        if cells:
+            rows.append((cells, row))
+
+    if not rows:
+        raise ValueError('RHMZ forecast table not found')
+
+    updated_match = re.search(r'Prognoza ažurirana:\s*([0-9.: ]+)', soup.get_text(' ', strip=True))
+    updated_at = _normalize_space(updated_match.group(1)) if updated_match else datetime.now().strftime('%d.%m.%Y. %H:%M')
+    date_tokens = _extract_forecast_dates_and_days(soup)
+
+    max_values = []
+    min_values = []
+    condition_descriptions = []
+
+    for cells, row in rows:
+        row_label = cells[0].lower()
+        if 'maks. temperatura' in row_label:
+            max_values = _extract_numeric_series(cells)
+        elif 'min. temperatura' in row_label:
+            min_values = _extract_numeric_series(cells)
+        elif 'pojava' in row_label:
+            for img in row.find_all('img'):
+                label = _rhmz_icon_to_description(img)
+                if label:
+                    condition_descriptions.append(label)
+
+    if not date_tokens or not max_values or not min_values:
+        raise ValueError('RHMZ forecast values are incomplete')
+
+    forecast_days = []
+    limit = min(len(date_tokens), len(max_values), len(min_values), 5)
+    for idx in range(limit):
+        iso_date = datetime.strptime(date_tokens[idx], '%d.%m.%Y.').strftime('%Y-%m-%d')
+        description = condition_descriptions[idx] if idx < len(condition_descriptions) else ''
+        snapshot = _rhmz_description_to_snapshot(description)
+        labels = _format_weather_day_label(iso_date)
+        forecast_days.append(
+            {
+                **labels,
+                'condition': snapshot['condition'],
+                'description': snapshot['description'] or description or 'Без детаљног описа',
+                'temp_max': max_values[idx],
+                'temp_min': min_values[idx],
+                'precipitation_probability': None,
+                'windspeed': None,
+            }
+        )
+
+    return {
+        'updated_at': updated_at,
+        'days': forecast_days,
+    }
+
+
+def _find_station_cells(rows, station_name):
+    """Return the first parsed table row that matches a station name."""
+    target = station_name.lower()
+    for cells in rows:
+        if cells and _normalize_space(cells[0]).lower() == target:
+            return cells
+    return None
+
+
+def _parse_rhmz_observed_page(html):
+    """Parse official RHMZ observed weather rows for Belgrade and Kosutnjak."""
+    soup = BeautifulSoup(html, 'lxml')
+    rows = []
+    for row in soup.find_all('tr'):
+        cells = [_normalize_space(cell.get_text(' ', strip=True)) for cell in row.find_all(['td', 'th'])]
+        if cells:
+            rows.append(cells)
+
+    if not rows:
+        raise ValueError('RHMZ observed table not found')
+
+    text = soup.get_text(' ', strip=True)
+    updated_match = re.search(r'Podaci ažurirani:\s*([0-9.: ]+)', text)
+    updated_at = _normalize_space(updated_match.group(1)) if updated_match else datetime.now().strftime('%d.%m.%Y. %H:%M')
+
+    beograd = _find_station_cells(rows, 'Beograd')
+    kosutnjak = _find_station_cells(rows, 'Košutnjak') or _find_station_cells(rows, 'Kosutnjak')
+
+    if not beograd and not kosutnjak:
+        raise ValueError('RHMZ Belgrade stations not found')
+
+    beograd_temp = _parse_float(beograd[1]) if beograd and len(beograd) > 1 else None
+    beograd_wind = _parse_float(beograd[4]) if beograd and len(beograd) > 4 else None
+    beograd_description = beograd[-1] if beograd else ''
+
+    kosutnjak_temp = _parse_float(kosutnjak[2]) if kosutnjak and len(kosutnjak) > 2 else None
+    kosutnjak_wind = _parse_float(kosutnjak[6]) if kosutnjak and len(kosutnjak) > 6 else None
+
+    current_temperature = beograd_temp if beograd_temp is not None else kosutnjak_temp
+    # RHMZ observed tables publish wind in m/s; convert to km/h for the existing UI.
+    wind_mps = beograd_wind if beograd_wind is not None else kosutnjak_wind
+    current_wind = _format_display_number(wind_mps * 3.6) if wind_mps is not None else None
+
+    return {
+        'updated_at': updated_at,
+        'temperature': _format_display_number(current_temperature),
+        'windspeed': current_wind,
+        'description': '' if beograd_description == '-' else beograd_description,
+    }
+
+
+def _build_forecast_days_from_payload(daily, *, limit=7):
+    """Normalize Open-Meteo daily arrays into dashboard forecast entries."""
+    date_values = daily.get('time') or []
+    weather_codes = daily.get('weather_code') or daily.get('weathercode') or []
+    temp_max_values = daily.get('temperature_2m_max') or []
+    temp_min_values = daily.get('temperature_2m_min') or []
+    precipitation_values = daily.get('precipitation_probability_max') or []
+    wind_values = daily.get('wind_speed_10m_max') or daily.get('windspeed_10m_max') or []
+
+    forecast_days = []
+    for idx, date_value in enumerate(date_values[:limit]):
+        code = weather_codes[idx] if idx < len(weather_codes) else None
+        weather = _weather_snapshot_from_wmo(code)
+        labels = _format_weather_day_label(date_value)
+        forecast_days.append(
+            {
+                **labels,
+                'condition': weather['condition'],
+                'description': weather['description'],
+                'temp_max': temp_max_values[idx] if idx < len(temp_max_values) else None,
+                'temp_min': temp_min_values[idx] if idx < len(temp_min_values) else None,
+                'precipitation_probability': precipitation_values[idx] if idx < len(precipitation_values) else None,
+                'windspeed': wind_values[idx] if idx < len(wind_values) else None,
+            }
+        )
+
+    return forecast_days
+
+
+def _forced_weather_snapshot():
+    """Return the configured forced current-weather payload when enabled."""
     if FORCED_WEATHER_CONDITION and FORCED_WEATHER_CONDITION != 'auto':
         return {
             'condition': FORCED_WEATHER_CONDITION,
@@ -135,127 +530,193 @@ def get_current_weather():
             'windspeed': None,
             'description': FORCED_WEATHER_CONDITION.capitalize(),
         }
+    return None
 
-    if _weather_cache['data'] and _weather_cache['timestamp']:
-        if time.time() - _weather_cache['timestamp'] < 1800:
-            return _weather_cache['data']
+
+def _cache_weather_bundle(bundle, *, cache_date):
+    """Mirror the shared daily weather bundle into memory caches."""
+    now_ts = time.time()
+    current_snapshot = bundle.get('current') or _weather_fallback_snapshot()
+    forecast_snapshot = {
+        'location': bundle.get('location', 'Београд'),
+        'days': bundle.get('days', []),
+        'updated_at': bundle.get('updated_at'),
+        'source': bundle.get('source', 'RHMZ Србије'),
+    }
+
+    with _weather_daily_bundle_lock:
+        _weather_daily_bundle_cache['data'] = bundle
+        _weather_daily_bundle_cache['timestamp'] = now_ts
+        _weather_daily_bundle_cache['cache_date'] = cache_date
+
+    with _weather_cache_lock:
+        _weather_cache['data'] = current_snapshot
+        _weather_cache['timestamp'] = now_ts
+        _weather_cache['cache_date'] = cache_date
+
+    with _weather_forecast_cache_lock:
+        _weather_forecast_cache['data'] = forecast_snapshot
+        _weather_forecast_cache['timestamp'] = now_ts
+        _weather_forecast_cache['cache_date'] = cache_date
+
+
+def _read_weather_bundle_from_disk(cache_date=None, *, allow_stale=False):
+    """Load the persisted daily weather bundle from disk when it is usable."""
+    try:
+        payload = load_json_file(_WEATHER_FORECAST_CACHE_PATH, default={}) or {}
+    except (OSError, ValueError) as exc:
+        logger.warning("Weather disk cache read failed: %s", exc)
+        return None, False
+
+    bundle = payload.get('data')
+    bundle_date = payload.get('cache_date')
+    if not bundle or not bundle_date:
+        return None, False
+    if not allow_stale and cache_date and bundle_date != cache_date:
+        return None, False
+    _cache_weather_bundle(bundle, cache_date=bundle_date)
+    return bundle, bundle_date != cache_date
+
+
+def _fetch_daily_weather_bundle(cache_date):
+    """Fetch current weather and forecast from official RHMZ sources."""
+    forced_current = _forced_weather_snapshot()
 
     try:
-        response = requests.get(
-            'https://api.open-meteo.com/v1/forecast',
-            params={
-                'latitude': 44.8178,
-                'longitude': 20.4568,
-                'current_weather': 'true',
-            },
-            timeout=5,
-        )
-        response.raise_for_status()
-        data = response.json()
-        current_weather = data.get('current_weather', {})
-        code = current_weather.get('weathercode', -1)
-        temperature = current_weather.get('temperature')
-        windspeed = current_weather.get('windspeed')
+        forecast_response = requests.get(RHMZ_FORECAST_URL, headers=_RHMZ_HEADERS, timeout=10)
+        forecast_response.raise_for_status()
+        forecast_payload = _parse_rhmz_forecast_page(forecast_response.text)
 
-        result = _weather_snapshot_from_wmo(code, temperature=temperature, windspeed=windspeed)
-        _weather_cache['data'] = result
-        _weather_cache['timestamp'] = time.time()
-        return result
-    except Exception as exc:
-        logger.warning("Weather fetch failed, using fallback '%s': %s", DEFAULT_WEATHER_CONDITION, exc)
-        fallback = {
-            'condition': DEFAULT_WEATHER_CONDITION,
-            'temperature': None,
-            'windspeed': None,
-            'description': '',
+        observed_response = requests.get(RHMZ_OBSERVED_URL, headers=_RHMZ_HEADERS, timeout=10)
+        observed_response.raise_for_status()
+        observed_payload = _parse_rhmz_observed_page(observed_response.text)
+
+        observed_description = observed_payload.get('description')
+        fallback_description = (
+            forecast_payload['days'][0]['description']
+            if forecast_payload.get('days')
+            else ''
+        )
+        current_snapshot = forced_current or _rhmz_description_to_snapshot(
+            observed_description or fallback_description,
+            temperature=observed_payload.get('temperature'),
+            windspeed=observed_payload.get('windspeed'),
+        )
+        bundle = {
+            'location': 'Београд',
+            'current': current_snapshot,
+            'days': forecast_payload.get('days', []),
+            'updated_at': forecast_payload.get('updated_at') or observed_payload.get('updated_at') or datetime.now().strftime('%d.%m.%Y. %H:%M'),
+            'source': 'RHMZ Србије',
         }
-        _weather_cache['data'] = fallback
-        _weather_cache['timestamp'] = time.time()
-        return fallback
+        _cache_weather_bundle(bundle, cache_date=cache_date)
+        try:
+            write_json_file(
+                _WEATHER_FORECAST_CACHE_PATH,
+                {
+                    'cache_date': cache_date,
+                    'saved_at': datetime.now().isoformat(timespec='seconds'),
+                    'data': bundle,
+                },
+            )
+        except OSError as exc:
+            logger.warning("Weather disk cache write failed: %s", exc)
+        return bundle
+    except Exception as exc:
+        logger.warning("Daily weather fetch failed: %s", exc)
+        if forced_current:
+            return {
+                'location': 'Београд',
+                'current': forced_current,
+                'days': [],
+                'updated_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
+                'source': 'RHMZ Србије',
+            }
+        raise
+
+
+def _get_or_fetch_daily_weather_bundle():
+    """Return today's shared weather bundle, falling back to stale disk data on failure."""
+    today_key = _today_weather_cache_key()
+
+    with _weather_daily_bundle_lock:
+        cached_bundle = _weather_daily_bundle_cache.get('data')
+        cached_date = _weather_daily_bundle_cache.get('cache_date')
+        if cached_bundle and cached_date == today_key:
+            return cached_bundle, False
+
+    disk_bundle, disk_is_stale = _read_weather_bundle_from_disk(today_key, allow_stale=False)
+    if disk_bundle:
+        return disk_bundle, disk_is_stale
+
+    try:
+        return _fetch_daily_weather_bundle(today_key), False
+    except Exception:
+        stale_bundle, _ = _read_weather_bundle_from_disk(today_key, allow_stale=True)
+        if stale_bundle:
+            return stale_bundle, True
+        return None, True
+
+
+def get_current_weather():
+    """Return current weather from the shared daily weather bundle."""
+    cached_data, is_fresh = _get_cached_weather_snapshot()
+    if cached_data and is_fresh:
+        return cached_data
+
+    bundle, _ = _get_or_fetch_daily_weather_bundle()
+    if bundle and bundle.get('current'):
+        return bundle['current']
+
+    forced_current = _forced_weather_snapshot()
+    return forced_current or _weather_fallback_snapshot()
+
+
+def get_current_weather_quick():
+    """Return the currently cached snapshot without triggering new weather traffic."""
+    cached_data, is_fresh = _get_cached_weather_snapshot()
+    if cached_data and is_fresh:
+        return cached_data
+
+    bundle, _ = _read_weather_bundle_from_disk(_today_weather_cache_key(), allow_stale=False)
+    if bundle and bundle.get('current'):
+        return bundle['current']
+
+    forced_current = _forced_weather_snapshot()
+    return forced_current or cached_data or _weather_fallback_snapshot()
 
 
 def get_weather_forecast(days=7):
-    """Fetch daily weather forecast for Belgrade."""
+    """Return the shared RHMZ forecast from the daily weather bundle."""
     days = max(1, min(days, 7))
-    cached_data = _weather_forecast_cache.get('data')
-    if cached_data and _weather_forecast_cache.get('timestamp'):
-        if time.time() - _weather_forecast_cache['timestamp'] < 10800:
-            return {
-                **cached_data,
-                'days': cached_data.get('days', [])[:days],
-            }
-
-    try:
-        response = requests.get(
-            'https://api.open-meteo.com/v1/forecast',
-            params={
-                'latitude': 44.8178,
-                'longitude': 20.4568,
-                'daily': 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max',
-                'forecast_days': days,
-                'timezone': 'Europe/Belgrade',
-            },
-            timeout=6,
-        )
-        response.raise_for_status()
-        data = response.json()
-        daily = data.get('daily', {})
-
-        date_values = daily.get('time') or []
-        weather_codes = daily.get('weather_code') or daily.get('weathercode') or []
-        temp_max_values = daily.get('temperature_2m_max') or []
-        temp_min_values = daily.get('temperature_2m_min') or []
-        precipitation_values = daily.get('precipitation_probability_max') or []
-        wind_values = daily.get('wind_speed_10m_max') or daily.get('windspeed_10m_max') or []
-
-        forecast_days = []
-        for idx, date_value in enumerate(date_values[:days]):
-            code = weather_codes[idx] if idx < len(weather_codes) else None
-            weather = _weather_snapshot_from_wmo(code)
-            labels = _format_weather_day_label(date_value)
-            forecast_days.append(
-                {
-                    **labels,
-                    'condition': weather['condition'],
-                    'description': weather['description'],
-                    'temp_max': temp_max_values[idx] if idx < len(temp_max_values) else None,
-                    'temp_min': temp_min_values[idx] if idx < len(temp_min_values) else None,
-                    'precipitation_probability': precipitation_values[idx] if idx < len(precipitation_values) else None,
-                    'windspeed': wind_values[idx] if idx < len(wind_values) else None,
-                }
-            )
-
+    bundle, is_stale = _get_or_fetch_daily_weather_bundle()
+    if bundle:
         result = {
-            'location': 'Београд',
-            'days': forecast_days,
-            'updated_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
-            'source': 'Open-Meteo',
+            'location': bundle.get('location', 'Београд'),
+            'days': bundle.get('days', [])[:days],
+            'updated_at': bundle.get('updated_at'),
+            'source': bundle.get('source', 'RHMZ Србије'),
         }
-        _weather_forecast_cache['data'] = result
-        _weather_forecast_cache['timestamp'] = time.time()
+        if is_stale:
+            result['stale'] = True
         return result
-    except Exception as exc:
-        logger.warning("Weather forecast fetch failed: %s", exc)
-        if cached_data:
-            return {
-                **cached_data,
-                'days': cached_data.get('days', [])[:days],
-                'stale': True,
-            }
-        return {
-            'location': 'Београд',
-            'days': [],
-            'updated_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
-            'source': 'Open-Meteo',
-            'error': 'Прогноза тренутно није доступна.',
-        }
+
+    return {
+        'location': 'Београд',
+        'days': [],
+        'updated_at': datetime.now().strftime('%d.%m.%Y. %H:%M'),
+        'source': 'RHMZ Србије',
+        'error': 'Прогноза тренутно није доступна.',
+    }
 
 
 def get_rhmz_weather_warnings():
     """Fetch and parse the primary official RHMZ meteorological warning."""
-    cached_data = _rhmz_warning_cache.get('data')
-    if cached_data and _rhmz_warning_cache.get('timestamp'):
-        if time.time() - _rhmz_warning_cache['timestamp'] < 86400:
+    with _rhmz_warning_cache_lock:
+        cached_data = _rhmz_warning_cache.get('data')
+        cached_timestamp = _rhmz_warning_cache.get('timestamp')
+    if cached_data and cached_timestamp:
+        if time.time() - cached_timestamp < 86400:
             return cached_data
 
     try:
@@ -325,8 +786,9 @@ def get_rhmz_weather_warnings():
             'primary_section': primary_section,
             'sections': [primary_section],
         }
-        _rhmz_warning_cache['data'] = result
-        _rhmz_warning_cache['timestamp'] = time.time()
+        with _rhmz_warning_cache_lock:
+            _rhmz_warning_cache['data'] = result
+            _rhmz_warning_cache['timestamp'] = time.time()
         return result
     except Exception as exc:
         logger.warning("RHMZ warning fetch failed: %s", exc)
@@ -349,18 +811,46 @@ def get_rhmz_weather_warnings():
 
 def fetch_website_news(limit=6):
     """Fetch news items from the public museum website."""
-    if _website_news_cache['data'] and _website_news_cache['timestamp']:
-        if time.time() - _website_news_cache['timestamp'] < 300:
-            return _website_news_cache['data'][:limit]
+    def get_cached_snapshot(*, allow_stale):
+        with _website_news_cache_lock:
+            cached_data = list(_website_news_cache['data'] or [])
+            cached_timestamp = _website_news_cache['timestamp']
+
+        if not cached_data or not cached_timestamp:
+            return None
+
+        is_fresh = (time.time() - cached_timestamp) < _WEBSITE_NEWS_CACHE_TTL_SECONDS
+        if is_fresh or allow_stale:
+            return cached_data[:limit]
+        return None
+
+    fresh_cache = get_cached_snapshot(allow_stale=False)
+    if fresh_cache is not None:
+        return fresh_cache
+
+    stale_cache = get_cached_snapshot(allow_stale=True)
+    if not _website_news_refresh_lock.acquire(blocking=False):
+        if stale_cache is not None:
+            return stale_cache
+        logger.info("Website news refresh already in progress; returning empty fallback.")
+        return []
 
     try:
+        fresh_cache = get_cached_snapshot(allow_stale=False)
+        if fresh_cache is not None:
+            return fresh_cache
+
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'sr,en-US;q=0.7,en;q=0.3',
         }
 
-        response = requests.get('https://nhmbeo.rs/vesti/', headers=headers, timeout=10)
+        response = requests.get(
+            'https://nhmbeo.rs/vesti/',
+            headers=headers,
+            timeout=(_WEBSITE_NEWS_CONNECT_TIMEOUT_SECONDS, _WEBSITE_NEWS_READ_TIMEOUT_SECONDS),
+        )
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'lxml')
@@ -418,9 +908,14 @@ def fetch_website_news(limit=6):
                 logger.warning("Error parsing article: %s", exc)
                 continue
 
-        _website_news_cache['data'] = news_items
-        _website_news_cache['timestamp'] = time.time()
+        with _website_news_cache_lock:
+            _website_news_cache['data'] = news_items
+            _website_news_cache['timestamp'] = time.time()
         return news_items[:limit]
     except Exception as exc:
         logger.error("Error fetching website news: %s", exc)
+        if stale_cache is not None:
+            return stale_cache
         return []
+    finally:
+        _website_news_refresh_lock.release()

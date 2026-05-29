@@ -92,9 +92,17 @@ def _to_int(v: Any) -> int | None:
 def _iter_xlsx_rows(path: Path, sheet_name: str) -> Iterable[tuple]:
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[sheet_name]
+    width = 0
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0:
+            width = len(row)  # header defines the expected column count
             continue  # skip header
+        # read_only mode trims trailing empty cells; pad short rows back to
+        # the header width so fixed-position mappers don't raise IndexError
+        # and silently drop otherwise-valid records.
+        row = tuple(row)
+        if len(row) < width:
+            row = row + (None,) * (width - len(row))
         yield row
 
 
@@ -328,14 +336,44 @@ def run_job(cur, job: dict[str, Any]) -> tuple[int, int]:
             skipped += 1
             continue
         if len(batch) >= BATCH:
-            cur.executemany(stmt, batch)
-            inserted += len(batch)
+            ins, skp = _flush_batch(cur, stmt, batch, job['table'])
+            inserted += ins
+            skipped += skp
             batch.clear()
 
     if batch:
-        cur.executemany(stmt, batch)
-        inserted += len(batch)
+        ins, skp = _flush_batch(cur, stmt, batch, job['table'])
+        inserted += ins
+        skipped += skp
 
+    return inserted, skipped
+
+
+def _flush_batch(cur, stmt: str, batch: list[tuple], table: str) -> tuple[int, int]:
+    """Write a batch, isolating DB failures so one bad row cannot abort the run.
+
+    Tries a fast bulk executemany first; if the batch is rejected by the
+    database it is replayed row-by-row (each inside a SAVEPOINT) so good rows
+    still persist and only the offending rows are skipped.
+    """
+    if not batch:
+        return 0, 0
+    try:
+        with cur.connection.transaction():
+            cur.executemany(stmt, batch)
+        return len(batch), 0
+    except Exception as exc:
+        log.warning('  batch insert failed in %s, retrying row-by-row: %s', table, exc)
+
+    inserted = skipped = 0
+    for params in batch:
+        try:
+            with cur.connection.transaction():
+                cur.execute(stmt, params)
+            inserted += 1
+        except Exception as exc:
+            log.warning('  bad row skipped in %s: %s', table, exc)
+            skipped += 1
     return inserted, skipped
 
 

@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from urllib.parse import unquote
 
-from flask import flash, redirect, render_template, request, send_file, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,42 @@ QR_SPECIMEN_TITLE_FIELDS = {
     'paleobotany': 'scientific_name',
 }
 
+PUBLIC_SPECIMEN_MEDIA_TARGETS = {
+    ('meteorites', 'meteorite'),
+    ('botany', 'botany'),
+    ('paleozoology', 'paleozoology'),
+}
+
+
+def _is_public_specimen_media_target(database, entity_type):
+    """Allow anonymous media access only for explicitly public QR collections."""
+    normalized_database = str(database or '').strip().lower()
+    normalized_entity_type = str(entity_type or '').strip().lower()
+    return (normalized_database, normalized_entity_type) in PUBLIC_SPECIMEN_MEDIA_TARGETS
+
+
+def _authorize_specimen_media_request(database, entity_type):
+    """Require collection access unless the request targets a public QR collection."""
+    if _is_public_specimen_media_target(database, entity_type):
+        return None
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Морате бити пријављени'}), 401
+
+    access_checker = getattr(current_app, 'user_has_module_access', None)
+    module_key_getter = getattr(current_app, 'get_image_upload_module_key', None)
+    if access_checker is None or module_key_getter is None:
+        current_app.logger.error('Specimen media access helpers are not configured on the Flask app')
+        return jsonify({'success': False, 'message': 'Грешка у конфигурацији апликације'}), 500
+
+    user_email = session.get('user_email', '')
+    user_role = session.get('user_role', '')
+    module_key = module_key_getter(database)
+    if not module_key or not access_checker(user_email, user_role, module_key):
+        return jsonify({'success': False, 'message': 'Немате дозволу за приступ овој слици'}), 403
+
+    return None
+
 
 def _send_placeholder(*placeholder_candidates):
     for placeholder_path in placeholder_candidates:
@@ -73,6 +109,14 @@ def _send_placeholder(*placeholder_candidates):
 def _send_entity_image(get_image_storage, database, entity_type, entity_id, size):
     try:
         image_storage = get_image_storage()
+        primary_image_path_getter = getattr(image_storage, 'get_primary_entity_image_path', None)
+        if primary_image_path_getter:
+            image_path = primary_image_path_getter(database, entity_type, entity_id, size)
+            if image_path and image_path.exists():
+                suffix = image_path.suffix.lower()
+                mimetype = 'image/png' if suffix == '.png' else 'image/jpeg'
+                return send_file(image_path, mimetype=mimetype)
+
         images = image_storage.get_images_for_entity(database, entity_type, entity_id)
         if images:
             image_id = images[0]['image_id']
@@ -257,6 +301,10 @@ def render_qr_view_mineral_box(box_number, *, get_mineral_database):
 
 def get_specimen_image(database, entity_type, entity_id, *, get_image_storage):
     """Get specimen image or placeholder."""
+    auth_response = _authorize_specimen_media_request(database, entity_type)
+    if auth_response is not None:
+        return auth_response
+
     response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'medium')
     if response is not None:
         return response
@@ -265,6 +313,10 @@ def get_specimen_image(database, entity_type, entity_id, *, get_image_storage):
 
 def get_specimen_image_full(database, entity_type, entity_id, *, get_image_storage):
     """Get full-size specimen image."""
+    auth_response = _authorize_specimen_media_request(database, entity_type)
+    if auth_response is not None:
+        return auth_response
+
     response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'original')
     if response is not None:
         return response
@@ -273,6 +325,10 @@ def get_specimen_image_full(database, entity_type, entity_id, *, get_image_stora
 
 def get_specimen_thumbnail(database, entity_type, entity_id, *, get_image_storage):
     """Get specimen thumbnail or small placeholder."""
+    auth_response = _authorize_specimen_media_request(database, entity_type)
+    if auth_response is not None:
+        return auth_response
+
     response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'small')
     if response is not None:
         return response
@@ -290,6 +346,16 @@ def get_image_by_id(image_id, *, get_image_storage):
 
     try:
         image_storage = get_image_storage()
+        metadata = image_storage.get_image_metadata(image_id)
+        if not metadata:
+            return "No image available", 404
+
+        auth_response = _authorize_specimen_media_request(
+            metadata.get('database_name'), metadata.get('entity_type')
+        )
+        if auth_response is not None:
+            return auth_response
+
         image_path = image_storage.get_image_path(image_id, size)
         if image_path and image_path.exists():
             suffix = image_path.suffix.lower()
@@ -334,6 +400,14 @@ def render_qr_view_specimen(
                 if spec.get('catalog_number') == catalog_number:
                     specimen = spec
                     break
+
+        if specimen is None:
+            records_loader = getattr(current_app, 'get_qr_collection_records', None)
+            if records_loader is not None:
+                for spec in records_loader(collection_type) or []:
+                    if isinstance(spec, dict) and spec.get('catalog_number') == catalog_number:
+                        specimen = spec
+                        break
 
         if not specimen:
             return (
@@ -385,7 +459,7 @@ def render_qr_view_specimen(
             render_template(
                 'error.html',
                 error_title='Грешка',
-                error_message=f'Дошло је до грешке при приказу примерка: {str(exc)}',
+                error_message='Дошло је до грешке при приказу примерка.',
             ),
             500,
         )

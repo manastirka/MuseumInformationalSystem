@@ -161,10 +161,12 @@ class StartupLazyLoadingTests(unittest.TestCase):
         original_modules = museum_app.MODULE_ACCESS
         original_defaults = museum_app.MODULE_ACCESS_DEFAULTS
         original_mtime = museum_app._module_access_mtime
+        original_loaded_at = museum_app._module_access_loaded_at
         self.addCleanup(setattr, museum_app, 'MODULE_ACCESS_FILE', original_file)
         self.addCleanup(setattr, museum_app, 'MODULE_ACCESS', original_modules)
         self.addCleanup(setattr, museum_app, 'MODULE_ACCESS_DEFAULTS', original_defaults)
         self.addCleanup(setattr, museum_app, '_module_access_mtime', original_mtime)
+        self.addCleanup(setattr, museum_app, '_module_access_loaded_at', original_loaded_at)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, 'module_access.json')
@@ -177,10 +179,33 @@ class StartupLazyLoadingTests(unittest.TestCase):
             }
             museum_app.MODULE_ACCESS = {}
             museum_app._module_access_mtime = None
+            museum_app._module_access_loaded_at = None
 
             loaded = museum_app.load_module_access(force=True)
 
         self.assertEqual(loaded['example']['authorized_users'], ['user@example.com'])
+
+    def test_module_access_loader_uses_ttl_cache_when_shared_db_is_enabled(self):
+        original_modules = museum_app.MODULE_ACCESS
+        original_mtime = museum_app._module_access_mtime
+        original_loaded_at = museum_app._module_access_loaded_at
+        self.addCleanup(setattr, museum_app, 'MODULE_ACCESS', original_modules)
+        self.addCleanup(setattr, museum_app, '_module_access_mtime', original_mtime)
+        self.addCleanup(setattr, museum_app, '_module_access_loaded_at', original_loaded_at)
+
+        museum_app.MODULE_ACCESS = {'cached': {'name': 'Cached'}}
+        museum_app._module_access_mtime = None
+        museum_app._module_access_loaded_at = museum_app.time.time()
+
+        with patch.object(museum_app, 'shared_settings_db_enabled', return_value=True):
+            with patch.object(
+                museum_app.app_runtime_support,
+                'load_module_access_state',
+                side_effect=AssertionError('shared DB cache should prevent reload'),
+            ):
+                loaded = museum_app.load_module_access()
+
+        self.assertEqual(loaded, {'cached': {'name': 'Cached'}})
 
     def test_dashboard_preferences_loader_skips_reload_when_mtime_is_unchanged(self):
         original_prefs = museum_app.DASHBOARD_PREFERENCES
@@ -201,9 +226,11 @@ class StartupLazyLoadingTests(unittest.TestCase):
         original_file = museum_app.DASHBOARD_PREFS_FILE
         original_prefs = museum_app.DASHBOARD_PREFERENCES
         original_mtime = museum_app._dashboard_prefs_mtime
+        original_loaded_at = museum_app._dashboard_prefs_loaded_at
         self.addCleanup(setattr, museum_app, 'DASHBOARD_PREFS_FILE', original_file)
         self.addCleanup(setattr, museum_app, 'DASHBOARD_PREFERENCES', original_prefs)
         self.addCleanup(setattr, museum_app, '_dashboard_prefs_mtime', original_mtime)
+        self.addCleanup(setattr, museum_app, '_dashboard_prefs_loaded_at', original_loaded_at)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, 'dashboard_preferences.json')
@@ -213,10 +240,35 @@ class StartupLazyLoadingTests(unittest.TestCase):
             museum_app.DASHBOARD_PREFS_FILE = path
             museum_app.DASHBOARD_PREFERENCES = {}
             museum_app._dashboard_prefs_mtime = None
+            museum_app._dashboard_prefs_loaded_at = None
 
             loaded = museum_app.load_dashboard_preferences(force=True)
 
         self.assertEqual(loaded['user@example.com']['enabled_widgets'], ['news'])
+
+    def test_dashboard_preferences_loader_refreshes_when_shared_db_is_enabled(self):
+        original_prefs = museum_app.DASHBOARD_PREFERENCES
+        original_mtime = museum_app._dashboard_prefs_mtime
+        original_loaded_at = museum_app._dashboard_prefs_loaded_at
+        self.addCleanup(setattr, museum_app, 'DASHBOARD_PREFERENCES', original_prefs)
+        self.addCleanup(setattr, museum_app, '_dashboard_prefs_mtime', original_mtime)
+        self.addCleanup(setattr, museum_app, '_dashboard_prefs_loaded_at', original_loaded_at)
+
+        museum_app.DASHBOARD_PREFERENCES = {'cached@example.com': {'enabled_widgets': ['news']}}
+        museum_app._dashboard_prefs_mtime = None
+        museum_app._dashboard_prefs_loaded_at = museum_app.time.time()
+        refreshed = {'cached@example.com': {'enabled_widgets': ['museum_databases']}}
+
+        with patch.object(museum_app, 'shared_settings_db_enabled', return_value=True):
+            with patch.object(
+                museum_app.app_runtime_support,
+                'load_dashboard_preferences_state',
+                return_value=(refreshed, None),
+            ) as load_mock:
+                loaded = museum_app.load_dashboard_preferences()
+
+        load_mock.assert_called_once()
+        self.assertEqual(loaded['cached@example.com']['enabled_widgets'], ['museum_databases'])
 
     def test_get_user_modules_uses_freshly_loaded_preferences_on_first_call(self):
         stale_prefs = {'admin': {'enabled_widgets': ['museum_databases']}}

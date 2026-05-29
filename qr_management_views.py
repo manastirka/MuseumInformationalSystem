@@ -164,11 +164,11 @@ def handle_admin_qr_labels_with_fields(
             'show_image': show_image,
         }
 
-        return redirect(url_for('admin_qr_label_format', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_label_format', collection_type=collection_type))
     except Exception as exc:
         logger.error("Error generating QR codes with fields: %s", exc)
         flash('Грешка при генерисању QR кодова.', 'error')
-        return redirect(url_for('admin_qr_field_selection', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_field_selection', collection_type=collection_type))
 
 
 def render_admin_qr_mineral_boxes(*, ensure_qr_collection_access, get_mineral_database):
@@ -229,10 +229,10 @@ def handle_admin_generate_box_qr_codes(*, ensure_qr_collection_access):
     selected_boxes = request.form.getlist('selected_boxes')
     if not selected_boxes:
         flash('Морате изабрати бар једну кутију.', 'warning')
-        return redirect(url_for('admin_qr_mineral_boxes'))
+        return redirect(url_for('qr.admin_qr_mineral_boxes'))
     if len(selected_boxes) > 10:
         flash('Можете изабрати максимум 10 кутија одједном.', 'warning')
-        return redirect(url_for('admin_qr_mineral_boxes'))
+        return redirect(url_for('qr.admin_qr_mineral_boxes'))
 
     logger.info("Starting QR generation for %s boxes", len(selected_boxes))
     labels = []
@@ -283,15 +283,15 @@ def handle_admin_generate_box_qr_codes(*, ensure_qr_collection_access):
             },
             'selected_boxes': selected_boxes,
             'is_box_mode': True,
-            'back_url': url_for('admin_qr_mineral_boxes'),
+            'back_url': url_for('qr.admin_qr_mineral_boxes'),
         }
         flash('Грешка при генерисању QR кодова, али можете изабрати формат.', 'warning')
-        return redirect(url_for('admin_qr_label_format', collection_type='mineral_boxes'))
+        return redirect(url_for('qr.admin_qr_label_format', collection_type='mineral_boxes'))
 
     logger.info("Successfully generated %s QR codes", len(labels))
     if len(labels) == 0:
         flash('Није генерисан ниједан QR код.', 'error')
-        return redirect(url_for('admin_qr_mineral_boxes'))
+        return redirect(url_for('qr.admin_qr_mineral_boxes'))
 
     session['qr_generated_data'] = {
         'labels': labels,
@@ -302,7 +302,7 @@ def handle_admin_generate_box_qr_codes(*, ensure_qr_collection_access):
         },
         'selected_boxes': selected_boxes,
         'is_box_mode': True,
-        'back_url': url_for('admin_qr_mineral_boxes'),
+        'back_url': url_for('qr.admin_qr_mineral_boxes'),
     }
     logger.info("Stored %s labels in session, redirecting to format selection", len(labels))
-    return redirect(url_for('admin_qr_label_format', collection_type='mineral_boxes'))
+    return redirect(url_for('qr.admin_qr_label_format', collection_type='mineral_boxes'))

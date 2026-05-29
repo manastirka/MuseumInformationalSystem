@@ -16,6 +16,7 @@ import urllib.request
 import urllib.error
 
 from nhm_data_portal_api import NHMDataPortalAPI
+from runtime_lock_utils import load_json_file, write_json_file
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -112,13 +113,15 @@ class NHMDatasetDownloader:
             'datasets': datasets
         }
 
-        with open(self.metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        write_json_file(self.metadata_file, metadata)
 
         logger.info(f"Saved metadata to {self.metadata_file}")
 
         # Build search index
         self._build_search_index(datasets)
+
+        # Invalidate any cached local-search singleton so callers see fresh data
+        _invalidate_local_search_cache()
 
         # Save download log
         elapsed = time.time() - start_time
@@ -132,8 +135,7 @@ class NHMDatasetDownloader:
             'include_resources': include_resources
         }
 
-        with open(self.download_log_file, 'w', encoding='utf-8') as f:
-            json.dump(log, f, ensure_ascii=False, indent=2)
+        write_json_file(self.download_log_file, log)
 
         logger.info(f"Download complete: {downloaded}/{total} datasets in {elapsed:.1f}s")
 
@@ -166,12 +168,12 @@ class NHMDatasetDownloader:
             entry = {
                 'id': ds.get('id', ''),
                 'name': ds.get('name', ''),
-                'title': ds.get('title', ''),
-                'title_lower': ds.get('title', '').lower(),
-                'notes': ds.get('notes', ''),
-                'notes_lower': ds.get('notes', '').lower(),
-                'author': ds.get('author', ''),
-                'author_lower': ds.get('author', '').lower(),
+                'title': ds.get('title') or '',
+                'title_lower': (ds.get('title') or '').lower(),
+                'notes': ds.get('notes') or '',
+                'notes_lower': (ds.get('notes') or '').lower(),
+                'author': ds.get('author') or '',
+                'author_lower': (ds.get('author') or '').lower(),
                 'tags': [t.get('name', '').lower() for t in ds.get('tags', [])],
                 'num_resources': len(ds.get('resources', [])),
                 'formats': list(set(r.get('format', '').upper()
@@ -212,8 +214,7 @@ class NHMDatasetDownloader:
                 if len(index['keywords'][word]) < 100:  # Limit to avoid huge lists
                     index['keywords'][word].append(entry['name'])
 
-        with open(self.index_file, 'w', encoding='utf-8') as f:
-            json.dump(index, f, ensure_ascii=False)
+        write_json_file(self.index_file, index, indent=None)
 
         logger.info(f"Search index built: {len(index['datasets'])} datasets, "
                     f"{len(index['tags'])} tags, {len(index['keywords'])} keywords")
@@ -226,10 +227,10 @@ class NHMDatasetDownloader:
             return self.download_all_datasets()
 
         # Load existing metadata
-        with open(self.metadata_file, 'r', encoding='utf-8') as f:
-            existing = json.load(f)
+        existing = load_json_file(self.metadata_file, default={})
 
-        existing_names = {ds['name'] for ds in existing.get('datasets', [])}
+        existing_by_name = {ds['name']: ds for ds in existing.get('datasets', [])}
+        existing_names = set(existing_by_name)
         existing_modified = {ds['name']: ds.get('metadata_modified', '')
                             for ds in existing.get('datasets', [])}
 
@@ -250,8 +251,21 @@ class NHMDatasetDownloader:
             except Exception as e:
                 logger.error(f"Failed to download {name}: {e}")
 
-        # Merge with existing
-        all_datasets = existing.get('datasets', []) + new_datasets
+        # Re-download datasets whose upstream metadata_modified changed,
+        # so stale local copies are refreshed.
+        refreshed = {}
+        for name in current_names & existing_names:
+            try:
+                dataset = self.api.get_dataset(name)
+                if dataset and dataset.get('metadata_modified', '') != existing_modified.get(name, ''):
+                    refreshed[name] = dataset
+            except Exception as e:
+                logger.error(f"Failed to refresh {name}: {e}")
+        logger.info(f"Found {len(refreshed)} modified datasets")
+
+        # Merge with existing, preferring refreshed copies.
+        all_datasets = [refreshed.get(ds['name'], ds)
+                        for ds in existing.get('datasets', [])] + new_datasets
 
         # Update metadata
         metadata = {
@@ -263,15 +277,18 @@ class NHMDatasetDownloader:
             'datasets': all_datasets
         }
 
-        with open(self.metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        write_json_file(self.metadata_file, metadata)
 
         # Rebuild search index
         self._build_search_index(all_datasets)
 
+        # Invalidate any cached local-search singleton so callers see fresh data
+        _invalidate_local_search_cache()
+
         return {
             'success': True,
             'new_datasets': len(new_datasets),
+            'updated_datasets': len(refreshed),
             'total_datasets': len(all_datasets)
         }
 
@@ -293,8 +310,7 @@ class NHMLocalSearch:
         """Load and cache metadata."""
         if self._metadata is None:
             if os.path.exists(self.metadata_file):
-                with open(self.metadata_file, 'r', encoding='utf-8') as f:
-                    self._metadata = json.load(f)
+                self._metadata = load_json_file(self.metadata_file, default={})
         return self._metadata
 
     @property
@@ -302,8 +318,7 @@ class NHMLocalSearch:
         """Load and cache search index."""
         if self._index is None:
             if os.path.exists(self.index_file):
-                with open(self.index_file, 'r', encoding='utf-8') as f:
-                    self._index = json.load(f)
+                self._index = load_json_file(self.index_file, default={})
         return self._index
 
     def is_available(self) -> bool:
@@ -530,6 +545,16 @@ def get_nhm_local_search() -> NHMLocalSearch:
     if _local_search is None:
         _local_search = NHMLocalSearch()
     return _local_search
+
+
+def _invalidate_local_search_cache() -> None:
+    """Reset cached metadata/index on the shared local-search singleton.
+
+    Called after a (re)download so the process stops serving stale data.
+    """
+    if _local_search is not None:
+        _local_search._metadata = None
+        _local_search._index = None
 
 
 # CLI interface

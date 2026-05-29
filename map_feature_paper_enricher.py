@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 
 import scientific_papers_database as db
 from fetch_scientific_papers import openalex_search, parse_openalex_work
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -69,23 +70,25 @@ COMMODITY_NAMES = {
 def init_feature_links_table():
     """Create the paper_feature_links table if it doesn't exist."""
     conn = db.get_connection()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS paper_feature_links (
-            id BIGSERIAL PRIMARY KEY,
-            paper_id BIGINT NOT NULL REFERENCES scientific_papers(id) ON DELETE CASCADE,
-            feature_type TEXT NOT NULL,
-            feature_name TEXT NOT NULL,
-            feature_id TEXT,
-            link_type TEXT DEFAULT 'search',
-            relevance_rank INTEGER DEFAULT 0,
-            search_query TEXT,
-            UNIQUE(paper_id, feature_type, feature_name)
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_fl_paper ON paper_feature_links(paper_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_fl_type_name ON paper_feature_links(feature_type, feature_name)")
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS paper_feature_links (
+                id BIGSERIAL PRIMARY KEY,
+                paper_id BIGINT NOT NULL REFERENCES scientific_papers(id) ON DELETE CASCADE,
+                feature_type TEXT NOT NULL,
+                feature_name TEXT NOT NULL,
+                feature_id TEXT,
+                link_type TEXT DEFAULT 'search',
+                relevance_rank INTEGER DEFAULT 0,
+                search_query TEXT,
+                UNIQUE(paper_id, feature_type, feature_name)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_fl_paper ON paper_feature_links(paper_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_fl_type_name ON paper_feature_links(feature_type, feature_name)")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def link_paper_to_feature(paper_id: int, feature_type: str, feature_name: str,
@@ -318,8 +321,7 @@ def _load_json(path: str) -> list:
         logger.warning(f"Data file not found: {path}")
         return []
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        return load_json_file(path, default=[])
     except Exception as e:
         logger.error(f"Error loading {path}: {e}")
         return []
@@ -405,17 +407,14 @@ def load_all_features() -> List[dict]:
 def _load_state() -> dict:
     if os.path.exists(STATE_PATH):
         try:
-            with open(STATE_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            return load_json_file(STATE_PATH, default={'completed_features': {}, 'completed_queries': {}})
         except Exception:
             pass
     return {'completed_features': {}, 'completed_queries': {}}
 
 
 def _save_state(state: dict):
-    os.makedirs('data', exist_ok=True)
-    with open(STATE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    write_json_file(STATE_PATH, state)
 
 
 def _feature_key(ftype: str, fname: str) -> str:
@@ -577,41 +576,45 @@ def get_enrichment_status() -> dict:
 def get_feature_paper_summary(feature_type: str, feature_name: str) -> dict:
     """Return top papers with truncated abstracts for a map feature popup."""
     conn = db.get_connection()
-    summary = conn.execute("""
-        SELECT COUNT(*) as paper_count,
-               AVG(sp.cited_by_count) as avg_citations
-        FROM scientific_papers sp
-        INNER JOIN paper_feature_links pfl ON sp.id = pfl.paper_id
-        WHERE pfl.feature_type = %s AND pfl.feature_name = %s
-    """, (feature_type, feature_name)).fetchone()
+    try:
+        summary = conn.execute("""
+            SELECT COUNT(*) as paper_count,
+                   AVG(sp.cited_by_count) as avg_citations
+            FROM scientific_papers sp
+            INNER JOIN paper_feature_links pfl ON sp.id = pfl.paper_id
+            WHERE pfl.feature_type = %s AND pfl.feature_name = %s
+        """, (feature_type, feature_name)).fetchone()
 
-    papers = [dict(row) for row in conn.execute("""
-        SELECT sp.id, sp.title, sp.abstract, sp.cited_by_count,
-               sp.publication_year, sp.journal_name, sp.doi, sp.is_open_access
-        FROM scientific_papers sp
-        INNER JOIN paper_feature_links pfl ON sp.id = pfl.paper_id
-        WHERE pfl.feature_type = %s AND pfl.feature_name = %s
-        ORDER BY sp.cited_by_count DESC
-        LIMIT 5
-    """, (feature_type, feature_name)).fetchall()]
+        papers = [dict(row) for row in conn.execute("""
+            SELECT sp.id, sp.title, sp.abstract, sp.cited_by_count,
+                   sp.publication_year, sp.journal_name, sp.doi, sp.is_open_access
+            FROM scientific_papers sp
+            INNER JOIN paper_feature_links pfl ON sp.id = pfl.paper_id
+            WHERE pfl.feature_type = %s AND pfl.feature_name = %s
+            ORDER BY sp.cited_by_count DESC
+            LIMIT 5
+        """, (feature_type, feature_name)).fetchall()]
 
-    # Truncate abstracts
-    for p in papers:
-        if p.get('abstract') and len(p['abstract']) > 250:
-            p['abstract'] = p['abstract'][:250] + '...'
+        # Truncate abstracts
+        for p in papers:
+            if p.get('abstract') and len(p['abstract']) > 250:
+                p['abstract'] = p['abstract'][:250] + '...'
 
-    result = dict(summary or {'paper_count': 0, 'avg_citations': None})
-    result['papers'] = papers
-    conn.close()
-    return result
+        result = dict(summary or {'paper_count': 0, 'avg_citations': None})
+        result['papers'] = papers
+        return result
+    finally:
+        conn.close()
 
 
 def get_feature_paper_count(feature_type: str, feature_name: str) -> int:
     """Quick count of papers for a feature."""
     conn = db.get_connection()
-    count = conn.execute("""
-        SELECT COUNT(*) AS count FROM paper_feature_links
-        WHERE feature_type = %s AND feature_name = %s
-    """, (feature_type, feature_name)).fetchone()['count']
-    conn.close()
-    return count or 0
+    try:
+        count = conn.execute("""
+            SELECT COUNT(*) AS count FROM paper_feature_links
+            WHERE feature_type = %s AND feature_name = %s
+        """, (feature_type, feature_name)).fetchone()['count']
+        return count or 0
+    finally:
+        conn.close()

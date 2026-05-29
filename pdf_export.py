@@ -6,6 +6,7 @@ Supports Serbian Cyrillic text and generates professional reports
 
 from io import BytesIO
 from datetime import datetime
+from xml.sax.saxutils import escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -286,7 +287,7 @@ class CollectionPDFExporter(MuseumPDFExporter):
 
         # Title
         story.append(Paragraph(f"Извештај о збирци", styles['MuseumTitle']))
-        story.append(Paragraph(collection_name, styles['MuseumSubtitle']))
+        story.append(Paragraph(escape(self.safe_str(collection_name)), styles['MuseumSubtitle']))
         story.append(Spacer(1, 0.3*cm))
 
         # Generation date
@@ -616,7 +617,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
         story.append(Spacer(1, 0.5*cm))
 
         # Project title
-        project_title = self.safe_str(project.get('project_name', 'Без назива'))
+        project_title = escape(self.safe_str(project.get('project_name', 'Без назива')))
         story.append(Paragraph(project_title, styles['MuseumSubtitle']))
         story.append(Spacer(1, 0.3*cm))
 
@@ -660,7 +661,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
         if project.get('description'):
             story.append(Paragraph("Опис пројекта", styles['SectionHeading']))
             story.append(Paragraph(
-                self.safe_str(project.get('description')),
+                escape(self.safe_str(project.get('description'))),
                 styles['SerbianNormal']
             ))
             story.append(Spacer(1, 0.5*cm))
@@ -669,7 +670,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
         if project.get('key_findings'):
             story.append(Paragraph("Кључна открића", styles['SectionHeading']))
             story.append(Paragraph(
-                self.safe_str(project.get('key_findings')),
+                escape(self.safe_str(project.get('key_findings'))),
                 styles['SerbianNormal']
             ))
             story.append(Spacer(1, 0.5*cm))
@@ -682,7 +683,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
                 publications = [publications]
 
             for pub in publications:
-                story.append(Paragraph(f"• {pub}", styles['SerbianNormal']))
+                story.append(Paragraph(f"• {escape(str(pub))}", styles['SerbianNormal']))
             story.append(Spacer(1, 0.5*cm))
 
         # Collaborators
@@ -693,7 +694,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
                 collaborators = [collaborators]
 
             for collab in collaborators:
-                story.append(Paragraph(f"• {collab}", styles['SerbianNormal']))
+                story.append(Paragraph(f"• {escape(str(collab))}", styles['SerbianNormal']))
             story.append(Spacer(1, 0.5*cm))
 
         # International collaborations
@@ -704,7 +705,7 @@ class ResearchPDFExporter(MuseumPDFExporter):
                 collabs = [collabs]
 
             for collab in collabs:
-                story.append(Paragraph(f"• {collab}", styles['SerbianNormal']))
+                story.append(Paragraph(f"• {escape(str(collab))}", styles['SerbianNormal']))
             story.append(Spacer(1, 0.5*cm))
 
         # Build PDF
@@ -742,13 +743,13 @@ class SpecimenCertificatePDFExporter(MuseumPDFExporter):
 
         # Title
         story.append(Paragraph("Сертификат о узорку", styles['MuseumTitle']))
-        story.append(Paragraph(collection_name, styles['MuseumSubtitle']))
+        story.append(Paragraph(escape(self.safe_str(collection_name)), styles['MuseumSubtitle']))
         story.append(Spacer(1, 0.5*cm))
 
         # Catalog number (prominent)
         catalog_num = specimen.get('catalog_number', specimen.get('inventarni_broj', 'Н/Д'))
         story.append(Paragraph(
-            f"<b>Каталошки број: {catalog_num}</b>",
+            '<b>Каталошки број: ' + escape(str(catalog_num)) + '</b>',
             styles['SectionHeading']
         ))
         story.append(Spacer(1, 0.3*cm))

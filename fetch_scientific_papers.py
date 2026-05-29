@@ -22,6 +22,7 @@ import urllib.request
 import urllib.error
 
 import scientific_papers_database as db
+from runtime_lock_utils import load_json_file, write_json_file
 
 logging.basicConfig(
     level=logging.INFO,
@@ -153,16 +154,19 @@ def parse_openalex_work(work: dict, search_query: str = None) -> dict:
     # Abstract
     abstract = reconstruct_abstract(work.get('abstract_inverted_index'))
 
+    # Bibliographic info
+    biblio = work.get('biblio') or {}
+
     return {
         'openalex_id': work.get('id', ''),
         'doi': work.get('doi', ''),
-        'title': work.get('title', ''),
+        'title': work.get('title') or '',
         'abstract': abstract,
         'publication_year': work.get('publication_year'),
         'cited_by_count': work.get('cited_by_count', 0),
         'journal_name': source.get('display_name', ''),
-        'volume': work.get('biblio', {}).get('volume', ''),
-        'issue': work.get('biblio', {}).get('issue', ''),
+        'volume': biblio.get('volume', ''),
+        'issue': biblio.get('issue', ''),
         'authors': authors,
         'keywords': keywords,
         'concepts': concepts,
@@ -314,16 +318,13 @@ def generate_queries_for_locality(locality: dict) -> list:
 def load_state() -> dict:
     """Load fetch state for resume capability."""
     if os.path.exists(STATE_PATH):
-        with open(STATE_PATH, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        return load_json_file(STATE_PATH, default={'completed_localities': [], 'completed_queries': {}, 'stats': {}})
     return {'completed_localities': [], 'completed_queries': {}, 'stats': {}}
 
 
 def save_state(state: dict):
     """Save fetch state."""
-    os.makedirs('data', exist_ok=True)
-    with open(STATE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    write_json_file(STATE_PATH, state)
 
 
 def fetch_for_locality(locality: dict, state: dict, dry_run: bool = False) -> dict:
@@ -394,8 +395,7 @@ def main():
         logger.error(f"Geological map sheets file not found: {GEO_MAP_PATH}")
         sys.exit(1)
 
-    with open(GEO_MAP_PATH, 'r', encoding='utf-8') as f:
-        localities = json.load(f)
+    localities = load_json_file(GEO_MAP_PATH, default=[])
 
     logger.info(f"Loaded {len(localities)} geological map sheet localities")
 
@@ -477,11 +477,6 @@ def main():
         db_stats = db.get_statistics()
         logger.info(f"Total papers in DB: {db_stats['total_papers']}")
         logger.info(f"Localities covered: {db_stats['localities_covered']}")
-
-        # DB file size
-        if os.path.exists(db.DB_PATH):
-            size_mb = os.path.getsize(db.DB_PATH) / (1024 * 1024)
-            logger.info(f"Database size: {size_mb:.1f} MB")
 
 
 if __name__ == '__main__':

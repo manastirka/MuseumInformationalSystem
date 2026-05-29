@@ -4,6 +4,7 @@ Fetches mineral information from online sources when local RRUFF database is mis
 Sources: Wikipedia API, Mindat.org, webmineral.com
 """
 
+import os
 import re
 import json
 import urllib.request
@@ -11,10 +12,15 @@ import urllib.parse
 from typing import Dict, Optional
 import ssl
 
-# Create SSL context that doesn't verify certificates (for internal use)
+# Verify upstream TLS certificates by default. Verification can be disabled
+# explicitly (e.g. for an internal mirror with a private CA) by setting
+# ALLOW_INSECURE_UPSTREAM_TLS to a truthy value.
+_VERIFY_TLS = os.environ.get('ALLOW_INSECURE_UPSTREAM_TLS', '').strip().lower() not in ('1', 'true', 'yes')
+
 ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+if not _VERIFY_TLS:
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
 
 # Known mineral formulas (fallback when Wikipedia parsing fails)
 KNOWN_FORMULAS = {
@@ -257,12 +263,14 @@ def clean_wiki_markup(text: str) -> str:
     # Remove templates {{template|arg}}
     text = re.sub(r'\{\{[^}]+\}\}', '', text)
 
-    # Remove HTML tags
-    text = re.sub(r'<[^>]+>', '', text)
-
-    # Remove references
+    # Remove references (including their body) before stripping generic tags,
+    # otherwise the generic <[^>]+> rule below deletes the <ref> delimiters and
+    # leaves the citation text behind.
     text = re.sub(r'<ref[^>]*>.*?</ref>', '', text, flags=re.DOTALL)
     text = re.sub(r'<ref[^/]*/>', '', text)
+
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
 
     # Clean up subscript/superscript markup
     text = re.sub(r'\{\{sub\|([^}]+)\}\}', r'_\1', text)
@@ -373,7 +381,7 @@ def format_online_data_for_display(data: Dict) -> Dict:
     Format online mineral data to match RRUFF display format.
     """
     if not data:
-        return None
+        return {}
 
     name = data.get('name', '')
     formula = data.get('formula', '')

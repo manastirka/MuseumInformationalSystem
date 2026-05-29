@@ -122,7 +122,7 @@ def api_create_exhibition():
         if not data:
             return jsonify({'success': False, 'message': 'Нема података'}), 400
 
-        title = data.get('name', '').strip() or data.get('title', '').strip()
+        title = (data.get('name') or '').strip() or (data.get('title') or '').strip()
         if not title:
             return jsonify({'success': False, 'message': 'Назив изложбе је обавезан'}), 400
 
@@ -210,8 +210,12 @@ def api_update_exhibition(exhibition_id):
 
                 update_fields = []
                 params = []
+                seen_db_fields = set()
                 for key, db_field in _UPDATE_FIELD_MAPPING.items():
                     if key in data:
+                        if db_field in seen_db_fields:
+                            continue
+                        seen_db_fields.add(db_field)
                         value = data[key]
                         if db_field in ['start_date', 'end_date'] and value == '':
                             value = None
@@ -294,8 +298,25 @@ def api_update_exhibition_checklist(exhibition_id):
         if not data:
             return jsonify({'success': False, 'message': 'Нема података'}), 400
 
+        user_email = session.get('user_email', '')
+        user_role = session.get('user_role', 'employee')
+
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
+                exhibition = _get_exhibition_owner(cur, exhibition_id)
+                if not exhibition:
+                    return jsonify({'success': False, 'message': 'Изложба није пронађена'}), 404
+
+                is_owner = exhibition.get('created_by_email') == user_email
+                is_admin_or_direktor = user_role in ['admin', 'direktor']
+                if not is_owner and not is_admin_or_direktor:
+                    return jsonify(
+                        {
+                            'success': False,
+                            'message': 'Немате дозволу за измену ове изложбе',
+                        }
+                    ), 403
+
                 cur.execute(
                     """
                     UPDATE exhibitions

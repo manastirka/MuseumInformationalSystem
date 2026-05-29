@@ -32,11 +32,21 @@ def api_get_notifications():
                 )
                 notifications = cur.fetchall()
 
+                cur.execute(
+                    """
+                    SELECT COUNT(*) AS unread_count
+                    FROM user_notifications
+                    WHERE user_email = %s AND is_read = FALSE
+                    """,
+                    (user_email,),
+                )
+                unread_count = cur.fetchone()['unread_count']
+
         return jsonify(
             {
                 'success': True,
                 'notifications': [dict(notification) for notification in notifications],
-                'unread_count': sum(1 for notification in notifications if not notification['is_read']),
+                'unread_count': unread_count,
             }
         )
     except Exception as exc:

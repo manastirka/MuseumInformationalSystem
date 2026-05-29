@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 
 from flask import current_app, jsonify, request, session
+from runtime_lock_utils import load_json_file, update_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,7 @@ def _load_science_news():
     news_file = _science_news_file()
     try:
         if os.path.exists(news_file):
-            with open(news_file, 'r', encoding='utf-8') as handle:
-                return json.load(handle)
+            return load_json_file(news_file, default=[])
     except Exception as exc:
         logger.error("Error loading science news: %s", exc)
     return []
@@ -43,9 +43,7 @@ def _load_science_news():
 
 def _save_science_news(all_news):
     news_file = _science_news_file()
-    os.makedirs(os.path.dirname(news_file), exist_ok=True)
-    with open(news_file, 'w', encoding='utf-8') as handle:
-        json.dump(all_news, handle, ensure_ascii=False, indent=2)
+    update_json_file(news_file, lambda _current: list(all_news), default=[])
 
 
 def api_get_localities(*, get_mineral_database):
@@ -163,13 +161,12 @@ def api_add_science_news():
         if not data.get(field):
             return jsonify({'success': False, 'message': f'Missing required field: {field}'}), 400
 
-    all_news = _load_science_news()
     timestamp = datetime.now()
     news_id = hashlib.md5(f"{data['title']}{timestamp.isoformat()}".encode()).hexdigest()[:8]
     news_item = {
         'id': news_id,
-        'title': data['title'][:200],
-        'summary': data.get('summary', '')[:500],
+        'title': str(data['title'])[:200],
+        'summary': str(data.get('summary') or '')[:500],
         'category': data['category'],
         'categoryName': _CATEGORY_NAMES.get(data['category'], data['category']),
         'region': data['region'],
@@ -181,10 +178,13 @@ def api_add_science_news():
         'added_at': timestamp.isoformat(),
     }
 
-    all_news.insert(0, news_item)
-
     try:
-        _save_science_news(all_news[:100])
+        def _add_news(existing_news):
+            payload = [item for item in list(existing_news or []) if item.get('id') != news_id]
+            payload.insert(0, news_item)
+            return payload[:100]
+
+        update_json_file(_science_news_file(), _add_news, default=[])
         return jsonify({'success': True, 'news': news_item})
     except Exception as exc:
         logger.error("Error saving science news: %s", exc)
@@ -198,9 +198,11 @@ def api_delete_science_news(*, news_id):
         return jsonify({'success': False, 'message': 'News file not found'}), 404
 
     try:
-        all_news = _load_science_news()
-        filtered_news = [item for item in all_news if item.get('id') != news_id]
-        _save_science_news(filtered_news)
+        update_json_file(
+            news_file,
+            lambda all_news: [item for item in list(all_news or []) if item.get('id') != news_id],
+            default=[],
+        )
         return jsonify({'success': True})
     except Exception as exc:
         logger.error("Error deleting science news: %s", exc)

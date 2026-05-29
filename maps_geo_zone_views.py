@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 
 from flask import jsonify, request, send_file
+from runtime_lock_utils import load_json_file, update_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,7 @@ def _is_invalid_folder_name(folder_name):
 def _load_geological_sheets(app_root):
     """Load geological sheet metadata from disk."""
     sheets_path = os.path.join(app_root, 'data', 'geological_map_sheets.json')
-    with open(sheets_path, 'r', encoding='utf-8') as handle:
-        return json.load(handle)
+    return load_json_file(sheets_path, default=[])
 
 
 def api_geo_zone_map(folder_name, *, app_root):
@@ -44,8 +44,7 @@ def api_geo_zone_metadata(folder_name, *, app_root):
         return jsonify({'success': False, 'message': 'Метаподаци нису доступни'}), 404
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
+        data = load_json_file(file_path)
         return jsonify({'success': True, 'data': data})
     except Exception as exc:
         logger.error("Error loading zone metadata for %s: %s", folder_name, exc)
@@ -62,8 +61,7 @@ def api_geo_zone_legend(folder_name, *, app_root):
         return jsonify({'success': False, 'message': 'Легенда није доступна'}), 404
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
+        data = load_json_file(file_path)
         return jsonify({'success': True, 'data': data})
     except Exception as exc:
         logger.error("Error loading enhanced legend for %s: %s", folder_name, exc)
@@ -74,12 +72,15 @@ def api_geo_zone_process(*, app_root):
     """Trigger zone map processing for a sheet."""
     import geo_zone_processor
 
-    folder = request.json.get('folder') if request.is_json else request.form.get('folder')
-    force = (
-        request.json.get('force', False)
-        if request.is_json
-        else request.form.get('force', 'false').lower() == 'true'
-    )
+    if request.is_json:
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        folder = body.get('folder')
+        force = body.get('force', False)
+    else:
+        folder = request.form.get('folder')
+        force = request.form.get('force', 'false').lower() == 'true'
 
     if not folder:
         return jsonify({'success': False, 'message': 'Потребан је назив фасцикле (folder)'}), 400
@@ -113,18 +114,17 @@ def api_geo_zone_legend_update(folder_name, *, app_root):
         if not updates or 'swatches' not in updates:
             return jsonify({'success': False, 'message': 'Недостају подаци'}), 400
 
-        with open(legend_path, 'r', encoding='utf-8') as handle:
-            legend = json.load(handle)
+        def _apply_updates(legend):
+            payload = list(legend or [])
+            for update in updates['swatches']:
+                idx = update.get('band_index')
+                if idx is not None and 0 <= idx < len(payload):
+                    for key in ('unit_code', 'unit_name_sr', 'unit_name_en', 'era', 'pattern'):
+                        if key in update:
+                            payload[idx][key] = update[key]
+            return payload
 
-        for update in updates['swatches']:
-            idx = update.get('band_index')
-            if idx is not None and 0 <= idx < len(legend):
-                for key in ('unit_code', 'unit_name_sr', 'unit_name_en', 'era', 'pattern'):
-                    if key in update:
-                        legend[idx][key] = update[key]
-
-        with open(legend_path, 'w', encoding='utf-8') as handle:
-            json.dump(legend, handle, ensure_ascii=False, indent=2)
+        update_json_file(legend_path, _apply_updates, default=[])
 
         return jsonify({'success': True, 'message': 'Легенда ажурирана'})
     except Exception as exc:
@@ -142,8 +142,7 @@ def api_geo_manual_calibration_get(folder_name, *, app_root):
         return jsonify({'success': True, 'data': None})
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
+        data = load_json_file(file_path)
         return jsonify({'success': True, 'data': data})
     except Exception as exc:
         logger.error("Error loading manual calibration for %s: %s", folder_name, exc)
@@ -170,8 +169,7 @@ def api_geo_manual_calibration_save(folder_name, *, app_root):
             'entries': payload['entries'],
         }
         cal_path = os.path.join(cal_dir, 'manual_calibration.json')
-        with open(cal_path, 'w', encoding='utf-8') as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
+        write_json_file(cal_path, data)
 
         return jsonify(
             {
@@ -198,12 +196,6 @@ def api_geo_manual_calibration_patch_entry(folder_name, *, app_root):
         if not payload or 'color' not in payload:
             return jsonify({'success': False, 'message': 'Недостају подаци'}), 400
 
-        data = {'folder': folder_name, 'entries': []}
-        if os.path.isfile(cal_path):
-            with open(cal_path, 'r', encoding='utf-8') as handle:
-                data = json.load(handle)
-
-        entries = data.get('entries', [])
         new_entry = payload
 
         def hsv_dist(h1, s1, v1, h2, s2, v2):
@@ -212,34 +204,28 @@ def api_geo_manual_calibration_patch_entry(folder_name, *, app_root):
                 dh = 360 - dh
             return ((dh / 180) ** 2 + ((s1 - s2) / 100) ** 2 + ((v1 - v2) / 100) ** 2) ** 0.5
 
-        hsv = new_entry.get('hsv', [0, 0, 0])
-        best_idx = -1
-        best_dist = 999
-        for idx, entry in enumerate(entries):
-            existing_hsv = entry.get('hsv', [0, 0, 0])
-            dist = hsv_dist(hsv[0], hsv[1], hsv[2], existing_hsv[0], existing_hsv[1], existing_hsv[2])
-            if dist < best_dist:
-                best_dist = dist
-                best_idx = idx
+        if not os.path.isdir(cal_dir):
+            os.makedirs(cal_dir, exist_ok=True)
 
-        if best_dist < 0.15 and best_idx >= 0:
-            entry_id = entries[best_idx].get('id', best_idx + 1)
-            entries[best_idx] = {
-                'id': entry_id,
-                'color': new_entry['color'],
-                'hsv': new_entry['hsv'],
-                'unit_code': new_entry.get('unit_code', ''),
-                'unit_name_sr': new_entry.get('unit_name_sr', ''),
-                'unit_name_en': new_entry.get('unit_name_en', ''),
-                'era': new_entry.get('era', ''),
-                'era_color': new_entry.get('era_color', '#9e9e9e'),
-            }
-            action = 'updated'
-        else:
-            max_id = max((entry.get('id', 0) for entry in entries), default=0)
-            entries.append(
-                {
-                    'id': max_id + 1,
+        action_holder = {'action': 'added', 'count': 0}
+
+        def _patch_entry(data):
+            payload_state = dict(data or {'folder': folder_name, 'entries': []})
+            entries = list(payload_state.get('entries', []))
+            hsv = new_entry.get('hsv', [0, 0, 0])
+            best_idx = -1
+            best_dist = 999
+            for idx, entry in enumerate(entries):
+                existing_hsv = entry.get('hsv', [0, 0, 0])
+                dist = hsv_dist(hsv[0], hsv[1], hsv[2], existing_hsv[0], existing_hsv[1], existing_hsv[2])
+                if dist < best_dist:
+                    best_dist = dist
+                    best_idx = idx
+
+            if best_dist < 0.15 and best_idx >= 0:
+                entry_id = entries[best_idx].get('id', best_idx + 1)
+                entries[best_idx] = {
+                    'id': entry_id,
                     'color': new_entry['color'],
                     'hsv': new_entry['hsv'],
                     'unit_code': new_entry.get('unit_code', ''),
@@ -248,17 +234,32 @@ def api_geo_manual_calibration_patch_entry(folder_name, *, app_root):
                     'era': new_entry.get('era', ''),
                     'era_color': new_entry.get('era_color', '#9e9e9e'),
                 }
-            )
-            action = 'added'
+                action_holder['action'] = 'updated'
+            else:
+                max_id = max((entry.get('id', 0) for entry in entries), default=0)
+                entries.append(
+                    {
+                        'id': max_id + 1,
+                        'color': new_entry['color'],
+                        'hsv': new_entry['hsv'],
+                        'unit_code': new_entry.get('unit_code', ''),
+                        'unit_name_sr': new_entry.get('unit_name_sr', ''),
+                        'unit_name_en': new_entry.get('unit_name_en', ''),
+                        'era': new_entry.get('era', ''),
+                        'era_color': new_entry.get('era_color', '#9e9e9e'),
+                    }
+                )
+                action_holder['action'] = 'added'
 
-        data['entries'] = entries
-        data['calibrated_at'] = datetime.now().isoformat()
-        if not os.path.isdir(cal_dir):
-            os.makedirs(cal_dir, exist_ok=True)
-        with open(cal_path, 'w', encoding='utf-8') as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
+            payload_state['folder'] = folder_name
+            payload_state['entries'] = entries
+            payload_state['calibrated_at'] = datetime.now().isoformat()
+            action_holder['count'] = len(entries)
+            return payload_state
 
-        return jsonify({'success': True, 'action': action, 'count': len(entries)})
+        update_json_file(cal_path, _patch_entry, default={'folder': folder_name, 'entries': []})
+
+        return jsonify({'success': True, 'action': action_holder['action'], 'count': action_holder['count']})
     except Exception as exc:
         logger.error("Error patching calibration entry for %s: %s", folder_name, exc)
         return jsonify({'success': False, 'message': 'Грешка при чувању'}), 500

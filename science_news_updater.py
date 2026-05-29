@@ -5,6 +5,7 @@ Aggregates news from scientific RSS feeds and web sources
 """
 
 import os
+import re
 import json
 import logging
 import hashlib
@@ -14,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import requests
 from bs4 import BeautifulSoup
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -90,19 +92,27 @@ EUROPE_KEYWORDS = [
 ]
 
 
+def _compile_region_pattern(keywords: List[str]) -> 're.Pattern':
+    """Compile a word-boundary regex from a keyword list (whitespace-trimmed)."""
+    terms = sorted({kw.strip() for kw in keywords if kw.strip()}, key=len, reverse=True)
+    return re.compile(r'\b(?:' + '|'.join(map(re.escape, terms)) + r')\b')
+
+
+_BALKAN_PATTERN = _compile_region_pattern(BALKAN_KEYWORDS)
+_EUROPE_PATTERN = _compile_region_pattern(EUROPE_KEYWORDS)
+
+
 def determine_region(text: str, default_region: str = 'world') -> tuple:
     """Determine the region based on text content."""
     text_lower = text.lower()
 
     # Check Balkans first (highest priority)
-    for keyword in BALKAN_KEYWORDS:
-        if keyword in text_lower:
-            return 'balkans', 'Балкан'
+    if _BALKAN_PATTERN.search(text_lower):
+        return 'balkans', 'Балкан'
 
     # Check Europe
-    for keyword in EUROPE_KEYWORDS:
-        if keyword in text_lower:
-            return 'europe', 'Европа'
+    if _EUROPE_PATTERN.search(text_lower):
+        return 'europe', 'Европа'
 
     return default_region, 'Свет' if default_region == 'world' else 'Европа'
 
@@ -130,7 +140,7 @@ def parse_rss_date(date_str: str) -> str:
     # Fallback: try to extract date-like string
     try:
         return date_str[:10]
-    except:
+    except (TypeError, AttributeError, IndexError):
         return datetime.now().strftime('%Y-%m-%d')
 
 
@@ -158,11 +168,15 @@ def fetch_rss_news() -> List[Dict]:
 
             for item in items[:3]:  # Get top 3 from each feed
                 # Extract title
-                title_el = item.find('title') or item.find('{http://www.w3.org/2005/Atom}title')
+                title_el = item.find('title')
+                if title_el is None:
+                    title_el = item.find('{http://www.w3.org/2005/Atom}title')
                 title = title_el.text if title_el is not None else 'No title'
 
                 # Extract description
-                desc_el = item.find('description') or item.find('{http://www.w3.org/2005/Atom}summary')
+                desc_el = item.find('description')
+                if desc_el is None:
+                    desc_el = item.find('{http://www.w3.org/2005/Atom}summary')
                 desc = desc_el.text if desc_el is not None else ''
 
                 # Clean HTML from description
@@ -181,7 +195,9 @@ def fetch_rss_news() -> List[Dict]:
                     link = link_el.get('href', '') if link_el is not None else ''
 
                 # Extract date
-                date_el = item.find('pubDate') or item.find('{http://www.w3.org/2005/Atom}published')
+                date_el = item.find('pubDate')
+                if date_el is None:
+                    date_el = item.find('{http://www.w3.org/2005/Atom}published')
                 if date_el is None:
                     date_el = item.find('{http://www.w3.org/2005/Atom}updated')
                 date_str = parse_rss_date(date_el.text if date_el is not None else '')
@@ -218,8 +234,7 @@ def load_existing_news(news_file: str) -> List[Dict]:
     """Load existing news from JSON file."""
     try:
         if os.path.exists(news_file):
-            with open(news_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            return load_json_file(news_file, default=[])
     except Exception as e:
         logger.error(f"Error loading existing news: {e}")
     return []
@@ -267,9 +282,7 @@ def merge_news(existing: List[Dict], new_items: List[Dict], max_items: int = 50)
 def save_news(news_file: str, news_items: List[Dict]) -> bool:
     """Save news to JSON file."""
     try:
-        os.makedirs(os.path.dirname(news_file), exist_ok=True)
-        with open(news_file, 'w', encoding='utf-8') as f:
-            json.dump(news_items, f, ensure_ascii=False, indent=2)
+        write_json_file(news_file, news_items)
         return True
     except Exception as e:
         logger.error(f"Error saving news: {e}")
@@ -287,7 +300,8 @@ def should_update(news_file: str, min_hours: int = 6) -> bool:
         hours_since = (datetime.now() - last_modified).total_seconds() / 3600
 
         return hours_since >= min_hours
-    except:
+    except (OSError, ValueError) as exc:
+        logger.warning("Could not determine science news freshness for %s: %s", news_file, exc)
         return True
 
 

@@ -23,6 +23,16 @@ def render_vehicle_reservations(*, get_museum_vehicles, get_vehicle_reservations
 
 def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservations, save_reservations):
     """Create a vehicle reservation."""
+    vehicle_id_raw = request.form.get('vehicle_id')
+    if not vehicle_id_raw:
+        flash('Недостаје ID возила.', 'error')
+        return redirect(url_for('vehicles.vehicle_reservations'))
+    try:
+        vehicle_id = int(vehicle_id_raw)
+    except (ValueError, TypeError):
+        flash('Неважећи ID возила.', 'error')
+        return redirect(url_for('vehicles.vehicle_reservations'))
+
     if os.environ.get('DATABASE_URL'):
         try:
             conn = phase3a_databases.get_db_connection()
@@ -36,7 +46,7 @@ def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservation
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    int(request.form.get('vehicle_id')),
+                    vehicle_id,
                     request.form.get('employee_name', '').strip()
                     or session.get('user_email', 'system'),
                     request.form.get('purpose', '').strip(),
@@ -64,14 +74,21 @@ def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservation
     else:
         reservations = get_vehicle_reservations()
         reservation_data = {
-            'id': len(reservations) + 1,
-            'vehicle_id': int(request.form.get('vehicle_id')),
+            'id': max((reservation.get('id', 0) for reservation in reservations), default=0) + 1,
+            'vehicle_id': vehicle_id,
             'employee_name': request.form.get('employee_name', '').strip(),
             'start_date': request.form.get('start_date', '').strip(),
             'end_date': request.form.get('end_date', '').strip(),
+            'start_time': request.form.get('start_time', '').strip() or None,
+            'end_time': request.form.get('end_time', '').strip() or None,
             'purpose': request.form.get('purpose', '').strip(),
             'destination': request.form.get('destination', '').strip(),
+            'estimated_km': request.form.get('estimated_km', '').strip() or None,
+            'driver_name': request.form.get('driver_name', '').strip() or None,
+            'driver_license': request.form.get('driver_license', '').strip() or None,
+            'passengers': request.form.get('passengers', '').strip() or None,
             'notes': request.form.get('notes', '').strip(),
+            'status': 'Активна',
             'created_by': session.get('user_email', 'system'),
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
@@ -82,7 +99,7 @@ def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservation
         else:
             flash('Грешка при чувању резервације!', 'error')
 
-    return redirect(url_for('vehicle_reservations'))
+    return redirect(url_for('vehicles.vehicle_reservations'))
 
 
 def render_vehicle_management(*, get_museum_vehicles, get_vehicle_reservations):
@@ -148,7 +165,7 @@ def handle_add_vehicle(*, phase3a_databases, get_museum_vehicles, save_vehicles)
         else:
             flash('Грешка при чувању возила!', 'error')
 
-    return redirect(url_for('vehicle_management'))
+    return redirect(url_for('vehicles.vehicle_management'))
 
 
 def handle_edit_vehicle(*, phase3a_databases, get_museum_vehicles, save_vehicles):
@@ -156,12 +173,12 @@ def handle_edit_vehicle(*, phase3a_databases, get_museum_vehicles, save_vehicles
     vehicle_id_raw = request.form.get('vehicle_id')
     if not vehicle_id_raw:
         flash('Недостаје ID возила.', 'error')
-        return redirect(url_for('vehicle_management'))
+        return redirect(url_for('vehicles.vehicle_management'))
     try:
         vehicle_id = int(vehicle_id_raw)
     except (ValueError, TypeError):
         flash('Неважећи ID возила.', 'error')
-        return redirect(url_for('vehicle_management'))
+        return redirect(url_for('vehicles.vehicle_management'))
 
     if os.environ.get('DATABASE_URL'):
         try:
@@ -216,7 +233,7 @@ def handle_edit_vehicle(*, phase3a_databases, get_museum_vehicles, save_vehicles
         else:
             flash('Грешка при чувању измена!', 'error')
 
-    return redirect(url_for('vehicle_management'))
+    return redirect(url_for('vehicles.vehicle_management'))
 
 
 def handle_delete_vehicle(
@@ -230,12 +247,12 @@ def handle_delete_vehicle(
     vehicle_id_raw = request.form.get('vehicle_id')
     if not vehicle_id_raw:
         flash('Недостаје ID возила.', 'error')
-        return redirect(url_for('vehicle_management'))
+        return redirect(url_for('vehicles.vehicle_management'))
     try:
         vehicle_id = int(vehicle_id_raw)
     except (ValueError, TypeError):
         flash('Неважећи ID возила.', 'error')
-        return redirect(url_for('vehicle_management'))
+        return redirect(url_for('vehicles.vehicle_management'))
 
     if os.environ.get('DATABASE_URL'):
         try:
@@ -283,7 +300,7 @@ def handle_delete_vehicle(
             else:
                 flash('Грешка при чувању измена!', 'error')
 
-    return redirect(url_for('vehicle_management'))
+    return redirect(url_for('vehicles.vehicle_management'))
 
 
 def render_virtual_depot():

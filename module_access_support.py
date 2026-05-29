@@ -3,12 +3,16 @@
 import json
 import logging
 import os
+import time
 from copy import deepcopy
 from typing import Any, Callable, Optional
 
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 SHARED_SETTINGS_TABLE = 'app_shared_settings'
+_db_setting_failure_cache: dict[str, float] = {}
+_DB_RETRY_INTERVAL_SECONDS = float(os.environ.get('SHARED_SETTINGS_DB_RETRY_INTERVAL_SECONDS', '15'))
 
 
 def _ensure_shared_settings_table(get_postgres_connection: Callable[[], Any]):
@@ -36,6 +40,10 @@ def _load_db_json_setting(
     if get_postgres_connection is None:
         return None
 
+    last_failure_at = _db_setting_failure_cache.get(setting_key)
+    if last_failure_at is not None and (time.time() - last_failure_at) < _DB_RETRY_INTERVAL_SECONDS:
+        return None
+
     try:
         _ensure_shared_settings_table(get_postgres_connection)
         with get_postgres_connection() as conn:
@@ -49,9 +57,12 @@ def _load_db_json_setting(
                     return None
                 value = row[0] if isinstance(row, tuple) else row['setting_value']
                 if isinstance(value, str):
+                    _db_setting_failure_cache.pop(setting_key, None)
                     return json.loads(value)
+                _db_setting_failure_cache.pop(setting_key, None)
                 return value
     except Exception as exc:
+        _db_setting_failure_cache[setting_key] = time.time()
         logger.warning("Falling back to file storage for %s: %s", setting_key, exc)
         return None
 
@@ -106,8 +117,7 @@ def load_json_settings_data(
 
     try:
         if file_path and current_mtime is not None:
-            with open(file_path, 'r', encoding='utf-8') as handle:
-                file_value = json.load(handle)
+            file_value = load_json_file(file_path)
             logger.info("Loaded %s from %s", setting_key, file_path)
             return file_value
     except Exception as exc:
@@ -129,13 +139,14 @@ def save_json_settings_data(
         setting_key=setting_key,
         payload=payload,
     )
+    if saved_to_db:
+        return True
 
     saved_to_file = False
     if file_path:
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as handle:
-                json.dump(payload, handle, ensure_ascii=False, indent=2)
+            write_json_file(file_path, payload)
             logger.info("Saved %s to %s", setting_key, file_path)
             saved_to_file = True
         except Exception as exc:
@@ -185,9 +196,9 @@ def save_module_access_data(
         access_data = {}
         for module_key, module_info in module_access.items():
             module_data = {}
-            if 'authorized_users' in module_info and module_info['authorized_users']:
+            if 'authorized_users' in module_info:
                 module_data['authorized_users'] = module_info['authorized_users']
-            if 'restricted_users' in module_info and module_info['restricted_users']:
+            if 'restricted_users' in module_info:
                 module_data['restricted_users'] = module_info['restricted_users']
             if module_data:
                 access_data[module_key] = module_data

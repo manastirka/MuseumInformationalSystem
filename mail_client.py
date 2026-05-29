@@ -11,6 +11,7 @@ Mark-read flags are queued and flushed to IMAP in the background.
 import os
 import re
 import json
+import html as html_lib
 import hashlib
 import imaplib
 import smtplib
@@ -31,6 +32,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup, Comment
 from cryptography.fernet import Fernet
 from psycopg.rows import dict_row
+from runtime_lock_utils import load_json_file, update_json_file, write_json_file
 
 from postgres_service import get_postgres_connection
 
@@ -42,6 +44,8 @@ KEY_FILE = DATA_DIR / '.mail_key'
 CACHE_DIR = DATA_DIR / 'mail_cache'
 MAIL_SETTINGS_KEY_ENV = 'MAIL_SETTINGS_ENCRYPTION_KEY'
 MAIL_SETTINGS_TABLE = 'mail_user_settings'
+MAIL_ALLOWED_HOSTS_KEY = 'mail_allowed_hosts'
+MAIL_BANNED_HOSTS_KEY = 'mail_banned_hosts'
 
 _settings_lock = threading.Lock()
 
@@ -122,9 +126,20 @@ def _get_fernet():
             _fernet_instance = Fernet(configured_key)
             return _fernet_instance
 
+        if KEY_FILE.exists():
+            _fernet_instance = Fernet(KEY_FILE.read_bytes().strip())
+            if _production_mode():
+                logger.warning(
+                    "%s is not set; using existing local mail key file %s.",
+                    MAIL_SETTINGS_KEY_ENV,
+                    KEY_FILE,
+                )
+            return _fernet_instance
+
         if _production_mode():
             raise RuntimeError(
-                f"{MAIL_SETTINGS_KEY_ENV} must be set in production to decrypt saved mail credentials."
+                f"{MAIL_SETTINGS_KEY_ENV} must be set in production, or {KEY_FILE} must exist, "
+                "to encrypt and decrypt saved mail credentials."
             )
 
         if not KEY_FILE.exists():
@@ -157,6 +172,139 @@ def _encrypt(plaintext: str) -> str:
 
 def _decrypt(token: str) -> str:
     return _get_fernet().decrypt(token.encode()).decode()
+
+
+# ===================== Mail Host Policy =====================
+
+def _normalize_mail_host(host: str) -> str:
+    host = (host or '').strip().lower().rstrip('.')
+    if not host:
+        raise ValueError('Mail server host is required.')
+    if '://' in host:
+        raise ValueError('Mail server must be a hostname or IP address, not a URL.')
+    if any(char in host for char in '/?#@'):
+        raise ValueError('Mail server host is invalid.')
+
+    try:
+        ipaddress.ip_address(host)
+        return host
+    except ValueError:
+        pass
+
+    labels = host.split('.')
+    if not labels or any(not label for label in labels):
+        raise ValueError('Mail server host is invalid.')
+    for label in labels:
+        if len(label) > 63:
+            raise ValueError('Mail server host is invalid.')
+        if label.startswith('-') or label.endswith('-'):
+            raise ValueError('Mail server host is invalid.')
+        if not re.fullmatch(r'[a-z0-9-]+', label):
+            raise ValueError('Mail server host is invalid.')
+
+    return host
+
+
+def normalize_allowed_mail_hosts(raw_hosts) -> list[str]:
+    if raw_hosts is None:
+        return []
+
+    if isinstance(raw_hosts, str):
+        candidates = re.split(r'[\s,;]+', raw_hosts)
+    elif isinstance(raw_hosts, (list, tuple, set)):
+        candidates = list(raw_hosts)
+    else:
+        raise ValueError('Allowed mail hosts must be a list or comma-separated string.')
+
+    normalized_hosts = []
+    seen = set()
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        candidate_text = str(candidate).strip()
+        if not candidate_text:
+            continue
+        normalized = _normalize_mail_host(candidate_text)
+        if normalized not in seen:
+            normalized_hosts.append(normalized)
+            seen.add(normalized)
+    return normalized_hosts
+
+
+def get_allowed_mail_hosts() -> list[str]:
+    configured_hosts = []
+    env_hosts = os.environ.get('MAIL_ALLOWED_HOSTS', '')
+    if env_hosts.strip():
+        configured_hosts.extend(normalize_allowed_mail_hosts(env_hosts))
+
+    try:
+        from admin_system_views import load_saved_settings
+
+        saved_settings = load_saved_settings() or {}
+        saved_hosts = saved_settings.get(MAIL_ALLOWED_HOSTS_KEY, [])
+        if saved_hosts:
+            for host in normalize_allowed_mail_hosts(saved_hosts):
+                if host not in configured_hosts:
+                    configured_hosts.append(host)
+    except Exception as exc:
+        logger.warning("Could not load shared mail host policy: %s", exc)
+
+    return configured_hosts
+
+
+def get_banned_mail_hosts() -> list[str]:
+    configured_hosts = []
+    env_hosts = os.environ.get('MAIL_BANNED_HOSTS', '')
+    if env_hosts.strip():
+        configured_hosts.extend(normalize_allowed_mail_hosts(env_hosts))
+
+    try:
+        from admin_system_views import load_saved_settings
+
+        saved_settings = load_saved_settings() or {}
+        saved_hosts = saved_settings.get(MAIL_BANNED_HOSTS_KEY, [])
+        if saved_hosts:
+            for host in normalize_allowed_mail_hosts(saved_hosts):
+                if host not in configured_hosts:
+                    configured_hosts.append(host)
+    except Exception as exc:
+        logger.warning("Could not load shared mail deny policy: %s", exc)
+
+    return configured_hosts
+
+
+def ensure_mail_host_allowed(host: str, *, allowed_hosts=None, banned_hosts=None) -> str:
+    normalized_host = _normalize_mail_host(host)
+    normalized_allowed_hosts = normalize_allowed_mail_hosts(
+        allowed_hosts if allowed_hosts is not None else get_allowed_mail_hosts()
+    )
+    normalized_banned_hosts = normalize_allowed_mail_hosts(
+        banned_hosts if banned_hosts is not None else get_banned_mail_hosts()
+    )
+    if normalized_host in normalized_banned_hosts:
+        raise ValueError(f"Mail server '{normalized_host}' is on the banned host list.")
+    if normalized_host not in normalized_allowed_hosts:
+        if normalized_allowed_hosts:
+            raise ValueError(f"Mail server '{normalized_host}' is not in the allowed host list.")
+        if normalized_banned_hosts:
+            return normalized_host
+        raise ValueError('No mail host policy is configured. Contact an administrator.')
+    return normalized_host
+
+
+def validate_mail_server_settings(settings: dict, *, allowed_hosts=None, banned_hosts=None) -> dict:
+    validated = dict(settings or {})
+    validated['imap_server'] = ensure_mail_host_allowed(
+        validated.get('imap_server', ''),
+        allowed_hosts=allowed_hosts,
+        banned_hosts=banned_hosts,
+    )
+    validated['smtp_server'] = ensure_mail_host_allowed(
+        validated.get('smtp_server', ''),
+        allowed_hosts=allowed_hosts,
+        banned_hosts=banned_hosts,
+    )
+    return validated
 
 
 # ===================== Settings =====================
@@ -198,26 +346,26 @@ def _load_legacy_all_settings() -> dict:
     with _settings_lock:
         if not SETTINGS_FILE.exists():
             return {}
-        return json.loads(SETTINGS_FILE.read_text('utf-8'))
+        return load_json_file(SETTINGS_FILE, default={})
 
 
 def _save_legacy_all_settings(data: dict):
     with _settings_lock:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), 'utf-8')
+        write_json_file(SETTINGS_FILE, data)
 
 
 def _remove_legacy_user_settings(user_email: str):
     with _settings_lock:
         if not SETTINGS_FILE.exists():
             return
-        data = json.loads(SETTINGS_FILE.read_text('utf-8'))
-        if user_email not in data:
-            return
-        del data[user_email]
-        if data:
-            SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), 'utf-8')
-        else:
+        def _remove(data):
+            payload = dict(data or {})
+            payload.pop(user_email, None)
+            return payload
+
+        updated = update_json_file(SETTINGS_FILE, _remove, default={})
+        if not updated:
             SETTINGS_FILE.unlink(missing_ok=True)
 
 
@@ -362,7 +510,7 @@ def get_user_settings_safe(user_email: str) -> dict | None:
 
 def _connect_imap(settings, password):
     """Create a fresh IMAP connection (login included)."""
-    s = settings
+    s = validate_mail_server_settings(settings)
     if s.get('imap_ssl', True):
         conn = imaplib.IMAP4_SSL(s['imap_server'], int(s.get('imap_port', 993)), timeout=15)
     else:
@@ -1631,6 +1779,7 @@ class MailClient:
         self.settings = get_user_settings(user_email)
         if self.settings is None:
             raise ValueError('Подешавања поште нису конфигурисана.')
+        self.settings = validate_mail_server_settings(self.settings)
         try:
             self._password = _decrypt(self.settings['password'])
         except Exception:
@@ -1972,14 +2121,14 @@ class MailClient:
     def send_message(self, to, subject, body, cc='', attachments=None, **_kw):
         """Send an email. attachments is a list of dicts with keys:
         filename (str), content_type (str), data (bytes)."""
-        s = self.settings
+        s = validate_mail_server_settings(self.settings)
         has_attachments = attachments and len(attachments) > 0
 
         if has_attachments:
             msg = email.mime.multipart.MIMEMultipart('mixed')
             body_part = email.mime.multipart.MIMEMultipart('alternative')
             body_part.attach(email.mime.text.MIMEText(body, 'plain', 'utf-8'))
-            html = f'<html><body><pre style="font-family:inherit;white-space:pre-wrap">{body}</pre></body></html>'
+            html = f'<html><body><pre style="font-family:inherit;white-space:pre-wrap">{html_lib.escape(body)}</pre></body></html>'
             body_part.attach(email.mime.text.MIMEText(html, 'html', 'utf-8'))
             msg.attach(body_part)
             for att in attachments:
@@ -1993,7 +2142,7 @@ class MailClient:
         else:
             msg = email.mime.multipart.MIMEMultipart('alternative')
             msg.attach(email.mime.text.MIMEText(body, 'plain', 'utf-8'))
-            html = f'<html><body><pre style="font-family:inherit;white-space:pre-wrap">{body}</pre></body></html>'
+            html = f'<html><body><pre style="font-family:inherit;white-space:pre-wrap">{html_lib.escape(body)}</pre></body></html>'
             msg.attach(email.mime.text.MIMEText(html, 'html', 'utf-8'))
 
         msg['From'] = s['email_address']
@@ -2035,11 +2184,11 @@ class MailClient:
                 if st == 'OK':
                     sent_folder = candidate
                     break
+            _pool_set_selected(self.user_email, None)  # probing changed selection
             if sent_folder:
                 M.append(f'"{sent_folder}"', '\\Seen',
                          imaplib.Time2Internaldate(time.time()),
                          msg_string.encode('utf-8'))
-                _pool_set_selected(self.user_email, None)
             else:
                 logger.warning("Could not find Sent folder to save sent message")
         except Exception as e:
@@ -2064,14 +2213,20 @@ class MailClient:
         password = self._password
 
         def _bg_delete():
+            conn = None
             try:
                 conn = _connect_imap(settings, password)
                 conn.select(f'"{folder}"', readonly=False)
                 conn.uid('store', str(uid).encode(), '+FLAGS', '\\Deleted')
                 conn.expunge()
-                conn.logout()
             except Exception as e:
                 logger.debug(f"Background IMAP delete error for uid {uid}: {e}")
+            finally:
+                if conn:
+                    try:
+                        conn.logout()
+                    except Exception:
+                        pass
 
         t = threading.Thread(target=_bg_delete, daemon=True)
         t.start()
@@ -2111,22 +2266,28 @@ class MailClient:
             _manual_sync_jobs[sync_key] = None
 
         def _do():
+            conn = None
+            db = None
             try:
-                conn = _connect_imap(settings, password)
-                db = _get_db(user_email)
-                do_sync(conn, db, user_email, folder)
-                _prefetch_bodies(conn, db, user_email, folder, limit=30)
-                _flush_pending_reads(conn, db, user_email)
                 try:
-                    conn.logout()
-                except Exception:
-                    pass
-                try:
-                    db.close()
-                except Exception:
-                    pass
-            except Exception as e:
-                logger.warning(f"Manual sync error: {e}")
+                    conn = _connect_imap(settings, password)
+                    db = _get_db(user_email)
+                    do_sync(conn, db, user_email, folder)
+                    _prefetch_bodies(conn, db, user_email, folder, limit=30)
+                    _flush_pending_reads(conn, db, user_email)
+                except Exception as e:
+                    logger.warning(f"Manual sync error: {e}")
+                finally:
+                    if conn:
+                        try:
+                            conn.logout()
+                        except Exception:
+                            pass
+                    if db:
+                        try:
+                            db.close()
+                        except Exception:
+                            pass
             finally:
                 with _manual_sync_lock:
                     job = _manual_sync_jobs.get(sync_key)
@@ -2141,8 +2302,9 @@ class MailClient:
 
 # ===================== Connection Tests =====================
 
-def test_imap_connection(server, port, ssl, email_address, password):
+def test_imap_connection(server, port, ssl, email_address, password, allowed_hosts=None, banned_hosts=None):
     try:
+        server = ensure_mail_host_allowed(server, allowed_hosts=allowed_hosts, banned_hosts=banned_hosts)
         if ssl:
             M = imaplib.IMAP4_SSL(server, int(port), timeout=10)
         else:
@@ -2154,8 +2316,9 @@ def test_imap_connection(server, port, ssl, email_address, password):
         return {'success': False, 'message': f'IMAP грешка: {e}'}
 
 
-def test_smtp_connection(server, port, starttls, email_address, password):
+def test_smtp_connection(server, port, starttls, email_address, password, allowed_hosts=None, banned_hosts=None):
     try:
+        server = ensure_mail_host_allowed(server, allowed_hosts=allowed_hosts, banned_hosts=banned_hosts)
         if starttls:
             S = smtplib.SMTP(server, int(port), timeout=10)
             S.ehlo(); S.starttls(); S.ehlo()

@@ -104,6 +104,14 @@ TRACE_ELEMENT_COLUMNS = [
     'W(PPM)', 'TL(PPM)', 'PB(PPM)', 'BI(PPM)', 'TH(PPM)', 'U(PPM)'
 ]
 
+# Generic category searches that should include every row regardless of the
+# per-row MINERAL label.
+GENERIC_CATEGORIES = {
+    'amphibole', 'carbonate', 'feldspar', 'garnet', 'mica', 'olivine',
+    'pyroxene', 'spinel', 'zircon', 'clinopyroxene', 'orthopyroxene',
+    'chalcogenide', 'sulfide', 'clay'
+}
+
 # Cache for parsed data
 _data_cache = {}
 _cache_max_samples = 10000  # Max samples to keep in cache per mineral
@@ -176,7 +184,7 @@ def get_georoc_data(mineral_name: str, max_samples: int = 5000) -> Optional[Dict
     Returns:
         Dictionary with geochemical data or None if not found
     """
-    cache_key = mineral_name.lower().strip()
+    cache_key = f"{mineral_name.lower().strip()}_{max_samples}"
 
     # Check cache
     if cache_key in _data_cache:
@@ -200,20 +208,22 @@ def get_georoc_data(mineral_name: str, max_samples: int = 5000) -> Optional[Dict
         references = set()
         sample_count = 0
 
-        mineral_lower = mineral_name.lower()
+        mineral_lower = mineral_name.lower().strip()
 
         with open(csv_path, 'r', encoding='utf-8', errors='replace') as f:
             reader = csv.DictReader(f)
 
+            is_generic = mineral_lower in GENERIC_CATEGORIES
+
             for row in reader:
                 # Filter by mineral name if specific mineral requested
                 mineral_col = (row.get('MINERAL') or '').lower()
-                if mineral_lower not in mineral_col and mineral_col not in mineral_lower:
-                    # For generic category searches, include all
-                    if mineral_lower not in ['amphibole', 'carbonate', 'feldspar', 'garnet',
-                                             'mica', 'olivine', 'pyroxene', 'spinel', 'zircon',
-                                             'clinopyroxene', 'orthopyroxene', 'chalcogenide',
-                                             'sulfide', 'chalcogenide', 'clay']:
+                if not is_generic:
+                    # Specific mineral: an empty MINERAL label is not a match,
+                    # otherwise the empty string would match every search.
+                    if not mineral_col:
+                        continue
+                    if mineral_lower not in mineral_col and mineral_col not in mineral_lower:
                         continue
 
                 sample_count += 1

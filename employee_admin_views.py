@@ -20,7 +20,7 @@ def render_employee_profiles_database(*, get_employee_directory):
 
     total_profiles = len(employees_list)
     total_directory = len(employees)
-    with_descriptions = len([emp for emp in employees_list if emp.get('description')])
+    with_descriptions = len([emp for emp in employees if emp.get('description')])
     departments = len({emp['department'] for emp in employees_list if emp.get('department')})
 
     statistics = {
@@ -63,19 +63,21 @@ def handle_add_user(*, get_museum_employees, get_employee_directory, password_ha
             flash('Корисник са овом е-mail адресом већ постоји.', 'error')
             return redirect(url_for('add_user'))
 
-        hashed_password, _ = password_hasher.hash_password(password)
-        new_user_id = max([emp['user_id'] for emp in employees.values()]) + 1
+        # Persist to PostgreSQL via the canonical auth path. create_user hashes
+        # the password, resolves role_id, sets is_first_login and lets the
+        # database assign the id (no more max() over an empty fallback dict).
+        from postgres_auth import get_postgres_auth
 
-        employees[email] = {
-            'user_id': new_user_id,
-            'email': email,
-            'full_name': full_name,
-            'department': department,
-            'position': position,
-            'role': role,
-            'password': hashed_password,
-            'is_first_login': True,
-        }
+        new_user_id = get_postgres_auth().create_user(
+            email=email,
+            password=password,
+            full_name=full_name,
+            role=role,
+            position=position,
+        )
+        if not new_user_id:
+            flash('Грешка при чувању корисника у базу. Корисник није додат.', 'error')
+            return redirect(url_for('add_user'))
 
         flash(
             (

@@ -144,13 +144,13 @@ def handle_admin_qr_labels_selected(
     specimen_ids = request.form.getlist('specimen_ids')
     if not specimen_ids:
         flash('Морате изабрати бар један примерак.', 'warning')
-        return redirect(url_for('admin_qr_select_specimens', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_select_specimens', collection_type=collection_type))
     if len(specimen_ids) > MAX_SPECIMENS:
         flash(
             f'Можете изабрати максимум {MAX_SPECIMENS} примерака одједном. Тренутно изабрано: {len(specimen_ids)}. Молимо смањите број изабраних примерака.',
             'warning',
         )
-        return redirect(url_for('admin_qr_select_specimens', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_select_specimens', collection_type=collection_type))
 
     logger.info("Generating QR codes for %s specimens from collection %s", len(specimen_ids), collection_type)
     labels = []
@@ -204,13 +204,13 @@ def handle_admin_qr_labels_selected(
                 'count': len(labels),
             },
             'selected_specimens': specimen_ids,
-            'back_url': url_for('admin_qr_select_specimens', collection_type=collection_type),
+            'back_url': url_for('qr.admin_qr_select_specimens', collection_type=collection_type),
         }
-        return redirect(url_for('admin_qr_label_format', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_label_format', collection_type=collection_type))
     except Exception as exc:
         logger.exception("Error generating selected QR codes")
         flash('Грешка при генерисању QR кодова.', 'error')
-        return redirect(url_for('admin_qr_select_specimens', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_select_specimens', collection_type=collection_type))
 
 
 def render_admin_qr_label_format(
@@ -223,10 +223,10 @@ def render_admin_qr_label_format(
 ):
     """Show label format selection for QR code generation."""
     collection_type = normalize_qr_collection_type(collection_type)
-    if collection_type != 'mineral_boxes':
-        access_redirect = ensure_qr_collection_access(collection_type)
-        if access_redirect:
-            return access_redirect
+    access_check_type = 'minerals' if collection_type == 'mineral_boxes' else collection_type
+    access_redirect = ensure_qr_collection_access(access_check_type)
+    if access_redirect:
+        return access_redirect
 
     logger.info("Format selection route called for collection_type: %s", collection_type)
 
@@ -241,7 +241,7 @@ def render_admin_qr_label_format(
     back_url = stored_data.get('back_url')
     if not back_url:
         back_url = (
-            url_for('admin_qr_mineral_boxes')
+            url_for('qr.admin_qr_mineral_boxes')
             if collection_type == 'mineral_boxes'
             else get_qr_collection_url(collection_type)
         )
@@ -249,7 +249,7 @@ def render_admin_qr_label_format(
     return render_template(
         'admin_qr_label_format.html',
         collection=collection_info,
-        continue_url=url_for('admin_qr_labels_with_format', collection_type=collection_type),
+        continue_url=url_for('qr.admin_qr_labels_with_format', collection_type=collection_type),
         back_url=back_url,
     )
 
@@ -263,10 +263,10 @@ def handle_admin_qr_labels_with_format(
 ):
     """Render QR codes with the selected label format."""
     collection_type = normalize_qr_collection_type(collection_type)
-    if collection_type != 'mineral_boxes':
-        access_redirect = ensure_qr_collection_access(collection_type)
-        if access_redirect:
-            return access_redirect
+    access_check_type = 'minerals' if collection_type == 'mineral_boxes' else collection_type
+    access_redirect = ensure_qr_collection_access(access_check_type)
+    if access_redirect:
+        return access_redirect
 
     label_format = request.form.get('label_format', '1')
     print_mode = request.form.get('print_mode', 'regular')
@@ -277,7 +277,7 @@ def handle_admin_qr_labels_with_format(
     if 'qr_generated_data' not in session:
         flash('Грешка: Нема података за генерисање QR кодова.', 'error')
         if collection_type == 'mineral_boxes':
-            return redirect(url_for('admin_qr_mineral_boxes'))
+            return redirect(url_for('qr.admin_qr_mineral_boxes'))
         return redirect(get_qr_collection_url(collection_type))
 
     stored_data = session['qr_generated_data']
@@ -286,7 +286,7 @@ def handle_admin_qr_labels_with_format(
     back_url = stored_data.get('back_url')
     if not back_url:
         back_url = (
-            url_for('admin_qr_mineral_boxes')
+            url_for('qr.admin_qr_mineral_boxes')
             if collection_type == 'mineral_boxes'
             else get_qr_collection_url(collection_type)
         )
@@ -383,7 +383,7 @@ def render_admin_qr_labels(
             'all_specimens': True,
             'back_url': get_qr_collection_url(collection_type),
         }
-        return redirect(url_for('admin_qr_label_format', collection_type=collection_type))
+        return redirect(url_for('qr.admin_qr_label_format', collection_type=collection_type))
     except Exception:
         logger.exception("Error generating QR codes")
         flash('Грешка при генерисању QR кодова.', 'error')

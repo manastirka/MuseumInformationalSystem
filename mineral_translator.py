@@ -466,12 +466,17 @@ def extract_minerals_from_name(full_name: str) -> List[str]:
             # Check if this is a mineral or just a descriptor
             normalized = normalize_name(part)
             words = normalized.split()
+            # Keep the raw tokens (pre-normalization) so the capitalization
+            # check below reflects the original casing rather than the
+            # already-lowercased normalized form.
+            raw_words = part.split()
 
-            for word in words:
+            for index, word in enumerate(words):
                 word = word.strip()
+                raw_word = raw_words[index] if index < len(raw_words) else word
                 if word and word not in IGNORE_WORDS and len(word) > 2:
                     # Check if it looks like a mineral name
-                    if word in MINERAL_TRANSLATIONS or word[0].isupper() or len(word) > 4:
+                    if word in MINERAL_TRANSLATIONS or (raw_word and raw_word[0].isupper()) or len(word) > 4:
                         minerals.append(word)
 
     # Remove duplicates while preserving order
@@ -543,12 +548,15 @@ def translate_mineral_name(serbian_name: str) -> Tuple[str, bool]:
         if var in MINERAL_TRANSLATIONS:
             return MINERAL_TRANSLATIONS[var], True
 
-    # Try fuzzy matching - find minerals that start with same prefix
+    # Try fuzzy matching - find minerals that start with same prefix.
+    # This is a heuristic guess (an unrelated name can share a 4-char
+    # prefix), so report was_translated=False to let callers distinguish
+    # a confirmed translation from a guess.
     if len(normalized) >= 4:
         prefix = normalized[:4]
         for key, value in MINERAL_TRANSLATIONS.items():
             if key.startswith(prefix):
-                return value, True
+                return value, False
 
     # Try without common suffixes/prefixes
     for suffix in ['it', 'ит', 'in', 'ин', 'at', 'ат', 'om', 'em', 'a', 'e', 'i', 'u']:

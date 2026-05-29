@@ -7,6 +7,7 @@ import time
 
 from flask import jsonify, render_template, request
 from psycopg.rows import dict_row
+from runtime_lock_utils import load_json_file
 
 from postgres_service import get_postgres_connection
 
@@ -39,8 +40,7 @@ def _get_locality_geocache(app_root):
     geocache_path = os.path.join(app_root, 'data', 'locality_geocache.json')
     if os.path.exists(geocache_path):
         try:
-            with open(geocache_path, 'r', encoding='utf-8') as handle:
-                _locality_geocache = json.load(handle)
+            _locality_geocache = load_json_file(geocache_path, default={})
         except Exception:
             _locality_geocache = {}
     else:

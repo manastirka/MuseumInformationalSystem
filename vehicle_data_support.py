@@ -4,30 +4,14 @@ import json
 import logging
 import os
 
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
 
 def default_vehicles():
-    """Return seeded vehicle records used when no persisted data exists."""
-    return [
-        {
-            'id': 1,
-            'name': 'Комби возило',
-            'registration': 'BG-1234-AB',
-            'type': 'Комби',
-            'capacity': '9 путника',
-            'status': 'Активно'
-        },
-        {
-            'id': 2,
-            'name': 'Теренско возило',
-            'registration': 'BG-5678-CD',
-            'type': 'Теренац',
-            'capacity': '5 путника',
-            'status': 'Активно'
-        }
-    ]
+    """Return empty vehicle list when no persisted data exists."""
+    return []
 
 
 def load_vehicles(*, vehicles_file, database_url=None, phase3a_databases=None):
@@ -40,8 +24,7 @@ def load_vehicles(*, vehicles_file, database_url=None, phase3a_databases=None):
 
     try:
         if os.path.exists(vehicles_file):
-            with open(vehicles_file, 'r', encoding='utf-8') as handle:
-                return json.load(handle)
+            return load_json_file(vehicles_file, default=default_vehicles())
     except Exception as exc:
         logger.error("Error loading vehicles: %s", exc)
 
@@ -52,8 +35,7 @@ def save_vehicles(*, vehicles_file, vehicles):
     """Persist vehicles to JSON fallback storage."""
     try:
         os.makedirs(os.path.dirname(vehicles_file), exist_ok=True)
-        with open(vehicles_file, 'w', encoding='utf-8') as handle:
-            json.dump(vehicles, handle, ensure_ascii=False, indent=2)
+        write_json_file(vehicles_file, vehicles)
         return True
     except Exception as exc:
         logger.error("Error saving vehicles: %s", exc)
@@ -70,8 +52,7 @@ def load_reservations(*, reservations_file, database_url=None, phase3a_databases
 
     try:
         if os.path.exists(reservations_file):
-            with open(reservations_file, 'r', encoding='utf-8') as handle:
-                return json.load(handle)
+            return load_json_file(reservations_file, default=[])
     except Exception as exc:
         logger.error("Error loading reservations: %s", exc)
 
@@ -82,8 +63,7 @@ def save_reservations(*, reservations_file, reservations):
     """Persist reservations to JSON fallback storage."""
     try:
         os.makedirs(os.path.dirname(reservations_file), exist_ok=True)
-        with open(reservations_file, 'w', encoding='utf-8') as handle:
-            json.dump(reservations, handle, ensure_ascii=False, indent=2)
+        write_json_file(reservations_file, reservations)
         return True
     except Exception as exc:
         logger.error("Error saving reservations: %s", exc)

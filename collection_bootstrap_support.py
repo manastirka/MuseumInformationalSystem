@@ -297,7 +297,7 @@ HERPETOLOGY_FALLBACK = {
         {
             'catalog_number': 'HERP-AMP-001',
             'scientific_name': 'Salamandra salamandra',
-            'common_name_sr': 'Обична дaламадeрица',
+            'common_name_sr': 'Обична саламандерица',
             'class': 'Amphibia',
             'order': 'Caudata',
             'family': 'Salamandridae',
@@ -868,17 +868,23 @@ METEORITE_COLLECTION_DATABASE = {
             'serbian_meteorite': False
         }
     ],
-    'statistics': {
-        'total_specimens': 18,
-        'serbian_meteorites': 3,
-        'international_specimens': 15,
-        'iron_meteorites': 7,
-        'stony_meteorites': 4,
-        'tektites': 2,
-        'total_mass_kg': 23.631,
-        'oldest_acquisition': '1949'
-    }
 }
+
+
+def _compute_meteorite_statistics(specimens):
+    """Derive meteorite collection statistics from the specimen list so the
+    displayed aggregates stay consistent with the records (no hand drift)."""
+    serbian = sum(1 for specimen in specimens if specimen.get('serbian_meteorite'))
+    return {
+        'total_specimens': len(specimens),
+        'serbian_meteorites': serbian,
+        'international_specimens': len(specimens) - serbian,
+    }
+
+
+METEORITE_COLLECTION_DATABASE['statistics'] = _compute_meteorite_statistics(
+    METEORITE_COLLECTION_DATABASE['specimens']
+)
 
 
 CONSERVATION_BIOLOGY_DATABASE = {
@@ -1138,12 +1144,14 @@ class CollectionBootstrapSupport:
                     logger.warning("Failed to load %s from PostgreSQL: %s", collection_type, exc)
         return fallback_data
 
-    def _get_cached_phase3a_database(self, *, cache_attr, loader_name, fallback_data):
+    def _get_cached_phase3a_database(self, *, cache_attr, loader_name, primary_key, fallback_data):
         if self._database_url and self._phase3a_databases is not None:
             cached_value = getattr(self, cache_attr)
             if cached_value is None:
-                cached_value = getattr(self._phase3a_databases, loader_name)()
-                setattr(self, cache_attr, cached_value)
+                loaded_value = getattr(self._phase3a_databases, loader_name)()
+                if loaded_value and loaded_value.get(primary_key):
+                    setattr(self, cache_attr, loaded_value)
+                return loaded_value
             return cached_value
         return fallback_data
 
@@ -1152,6 +1160,7 @@ class CollectionBootstrapSupport:
         return self._get_cached_phase3a_database(
             cache_attr='_cached_heritage_db',
             loader_name='get_cultural_heritage_database',
+            primary_key='heritage_items',
             fallback_data=self.cultural_heritage_database,
         )
 
@@ -1160,5 +1169,6 @@ class CollectionBootstrapSupport:
         return self._get_cached_phase3a_database(
             cache_attr='_cached_meteorite_db',
             loader_name='get_meteorite_collection_database',
+            primary_key='specimens',
             fallback_data=self.meteorite_collection_database,
         )

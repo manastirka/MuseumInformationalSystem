@@ -44,6 +44,193 @@ SERBIAN_MONTHS = [
 SERBIAN_MONTHS_LOWER = [month.lower() for month in SERBIAN_MONTHS]
 
 
+def _session_is_admin(session_data) -> bool:
+    return session_data.get('user_role') == 'admin'
+
+
+def _session_is_director(session_data) -> bool:
+    return session_data.get('user_role') == 'direktor'
+
+
+def _session_is_department_head(session_data) -> bool:
+    return bool(session_data.get('is_department_head', False))
+
+
+def _get_department_heads(cursor) -> dict:
+    """Return `{department_name: head_email}` for all departments whose head
+    is an active user with a leadership role. Used to decide whether the
+    director should verify a given report: if the report's department has a
+    head, the head verifies regular employees there; the director only
+    verifies the head's own report (and reports from heads-less departments).
+    """
+    from core_app_views import DEPARTMENT_HEAD_ROLES
+    cursor.execute(
+        """
+        SELECT COALESCE(d.name, ep.department) AS department, u.email AS head_email
+        FROM users u
+        JOIN roles r ON u.role_id = r.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(u.email)
+        WHERE u.is_active = TRUE
+          AND r.name = ANY(%s)
+        """,
+        (list(DEPARTMENT_HEAD_ROLES),),
+    )
+    heads = {}
+    for row in cursor.fetchall():
+        if isinstance(row, dict):
+            dept = (row.get('department') or '').strip()
+            email = (row.get('head_email') or '').strip()
+        else:
+            dept = (row[0] or '').strip()
+            email = (row[1] or '').strip()
+        if dept:
+            heads[dept] = email.lower()
+    return heads
+
+
+def can_user_view_report_for_department(session_data, target_department) -> bool:
+    """Return True if the session user may VIEW (read) a report in the given
+    department. Less restrictive than verification: directors see every
+    report across departments; department heads see only their own.
+    """
+    if _session_is_admin(session_data) or _session_is_director(session_data):
+        return True
+    if not _session_is_department_head(session_data):
+        return False
+    user_dept = (session_data.get('user_department') or '').strip()
+    target = (target_department or '').strip()
+    return bool(user_dept) and bool(target) and user_dept == target
+
+
+def can_user_verify_report_for_department(
+    session_data,
+    target_department,
+    target_employee_email: Optional[str] = None,
+    department_heads: Optional[dict] = None,
+) -> bool:
+    """Return True if the session user may view/verify a report belonging to
+    an employee in `target_department`.
+
+    Rules:
+    - Admin: always (system administrator).
+    - Department head (sef_odeljenja / sef_pravne_sluzbe / sef_racunovodstva):
+      only reports in their own department, AND never their own report
+      (self-approval is forbidden — the director verifies head reports).
+    - Director: reports in departments WITHOUT a designated head (Edu,
+      Gallery), AND reports submitted by a department head (so heads get
+      their own timesheets approved by the director). For regular employees
+      in departments that have a head, the director does NOT verify — the
+      head does.
+    - Everyone else: never.
+
+    `target_employee_email` and `department_heads` are required for non-admin
+    verification. Missing context is denied so a route cannot accidentally
+    bypass the head-vs-employee split or self-approval guards.
+    """
+    if _session_is_admin(session_data):
+        return True
+
+    target = (target_department or '').strip()
+    target_email_lc = (target_employee_email or '').strip().lower()
+    if not target:
+        return False
+
+    if _session_is_director(session_data):
+        # Self-approval guard: director cannot verify their own timesheet.
+        # The admin signs off the director's report.
+        user_email_lc = (session_data.get('user_email') or '').strip().lower()
+        if user_email_lc and target_email_lc and user_email_lc == target_email_lc:
+            return False
+
+        if department_heads is None:
+            return False
+        head_email = department_heads.get(target)
+        if not head_email:
+            # Department has no head (Edu, Gallery, Director) — director
+            # approves reports there, except their own (caught above).
+            return True
+        # Department has a head — director only verifies the head's own report.
+        return bool(target_email_lc) and target_email_lc == head_email
+
+    if not _session_is_department_head(session_data):
+        return False
+    user_dept = (session_data.get('user_department') or '').strip()
+    if not user_dept or not target or user_dept != target:
+        return False
+
+    # Department heads may not verify their own timesheet. The director
+    # handles head reports. Three complementary guards:
+    #   (a) direct email match (session.user_email == target_employee_email)
+    #   (b) target is the registered head of this department (via heads map)
+    #       — blocks even when session.user_email is absent (stale session)
+    #   (c) session user IS the head but target email is unknown (NULL in DB)
+    #       — refuse rather than silently self-approve.
+    user_email_lc = (session_data.get('user_email') or '').strip().lower()
+
+    # (a)
+    if user_email_lc and target_email_lc and user_email_lc == target_email_lc:
+        return False
+
+    if department_heads is not None:
+        head_email = department_heads.get(target)
+        if head_email:
+            # (b): target IS the head — only director approves head reports.
+            if target_email_lc and target_email_lc == head_email:
+                return False
+            # (c): target email unknown but current user IS the head.
+            if not target_email_lc and user_email_lc == head_email:
+                return False
+    elif not target_email_lc:
+        return False
+    return True
+
+
+def _department_scope_for_session() -> Optional[str]:
+    """Return the department to scope the reports list to, or None for no scope.
+
+    Admins and directors see every department (None). Department heads are
+    scoped to their own department. Other users would not reach this view (the
+    route decorator stops them), so they get an explicit empty-result scope.
+    """
+    if _session_is_admin(session) or _session_is_director(session):
+        return None
+    if _session_is_department_head(session):
+        return (session.get('user_department') or '').strip() or '__no_department__'
+    return '__no_department__'
+
+
+def _lookup_report_department(cursor, report_id):
+    """Return `(department, employee_email)` for `report_id`, or `(None, None)`.
+
+    Tuple return lets callers apply the director-specific head-vs-employee
+    rule without an extra query.
+    """
+    cursor.execute(
+        """
+        SELECT ep.department AS employee_department,
+               tr.employee_email AS employee_email
+        FROM timesheet_reports tr
+        LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
+        WHERE tr.id = %s
+        """,
+        (report_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return None, None
+    if isinstance(row, dict):
+        return row.get('employee_department'), row.get('employee_email')
+    try:
+        return row[0], row[1]
+    except (TypeError, IndexError):
+        return None, None
+
+
+def _forbidden_json(message='Немате дозволу за приступ'):
+    return jsonify({'success': False, 'message': message}), 403
+
+
 def _parse_int(value: Optional[str]) -> Optional[int]:
     try:
         if value is None or value == '':
@@ -54,7 +241,7 @@ def _parse_int(value: Optional[str]) -> Optional[int]:
 
 
 def _month_options():
-    return [(idx, calendar.month_name[idx]) for idx in range(1, 13)]
+    return [(idx, SERBIAN_MONTHS[idx - 1]) for idx in range(1, 13)]
 
 
 def _timesheet_repository_available(timesheet_repository):
@@ -115,16 +302,35 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
     year = _parse_int(request.args.get('year'))
     search = request.args.get('search', '').strip() or None
     page = _parse_int(request.args.get('page')) or 1
+    only_verifiable = request.args.get('only_verifiable', '').strip() in ('1', 'true', 'on')
+
+    department_scope = _department_scope_for_session()
+
+    # When the "only-mine-to-verify" filter is on, the SQL-level pagination
+    # can't express the head-vs-employee rule (it's computed per-row in
+    # Python after annotation). Fetch a larger page so the filter isn't
+    # starved; the actual museum volume fits comfortably under this cap.
+    per_page = 200 if only_verifiable else 25
 
     reports = timesheet_repository.list_reports(
         page=page,
-        per_page=25,
+        per_page=per_page,
         month=month,
         year=year,
         search=search,
+        department=department_scope,
     )
     month_summary = timesheet_repository.get_month_summary(month=month, year=year)
     overall_summary = timesheet_repository.get_overall_summary()
+
+    report_list = reports.get('reports', [])
+    _annotate_reports_with_verify_flag(report_list)
+
+    if only_verifiable:
+        filtered = [r for r in report_list if r.get('can_verify')]
+        reports['reports'] = filtered
+        reports['filtered_total'] = len(filtered)
+        reports['only_verifiable'] = True
 
     return render_template(
         'admin_timesheet_reports.html',
@@ -134,10 +340,59 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         month=month,
         year=year,
         search=search or '',
+        only_verifiable=only_verifiable,
         month_options=_month_options(),
         category_labels=timesheet_repository_cls.CATEGORY_LABELS,
         calendar=calendar,
     )
+
+
+def _annotate_reports_with_verify_flag(report_list):
+    """Set `report['can_verify']` for each row based on the session's rules.
+
+    Runs one extra query per page to fetch the employee_email + department
+    for the listed report ids and the current department-head mapping. Used
+    so the template can disable the approve button when the current user
+    shouldn't act on that report (e.g., director on a regular employee's
+    report in a department that already has a head).
+    """
+    if not report_list:
+        return
+    if _session_is_admin(session):
+        for report in report_list:
+            report['can_verify'] = True
+        return
+
+    report_ids = [r['id'] for r in report_list if r.get('id') is not None]
+    if not report_ids:
+        for report in report_list:
+            report['can_verify'] = False
+        return
+
+    with get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT tr.id,
+                       tr.employee_email,
+                       ep.department AS employee_department
+                FROM timesheet_reports tr
+                LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
+                WHERE tr.id = ANY(%s)
+                """,
+                (report_ids,),
+            )
+            meta_by_id = {row['id']: row for row in cur.fetchall()}
+            heads = _get_department_heads(cur)
+
+    for report in report_list:
+        meta = meta_by_id.get(report.get('id'), {})
+        report['can_verify'] = can_user_verify_report_for_department(
+            session,
+            meta.get('employee_department'),
+            target_employee_email=meta.get('employee_email'),
+            department_heads=heads,
+        )
 
 
 def render_admin_timesheet_report_detail(report_id, timesheet_repository, timesheet_repository_cls):
@@ -151,11 +406,34 @@ def render_admin_timesheet_report_detail(report_id, timesheet_repository, timesh
         flash('Тражени извештај није пронађен.', 'error')
         return redirect(url_for('admin_timesheet_reports'))
 
+    report_month = int(report['header'].get('month', 1))
+    month_name = (
+        SERBIAN_MONTHS[report_month - 1]
+        if 1 <= report_month <= 12
+        else str(report_month)
+    )
+
+    can_verify = True
+    if not _session_is_admin(session):
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                report_department, employee_email = _lookup_report_department(cur, report_id)
+                heads = _get_department_heads(cur)
+        if not can_user_view_report_for_department(session, report_department):
+            flash('Немате дозволу да прегледате овај извештај.', 'danger')
+            return redirect(url_for('admin_timesheet_reports'))
+        can_verify = can_user_verify_report_for_department(
+            session, report_department,
+            target_employee_email=employee_email,
+            department_heads=heads,
+        )
+
     return render_template(
         'admin_timesheet_report_detail.html',
         report=report,
         category_labels=timesheet_repository_cls.CATEGORY_LABELS,
-        month_name=calendar.month_name[int(report['header'].get('month', 1))],
+        month_name=month_name,
+        can_verify=can_verify,
     )
 
 
@@ -346,7 +624,7 @@ def render_admin_timesheet_analytics(timesheet_repository):
                         COALESCE(SUM(d.sick_leave_lt30), 0) + COALESCE(SUM(d.sick_leave_gte30), 0) as total_hours
                     FROM timesheet_reports r
                     LEFT JOIN timesheet_report_days d ON r.id = d.report_id
-                    LEFT JOIN employee_profiles ep ON r.employee_name = ep.full_name
+                    LEFT JOIN employee_profiles ep ON LOWER(r.employee_email) = LOWER(ep.email)
                     GROUP BY r.employee_name, ep.department
                     ORDER BY ep.department, total_hours DESC
                     """
@@ -419,7 +697,7 @@ def render_admin_timesheet_analytics(timesheet_repository):
                         ), 0) as total_hours
                     FROM timesheet_reports r
                     LEFT JOIN timesheet_report_days d ON r.id = d.report_id
-                    LEFT JOIN employee_profiles ep ON r.employee_name = ep.full_name
+                    LEFT JOIN employee_profiles ep ON LOWER(r.employee_email) = LOWER(ep.email)
                     GROUP BY ep.department
                     ORDER BY total_hours DESC
                     """
@@ -506,14 +784,17 @@ def api_admin_employee_analytics():
                     SELECT
                         COUNT(DISTINCT r.id) as total_reports,
                         COALESCE(SUM(
-                            d.work_in_museum + d.work_outside + d.vacation + d.public_holiday +
-                            d.paid_leave + d.other_leave + d.sick_leave_lt30 + d.sick_leave_gte30
+                            COALESCE(d.work_in_museum, 0) + COALESCE(d.work_outside, 0) +
+                            COALESCE(d.vacation, 0) + COALESCE(d.public_holiday, 0) +
+                            COALESCE(d.paid_leave, 0) + COALESCE(d.other_leave, 0) +
+                            COALESCE(d.sick_leave_lt30, 0) + COALESCE(d.sick_leave_gte30, 0)
                         ), 0) as total_hours,
                         COALESCE(SUM(d.work_in_museum), 0) as work_in_museum,
                         COALESCE(SUM(d.work_outside), 0) as work_outside,
                         COALESCE(SUM(
-                            d.vacation + d.public_holiday + d.paid_leave + d.other_leave +
-                            d.sick_leave_lt30 + d.sick_leave_gte30
+                            COALESCE(d.vacation, 0) + COALESCE(d.public_holiday, 0) +
+                            COALESCE(d.paid_leave, 0) + COALESCE(d.other_leave, 0) +
+                            COALESCE(d.sick_leave_lt30, 0) + COALESCE(d.sick_leave_gte30, 0)
                         ), 0) as leave_hours
                     FROM timesheet_reports r
                     LEFT JOIN timesheet_report_days d ON r.id = d.report_id
@@ -555,8 +836,10 @@ def api_admin_employee_analytics():
                         r.year,
                         r.month,
                         COALESCE(SUM(
-                            d.work_in_museum + d.work_outside + d.vacation + d.public_holiday +
-                            d.paid_leave + d.other_leave + d.sick_leave_lt30 + d.sick_leave_gte30
+                            COALESCE(d.work_in_museum, 0) + COALESCE(d.work_outside, 0) +
+                            COALESCE(d.vacation, 0) + COALESCE(d.public_holiday, 0) +
+                            COALESCE(d.paid_leave, 0) + COALESCE(d.other_leave, 0) +
+                            COALESCE(d.sick_leave_lt30, 0) + COALESCE(d.sick_leave_gte30, 0)
                         ), 0) as total_hours
                     FROM timesheet_reports r
                     LEFT JOIN timesheet_report_days d ON r.id = d.report_id
@@ -633,6 +916,15 @@ def api_admin_get_timesheet_report(report_id, timesheet_repository):
         if not report:
             return jsonify({'success': False, 'message': 'Извештај није пронађен'})
 
+        if not _session_is_admin(session):
+            with get_postgres_connection(row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    report_department, _ = _lookup_report_department(cur, report_id)
+            # Reading (not verifying) is permitted for directors cross-dept
+            # and for dept heads scoped to their own dept.
+            if not can_user_view_report_for_department(session, report_department):
+                return _forbidden_json()
+
         return jsonify({'success': True, 'report': report})
     except Exception as exc:
         return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
@@ -651,12 +943,49 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository):
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, employee_name, month, year FROM timesheet_reports WHERE id = %s",
+                    """
+                    SELECT tr.id, tr.employee_name, tr.month, tr.year,
+                           COALESCE(tr.status, 'DRAFT') AS status,
+                           tr.employee_email,
+                           ep.department AS employee_department
+                    FROM timesheet_reports tr
+                    LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
+                    WHERE tr.id = %s
+                    FOR UPDATE OF tr
+                    """,
                     (report_id,),
                 )
                 report = cur.fetchone()
                 if not report:
                     return jsonify({'success': False, 'message': 'Извештај није пронађен'})
+
+                report_status = report.get('status') or 'SUBMITTED'
+                if approve and report_status != 'SUBMITTED':
+                    return jsonify({
+                        'success': False,
+                        'message': 'Само поднете радне листе могу бити одобрене.'
+                    }), 400
+                if not approve and report_status != 'APPROVED':
+                    return jsonify({
+                        'success': False,
+                        'message': 'Повући верификацију можете само за одобрене извештаје.'
+                    }), 400
+
+                heads = _get_department_heads(cur)
+                if not can_user_verify_report_for_department(
+                    session,
+                    report.get('employee_department'),
+                    target_employee_email=report.get('employee_email'),
+                    department_heads=heads,
+                ):
+                    return _forbidden_json()
+
+                month_name = (
+                    SERBIAN_MONTHS_LOWER[report['month'] - 1]
+                    if 1 <= report['month'] <= 12
+                    else str(report['month'])
+                )
+                employee_email = report.get('employee_email')
 
                 if approve:
                     cur.execute(
@@ -665,31 +994,34 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository):
                         SET is_verified = TRUE,
                             verified_by = %s,
                             verified_at = NOW(),
-                            is_locked = TRUE
+                            verified_role = %s,
+                            is_locked = TRUE,
+                            status = 'APPROVED',
+                            reviewed_at = NOW(),
+                            reviewed_by_email = %s,
+                            editable_until = NULL
                         WHERE id = %s
                         """,
-                        (admin_email, report_id),
+                        (admin_email, session.get('user_role'), admin_email, report_id),
+                    )
+                    cur.execute(
+                        """
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено')
+                        """,
+                        (report_id, admin_email),
                     )
                     message = 'Извештај је одобрен и закључан'
 
-                    month_name = (
-                        SERBIAN_MONTHS_LOWER[report['month'] - 1]
-                        if 1 <= report['month'] <= 12
-                        else str(report['month'])
-                    )
-                    cur.execute(
-                        "SELECT email FROM users WHERE full_name = %s AND is_active = TRUE",
-                        (report['employee_name'],),
-                    )
-                    user_row = cur.fetchone()
-                    if user_row:
+                    if employee_email:
                         cur.execute(
                             """
                             INSERT INTO user_notifications (user_email, title, message, icon, type)
                             VALUES (%s, %s, %s, 'bi-check-circle', 'success')
                             """,
                             (
-                                user_row['email'],
+                                employee_email,
                                 'Радна листа верификована',
                                 f"Ваша радна листа за {month_name} {report['year']}. је верификована.",
                             ),
@@ -701,12 +1033,39 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository):
                         SET is_verified = FALSE,
                             verified_by = NULL,
                             verified_at = NULL,
-                            is_locked = FALSE
+                            verified_role = NULL,
+                            is_locked = FALSE,
+                            status = 'SUBMITTED',
+                            reviewed_at = NULL,
+                            reviewed_by_email = NULL,
+                            editable_until = NOW() + INTERVAL '24 hours'
                         WHERE id = %s
                         """,
                         (report_id,),
                     )
-                    message = 'Верификација извештаја је повучена'
+                    cur.execute(
+                        """
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'APPROVED', 'SUBMITTED', %s, 'Верификација повучена')
+                        """,
+                        (report_id, admin_email),
+                    )
+                    message = 'Верификација извештаја је повучена. Запослени може да допуни извештај у наредна 24 часа.'
+
+                    if employee_email:
+                        cur.execute(
+                            """
+                            INSERT INTO user_notifications (user_email, title, message, icon, type)
+                            VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
+                            """,
+                            (
+                                employee_email,
+                                'Верификација повучена',
+                                f"Верификација ваше радне листе за {month_name} {report['year']}. је повучена. "
+                                f"Извештај је откључан наредна 24 часа за допуну — после тога морате тражити поновно откључавање од шефа одељења.",
+                            ),
+                        )
 
                 conn.commit()
 
@@ -733,7 +1092,7 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
             return jsonify({'success': False, 'message': 'Максимално 100 извештаја одједном'}), 400
 
         try:
-            report_ids = [int(report_id) for report_id in report_ids]
+            report_ids = list(dict.fromkeys(int(report_id) for report_id in report_ids))
         except (ValueError, TypeError):
             return jsonify({'success': False, 'message': 'Неисправни ID-ови извештаја'}), 400
 
@@ -742,10 +1101,40 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, employee_name, month, year FROM timesheet_reports WHERE id = ANY(%s)",
+                    """
+                    SELECT tr.id, tr.employee_name, tr.month, tr.year,
+                           COALESCE(tr.status, 'DRAFT') AS status,
+                           tr.employee_email,
+                           ep.department AS employee_department
+                    FROM timesheet_reports tr
+                    LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
+                    WHERE tr.id = ANY(%s)
+                    FOR UPDATE OF tr
+                    """,
                     (report_ids,),
                 )
                 existing_reports = cur.fetchall()
+                required_status = 'SUBMITTED' if approve else 'APPROVED'
+                existing_reports = [
+                    row for row in existing_reports
+                    if (row.get('status') or 'SUBMITTED') == required_status
+                ]
+
+                # Drop any report the current user cannot verify under the
+                # per-role rules (director head-vs-employee, dept head own-dept
+                # only). Admins keep everything.
+                if not _session_is_admin(session):
+                    heads = _get_department_heads(cur)
+                    existing_reports = [
+                        row for row in existing_reports
+                        if can_user_verify_report_for_department(
+                            session,
+                            row.get('employee_department'),
+                            target_employee_email=row.get('employee_email'),
+                            department_heads=heads,
+                        )
+                    ]
+
                 existing_ids = {row['id'] for row in existing_reports}
 
                 if not existing_ids:
@@ -760,10 +1149,23 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                         SET is_verified = TRUE,
                             verified_by = %s,
                             verified_at = NOW(),
-                            is_locked = TRUE
+                            verified_role = %s,
+                            is_locked = TRUE,
+                            status = 'APPROVED',
+                            reviewed_at = NOW(),
+                            reviewed_by_email = %s,
+                            editable_until = NULL
                         WHERE id = ANY(%s)
                         """,
-                        (admin_email, list(existing_ids)),
+                        (admin_email, session.get('user_role'), admin_email, list(existing_ids)),
+                    )
+                    cur.executemany(
+                        """
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено (групно)')
+                        """,
+                        [(rid, admin_email) for rid in existing_ids],
                     )
                     action_msg = 'верификовано и закључано'
 
@@ -773,19 +1175,15 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                             if 1 <= report['month'] <= 12
                             else str(report['month'])
                         )
-                        cur.execute(
-                            "SELECT email FROM users WHERE full_name = %s AND is_active = TRUE",
-                            (report['employee_name'],),
-                        )
-                        user_row = cur.fetchone()
-                        if user_row:
+                        employee_email = report.get('employee_email')
+                        if employee_email:
                             cur.execute(
                                 """
                                 INSERT INTO user_notifications (user_email, title, message, icon, type)
                                 VALUES (%s, %s, %s, 'bi-check-circle', 'success')
                                 """,
                                 (
-                                    user_row['email'],
+                                    employee_email,
                                     'Радна листа верификована',
                                     f"Ваша радна листа за {month_name} {report['year']}. је верификована.",
                                 ),
@@ -797,12 +1195,46 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                         SET is_verified = FALSE,
                             verified_by = NULL,
                             verified_at = NULL,
-                            is_locked = FALSE
+                            verified_role = NULL,
+                            is_locked = FALSE,
+                            status = 'SUBMITTED',
+                            reviewed_at = NULL,
+                            reviewed_by_email = NULL,
+                            editable_until = NOW() + INTERVAL '24 hours'
                         WHERE id = ANY(%s)
                         """,
                         (list(existing_ids),),
                     )
+                    cur.executemany(
+                        """
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'APPROVED', 'SUBMITTED', %s, 'Верификација повучена (групно)')
+                        """,
+                        [(rid, admin_email) for rid in existing_ids],
+                    )
                     action_msg = 'верификација повучена'
+
+                    for report in existing_reports:
+                        month_name = (
+                            SERBIAN_MONTHS_LOWER[report['month'] - 1]
+                            if 1 <= report['month'] <= 12
+                            else str(report['month'])
+                        )
+                        employee_email = report.get('employee_email')
+                        if employee_email:
+                            cur.execute(
+                                """
+                                INSERT INTO user_notifications (user_email, title, message, icon, type)
+                                VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
+                                """,
+                                (
+                                    employee_email,
+                                    'Верификација повучена',
+                                    f"Верификација ваше радне листе за {month_name} {report['year']}. је повучена. "
+                                    f"Откључано наредна 24 часа за допуну.",
+                                ),
+                            )
 
                 conn.commit()
 
@@ -830,6 +1262,14 @@ def api_admin_export_timesheet_report(report_id, timesheet_repository):
         if not _timesheet_repository_available(timesheet_repository):
             flash('База података није доступна', 'error')
             return redirect(url_for('admin_timesheet_reports'))
+
+        if not _session_is_admin(session):
+            with get_postgres_connection(row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    report_department, _ = _lookup_report_department(cur, report_id)
+            if not can_user_view_report_for_department(session, report_department):
+                flash('Немате дозволу за извоз овог извештаја.', 'danger')
+                return redirect(url_for('admin_timesheet_reports'))
 
         try:
             from timesheet_word_export import generate_word_document
@@ -899,7 +1339,14 @@ def api_admin_delete_timesheet_report(report_id, timesheet_repository):
 
 
 def admin_approve_edit_request(request_id, timesheet_repository):
-    """Approve or reject an edit request."""
+    """Approve or reject an unlock / edit request.
+
+    Authorization: admin always; director and department heads only for
+    requests whose report is in their verification scope (same rule as the
+    verify flow). When approved, the target report's is_locked flips to
+    FALSE and a 24 h editable_until is granted so the employee can fix and
+    resubmit within a day.
+    """
     try:
         if not _timesheet_repository_available(timesheet_repository):
             return jsonify({'success': False, 'message': 'База података није доступна'})
@@ -916,6 +1363,33 @@ def admin_approve_edit_request(request_id, timesheet_repository):
 
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
+                # Resolve the target report's department so we can apply
+                # the per-scope authorization. Admin skips this check.
+                cur.execute(
+                    """
+                    SELECT ter.report_id, tr.employee_email,
+                           ep.department AS employee_department
+                      FROM timesheet_edit_requests ter
+                      JOIN timesheet_reports tr ON tr.id = ter.report_id
+                      LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
+                     WHERE ter.id = %s
+                    """,
+                    (request_id,),
+                )
+                request_row = cur.fetchone()
+                if not request_row:
+                    return jsonify({'success': False, 'message': 'Захтев није пронађен'})
+
+                if not _session_is_admin(session):
+                    heads = _get_department_heads(cur)
+                    if not can_user_verify_report_for_department(
+                        session,
+                        request_row.get('employee_department'),
+                        target_employee_email=request_row.get('employee_email'),
+                        department_heads=heads,
+                    ):
+                        return _forbidden_json()
+
                 cur.execute(
                     """
                     UPDATE timesheet_edit_requests
@@ -935,7 +1409,8 @@ def admin_approve_edit_request(request_id, timesheet_repository):
                     cur.execute(
                         """
                         UPDATE timesheet_reports tr
-                        SET is_locked = FALSE
+                        SET is_locked = FALSE,
+                            editable_until = NOW() + INTERVAL '24 hours'
                         FROM timesheet_edit_requests ter
                         WHERE ter.id = %s AND ter.report_id = tr.id
                         """,
@@ -944,7 +1419,7 @@ def admin_approve_edit_request(request_id, timesheet_repository):
 
                 conn.commit()
 
-        message = 'Захтев је одобрен' if action == 'approve' else 'Захтев је одбијен'
+        message = 'Захтев је одобрен (откључано 24 часа)' if action == 'approve' else 'Захтев је одбијен'
         return jsonify({'success': True, 'message': message})
     except Exception as exc:
         return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})

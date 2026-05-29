@@ -2,8 +2,12 @@
 """Dedicated background worker entrypoint for recurring museum jobs."""
 
 import logging
+import os
 import signal
 import time
+
+# Mark this process as the only allowed owner for recurring background jobs.
+os.environ.setdefault('MUSEUM_BACKGROUND_WORKER', '1')
 
 from app import create_app, start_background_jobs
 

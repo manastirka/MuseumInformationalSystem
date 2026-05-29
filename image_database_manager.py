@@ -11,21 +11,17 @@ import json
 import logging
 from typing import List, Dict, Optional
 from datetime import datetime
+from postgres_service import get_postgres_connection
+from runtime_lock_utils import write_json_file
 
 logger = logging.getLogger(__name__)
 
 
 def _get_db_connection():
     """Get PostgreSQL connection."""
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        return None
     try:
-        import psycopg
         from psycopg.rows import dict_row
-        db_url = database_url.replace('postgresql+psycopg://', 'postgresql://')
-        conn = psycopg.connect(db_url, row_factory=dict_row)
-        return conn
+        return get_postgres_connection(row_factory=dict_row)
     except Exception as e:
         logger.error(f"Failed to connect to PostgreSQL: {e}")
         return None
@@ -280,8 +276,7 @@ class ImageDatabaseManager:
                     export_data['items'][eid]['image_ids'].append(row['image_id'])
 
             if output_file:
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
+                write_json_file(output_file, export_data, default=str)
                 logger.info(f"Exported database images to: {output_file}")
 
         except Exception as e:

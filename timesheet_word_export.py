@@ -26,6 +26,11 @@ import psycopg
 from psycopg.rows import dict_row
 
 
+def _format_hours(value):
+    """Format an hours value, preserving half-hour increments (8 -> '8', 4.5 -> '4.5')."""
+    return '%g' % float(value)
+
+
 def _set_cell_shading(cell, color_hex):
     """Set cell background color."""
     tc = cell._tc
@@ -159,7 +164,7 @@ def generate_word_document(report_id, database_url):
             cur.execute("""
                 SELECT id, employee_name, month, year,
                        organization_unit, position,
-                       extraordinary_tasks, duties_summary,
+                       special_tasks, extraordinary_tasks, duties_summary,
                        created_at
                 FROM timesheet_reports
                 WHERE id = %s
@@ -305,7 +310,7 @@ def generate_word_document(report_id, database_url):
 
     # --- ROW 2: Values ---
     cell_name_val = _merge_cells_in_row(table, 2, 0, 8)
-    _add_cell_text(cell_name_val, header['employee_name'], font_size=13, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    _add_cell_text(cell_name_val, header.get('employee_name') or '', font_size=13, alignment=WD_ALIGN_PARAGRAPH.LEFT)
 
     cell_position = _merge_cells_in_row(table, 2, 9, 25)
     p = cell_position.paragraphs[0]
@@ -371,13 +376,13 @@ def generate_word_document(report_id, database_url):
             if field == 'work_in_museum' and (is_weekend or holiday) and value == 0:
                 _add_cell_text(cell, 'Х', font_size=9)
             elif value > 0:
-                _add_cell_text(cell, str(int(value)), font_size=9)
+                _add_cell_text(cell, _format_hours(value), font_size=9)
                 row_total += value
             else:
                 _add_cell_text(cell, '', font_size=9)
 
         # Total column
-        total_text = str(int(row_total)) if row_total > 0 else ''
+        total_text = _format_hours(row_total) if row_total > 0 else ''
         _add_cell_text(table.cell(row_idx, 32), total_text, font_size=9)
         _set_row_height(table.rows[row_idx], 281)
 
@@ -386,14 +391,16 @@ def generate_word_document(report_id, database_url):
     merged_total = _merge_cells_in_row(table, 12, 0, 31)
     _add_cell_text(merged_total, '', font_size=9)
 
-    # Calculate grand total
+    # Calculate grand total of worked hours only (museum + outside),
+    # excluding paid absence such as vacation/holiday/leave/sick.
+    worked_fields = ('work_in_museum', 'work_outside')
     grand_total = 0
     for day in range(1, days_in_month + 1):
         day_data = daily_data.get(day, {})
-        for _, field in categories:
+        for field in worked_fields:
             grand_total += float(day_data.get(field, 0) or 0)
 
-    _add_cell_text(table.cell(12, 32), str(int(grand_total)) if grand_total > 0 else '', font_size=9)
+    _add_cell_text(table.cell(12, 32), _format_hours(grand_total) if grand_total > 0 else '', font_size=9)
     _set_row_height(table.rows[12], 281)
 
     # --- ROW 13: Separator ---
@@ -432,8 +439,9 @@ def generate_word_document(report_id, database_url):
     _add_cell_text(cell_label20, '', font_size=9)
     cell_val20 = _merge_cells_in_row(table, 20, 4, num_cols - 1)
     # Employee name (last, first)
-    name_parts = (header['employee_name'] or '').split(' ')
-    reversed_name = ' '.join(reversed(name_parts)) if len(name_parts) > 1 else header['employee_name']
+    employee_name = header.get('employee_name') or ''
+    name_parts = employee_name.split(' ')
+    reversed_name = ' '.join(reversed(name_parts)) if len(name_parts) > 1 else employee_name
     _add_cell_text(cell_val20, reversed_name, font_size=9, alignment=WD_ALIGN_PARAGRAPH.LEFT)
     _set_row_height(table.rows[20], 422)
 
@@ -565,7 +573,7 @@ def generate_word_document(report_id, database_url):
         'cat_8': '8. ОСТАЛИ ПОСЛОВИ И АКТИВНОСТИ'
     }
 
-    extraordinary_tasks = header.get('extraordinary_tasks')
+    extraordinary_tasks = header.get('special_tasks') or header.get('extraordinary_tasks')
     has_work_data = False
 
     if extraordinary_tasks:
@@ -621,7 +629,7 @@ def generate_word_document(report_id, database_url):
     # =====================================================
     # Save document
     # =====================================================
-    safe_name = header['employee_name'].replace(' ', '_').replace('.', '').replace(',', '')
+    safe_name = (header.get('employee_name') or 'Непознато').replace(' ', '_').replace('.', '').replace(',', '')
     month_name_file = month_names[month] if 1 <= month <= 12 else str(month)
     filename = f"RadnaLista_{safe_name}_{month_name_file}_{year}.docx"
 

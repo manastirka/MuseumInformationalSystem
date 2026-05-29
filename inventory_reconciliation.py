@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Dict, Iterable, List, Optional
 
 from dotenv import load_dotenv
+from runtime_lock_utils import write_json_file
 
 try:
     import psycopg
@@ -358,8 +359,8 @@ class InventoryReconciliation:
         locality_terms = self._split_search_terms(kwargs.get('locality', ''))
         inv_number = kwargs.get('inv_number')
         inv_range = kwargs.get('inv_range')
-        category = kwargs.get('category', '').strip().lower()
-        sheet = kwargs.get('sheet', '').strip().lower()
+        category = (kwargs.get('category') or '').strip().lower()
+        sheet = (kwargs.get('sheet') or '').strip().lower()
         normalized_inventories = self._normalize_inventory_numbers(inv_number)
         has_inventory_filter = bool(str(inv_number).strip()) if inv_number is not None else False
 
@@ -550,8 +551,7 @@ class InventoryReconciliation:
 
     def export_report(self, report, output_path='data/inventory_reconciliation_report.json'):
         """Export reconciliation report to JSON."""
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=2)
+        write_json_file(output_path, report)
 
         print(f"✓ Report exported to {output_path}")
 

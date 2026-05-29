@@ -75,6 +75,17 @@ class TestResults:
 results = TestResults()
 
 
+try:
+    import pytest
+
+    @pytest.fixture(scope='session', autouse=True)
+    def _reliability_suite_cleanup():
+        yield
+        cleanup_test_data()
+except ImportError:
+    pass
+
+
 # =============================================================================
 # VALIDATION TESTS
 # =============================================================================

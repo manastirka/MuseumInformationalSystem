@@ -4,10 +4,33 @@ import logging
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import current_app, jsonify, request, send_from_directory
 
 logger = logging.getLogger(__name__)
+
+# Hosts permitted as targets for server-side CIF fetches. Prevents SSRF: an
+# authenticated user must not be able to make the server GET arbitrary internal
+# or cloud-metadata endpoints via /api/crystal/cif.
+_CIF_FETCH_ALLOWED_HOSTS = frozenset({
+    'crystallography.net',
+    'www.crystallography.net',
+    'rruff.info',
+    'www.rruff.net',
+    'rruff.geo.arizona.edu',
+})
+
+
+def _is_allowed_cif_url(cif_url):
+    """Return True only for http(s) URLs targeting an allowlisted crystallography host."""
+    try:
+        parsed = urlparse(cif_url)
+    except ValueError:
+        return False
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    return (parsed.hostname or '').lower() in _CIF_FETCH_ALLOWED_HOSTS
 
 
 def format_chemical_formula(formula):
@@ -281,6 +304,10 @@ def api_crystal_get_cif_by_url():
         cif_url = request.args.get('url')
         if not cif_url:
             return jsonify({'success': False, 'message': 'URL parameter required'}), 400
+
+        if not _is_allowed_cif_url(cif_url):
+            logger.warning("Rejected CIF fetch for disallowed URL: %s", cif_url)
+            return jsonify({'success': False, 'message': 'URL not allowed'}), 400
 
         cif_content = get_cod_database().get_cif_data(cif_url)
         if cif_content:
@@ -611,9 +638,9 @@ def api_get_local_rruff_powder_xy(mineral_name):
 def api_serve_local_rruff_image(image_path):
     """Serve a local RRUFF image file."""
     try:
-        rruff_data_path = os.path.join(current_app.root_path, 'RRUFF_data')
+        rruff_data_path = os.path.normpath(os.path.join(current_app.root_path, 'RRUFF_data'))
         full_path = os.path.normpath(os.path.join(rruff_data_path, image_path))
-        if not full_path.startswith(os.path.normpath(rruff_data_path)):
+        if full_path != rruff_data_path and not full_path.startswith(rruff_data_path + os.sep):
             return jsonify({'success': False, 'message': 'Invalid path'}), 403
         return send_from_directory(os.path.dirname(full_path), os.path.basename(full_path))
     except Exception as exc:

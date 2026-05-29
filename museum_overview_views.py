@@ -183,6 +183,16 @@ def render_museum_databases(
         logger.error("Exhibition statistics unavailable: %s", exc)
         exhibition_stats = {'total_exhibitions': 0}
 
+    scientific_papers_exists = os.path.exists('data/scientific_papers.db')
+    if scientific_papers_exists:
+        try:
+            scientific_papers_count = scientific_papers_database.get_statistics().get('total_papers', 0)
+        except Exception as exc:  # pragma: no cover
+            logger.error("Scientific papers statistics unavailable: %s", exc)
+            scientific_papers_count = '—'
+    else:
+        scientific_papers_count = '—'
+
     databases_info = {
         'employees': {
             'name': 'База запослених',
@@ -281,10 +291,8 @@ def render_museum_databases(
             'name': 'База научних радова',
             'description': 'Научне публикације повезане са геолошким картама Србије (ОГК)',
             'icon': 'museum-icon-papers',
-            'count': scientific_papers_database.get_statistics().get('total_papers', 0)
-            if os.path.exists('data/scientific_papers.db')
-            else '—',
-            'status': 'active' if os.path.exists('data/scientific_papers.db') else 'planned',
+            'count': scientific_papers_count,
+            'status': 'active' if scientific_papers_exists else 'planned',
             'url': '/admin/scientific_papers',
             'color': 'dark',
         },

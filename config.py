@@ -7,6 +7,9 @@ import os
 from datetime import timedelta
 from typing import Optional
 
+DEFAULT_LOG_DIR = os.environ.get('LOG_DIR', 'logs')
+DEFAULT_LOG_FILE = os.path.join(DEFAULT_LOG_DIR, 'museum_info_system.log')
+
 
 class Config:
     """Base configuration class."""
@@ -26,6 +29,7 @@ class Config:
     SESSION_PERMANENT: bool = os.environ.get('SESSION_PERMANENT', 'False').lower() == 'true'
     SESSION_USE_SIGNER: bool = os.environ.get('SESSION_USE_SIGNER', 'True').lower() == 'true'
     SESSION_KEY_PREFIX: str = os.environ.get('SESSION_KEY_PREFIX', 'museum:')
+    SESSION_INVALIDATE_ON_RESTART: bool = os.environ.get('SESSION_INVALIDATE_ON_RESTART', 'False').lower() == 'true'
     PERMANENT_SESSION_LIFETIME: timedelta = timedelta(
         seconds=int(os.environ.get('PERMANENT_SESSION_LIFETIME', '28800'))  # 8 hours default
     )
@@ -71,16 +75,18 @@ class Config:
 
     # Authentication
     AUTH_SYSTEM_ENABLED: bool = os.environ.get('AUTH_SYSTEM_ENABLED', 'True').lower() == 'true'
-    ENABLE_FALLBACK_AUTH: bool = os.environ.get('ENABLE_FALLBACK_AUTH', 'True').lower() == 'true'
+    ENABLE_FALLBACK_AUTH: bool = os.environ.get('ENABLE_FALLBACK_AUTH', 'False').lower() == 'true'
     REQUIRE_PASSWORD_CHANGE_ON_FIRST_LOGIN: bool = os.environ.get('REQUIRE_PASSWORD_CHANGE_ON_FIRST_LOGIN', 'True').lower() == 'true'
+    CHAT_SERVICE_ENABLED: bool = os.environ.get('CHAT_SERVICE_ENABLED', 'False').lower() == 'true'
 
     # Admin Credentials
     ADMIN_EMAIL: str = os.environ.get('ADMIN_EMAIL', 'admin@nhmbeo.rs')
+    ADMIN_USERNAME: Optional[str] = os.environ.get('ADMIN_USERNAME')
     ADMIN_DEFAULT_PASSWORD: Optional[str] = os.environ.get('ADMIN_DEFAULT_PASSWORD')
 
     # Logging
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE: str = os.environ.get('LOG_FILE', 'logs/museum_info_system.log')
+    LOG_FILE: str = os.environ.get('LOG_FILE', DEFAULT_LOG_FILE)
     LOG_FORMAT: str = os.environ.get('LOG_FORMAT', 'json')
     LOG_MAX_BYTES: int = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 10MB
     LOG_BACKUP_COUNT: int = int(os.environ.get('LOG_BACKUP_COUNT', '10'))
@@ -89,6 +95,12 @@ class Config:
     SENTRY_DSN: Optional[str] = os.environ.get('SENTRY_DSN')
     SENTRY_ENVIRONMENT: str = os.environ.get('SENTRY_ENVIRONMENT', 'production')
     SENTRY_TRACES_SAMPLE_RATE: float = float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1'))
+    SENTRY_SEND_DEFAULT_PII: bool = os.environ.get('SENTRY_SEND_DEFAULT_PII', 'False').lower() == 'true'
+
+    # OpenTelemetry
+    OTEL_ENABLED: bool = os.environ.get('OTEL_ENABLED', 'False').lower() == 'true'
+    OTEL_SERVICE_NAME: str = os.environ.get('OTEL_SERVICE_NAME', 'museum-info-system')
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = os.environ.get('OTEL_EXPORTER_OTLP_ENDPOINT')
 
     # External APIs
     MINDAT_API_KEY: Optional[str] = os.environ.get('MINDAT_API_KEY')

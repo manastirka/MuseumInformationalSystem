@@ -6,8 +6,18 @@ import os
 from datetime import datetime
 
 from flask import jsonify, request, session
+from runtime_lock_utils import load_json_file, update_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
+
+
+class _ProfileUpdateRejected(Exception):
+    """Signal a business-rule rejection from inside an update_json_file updater."""
+
+    def __init__(self, message, status):
+        super().__init__(message)
+        self.message = message
+        self.status = status
 
 
 def load_digitized_profiles(profiles_path):
@@ -15,16 +25,14 @@ def load_digitized_profiles(profiles_path):
     if not os.path.isfile(profiles_path):
         return []
     try:
-        with open(profiles_path, 'r', encoding='utf-8') as handle:
-            return json.load(handle)
+        return load_json_file(profiles_path, default=[])
     except Exception:
         return []
 
 
 def save_digitized_profiles(profiles_path, profiles):
     """Save digitized profiles to JSON file."""
-    with open(profiles_path, 'w', encoding='utf-8') as handle:
-        json.dump(profiles, handle, ensure_ascii=False, indent=2)
+    write_json_file(profiles_path, profiles)
 
 
 def api_map_elevation(*, sample_elevation_at_point):
@@ -70,8 +78,7 @@ def api_map_cross_profile(
 
     try:
         sheets_path = os.path.join(app_root, 'data', 'geological_map_sheets.json')
-        with open(sheets_path, 'r', encoding='utf-8') as handle:
-            geo_sheets = json.load(handle)
+        geo_sheets = load_json_file(sheets_path, default=[])
     except Exception:
         geo_sheets = []
 
@@ -167,7 +174,11 @@ def api_map_cross_profile(
     }
 
     if subsurface:
-        subsurface_data = interpolate_subsurface(lat1, lon1, lat2, lon2, profile_points, total_distance)
+        try:
+            subsurface_data = interpolate_subsurface(lat1, lon1, lat2, lon2, profile_points, total_distance)
+        except Exception as exc:
+            logger.warning("Subsurface interpolation failed, returning profile without it: %s", exc)
+            subsurface_data = None
         if subsurface_data:
             response['profile']['subsurface'] = subsurface_data
 
@@ -179,9 +190,12 @@ def api_digitized_profiles_list(*, profiles_path):
     profiles = load_digitized_profiles(profiles_path)
     summary = []
     for profile in profiles:
+        profile_id = profile.get('id')
+        if not profile_id:
+            continue
         summary.append(
             {
-                'id': profile['id'],
+                'id': profile_id,
                 'sheet_folder': profile.get('sheet_folder', ''),
                 'profile_id': profile.get('profile_id', ''),
                 'endpoint_a': profile.get('endpoint_a', {}),
@@ -198,7 +212,7 @@ def api_digitized_profiles_list(*, profiles_path):
 def api_digitized_profile_get(profile_id, *, profiles_path):
     """Get a single digitized profile."""
     profiles = load_digitized_profiles(profiles_path)
-    profile = next((entry for entry in profiles if entry['id'] == profile_id), None)
+    profile = next((entry for entry in profiles if entry.get('id') == profile_id), None)
     if not profile:
         return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
     return jsonify({'success': True, 'data': profile})
@@ -211,13 +225,9 @@ def api_digitized_profile_create(*, profiles_path):
         if not data:
             return jsonify({'success': False, 'message': 'Недостају подаци'}), 400
 
-        profiles = load_digitized_profiles(profiles_path)
         profile_id = data.get('id')
         if not profile_id:
             profile_id = f"{data.get('sheet_folder', 'unknown')}_{data.get('profile_id', 'AB')}"
-
-        if any(profile['id'] == profile_id for profile in profiles):
-            return jsonify({'success': False, 'message': 'Профил са овим ID-јем већ постоји'}), 409
 
         profile = {
             'id': profile_id,
@@ -232,9 +242,16 @@ def api_digitized_profile_create(*, profiles_path):
             'digitized_at': datetime.now().isoformat(),
         }
 
-        profiles.append(profile)
-        save_digitized_profiles(profiles_path, profiles)
+        def updater(profiles):
+            if any(entry.get('id') == profile_id for entry in profiles):
+                raise _ProfileUpdateRejected('Профил са овим ID-јем већ постоји', 409)
+            profiles.append(profile)
+            return profiles
+
+        update_json_file(profiles_path, updater, default=[])
         return jsonify({'success': True, 'data': profile, 'message': 'Профил сачуван'})
+    except _ProfileUpdateRejected as exc:
+        return jsonify({'success': False, 'message': exc.message}), exc.status
     except Exception as exc:
         logger.error("Error creating digitized profile: %s", exc)
         return jsonify({'success': False, 'message': 'Грешка при чувању профила'}), 500
@@ -247,21 +264,36 @@ def api_digitized_profile_update(profile_id, *, profiles_path):
         if not data:
             return jsonify({'success': False, 'message': 'Недостају подаци'}), 400
 
-        profiles = load_digitized_profiles(profiles_path)
-        idx = next((i for i, profile in enumerate(profiles) if profile['id'] == profile_id), None)
-        if idx is None:
-            return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
+        user_email = session.get('user_email', '')
+        user_role = session.get('user_role', '')
+        updated_holder = {}
 
-        profile = profiles[idx]
-        for key in ('endpoint_a', 'endpoint_b', 'image_bounds', 'layers', 'faults', 'profile_id', 'sheet_folder'):
-            if key in data:
-                profile[key] = data[key]
-        profile['digitized_by'] = session.get('user_email', '')
-        profile['digitized_at'] = datetime.now().isoformat()
+        def updater(profiles):
+            idx = next(
+                (i for i, profile in enumerate(profiles) if profile.get('id') == profile_id),
+                None,
+            )
+            if idx is None:
+                raise _ProfileUpdateRejected('Профил није пронађен', 404)
 
-        profiles[idx] = profile
-        save_digitized_profiles(profiles_path, profiles)
-        return jsonify({'success': True, 'data': profile, 'message': 'Профил ажуриран'})
+            profile = profiles[idx]
+            if profile.get('digitized_by') != user_email and user_role != 'admin':
+                raise _ProfileUpdateRejected('Немате дозволу', 403)
+
+            for key in ('endpoint_a', 'endpoint_b', 'image_bounds', 'layers', 'faults', 'profile_id', 'sheet_folder'):
+                if key in data:
+                    profile[key] = data[key]
+            profile['digitized_by'] = user_email
+            profile['digitized_at'] = datetime.now().isoformat()
+
+            profiles[idx] = profile
+            updated_holder['profile'] = profile
+            return profiles
+
+        update_json_file(profiles_path, updater, default=[])
+        return jsonify({'success': True, 'data': updated_holder['profile'], 'message': 'Профил ажуриран'})
+    except _ProfileUpdateRejected as exc:
+        return jsonify({'success': False, 'message': exc.message}), exc.status
     except Exception as exc:
         logger.error("Error updating digitized profile %s: %s", profile_id, exc)
         return jsonify({'success': False, 'message': 'Грешка при ажурирању'}), 500
@@ -270,13 +302,25 @@ def api_digitized_profile_update(profile_id, *, profiles_path):
 def api_digitized_profile_delete(profile_id, *, profiles_path):
     """Delete a digitized profile."""
     try:
-        profiles = load_digitized_profiles(profiles_path)
-        new_profiles = [profile for profile in profiles if profile['id'] != profile_id]
-        if len(new_profiles) == len(profiles):
-            return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
+        user_email = session.get('user_email', '')
+        user_role = session.get('user_role', '')
 
-        save_digitized_profiles(profiles_path, new_profiles)
+        def updater(profiles):
+            target = next(
+                (profile for profile in profiles if profile.get('id') == profile_id), None
+            )
+            if target is None:
+                raise _ProfileUpdateRejected('Профил није пронађен', 404)
+
+            if target.get('digitized_by') != user_email and user_role != 'admin':
+                raise _ProfileUpdateRejected('Немате дозволу', 403)
+
+            return [profile for profile in profiles if profile.get('id') != profile_id]
+
+        update_json_file(profiles_path, updater, default=[])
         return jsonify({'success': True, 'message': 'Профил обрисан'})
+    except _ProfileUpdateRejected as exc:
+        return jsonify({'success': False, 'message': exc.message}), exc.status
     except Exception as exc:
         logger.error("Error deleting digitized profile %s: %s", profile_id, exc)
         return jsonify({'success': False, 'message': 'Грешка при брисању'}), 500

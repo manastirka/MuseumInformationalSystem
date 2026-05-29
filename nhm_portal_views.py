@@ -6,6 +6,19 @@ from flask import jsonify, render_template, request
 
 logger = logging.getLogger(__name__)
 
+
+def _api_error_response(message, *, status=500, **extra):
+    payload = {'success': False, 'error': message}
+    payload.update(extra)
+    return jsonify(payload), status
+
+
+def _safe_int(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
 _MINERAL_TRANSLATIONS = {
     'pirit': 'pyrite', 'kvarc': 'quartz', 'kalcit': 'calcite', 'galenit': 'galena',
     'sfalerit': 'sphalerite', 'halkopirit': 'chalcopyrite', 'magnetit': 'magnetite',
@@ -38,9 +51,12 @@ _MINERAL_TRANSLATIONS = {
     'granit': 'granite', 'bazalt': 'basalt', 'andezit': 'andesite',
     'riolit': 'rhyolite', 'gabro': 'gabbro', 'diorit': 'diorite',
     'gnejs': 'gneiss', 'mramor': 'marble', 'kvarcit': 'quartzite',
-    'meteorit': 'meteorite', 'fosilI': 'fossil', 'mineral': 'mineral',
+    'meteorit': 'meteorite', 'fosil': 'fossil', 'mineral': 'mineral',
 }
-_MINERAL_TRANSLATIONS_REVERSE = {value: key for key, value in _MINERAL_TRANSLATIONS.items()}
+_MINERAL_TRANSLATIONS_REVERSE = {}
+for _key, _value in _MINERAL_TRANSLATIONS.items():
+    if _value not in _MINERAL_TRANSLATIONS_REVERSE:
+        _MINERAL_TRANSLATIONS_REVERSE[_value] = _key
 
 
 def _translate_words(query, mapping):
@@ -78,7 +94,9 @@ def render_nhm_data_portal():
     department = request.args.get('department', '')
     tag_filter = request.args.get('tag', '').strip()
     format_filter = request.args.get('format', '').strip()
-    page = int(request.args.get('page', 1))
+    page = _safe_int(request.args.get('page', 1), 1)
+    if page < 1:
+        page = 1
     rows = 20
     offset = (page - 1) * rows
 
@@ -115,7 +133,7 @@ def render_nhm_data_portal():
             all_tags = local_search.get_all_tags()[:50]
             all_formats = local_search.get_all_formats()
         except Exception as exc:
-            error = f'Грешка приликом локалне претраге: {exc}'
+            error = 'Грешка приликом локалне претраге.'
             logger.error("NHM local search error: %s", exc)
     elif api_status['connected']:
         try:
@@ -132,7 +150,7 @@ def render_nhm_data_portal():
 
             total_results = results.get('count', 0)
         except Exception as exc:
-            error = f'Грешка приликом претраге: {exc}'
+            error = 'Грешка приликом претраге.'
             logger.error("NHM Data Portal search error: %s", exc)
     else:
         error = 'NHM Data Portal није доступан и локални подаци нису преузети.'
@@ -174,18 +192,18 @@ def api_nhm_search():
 
     nhm = get_nhm_api()
     if not nhm.get_status()['connected']:
-        return jsonify({'success': False, 'error': 'NHM Data Portal недоступан'}), 503
+        return _api_error_response('NHM Data Portal недоступан', status=503)
 
     query = request.args.get('q', '').strip()
-    rows = min(int(request.args.get('rows', 25)), 100)
-    start = int(request.args.get('start', 0))
+    rows = min(_safe_int(request.args.get('rows', 25), 25), 100)
+    start = _safe_int(request.args.get('start', 0), 0)
 
     try:
         results = nhm.search_datasets(query=query or '*:*', rows=rows, start=start)
         return jsonify({'success': True, 'results': results, 'query': query})
     except Exception as exc:
         logger.error("NHM search error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при претрази NHM података')
 
 
 def api_nhm_dataset(dataset_id):
@@ -194,16 +212,16 @@ def api_nhm_dataset(dataset_id):
 
     nhm = get_nhm_api()
     if not nhm.get_status()['connected']:
-        return jsonify({'success': False, 'error': 'NHM Data Portal недоступан'}), 503
+        return _api_error_response('NHM Data Portal недоступан', status=503)
 
     try:
         dataset = nhm.get_dataset(dataset_id)
         if not dataset:
-            return jsonify({'success': False, 'error': 'Датасет није пронађен'}), 404
+            return _api_error_response('Датасет није пронађен', status=404)
         return jsonify({'success': True, 'dataset': dataset})
     except Exception as exc:
         logger.error("NHM dataset error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM датасета')
 
 
 def api_nhm_resource(resource_id):
@@ -212,16 +230,16 @@ def api_nhm_resource(resource_id):
 
     nhm = get_nhm_api()
     if not nhm.get_status()['connected']:
-        return jsonify({'success': False, 'error': 'NHM Data Portal недоступан'}), 503
+        return _api_error_response('NHM Data Portal недоступан', status=503)
 
     try:
         resource = nhm.get_resource(resource_id)
         if not resource:
-            return jsonify({'success': False, 'error': 'Ресурс није пронађен'}), 404
+            return _api_error_response('Ресурс није пронађен', status=404)
         return jsonify({'success': True, 'resource': resource})
     except Exception as exc:
         logger.error("NHM resource error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM ресурса')
 
 
 def api_nhm_datastore(resource_id):
@@ -230,7 +248,7 @@ def api_nhm_datastore(resource_id):
 
     nhm = get_nhm_api()
     if not nhm.get_status()['connected']:
-        return jsonify({'success': False, 'error': 'NHM Data Portal недоступан'}), 503
+        return _api_error_response('NHM Data Portal недоступан', status=503)
 
     try:
         query = request.args.get('q', '')
@@ -245,7 +263,7 @@ def api_nhm_datastore(resource_id):
         return jsonify({'success': True, 'results': results})
     except Exception as exc:
         logger.error("NHM datastore error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при претрази NHM datastore ресурса')
 
 
 def api_nhm_statistics():
@@ -258,7 +276,7 @@ def api_nhm_statistics():
         return jsonify({'success': True, 'statistics': stats})
     except Exception as exc:
         logger.error("NHM statistics error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM статистике')
 
 
 def api_nhm_local_search():
@@ -282,8 +300,8 @@ def api_nhm_local_search():
     tag = request.args.get('tag', '').strip()
     author = request.args.get('author', '').strip()
     format_type = request.args.get('format', '').strip()
-    limit = min(int(request.args.get('limit', 50)), 200)
-    offset = int(request.args.get('offset', 0))
+    limit = max(1, min(_safe_int(request.args.get('limit', 50), 50), 200))
+    offset = max(0, _safe_int(request.args.get('offset', 0), 0))
 
     filters = {}
     if tag:
@@ -297,7 +315,7 @@ def api_nhm_local_search():
         return jsonify(search.search(query, filters=filters, limit=limit, offset=offset))
     except Exception as exc:
         logger.error("NHM local search error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при локалној претрази NHM података')
 
 
 def api_nhm_local_dataset(dataset_name):
@@ -306,16 +324,16 @@ def api_nhm_local_dataset(dataset_name):
 
     search = get_nhm_local_search()
     if not search.is_available():
-        return jsonify({'success': False, 'error': 'Локални подаци нису доступни'}), 404
+        return _api_error_response('Локални подаци нису доступни', status=404)
 
     try:
         dataset = search.get_dataset(dataset_name)
         if not dataset:
-            return jsonify({'success': False, 'error': 'Датасет није пронађен'}), 404
+            return _api_error_response('Датасет није пронађен', status=404)
         return jsonify({'success': True, 'dataset': dataset})
     except Exception as exc:
         logger.error("NHM local dataset error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању локалног NHM датасета')
 
 
 def api_nhm_local_statistics():
@@ -327,7 +345,7 @@ def api_nhm_local_statistics():
         return jsonify({'success': True, 'statistics': search.get_statistics()})
     except Exception as exc:
         logger.error("NHM local statistics error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању локалне NHM статистике')
 
 
 def api_nhm_local_tags():
@@ -336,13 +354,13 @@ def api_nhm_local_tags():
 
     search = get_nhm_local_search()
     if not search.is_available():
-        return jsonify({'success': False, 'error': 'Локални подаци нису доступни'}), 404
+        return _api_error_response('Локални подаци нису доступни', status=404)
 
     try:
         return jsonify({'success': True, 'tags': search.get_all_tags()})
     except Exception as exc:
         logger.error("NHM local tags error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM тагова')
 
 
 def api_nhm_local_formats():
@@ -351,13 +369,13 @@ def api_nhm_local_formats():
 
     search = get_nhm_local_search()
     if not search.is_available():
-        return jsonify({'success': False, 'error': 'Локални подаци нису доступни'}), 404
+        return _api_error_response('Локални подаци нису доступни', status=404)
 
     try:
         return jsonify({'success': True, 'formats': search.get_all_formats()})
     except Exception as exc:
         logger.error("NHM local formats error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM формата')
 
 
 def api_nhm_local_authors():
@@ -366,13 +384,13 @@ def api_nhm_local_authors():
 
     search = get_nhm_local_search()
     if not search.is_available():
-        return jsonify({'success': False, 'error': 'Локални подаци нису доступни'}), 404
+        return _api_error_response('Локални подаци нису доступни', status=404)
 
     try:
         return jsonify({'success': True, 'authors': search.get_all_authors(limit=100)})
     except Exception as exc:
         logger.error("NHM local authors error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при учитавању NHM аутора')
 
 
 def api_nhm_download_datasets():
@@ -389,14 +407,14 @@ def api_nhm_download_datasets():
         return jsonify({'success': True, 'result': result})
     except Exception as exc:
         logger.error("NHM download error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+        return _api_error_response('Грешка при преузимању NHM датасетова')
 
 
 def api_nhm_data_search_local():
     """Search local museum databases with Serbian/English mineral translation."""
     query = request.args.get('q', '').strip()
     data_type = request.args.get('type', 'all')
-    limit = min(int(request.args.get('limit', 50)), 100)
+    limit = max(1, min(_safe_int(request.args.get('limit', 50), 50), 100))
 
     if not query:
         return jsonify({'success': True, 'results': [], 'total': 0})
@@ -424,9 +442,10 @@ def api_nhm_data_search_local():
 
                     for mineral in list(minerals):
                         mineral_id = mineral.get('id') or mineral.get('inventarni_broj')
-                        if mineral_id in seen_ids:
-                            continue
-                        seen_ids.add(mineral_id)
+                        if mineral_id is not None:
+                            if mineral_id in seen_ids:
+                                continue
+                            seen_ids.add(mineral_id)
                         results.append(
                             {
                                 'type': 'mineral',
@@ -478,7 +497,7 @@ def api_nhm_data_search_local():
         )
     except Exception as exc:
         logger.error("Local data search error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc), 'results': []}), 500
+        return _api_error_response('Грешка при претрази локалних података', results=[])
 
 
 def api_nhm_data_search_nhm():
@@ -486,8 +505,8 @@ def api_nhm_data_search_nhm():
     from nhm_data_portal_api import get_nhm_api
 
     query = request.args.get('q', '').strip()
-    limit = min(int(request.args.get('limit', 50)), 100)
-    offset = max(int(request.args.get('offset', 0)), 0)
+    limit = max(1, min(_safe_int(request.args.get('limit', 50), 50), 100))
+    offset = max(_safe_int(request.args.get('offset', 0), 0), 0)
 
     if not query:
         return jsonify({'success': True, 'results': [], 'total': 0})
@@ -496,7 +515,7 @@ def api_nhm_data_search_nhm():
     nhm = get_nhm_api()
 
     if not nhm.get_status()['connected']:
-        return jsonify({'success': False, 'error': 'NHM API unavailable', 'results': []})
+        return _api_error_response('NHM API unavailable', status=503, results=[])
 
     try:
         specimen_resource = '05ff2255-c38a-40c9-b657-4ccb55ab2feb'
@@ -552,4 +571,4 @@ def api_nhm_data_search_nhm():
         )
     except Exception as exc:
         logger.error("NHM data search error: %s", exc)
-        return jsonify({'success': False, 'error': str(exc), 'results': []}), 500
+        return _api_error_response('Грешка при претрази NHM specimen података', results=[])

@@ -4,6 +4,7 @@ import json
 import logging
 import os
 
+from runtime_lock_utils import load_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -12,11 +13,10 @@ def _load_json_list(filename):
     """Load a list payload from the local data directory."""
     data_path = os.path.join('data', filename)
     try:
-        with open(data_path, 'r', encoding='utf-8') as handle:
-            data = json.load(handle)
-            if isinstance(data, list):
-                return data
-            logger.warning("Expected list in %s, got %s", filename, type(data))
+        data = load_json_file(data_path, default=[])
+        if isinstance(data, list):
+            return data
+        logger.warning("Expected list in %s, got %s", filename, type(data))
     except FileNotFoundError:
         logger.warning("Data file not found at %s", data_path)
     except json.JSONDecodeError as exc:
@@ -168,12 +168,12 @@ def get_exhibition_statistics(*, exhibitions_database, current_year):
         ]
     )
     planned = len([exhibition for exhibition in exhibitions if exhibition['status'] == 'Планирана'])
-    total_visitors = sum(exhibition['visitor_count'] for exhibition in exhibitions)
+    total_visitors = sum((exhibition.get('visitor_count') or 0) for exhibition in exhibitions)
     annual = len(
         [
             exhibition
             for exhibition in exhibitions
-            if exhibition['start_date'].startswith(str(current_year))
+            if (exhibition.get('start_date') or '').startswith(str(current_year))
         ]
     )
 

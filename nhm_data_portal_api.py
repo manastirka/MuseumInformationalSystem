@@ -484,12 +484,13 @@ class NHMDataPortalAPI:
 
     def _format_dataset(self, pkg: Dict) -> Dict:
         """Format dataset for display (summary)."""
+        notes = pkg.get('notes') or ''
         return {
             'id': pkg.get('id', ''),
             'name': pkg.get('name', ''),
-            'title': pkg.get('title', ''),
-            'notes': pkg.get('notes', '')[:300] + '...' if len(pkg.get('notes', '')) > 300 else pkg.get('notes', ''),
-            'author': pkg.get('author', ''),
+            'title': pkg.get('title') or '',
+            'notes': notes[:300] + '...' if len(notes) > 300 else notes,
+            'author': pkg.get('author') or '',
             'license_title': pkg.get('license_title', ''),
             'num_resources': len(pkg.get('resources', [])),
             'num_tags': len(pkg.get('tags', [])),
@@ -509,9 +510,9 @@ class NHMDataPortalAPI:
         return {
             'id': pkg.get('id', ''),
             'name': pkg.get('name', ''),
-            'title': pkg.get('title', ''),
-            'notes': pkg.get('notes', ''),
-            'author': pkg.get('author', ''),
+            'title': pkg.get('title') or '',
+            'notes': pkg.get('notes') or '',
+            'author': pkg.get('author') or '',
             'author_email': pkg.get('author_email', ''),
             'maintainer': pkg.get('maintainer', ''),
             'maintainer_email': pkg.get('maintainer_email', ''),
@@ -538,7 +539,7 @@ class NHMDataPortalAPI:
             'id': res.get('id', ''),
             'name': res.get('name', ''),
             'description': res.get('description', ''),
-            'format': res.get('format', '').upper(),
+            'format': (res.get('format') or '').upper(),
             'url': res.get('url', ''),
             'url_type': res.get('url_type', ''),
             'size': res.get('size'),

@@ -24,6 +24,7 @@ from PIL import Image, ImageFilter
 from scipy import ndimage
 from scipy.ndimage import binary_opening, binary_closing, binary_dilation
 from sklearn.cluster import MiniBatchKMeans
+from runtime_lock_utils import load_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -612,8 +613,7 @@ def process_sheet(folder, sheet_data=None, force=False):
             'total_groups': len(group_meta),
             'groups': group_meta,
         }
-        with open(meta_path, 'w', encoding='utf-8') as f:
-            json.dump(meta, f, ensure_ascii=False, indent=2)
+        write_json_file(meta_path, meta)
 
         # Save enhanced legend
         if legend_swatches:
@@ -625,8 +625,7 @@ def process_sheet(folder, sheet_data=None, force=False):
                     sw['era'] = era_fam['era']
 
             legend_path_out = os.path.join(output_dir, 'enhanced_legend.json')
-            with open(legend_path_out, 'w', encoding='utf-8') as f:
-                json.dump(legend_swatches, f, ensure_ascii=False, indent=2)
+            write_json_file(legend_path_out, legend_swatches)
 
         logger.info(f"  Done: {len(group_meta)} groups, map={map_size//1024}KB")
         return {
@@ -644,8 +643,7 @@ def process_sheet(folder, sheet_data=None, force=False):
 
 def process_all_sheets(force=False):
     """Process all 65 OGK map sheets."""
-    with open(SHEETS_JSON, 'r', encoding='utf-8') as f:
-        sheets = json.load(f)
+    sheets = load_json_file(SHEETS_JSON, default=[])
 
     results = []
     for i, sheet in enumerate(sheets):
@@ -675,8 +673,7 @@ if __name__ == '__main__':
 
     if args.folder:
         # Load sheet data
-        with open(SHEETS_JSON, 'r', encoding='utf-8') as f:
-            sheets = json.load(f)
+        sheets = load_json_file(SHEETS_JSON, default=[])
         sheet_data = next((s for s in sheets if s['folder'] == args.folder), None)
         result = process_sheet(args.folder, sheet_data=sheet_data, force=args.force)
         if result:
