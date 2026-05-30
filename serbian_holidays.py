@@ -49,11 +49,13 @@ class SerbianHolidays:
         
         # Convert from Julian to Gregorian calendar
         orthodox_easter = date(year, month, day)
-        
-        # Add 13 days for the difference between Julian and Gregorian calendars
-        if year >= 1900:
-            orthodox_easter += timedelta(days=13)
-        
+
+        # The Julian->Gregorian offset is century-dependent (13 days for
+        # 1900-2099, 14 for 2100-2199, ...), not a hardcoded 13.
+        if year >= 1583:
+            offset = (year // 100) - (year // 400) - 2
+            orthodox_easter += timedelta(days=offset)
+
         return orthodox_easter
     
     @staticmethod

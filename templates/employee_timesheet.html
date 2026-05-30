@@ -62,14 +62,23 @@
                         <button type="button"
                                class="btn btn-ripple {% if can_edit %}btn-success{% else %}btn-secondary{% endif %}"
                                id="saveButton"
+                               data-testid="timesheet-save"
                                {% if can_edit %}onclick="saveTimesheet()"{% else %}disabled{% endif %}>
                             <i class="bi bi-save"></i> Сачувај измене
                         </button>
                         {% if show_submit_button %}
+                        {# The submit button is always clickable here. If a
+                           server-side rule rejects the submit (e.g. real
+                           1-7 deadline in production), the POST returns a
+                           400 with the reason and the user sees a toast.
+                           Disabling client-side caused confusing "greyed
+                           out" states during dev/testing. #}
                         <button type="button"
-                               class="btn btn-ripple {% if can_submit %}btn-primary{% else %}btn-outline-secondary{% endif %} ms-2"
+                               class="btn btn-ripple btn-primary ms-2"
                                id="submitButton"
-                               {% if can_submit %}onclick="submitForReview()"{% else %}disabled title="{{ submit_message }}"{% endif %}>
+                               data-testid="timesheet-submit"
+                               onclick="submitForReview()"
+                               {% if submit_message %}title="{{ submit_message }}"{% endif %}>
                             <i class="bi bi-send"></i> Поднеси на преглед
                         </button>
                         {% endif %}
@@ -103,7 +112,7 @@
                     </div>
                     <div class="col-md-6 text-md-end">
                         {% if can_edit %}
-                        <button type="button" class="btn btn-sm btn-outline-success" id="saveButton" onclick="saveTimesheet()">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="saveButton" data-testid="timesheet-save" onclick="saveTimesheet()">
                             <i class="bi bi-save"></i> Сачувај
                         </button>
                         {% endif %}
@@ -967,14 +976,14 @@ function generateTimesheetTable() {
                 <tr class="${rowClass}" title="${titleText}">
                     <td class="text-center day-cell ${dayDisplayClass}"><strong>${day}</strong></td>
                     <td class="text-center ${dayDisplayClass}">${dayName}</td>
-                    <td><input type="number" class="timesheet-input" name="rad_na_mestu_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="van_muzeja_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="godisnji_odmor_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="drzavni_praznik_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="placeno_odsustvo_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="ostalo_odsustvo_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="bolovanje_manje_30_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
-                    <td><input type="number" class="timesheet-input" name="bolovanje_vece_30_${day}" min="0" max="24" step="1" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="rad_na_mestu_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="van_muzeja_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="godisnji_odmor_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="drzavni_praznik_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="placeno_odsustvo_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="ostalo_odsustvo_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="bolovanje_manje_30_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
+                    <td><input type="number" class="timesheet-input" name="bolovanje_vece_30_${day}" min="0" max="24" step="0.5" onchange="updateTotals()" ${!canEdit ? 'disabled' : ''}></td>
                     <td class="text-center"><strong><span id="row_total_${day}">0</span></strong></td>
                 </tr>
             `;
@@ -1068,7 +1077,7 @@ function updateTotals() {
     categories.forEach(category => {
         let total = 0;
         $(`input[name^="${category}_"]`).each(function() {
-            const value = parseInt($(this).val()) || 0;
+            const value = parseFloat($(this).val()) || 0;
             total += value;
 
             // In view mode, update the display cells
@@ -1089,7 +1098,7 @@ function updateTotals() {
     for (let day = 1; day <= daysInMonth; day++) {
         let rowTotal = 0;
         categories.forEach(category => {
-            const value = parseInt($(`input[name="${category}_${day}"]`).val()) || 0;
+            const value = parseFloat($(`input[name="${category}_${day}"]`).val()) || 0;
             rowTotal += value;
         });
         $(`#row_total_${day}`).text(rowTotal > 0 ? rowTotal : '-');

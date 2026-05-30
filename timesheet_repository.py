@@ -163,8 +163,8 @@ class TimesheetRepository:
                 SUM(CASE WHEN te.category = 'bolovanje_manje_30' THEN te.hours ELSE 0 END) AS sick_lt30,
                 SUM(CASE WHEN te.category = 'bolovanje_vece_30' THEN te.hours ELSE 0 END) AS sick_gte30,
                 COUNT(DISTINCT tr.id) AS reports_count
-            FROM timesheet_entries te
-            JOIN timesheet_reports tr ON tr.id = te.report_id
+            FROM timesheet_reports tr
+            LEFT JOIN timesheet_entries te ON te.report_id = tr.id
             WHERE tr.month = :month AND tr.year = :year
         """)
 

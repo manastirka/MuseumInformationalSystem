@@ -650,18 +650,32 @@ def api_field_trip_create(*, get_vehicle_reservations, save_reservations):
 
                     pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
                     user_name = session.get('user_name', '')
+                    user_email = session.get('user_email', '')
 
                     with psycopg.connect(pg_url, row_factory=dict_row) as conn:
                         with conn.cursor() as cur:
                             days_recorded = 0
                             current = start
                             while current <= end:
+                                # Resolve the report by email first (the canonical
+                                # key); only fall back to an exact name match. Skip
+                                # APPROVED reports so a field trip never overwrites a
+                                # finalized official document, and order
+                                # deterministically so a duplicate can't match the
+                                # wrong row.
                                 cur.execute(
                                     """
                                     SELECT id FROM timesheet_reports
-                                    WHERE employee_name = %s AND month = %s AND year = %s
+                                    WHERE (
+                                        (employee_email IS NOT NULL AND LOWER(employee_email) = LOWER(%s))
+                                        OR (employee_email IS NULL AND employee_name = %s)
+                                    )
+                                      AND month = %s AND year = %s
+                                      AND COALESCE(status, 'DRAFT') <> 'APPROVED'
+                                    ORDER BY id DESC
+                                    LIMIT 1
                                     """,
-                                    (user_name, current.month, current.year),
+                                    (user_email, user_name, current.month, current.year),
                                 )
                                 report = cur.fetchone()
                                 if report:

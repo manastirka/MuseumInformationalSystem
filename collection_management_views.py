@@ -2,6 +2,7 @@
 
 import logging
 import json
+import os
 import tempfile
 import time
 from datetime import datetime
@@ -194,19 +195,48 @@ def _build_sanja_statistics(records):
     }
 
 
+def _sanja_pg():
+    """Return the phase3a_databases module when PostgreSQL is configured AND the
+    Sanja table exists, else None (so the JSON fallback is used). phase3a_databases
+    raises at import without DATABASE_URL, so the import is guarded."""
+    if not os.environ.get('DATABASE_URL'):
+        return None
+    try:
+        import phase3a_databases
+        if phase3a_databases.sanja_table_exists():
+            return phase3a_databases
+    except Exception as exc:
+        logger.warning("Sanja PostgreSQL backend unavailable, using JSON: %s", exc)
+    return None
+
+
+def _sanja_empty_payload():
+    return {
+        'metadata': {
+            'name': 'Крупни сисари палеогена и неогена',
+            'source_file': 'Sanja/sanja BAZA KRUPNI SISAri paleogen neogen.xls',
+        },
+        'specimens': [],
+        'statistics': {},
+    }
+
+
 def _load_sanja_database_payload():
+    # Postgres-preferred: the table is the source of truth once it exists.
+    pg = _sanja_pg()
+    if pg is not None:
+        specimens = pg.get_sanja_specimens()
+        payload = _sanja_empty_payload()
+        payload['specimens'] = specimens
+        payload['statistics'] = _build_sanja_statistics(specimens)
+        return payload
+
+    # JSON fallback (development / pre-migration).
     try:
         return json.loads(_SANJA_DATABASE_PATH.read_text(encoding='utf-8'))
     except FileNotFoundError:
         # No database yet: legitimately start from an empty payload.
-        return {
-            'metadata': {
-                'name': 'Крупни сисари палеогена и неогена',
-                'source_file': 'Sanja/sanja BAZA KRUPNI SISAri paleogen neogen.xls',
-            },
-            'specimens': [],
-            'statistics': {},
-        }
+        return _sanja_empty_payload()
     except (OSError, json.JSONDecodeError) as exc:
         # A transient read failure or a corrupt/partial file must NOT be treated
         # as an empty database — saving on top of that would wipe every record.
@@ -215,14 +245,19 @@ def _load_sanja_database_payload():
 
 
 def _save_sanja_database_payload(payload):
-    from runtime_lock_utils import write_json_file
-
     payload['statistics'] = _build_sanja_statistics(payload.get('specimens', []))
     payload.setdefault('metadata', {})['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    # Write atomically (temp file + fsync + os.replace under an exclusive lock)
-    # so a crash, full disk, or concurrent writer can never truncate the live
-    # database into a corrupt/partial file.
-    write_json_file(_SANJA_DATABASE_PATH, payload, indent=2)
+
+    pg = _sanja_pg()
+    if pg is not None:
+        # Atomic upsert+prune inside one transaction; PostgreSQL is the store.
+        pg.replace_sanja_specimens(payload.get('specimens', []))
+    else:
+        from runtime_lock_utils import write_json_file
+        # Write atomically (temp file + fsync + os.replace under an exclusive lock)
+        # so a crash, full disk, or concurrent writer can never truncate the live
+        # database into a corrupt/partial file.
+        write_json_file(_SANJA_DATABASE_PATH, payload, indent=2)
 
     try:
         import app as museum_app

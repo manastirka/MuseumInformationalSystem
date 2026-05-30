@@ -96,11 +96,16 @@ def _default_entry_period():
 def _load_report_header(employee_name, month, year, header_fields):
     query = (
         f"SELECT {header_fields} FROM timesheet_reports "
-        "WHERE employee_name = %s AND month = %s AND year = %s"
+        "WHERE employee_name = %s AND month = %s AND year = %s "
+        "ORDER BY id DESC LIMIT 1"
     )
+    # Fallback tolerates ONLY whitespace/case differences in the stored name —
+    # never a substring match, which could otherwise return a DIFFERENT
+    # employee whose name merely contains this one. Deterministic ordering.
     fallback_query = (
         f"SELECT {header_fields} FROM timesheet_reports "
-        "WHERE employee_name LIKE %s AND month = %s AND year = %s"
+        "WHERE LOWER(TRIM(employee_name)) = LOWER(TRIM(%s)) AND month = %s AND year = %s "
+        "ORDER BY id DESC LIMIT 1"
     )
 
     with get_postgres_connection(row_factory=dict_row) as conn:
@@ -108,7 +113,7 @@ def _load_report_header(employee_name, month, year, header_fields):
             cur.execute(query, (employee_name, month, year))
             header = cur.fetchone()
             if not header:
-                cur.execute(fallback_query, (f"%{employee_name}%", month, year))
+                cur.execute(fallback_query, (employee_name, month, year))
                 header = cur.fetchone()
             return header
 

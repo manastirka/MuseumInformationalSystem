@@ -27,8 +27,13 @@ from psycopg.rows import dict_row
 
 
 def _format_hours(value):
-    """Format an hours value, preserving half-hour increments (8 -> '8', 4.5 -> '4.5')."""
-    return '%g' % float(value)
+    """Format an hours value, preserving fractional increments (8 -> '8', 4.5 -> '4.5').
+
+    Uses fixed-point formatting (never scientific notation) so large aggregates are
+    not silently truncated to 6 significant digits the way '%g' would.
+    """
+    s = f'{float(value):.2f}'.rstrip('0').rstrip('.')
+    return s or '0'
 
 
 def _set_cell_shading(cell, color_hex):
@@ -290,7 +295,7 @@ def generate_word_document(report_id, database_url):
     cell_title = _merge_cells_in_row(table, 1, 9, 25)
     p = cell_title.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run(f'РАДНА ЛИСТА за месец  {month_names[month]} {year}.')
+    run = p.add_run(f'РАДНА ЛИСТА за месец  {month_names[month] if 1 <= month <= 12 else month} {year}.')
     run.font.size = Pt(9)
     pf = p.paragraph_format
     pf.space_before = Pt(0)
@@ -370,7 +375,9 @@ def generate_word_document(report_id, database_url):
             holiday = serbian_holidays.is_holiday(day_date)
 
             day_data = daily_data.get(day, {})
-            value = float(day_data.get(field, 0) or 0)
+            # Clamp negatives to 0 so the visible cell, the per-row total and the
+            # grand total all agree (matches validate_loaded_data's scrubbing).
+            value = max(0.0, float(day_data.get(field, 0) or 0))
 
             # For "Радни сати у музеју" row, show "Х" for weekends/holidays with no data
             if field == 'work_in_museum' and (is_weekend or holiday) and value == 0:
@@ -398,7 +405,7 @@ def generate_word_document(report_id, database_url):
     for day in range(1, days_in_month + 1):
         day_data = daily_data.get(day, {})
         for field in worked_fields:
-            grand_total += float(day_data.get(field, 0) or 0)
+            grand_total += max(0.0, float(day_data.get(field, 0) or 0))
 
     _add_cell_text(table.cell(12, 32), _format_hours(grand_total) if grand_total > 0 else '', font_size=9)
     _set_row_height(table.rows[12], 281)
@@ -545,7 +552,7 @@ def generate_word_document(report_id, database_url):
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run(f'{month_names[month]} {year}.')
+    run = p.add_run(f'{month_names[month] if 1 <= month <= 12 else month} {year}.')
     run.font.size = Pt(18)
 
     # Empty lines
@@ -573,57 +580,72 @@ def generate_word_document(report_id, database_url):
         'cat_8': '8. ОСТАЛИ ПОСЛОВИ И АКТИВНОСТИ'
     }
 
-    extraordinary_tasks = header.get('special_tasks') or header.get('extraordinary_tasks')
+    # Prefer the canonical special_tasks. Fall back to the legacy
+    # extraordinary_tasks ONLY when special_tasks was never set (None) — i.e. a
+    # truly legacy report. A present-but-empty special_tasks (user cleared their
+    # work description) must NOT resurrect old extraordinary_tasks text.
+    work_description = header.get('special_tasks')
+    if work_description is None:
+        work_description = header.get('extraordinary_tasks')
     has_work_data = False
 
-    if extraordinary_tasks:
+    # Accept a JSON string (the saved format) OR an already-decoded dict (JSONB).
+    # Anything else (None / a JSON scalar / array / malformed text) must NOT
+    # crash the export — it falls through to the plain-text / placeholder paths.
+    work_data = None
+    if isinstance(work_description, dict):
+        work_data = work_description
+    elif isinstance(work_description, str) and work_description.strip():
         try:
-            work_data = json.loads(extraordinary_tasks)
-
-            # Group items by category and output
-            for key, label in work_category_labels.items():
-                content = work_data.get(key, '').strip()
-                if content:
-                    has_work_data = True
-                    # Category header (bold)
-                    p = doc.add_paragraph()
-                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    run = p.add_run(label)
-                    run.font.size = Pt(8)
-                    run.font.bold = True
-
-                    # Content lines
-                    for line in content.split('\n'):
-                        line = line.strip()
-                        if line:
-                            p = doc.add_paragraph()
-                            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                            run = p.add_run(line)
-                            run.font.size = Pt(10)
-
+            parsed = json.loads(work_description)
+            work_data = parsed if isinstance(parsed, dict) else None
         except (json.JSONDecodeError, TypeError):
-            # Old format - plain text
-            if extraordinary_tasks.strip():
+            work_data = None
+
+    if work_data is not None:
+        # Structured format: render each non-empty category.
+        for key, label in work_category_labels.items():
+            content = str(work_data.get(key, '') or '').strip()
+            if content:
                 has_work_data = True
-                for line in extraordinary_tasks.strip().split('\n'):
+                # Category header (bold)
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                run = p.add_run(label)
+                run.font.size = Pt(8)
+                run.font.bold = True
+
+                # Content lines
+                for line in content.split('\n'):
                     line = line.strip()
                     if line:
                         p = doc.add_paragraph()
                         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
                         run = p.add_run(line)
                         run.font.size = Pt(10)
+    elif isinstance(work_description, str) and work_description.strip():
+        # Legacy plain-text work description.
+        has_work_data = True
+        for line in work_description.strip().split('\n'):
+            line = line.strip()
+            if line:
+                p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                run = p.add_run(line)
+                run.font.size = Pt(10)
+
+    # Legacy duties_summary is a fallback ONLY when there is no structured/plain
+    # work description, so the document never shows both it and the placeholder.
+    if not has_work_data and header.get('duties_summary'):
+        has_work_data = True
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p.add_run(str(header['duties_summary']))
+        run.font.size = Pt(10)
 
     if not has_work_data:
         p = doc.add_paragraph()
         run = p.add_run('Нема података о обављеним пословима.')
-        run.font.size = Pt(10)
-
-    # Duties summary
-    if header.get('duties_summary'):
-        doc.add_paragraph()
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        run = p.add_run(header['duties_summary'])
         run.font.size = Pt(10)
 
     # =====================================================

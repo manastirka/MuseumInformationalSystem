@@ -1,0 +1,18 @@
+[Unit]
+Description=MuseumInfoSystem nightly backup (PostgreSQL + files -> Google Drive)
+# Optional: email on failure (see deploy/README.md for museum-backup-alert@.service)
+# OnFailure=museum-backup-alert@%n.service
+
+[Service]
+Type=oneshot
+# Run as the user that owns the rclone 'gdrive:' config so Google Drive is reachable.
+User=aleksandarlukovic
+Group=aleksandarlukovic
+Environment=MUSEUM_APP_DIR=/home/aleksandarlukovic/MuseumInfoSystem
+# Off-box copy target (your personal Google Drive). Override per-host if needed.
+Environment=MUSEUM_BACKUP_GDRIVE_REMOTE=gdrive:MuseumBackups
+# Set to 1 ONLY if you want .env / data/.mail_key included (sensitive):
+Environment=MUSEUM_BACKUP_INCLUDE_SECRETS=0
+ExecStart=/home/aleksandarlukovic/MuseumInfoSystem/deploy/museum-backup.sh
+Nice=10
+IOSchedulingClass=idle

@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import logging
+import logging.handlers
 import calendar
 import time
 import re
@@ -194,7 +195,10 @@ def configure_root_logging():
         for handler in root_logger.handlers
     )
     if not has_file_handler:
-        file_handler = logging.FileHandler(log_path)
+        # Rotate so logs can't grow without bound and fill the disk.
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_path, maxBytes=10_000_000, backupCount=5, encoding='utf-8'
+        )
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
@@ -1168,7 +1172,8 @@ CONSERVATION_BIOLOGY_DATABASE = _collection_bootstrap_support.conservation_biolo
 
 
 def load_sanja_paleogene_neogene_mammals_database():
-    """Load Sanja's imported Paleogene/Neogene large mammal records."""
+    """Load Sanja's Paleogene/Neogene large mammal records (PostgreSQL-preferred,
+    JSON fallback until the table is created and the data migrated)."""
     database_path = Path('Sanja/sanja_paleogene_neogene_mammals.json')
     empty_database = {
         'metadata': {'name': 'Крупни сисари палеогена и неогена'},
@@ -1180,6 +1185,25 @@ def load_sanja_paleogene_neogene_mammals_database():
             'identified_by_count': 0,
         },
     }
+
+    # Postgres-preferred when configured and the table exists.
+    if os.environ.get('DATABASE_URL'):
+        try:
+            import phase3a_databases
+            if phase3a_databases.sanja_table_exists():
+                specimens = phase3a_databases.get_sanja_specimens()
+                return {
+                    'metadata': {'name': 'Крупни сисари палеогена и неогена'},
+                    'specimens': specimens,
+                    'statistics': {
+                        'total_specimens': len(specimens),
+                        'total_taxa': len({s.get('specimen_name') for s in specimens if s.get('specimen_name')}),
+                        'total_localities': len({s.get('location_found') for s in specimens if s.get('location_found')}),
+                        'identified_by_count': len({s.get('identified_by') for s in specimens if s.get('identified_by')}),
+                    },
+                }
+        except Exception as exc:
+            logging.warning("Sanja PostgreSQL load failed, using JSON fallback: %s", exc)
 
     try:
         with database_path.open('r', encoding='utf-8') as database_file:

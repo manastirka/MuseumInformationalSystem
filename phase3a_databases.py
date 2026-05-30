@@ -32,6 +32,213 @@ def get_db_connection():
         raise
 
 # ============================================================================
+# 0. SANJA PALEOGENE/NEOGENE MAMMAL COLLECTION
+# ============================================================================
+
+def sanja_table_exists():
+    """Return True when the sanja_paleogene_neogene_mammals table is present."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT to_regclass('public.sanja_paleogene_neogene_mammals')")
+        exists = cur.fetchone()[0] is not None
+        cur.close()
+        return exists
+    except Exception as e:
+        logger.warning(f"Sanja table existence check failed: {e}")
+        return False
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def get_sanja_specimens():
+    """Load all Sanja specimens from PostgreSQL as plain dicts (JSON-compatible)."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, source_row, specimen FROM sanja_paleogene_neogene_mammals ORDER BY id"
+        )
+        specimens = []
+        for row in cur.fetchall():
+            spec = dict(row[2]) if row[2] else {}
+            # The id / source_row columns are authoritative.
+            spec['id'] = row[0]
+            if row[1] is not None:
+                spec['source_row'] = row[1]
+            specimens.append(spec)
+        cur.close()
+        return specimens
+    except Exception as e:
+        logger.error(f"Error loading Sanja specimens from PostgreSQL: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def replace_sanja_specimens(specimens):
+    """Upsert every specimen and delete any no longer present, in one transaction.
+
+    Mirrors the existing whole-payload save model: the caller passes the full
+    specimen list, and this makes the table match it atomically.
+    """
+    import json as _json
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        keep_ids = []
+        for raw in specimens:
+            spec = dict(raw)
+            if spec.get('id') is None:
+                continue
+            sid = int(spec['id'])
+            keep_ids.append(sid)
+            source_row = spec.get('source_row')
+            try:
+                source_row = int(source_row) if source_row not in (None, '') else None
+            except (TypeError, ValueError):
+                source_row = None
+            cur.execute(
+                """
+                INSERT INTO sanja_paleogene_neogene_mammals (id, source_row, specimen, updated_at)
+                VALUES (%s, %s, %s::jsonb, now())
+                ON CONFLICT (id) DO UPDATE
+                  SET source_row = EXCLUDED.source_row,
+                      specimen = EXCLUDED.specimen,
+                      updated_at = now()
+                """,
+                (sid, source_row, _json.dumps(spec, ensure_ascii=False)),
+            )
+        if keep_ids:
+            cur.execute(
+                "DELETE FROM sanja_paleogene_neogene_mammals WHERE id <> ALL(%s)",
+                (keep_ids,),
+            )
+        else:
+            cur.execute("DELETE FROM sanja_paleogene_neogene_mammals")
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        logger.error(f"Error saving Sanja specimens to PostgreSQL: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+# ============================================================================
+# 0b. DIGITIZED CROSS-SECTION PROFILES (maps)
+# ============================================================================
+
+def digitized_profiles_table_exists():
+    """Return True when the digitized_profiles table is present."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT to_regclass('public.digitized_profiles')")
+        exists = cur.fetchone()[0] is not None
+        cur.close()
+        return exists
+    except Exception as e:
+        logger.warning(f"digitized_profiles table existence check failed: {e}")
+        return False
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def get_digitized_profiles():
+    """Return every digitized profile as a plain dict, ordered by id."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT profile FROM digitized_profiles ORDER BY id")
+        profiles = [row[0] for row in cur.fetchall()]
+        cur.close()
+        return profiles
+    except Exception as e:
+        logger.error(f"Error loading digitized profiles from PostgreSQL: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def get_digitized_profile(profile_id):
+    """Return a single digitized profile dict, or None."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT profile FROM digitized_profiles WHERE id = %s", (str(profile_id),))
+        row = cur.fetchone()
+        cur.close()
+        return row[0] if row else None
+    except Exception as e:
+        logger.error(f"Error loading digitized profile {profile_id}: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def upsert_digitized_profile(profile):
+    """Insert or update one digitized profile."""
+    import json as _json
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO digitized_profiles (id, digitized_by, profile, updated_at)
+            VALUES (%s, %s, %s::jsonb, now())
+            ON CONFLICT (id) DO UPDATE
+              SET digitized_by = EXCLUDED.digitized_by,
+                  profile = EXCLUDED.profile,
+                  updated_at = now()
+            """,
+            (str(profile.get('id')), profile.get('digitized_by', ''), _json.dumps(profile, ensure_ascii=False)),
+        )
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        logger.error(f"Error saving digitized profile to PostgreSQL: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def delete_digitized_profile(profile_id):
+    """Delete one digitized profile by id."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM digitized_profiles WHERE id = %s", (str(profile_id),))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        logger.error(f"Error deleting digitized profile {profile_id}: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+# ============================================================================
 # 1. LIBRARY DATABASE
 # ============================================================================
 
