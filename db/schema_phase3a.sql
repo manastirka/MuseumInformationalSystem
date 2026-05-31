@@ -376,6 +376,10 @@ CREATE TABLE IF NOT EXISTS employee_profiles (
     office_phone VARCHAR(50),
     office_hours TEXT,
 
+    -- Authorization: head of their own department can verify timesheets
+    -- for employees in `department`.
+    is_department_head BOOLEAN NOT NULL DEFAULT FALSE,
+
     -- Photo and documents
     photo_url TEXT,
     cv_url TEXT,

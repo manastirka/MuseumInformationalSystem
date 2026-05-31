@@ -13,6 +13,14 @@ CREATE TABLE IF NOT EXISTS vehicles (
     make_model TEXT,
     notes TEXT,
     image_ids TEXT[],  -- Array of image IDs
+    vin TEXT,
+    model_variant TEXT,
+    max_mass_kg INTEGER,
+    curb_mass_kg INTEGER,
+    engine_displacement_cc INTEGER,
+    engine_power_kw INTEGER,
+    fuel_type TEXT,
+    fuel_consumption REAL,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

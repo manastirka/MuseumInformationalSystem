@@ -112,12 +112,12 @@ GROUP BY ct.code, ct.name_sr;
 -- Insert collection types
 INSERT INTO collection_types (code, name_sr, name_en, icon, description_sr) VALUES
     ('botany', 'Ботаничка збирка', 'Botanical Collection', 'bi-flower1', 'Херباријум и ботанички примерци'),
-    ('ichthyology', 'Ихтиолошка збирка', 'Ichthyology Collection', 'bi-water', 'Рибе и водоземци'),
+    ('ichthyology', 'Ихтиолошка збирка', 'Ichthyology Collection', 'museum-icon-fish', 'Рибе и водоземци'),
     ('entomology', 'Ентомолошка збирка', 'Entomology Collection', 'bi-bug', 'Инсекти и зглавкари'),
-    ('mycology', 'Миколошка збирка', 'Mycology Collection', 'bi-tree', 'Гљиве и лишајеви'),
-    ('herpetology', 'Херпетолошка збирка', 'Herpetology Collection', 'bi-emoji-sunglasses', 'Гмизавци и водоземци'),
-    ('ornithology', 'Орнитолошка збирка', 'Ornithology Collection', 'bi-feather', 'Птице'),
-    ('paleozoology', 'Палеозоолошка збирка', 'Paleozoology Collection', 'bi-gem', 'Фосилни животињски остаци'),
+    ('mycology', 'Миколошка збирка', 'Mycology Collection', 'museum-icon-mushroom', 'Гљиве и лишајеви'),
+    ('herpetology', 'Херпетолошка збирка', 'Herpetology Collection', 'museum-icon-snake', 'Гмизавци и водоземци'),
+    ('ornithology', 'Орнитолошка збирка', 'Ornithology Collection', 'museum-icon-bird', 'Птице'),
+    ('paleozoology', 'Палеозоолошка збирка', 'Paleozoology Collection', 'museum-icon-dinosaur', 'Фосилни животињски остаци'),
     ('paleobotany', 'Палеботаничка збирка', 'Paleobotany Collection', 'bi-tree-fill', 'Фосилни биљни остаци'),
     ('petrology', 'Петролошка збирка', 'Petrology Collection', 'bi-layers', 'Стене и минерали')
 ON CONFLICT (code) DO NOTHING;
