@@ -92,6 +92,42 @@ sudo logrotate --debug /etc/logrotate.d/museum-info-system   # dry-run check
 
 ---
 
+## 5. Security hardening & reproducible builds
+
+**Reproducible install** — `requirements.txt` uses `>=` ranges; `requirements.lock`
+pins the exact versions that work today. On the new server install from the lock:
+```bash
+pip install -r requirements.lock
+pip install pip-audit && pip-audit -r requirements.lock   # optional: known-CVE scan
+```
+
+**Dedicated, passworded database role** (the app/control-center currently connect as
+the personal `aleksandarlukovic` role via peer auth, which won't exist on the new box):
+```sql
+-- as the postgres superuser:
+CREATE ROLE museum_app LOGIN PASSWORD 'CHANGE_ME';
+GRANT CONNECT ON DATABASE museum_system TO museum_app;
+GRANT USAGE ON SCHEMA public TO museum_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO museum_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO museum_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO museum_app;
+```
+Then point the app at it (`.env`): `DATABASE_URL=postgresql+psycopg://museum_app:CHANGE_ME@localhost/museum_system`,
+require strong auth in `pg_hba.conf` (`host museum_system museum_app 127.0.0.1/32 scram-sha-256`,
+remove `trust`/`peer`), and `sudo systemctl reload postgresql`.
+
+**Control center** now reads its DB identity from the environment — set it where you
+launch the desktop tool: `MUSEUM_DB_USER=museum_app MUSEUM_DB_NAME=museum_system`
+(plus a `~/.pgpass` line so it isn't prompted for the password).
+
+**Mail key permissions** (currently world-readable `0644`):
+```bash
+chmod 600 data/.mail_key && chown <service-user>:<service-user> data/.mail_key
+```
+
+---
+
 ## Cutover checklist (current box → new server)
 
 **Before (on this box):** dedupe reports → `run_migrations.py mark '00[1-7]_*.sql'`

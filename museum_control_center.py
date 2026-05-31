@@ -319,6 +319,13 @@ def hash_password_for_storage(password):
     return PasswordHasher.hash_password(password)
 
 
+# PostgreSQL identity for the psql calls below. Defaults match the current dev
+# box; override on the new server (where the 'aleksandarlukovic' role won't
+# exist) via env, e.g. MUSEUM_DB_USER=museum_app MUSEUM_DB_NAME=museum_system.
+_DB_USER = os.environ.get('MUSEUM_DB_USER', 'aleksandarlukovic')
+_DB_NAME = os.environ.get('MUSEUM_DB_NAME', 'museum_system')
+
+
 def build_user_update_command(set_clause, email, variables=None):
     """Build a (psql argv, sql) pair for an UPDATE on users keyed by email.
 
@@ -331,7 +338,7 @@ def build_user_update_command(set_clause, email, variables=None):
     expands :'name' / :name bindings when the statement is read from stdin or
     -f; the caller must feed the returned sql to psql via stdin.
     """
-    command = ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system']
+    command = ['psql', '-U', _DB_USER, '-d', _DB_NAME]
 
     bindings = {'target_email': email}
     if variables:
@@ -1623,7 +1630,7 @@ class MuseumControlCenter:
                 # Try to connect and get version
                 try:
                     result = subprocess.run(
-                        ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-c', 'SELECT version();'],
+                        ['psql', '-U', _DB_USER, '-d', _DB_NAME, '-c', 'SELECT version();'],
                         capture_output=True,
                         text=True,
                         timeout=2
@@ -1639,7 +1646,7 @@ class MuseumControlCenter:
 
                         # Get database size
                         result = subprocess.run(
-                            ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-t', '-c',
+                            ['psql', '-U', _DB_USER, '-d', _DB_NAME, '-t', '-c',
                              "SELECT pg_size_pretty(pg_database_size('museum_system'));"],
                             capture_output=True,
                             text=True,
@@ -1651,7 +1658,7 @@ class MuseumControlCenter:
 
                         # Get record counts
                         result = subprocess.run(
-                            ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-t', '-c',
+                            ['psql', '-U', _DB_USER, '-d', _DB_NAME, '-t', '-c',
                              """SELECT 'bird_ringing: ' || COUNT(*) FROM bird_ringing_records
                                 UNION ALL SELECT 'minerals: ' || COUNT(*) FROM minerals
                                 UNION ALL SELECT 'inventory: ' || COUNT(*) FROM inventory_entries
@@ -1956,8 +1963,8 @@ WantedBy=multi-user.target
             result = subprocess.run(
                 [
                     'psql',
-                    '-U', 'aleksandarlukovic',
-                    '-d', 'museum_system',
+                    '-U', _DB_USER,
+                    '-d', _DB_NAME,
                     '-t', '-A', '-F', '|',
                     '-c',
                     """SELECT COALESCE(r.name, 'employee') AS role, u.email
@@ -2318,7 +2325,7 @@ WantedBy=multi-user.target
 
         try:
             result = subprocess.run(
-                ['psql', '-U', 'aleksandarlukovic', '-d', 'museum_system', '-t', '-A', '-F', '|', '-c',
+                ['psql', '-U', _DB_USER, '-d', _DB_NAME, '-t', '-A', '-F', '|', '-c',
                  """SELECT u.email, u.full_name, COALESCE(r.name, 'employee') as role,
                     CASE WHEN u.is_active THEN
                         CASE WHEN u.is_first_login THEN 'Прва пријава' ELSE 'Активан' END
