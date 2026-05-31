@@ -16,6 +16,8 @@ os.environ.setdefault('REDIS_URL', '')
 os.environ.setdefault('SESSION_TYPE', 'filesystem')
 os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-maps-1')
 
+from unittest import mock
+
 from flask import Flask
 
 import maps_profile_views
@@ -48,6 +50,11 @@ def _seed_profile(profiles_path, owner='owner@example.com'):
 class DigitizedProfileAuthTests(unittest.TestCase):
     def setUp(self):
         self.app = _make_app()
+        # Pin to the JSON-fallback path (these test ownership on JSON-stored
+        # profiles); the Postgres path has its own tests.
+        patcher = mock.patch.object(maps_profile_views, '_profiles_pg', return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         fd, self.profiles_path = tempfile.mkstemp(suffix='.json')
         os.close(fd)
         _seed_profile(self.profiles_path)

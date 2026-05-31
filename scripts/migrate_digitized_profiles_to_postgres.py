@@ -35,6 +35,11 @@ def _load_json_profiles():
 
 def main():
     verify_only = '--verify' in sys.argv
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(REPO / '.env')
+    except Exception:
+        pass
     if not os.environ.get('DATABASE_URL'):
         print("DATABASE_URL is not set; refusing to run.")
         return 1

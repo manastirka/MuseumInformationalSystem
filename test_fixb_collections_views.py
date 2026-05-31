@@ -18,6 +18,14 @@ from flask import Flask
 import collection_management_views as cmv
 
 
+@pytest.fixture(autouse=True)
+def _force_json_sanja(monkeypatch):
+    # The Sanja tests here verify the JSON-fallback behavior (atomic write,
+    # corrupt-read protection). Pin to JSON regardless of whether the live
+    # Postgres table exists; the Postgres path has its own tests.
+    monkeypatch.setattr(cmv, '_sanja_pg', lambda: None)
+
+
 def _make_app():
     app = Flask(__name__)
     app.secret_key = 'test-secret'

@@ -21,16 +21,12 @@ import import_bilja_collections as ibc
 # Finding 1: read queries hardcoded NULL for color_ring
 # ---------------------------------------------------------------------------
 
-def test_base_query_does_not_select_absent_color_ring_column():
-    """M08 follow-up: the deployed `bird_ringing_records` table does NOT have a
-    color_ring column (schema drift vs db/schema.sql), so SELECTing br.color_ring
-    raises psycopg UndefinedColumn and breaks every read. Until a migration adds
-    the column, the read must keep returning NULL AS color_ring. Surfacing the
-    real value is a schema-migration task, not a query-only change.
-    """
+def test_base_query_selects_color_ring_after_migration_008():
+    """M08 resolved: migration 008 added bird_ringing_records.color_ring, so the
+    read query now surfaces the stored value instead of a hardcoded NULL."""
     query = brd._PG_BASE_QUERY
-    assert 'NULL AS color_ring' in query, 'read must not query the absent color_ring column'
-    assert 'br.color_ring' not in query, 'br.color_ring crashes: column absent in deployed DB'
+    assert 'br.color_ring' in query, 'read must now select the real color_ring column'
+    assert 'NULL AS color_ring' not in query, 'hardcoded NULL placeholder should be gone'
 
 
 # ---------------------------------------------------------------------------

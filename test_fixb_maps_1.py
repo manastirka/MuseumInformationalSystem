@@ -17,6 +17,14 @@ import maps_profile_support
 import maps_profile_views
 
 
+@pytest.fixture(autouse=True)
+def _force_json_profiles(monkeypatch):
+    # These verify the JSON-fallback path (atomic file writes, ownership on
+    # JSON-stored profiles). Pin them to JSON regardless of whether the live
+    # digitized_profiles Postgres table exists; the PG path has its own tests.
+    monkeypatch.setattr(maps_profile_views, '_profiles_pg', lambda: None)
+
+
 @pytest.fixture
 def app():
     application = Flask(__name__)

@@ -59,7 +59,7 @@ _PG_BASE_QUERY = """
     SELECT
         br.id,
         br.ring_number,
-        NULL AS color_ring,  -- deployed table lacks this column; run migration/008 to enable it
+        br.color_ring,
         br.age,
         br.sex,
         br.location,
