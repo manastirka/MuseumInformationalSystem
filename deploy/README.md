@@ -128,6 +128,23 @@ chmod 600 data/.mail_key && chown <service-user>:<service-user> data/.mail_key
 
 ---
 
+## 6. Updating the server from git — `deploy/update.sh`
+
+Once installed, every code change ships via git. On the server:
+```bash
+deploy/update.sh         # git pull -> pip install -> migrate -> restart -> healthcheck
+```
+It refuses to run on a dirty tree, is a no-op when there are no new commits, prints
+a rollback command if the health check fails, and applies any new DB migrations
+automatically. Tunable via env: `MUSEUM_GIT_BRANCH` (default `main`),
+`MUSEUM_SERVICE`, `MUSEUM_HEALTH_URL`.
+
+> Safety: prefer running this **manually** (or only from a branch your tests have
+> passed). Auto-deploying every push to the live museum system — e.g. a blind cron
+> `git pull` — risks shipping an untested commit. Gate it behind the test suite.
+
+---
+
 ## Cutover checklist (current box → new server)
 
 **Before (on this box):** dedupe reports → `run_migrations.py mark '00[1-7]_*.sql'`
