@@ -394,18 +394,31 @@ def generate_word_document(report_id, database_url):
         _set_row_height(table.rows[row_idx], 281)
 
     # --- ROW 12: Grand total row ---
-    # Merge cols 0-31 (empty), col 32 = grand total
+    # col 32 = worked-hours grand total; the merged label cell names it AND shows
+    # the all-recorded total, so the two figures can never be confused.
     merged_total = _merge_cells_in_row(table, 12, 0, 31)
-    _add_cell_text(merged_total, '', font_size=9)
 
-    # Calculate grand total of worked hours only (museum + outside),
-    # excluding paid absence such as vacation/holiday/leave/sick.
     worked_fields = ('work_in_museum', 'work_outside')
-    grand_total = 0
+    all_fields = (
+        'work_in_museum', 'work_outside', 'vacation', 'public_holiday',
+        'paid_leave', 'other_leave', 'sick_leave_lt30', 'sick_leave_gte30',
+    )
+    grand_total = 0       # worked only (museum + outside)
+    all_recorded = 0      # every category (incl. leave/holiday/sick)
     for day in range(1, days_in_month + 1):
         day_data = daily_data.get(day, {})
-        for field in worked_fields:
-            grand_total += max(0.0, float(day_data.get(field, 0) or 0))
+        for field in all_fields:
+            value = max(0.0, float(day_data.get(field, 0) or 0))
+            all_recorded += value
+            if field in worked_fields:
+                grand_total += value
+
+    _add_cell_text(
+        merged_total,
+        f'Укупно радних сати (укупно евидентирано: {_format_hours(all_recorded)}):',
+        font_size=8,
+        alignment=WD_ALIGN_PARAGRAPH.RIGHT,
+    )
 
     _add_cell_text(table.cell(12, 32), _format_hours(grand_total) if grand_total > 0 else '', font_size=9)
     _set_row_height(table.rows[12], 281)

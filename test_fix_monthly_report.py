@@ -137,6 +137,27 @@ class TestExportRobustness:
         }]
         _assert_doc(_run(_header('{"cat_2_1": "rad"}'), daily))
 
+    def test_grand_total_row_shows_both_worked_and_all_recorded_labeled(self):
+        # day 1: 8 worked (museum) + 8 vacation -> worked=8, all-recorded=16
+        from docx import Document
+        daily = [{
+            'day': 1, 'work_in_museum': 8, 'work_outside': 0, 'vacation': 8,
+            'public_holiday': 0, 'paid_leave': 0, 'other_leave': 0,
+            'sick_leave_lt30': 0, 'sick_leave_gte30': 0,
+        }]
+        path = _run(_header('{"cat_2_1": "rad"}'), daily)
+        try:
+            doc = Document(path)
+            text = '\n'.join(
+                cell.text for table in doc.tables for row in table.rows for cell in row.cells
+            )
+        finally:
+            os.remove(path)
+        # Both figures present and unambiguously labeled (never confusable).
+        assert 'Укупно радних сати' in text
+        assert 'укупно евидентирано' in text
+        assert '16' in text   # all-recorded total surfaced in the label
+
 
 import timesheet_employee_views as tev  # noqa: E402
 

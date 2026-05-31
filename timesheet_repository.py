@@ -176,6 +176,10 @@ class TimesheetRepository:
                 totals = self._coerce_hours_row(row)
                 totals['reports_count'] = int(row.reports_count or 0)
                 totals['total_hours'] = sum(totals[k] for k in self.CATEGORY_LABELS.keys())
+                # Worked-hours subtotal (museum + outside) exposed alongside the
+                # all-recorded total so screens can show both, clearly labeled,
+                # and agree with the official Word report's two figures.
+                totals['worked_hours'] = totals['rad_na_mestu'] + totals['van_muzeja']
                 return {
                     'month': month,
                     'year': year,
