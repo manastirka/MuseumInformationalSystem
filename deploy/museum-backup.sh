@@ -25,12 +25,11 @@ log() { echo "[museum-backup $(date '+%H:%M:%S')] $*"; }
 
 mkdir -p "$BACKUP_DIR"
 
-# --- load DATABASE_URL (and friends) from .env (KEY=VALUE lines only) ---
-if [[ -f "$APP_DIR/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source <(grep -E '^[A-Z_][A-Z0-9_]*=' "$APP_DIR/.env" | sed 's/\r$//')
-  set +a
+# --- load DATABASE_URL from .env (only what we need; safe against spaces/globs) ---
+if [[ -f "$APP_DIR/.env" ]] && [[ -z "${DATABASE_URL:-}" ]]; then
+  DATABASE_URL="$(grep -m1 '^DATABASE_URL=' "$APP_DIR/.env" \
+    | sed 's/^DATABASE_URL=//; s/\r$//; s/^["'\'']//; s/["'\'']$//')"
+  export DATABASE_URL
 fi
 : "${DATABASE_URL:?DATABASE_URL is not set (check $APP_DIR/.env)}"
 
