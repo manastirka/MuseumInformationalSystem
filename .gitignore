@@ -214,3 +214,12 @@ sudo
 # --- Desktop/service files (machine-specific) ---
 museum-control-center.desktop
 museum-system.service
+
+# --- Node / JS tooling ---
+node_modules/
+
+# --- Runtime JSON state (locks + machine-specific caches) ---
+data/*.lock
+data/.*.lock
+data/system_settings.json
+data/weather_forecast_daily_cache.json
