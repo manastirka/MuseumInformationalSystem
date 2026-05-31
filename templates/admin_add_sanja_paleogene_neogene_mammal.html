@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Додај примерак - {{ collection_name }}{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <div>
+                            <h1 class="h3 mb-1">
+                                <i class="museum-icon-mammoth me-2"></i>
+                                {% if is_edit %}Уреди примерак{% else %}Додај нови примерак{% endif %}
+                            </h1>
+                            <p class="mb-0 opacity-75">{{ collection_name }}</p>
+                        </div>
+                        <a href="{{ url_for(collection_route) }}" class="btn btn-light">
+                            <i class="bi bi-arrow-left me-1"></i>Назад на збирку
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" id="addSanjaMammalForm" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="collection_type" value="{{ collection_type }}">
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основни подаци</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="inventory_sequence" class="form-label">Инв. број</label>
+                                <input type="number" class="form-control" id="inventory_sequence" name="inventory_sequence" value="{{ item.get('inventory_sequence', '') }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="catalog_number" class="form-label">Каталошки број</label>
+                                <input type="text" class="form-control" id="catalog_number" name="catalog_number" value="{{ item.get('catalog_number', '') }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="quantity" class="form-label">Количина</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" min="0" value="{{ item.get('quantity', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="specimen_name" class="form-label">Предмет <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="specimen_name" name="specimen_name" value="{{ item.get('specimen_name', '') }}" required>
+                                <div class="invalid-feedback">Унесите предмет.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="taxon_name" class="form-label">Назив</label>
+                                <input type="text" class="form-control" id="taxon_name" name="taxon_name" value="{{ item.get('taxon_name', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="collection_number" class="form-label">Колекцијски број</label>
+                                <input type="text" class="form-control" id="collection_number" name="collection_number" value="{{ item.get('collection_number', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="collector_number" class="form-label">Колекторски број</label>
+                                <input type="text" class="form-control" id="collector_number" name="collector_number" value="{{ item.get('collector_number', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="level" class="form-label">Ниво</label>
+                                <input type="text" class="form-control" id="level" name="level" value="{{ item.get('level', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="material" class="form-label">Материјал</label>
+                                <input type="text" class="form-control" id="material" name="material" value="{{ item.get('material', '') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Набавка и опис</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="acquisition_method" class="form-label">Начин прибављања</label>
+                                <input type="text" class="form-control" id="acquisition_method" name="acquisition_method" value="{{ item.get('acquisition_method', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="acquisition_date" class="form-label">Датум набавке</label>
+                                <input type="text" class="form-control" id="acquisition_date" name="acquisition_date" value="{{ item.get('acquisition_date', '') }}" placeholder="YYYY-MM-DD">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="database_entry_date" class="form-label">Датум уноса у базу</label>
+                                <input type="text" class="form-control" id="database_entry_date" name="database_entry_date" value="{{ item.get('database_entry_date') or (now.strftime('%Y-%m-%d %H:%M') if now is defined else '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="entered_by" class="form-label">Унео у базу</label>
+                                <input type="text" class="form-control" id="entered_by" name="entered_by" value="{{ item.get('entered_by') or session.get('user_name') or session.get('user_email', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="donor_collector" class="form-label">Легатор / нашао / донео</label>
+                                <input type="text" class="form-control" id="donor_collector" name="donor_collector" value="{{ item.get('donor_collector', '') }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="identified_by" class="form-label">Идентификовао</label>
+                                <input type="text" class="form-control" id="identified_by" name="identified_by" value="{{ item.get('identified_by', '') }}">
+                            </div>
+                            <div class="col-12">
+                                <label for="description" class="form-label">Опис</label>
+                                <textarea class="form-control" id="description" name="description" rows="3">{{ item.get('description', '') }}</textarea>
+                            </div>
+                            <div class="col-12">
+                                <label for="comment" class="form-label">Коментар/напомена</label>
+                                <textarea class="form-control" id="comment" name="comment" rows="2">{{ item.get('comment', '') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Локалитет</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="location_found" class="form-label">Локација</label>
+                            <input type="text" class="form-control" id="location_found" name="location_found" value="{{ item.get('location_found', '') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="country" class="form-label">Држава</label>
+                            <input type="text" class="form-control" id="country" name="country" value="{{ item.get('country', '') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="locality_text" class="form-label">Локалитет текст</label>
+                            <textarea class="form-control" id="locality_text" name="locality_text" rows="2">{{ item.get('locality_text', '') }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="exposure" class="form-label">Експозиција</label>
+                            <input type="text" class="form-control" id="exposure" name="exposure" value="{{ item.get('exposure', '') }}">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <label for="utm_x" class="form-label">UTM X</label>
+                                <input type="number" step="any" class="form-control" id="utm_x" name="utm_x" value="{{ item.get('utm_x', '') }}">
+                            </div>
+                            <div class="col-4">
+                                <label for="utm_y" class="form-label">UTM Y</label>
+                                <input type="number" step="any" class="form-control" id="utm_y" name="utm_y" value="{{ item.get('utm_y', '') }}">
+                            </div>
+                            <div class="col-4">
+                                <label for="utm_z" class="form-label">UTM Z</label>
+                                <input type="number" step="any" class="form-control" id="utm_z" name="utm_z" value="{{ item.get('utm_z', '') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Додатни подаци</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Слика примерка</label>
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                            <div class="form-text">
+                                {% if is_edit %}Изаберите нову слику коју треба додати овом примерку.{% else %}Слика ће бити додата новом примерку после чувања.{% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="storage_location" class="form-label">Где се налази</label>
+                            <input type="text" class="form-control" id="storage_location" name="storage_location" value="{{ item.get('storage_location', '') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="uncertain_determination" class="form-label">Несигурна детерминација</label>
+                            <select class="form-select" id="uncertain_determination" name="uncertain_determination">
+                                <option value=""></option>
+                                <option value="True" {% if item.get('uncertain_determination') in [true, 'True', 'true', 'Да'] %}selected{% endif %}>Да</option>
+                                <option value="False" {% if item.get('uncertain_determination') in [false, 'False', 'false', 'Не'] %}selected{% endif %}>Не</option>
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="length_mm" class="form-label">Дужина (mm)</label>
+                                <input type="number" step="any" class="form-control" id="length_mm" name="length_mm" value="{{ item.get('length_mm', '') }}">
+                            </div>
+                            <div class="col-6">
+                                <label for="width_mm" class="form-label">Ширина (mm)</label>
+                                <input type="number" step="any" class="form-control" id="width_mm" name="width_mm" value="{{ item.get('width_mm', '') }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="biostratigraphic_zone" class="form-label">Биостратиграфска зона</label>
+                            <input type="text" class="form-control" id="biostratigraphic_zone" name="biostratigraphic_zone" value="{{ item.get('biostratigraphic_zone', '') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="bibliography_flag" class="form-label">У библиографији</label>
+                            <input type="text" class="form-control" id="bibliography_flag" name="bibliography_flag" value="{{ item.get('bibliography_flag', '') }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Делови предмета</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for field, label in [
+                        ('specimen_part_2', 'Предмет 2'),
+                        ('specimen_part_3', 'Предмет 3'),
+                        ('specimen_part_4', 'Предмет 4'),
+                        ('specimen_part_5', 'Предмет 5')
+                    ] %}
+                    <div class="col-md-3">
+                        <label for="{{ field }}" class="form-label">{{ label }}</label>
+                        <input type="text" class="form-control" id="{{ field }}" name="{{ field }}" value="{{ item.get(field, '') }}">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mb-5">
+            <a href="{{ url_for(collection_route) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1"></i>Откажи
+            </a>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i>{% if is_edit %}Сачувај измене{% else %}Сачувај примерак{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    const form = document.getElementById('addSanjaMammalForm');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+})();
+</script>
+{% endblock %}

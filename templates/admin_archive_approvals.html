@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Одобравање - Архива и верификација{% endblock %}
+
+{% block content %}
+<div x-data="archiveApprovals()" x-init="init()" x-cloak>
+<style>
+.approvals-shell {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.approvals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.approvals-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.approvals-kpi {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    padding: 1rem 1.1rem;
+}
+
+.approvals-kpi strong {
+    display: block;
+    font-size: 1.6rem;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+}
+
+.approvals-board {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.approvals-board .table th {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.approvals-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.approval-group {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.approval-group-header {
+    padding: 1rem 1.25rem;
+    background: #fafbfc;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+</style>
+
+<div class="approvals-shell">
+    <div class="approvals-header">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-check2-square me-2 text-primary"></i>Одобравање</h2>
+            <p class="text-muted mb-0">Преглед свих захтева који тренутно чекају одлуку.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ url_for('archive_signature.admin_archive_dashboard') }}">
+            <i class="bi bi-speedometer2 me-2"></i>Преглед
+        </a>
+    </div>
+
+    <div class="approvals-kpis">
+        <div class="approvals-kpi">
+            <strong x-text="pending.length">0</strong>
+            <span class="text-muted">Укупно на чекању</span>
+        </div>
+        <div class="approvals-kpi">
+            <strong x-text="counts.zahtev">0</strong>
+            <span class="text-muted">Захтеви</span>
+        </div>
+        <div class="approvals-kpi">
+            <strong x-text="counts.finansije">0</strong>
+            <span class="text-muted">Финансије</span>
+        </div>
+        <div class="approvals-kpi">
+            <strong x-text="counts.terenska_aktivnost">0</strong>
+            <span class="text-muted">Теренска активност</span>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="approvals-board shadow-sm">
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                Учитавање...
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && pending.length === 0">
+        <div class="approvals-board shadow-sm">
+            <div class="approvals-empty">
+                <i class="bi bi-check-circle fs-1 d-block mb-3"></i>
+                Тренутно нема захтева за одобравање.
+            </div>
+        </div>
+    </template>
+
+    <template x-for="group in groupedPending" :key="group.key">
+        <div class="approval-group shadow-sm">
+            <div class="approval-group-header">
+                <div>
+                    <h5 class="mb-1" x-text="group.label"></h5>
+                    <small class="text-muted" x-text="group.description"></small>
+                </div>
+                <span class="badge text-bg-light border" x-text="group.items.length"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Наслов</th>
+                            <th>Подносилац</th>
+                            <th>Улога</th>
+                            <th>Датум</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="item in group.items" :key="group.key + '-' + item.id">
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold" x-text="item.title"></div>
+                                    <small class="text-muted" x-text="item.subtype || ''"></small>
+                                </td>
+                                <td x-text="item.created_by_name"></td>
+                                <td x-text="item.approval_role"></td>
+                                <td x-text="formatDate(item.created_at)"></td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" :href="resolveDetailUrl(item)">
+                                        <i class="bi bi-arrow-right me-1"></i>Отвори
+                                    </a>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+</div>
+
+<script>
+function archiveApprovals() {
+    return {
+        loading: false,
+        pending: [],
+        counts: {
+            zahtev: 0,
+            finansije: 0,
+            terenska_aktivnost: 0
+        },
+
+        async init() {
+            await this.loadPending();
+        },
+
+        async loadPending() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/archive/pending');
+                const data = await response.json();
+                this.pending = data.success ? (data.pending || []) : [];
+                this.counts = { zahtev: 0, finansije: 0, terenska_aktivnost: 0 };
+                this.pending.forEach(item => {
+                    if (Object.prototype.hasOwnProperty.call(this.counts, item.request_type)) {
+                        this.counts[item.request_type] += 1;
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading approvals:', error);
+                this.pending = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        getTypeLabel(type) {
+            if (type === 'zahtev') return 'Захтев';
+            if (type === 'finansije') return 'Финансије';
+            if (type === 'terenska_aktivnost') return 'Теренска';
+            return type || '';
+        },
+
+        resolveDetailUrl(item) {
+            if (item.request_type === 'terenska_aktivnost') {
+                return `/admin/archive/terenska?id=${item.id}`;
+            }
+            if (item.request_type === 'finansije') {
+                return `/admin/archive/finansije?id=${item.id}`;
+            }
+            return `/admin/archive/zahtevi?id=${item.id}`;
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            return new Date(dateStr).toLocaleString('sr-Latn-RS');
+        },
+
+        get groupedPending() {
+            const groups = [
+                {
+                    key: 'zahtev',
+                    label: 'Захтеви',
+                    description: 'Одсуства, разно и општи захтеви.',
+                },
+                {
+                    key: 'finansije',
+                    label: 'Финансије',
+                    description: 'Финансијски планови и остали финансијски документи.',
+                },
+                {
+                    key: 'terenska_aktivnost',
+                    label: 'Теренска активност',
+                    description: 'Путни и теренски документи.',
+                }
+            ];
+
+            return groups
+                .map(group => ({
+                    ...group,
+                    items: this.pending.filter(item => item.request_type === group.key)
+                }))
+                .filter(group => group.items.length > 0);
+        }
+    };
+}
+</script>
+{% endblock %}

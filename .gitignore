@@ -39,6 +39,9 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+coverage/
+playwright-report/
+test-results/
 nosetests.xml
 coverage.xml
 *.cover
@@ -198,8 +201,9 @@ check_status.sh
 memorandum.png
 icon_*.png
 
-# --- Large migration data ---
-migration/
+# --- Migrations: track the SQL/installer/docs so the schema is reproducible.
+#     The large deploy tarball stays excluded via the *.tar.gz rule above. ---
+migration/*.tar.gz
 
 # --- Symlinks to external data ---
 data/dem_serbia

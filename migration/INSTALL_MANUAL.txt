@@ -1,0 +1,765 @@
+===============================================================================
+  MUSEUM INFORMATION SYSTEM - INSTALLATION MANUAL
+  Prirodnjacki muzej Beograd / Natural History Museum Belgrade
+===============================================================================
+
+  Version:  March 2026
+  Platform: Fedora Linux (39, 40, 41+)
+  Author:   Museum IT Department
+
+===============================================================================
+  TABLE OF CONTENTS
+===============================================================================
+
+  1. Overview
+  2. System Requirements
+  3. What's in This Package
+  4. Quick Install (Automated)
+  5. Manual Installation (Step-by-Step)
+     5.1  System Packages
+     5.2  Create Application User
+     5.3  Deploy Application Files
+     5.4  PostgreSQL Setup
+     5.5  Database Schema & Data Import
+     5.6  Python Virtual Environment
+     5.7  Environment Configuration (.env)
+     5.8  Gunicorn Configuration
+     5.9  SSL Certificates
+     5.10 Nginx Configuration
+     5.11 Systemd Service
+     5.12 SELinux & Firewall
+     5.13 Create Admin User
+     5.14 Start Services
+  6. Post-Installation
+  7. Default Credentials
+  8. Service Management Commands
+  9. Log Files & Monitoring
+  10. Backup & Restore
+  11. Troubleshooting
+  12. Architecture Overview
+
+
+===============================================================================
+  1. OVERVIEW
+===============================================================================
+
+  The Museum Information System is a web-based platform for managing all
+  aspects of the Natural History Museum's operations, including:
+
+  - Mineral, paleontology, botany, and zoology collections
+  - Bird ringing database
+  - Library catalog
+  - Exhibition planning
+  - Cultural heritage items
+  - Meteorite specimens
+  - Employee timesheets and HR
+  - Vehicle management
+  - Inventory book
+  - Scientific papers
+  - Internal mail and chat
+  - Report generation (PDF, Word)
+  - QR code labels for specimens
+
+  Technology stack:
+  - Python 3.10+ / Flask web framework
+  - PostgreSQL (primary database)
+  - SQLite (specialized local databases)
+  - Gunicorn (WSGI application server)
+  - Nginx (reverse proxy, SSL termination)
+  - systemd (service management)
+
+
+===============================================================================
+  2. SYSTEM REQUIREMENTS
+===============================================================================
+
+  Hardware (minimum):
+  - CPU:    2 cores
+  - RAM:    4 GB
+  - Disk:   10 GB free (without CIF crystal data)
+            30 GB free (with CIF crystal data)
+
+  Hardware (recommended):
+  - CPU:    4 cores
+  - RAM:    8 GB
+  - Disk:   50 GB free
+
+  Software:
+  - Fedora Linux 39, 40, or 41 (server or workstation)
+  - Python 3.10 or later
+  - PostgreSQL 14 or later
+  - Nginx 1.24 or later
+  - Root/sudo access for installation
+
+  Network:
+  - Ports 80 (HTTP) and 443 (HTTPS) available
+  - Port 5432 for PostgreSQL (localhost only)
+  - Port 8000 for Gunicorn (localhost only, behind Nginx)
+
+
+===============================================================================
+  3. WHAT'S IN THIS PACKAGE
+===============================================================================
+
+  migration/
+  ├── INSTALL_MANUAL.txt              This file
+  ├── deploy.sh                       Automated deployment script
+  ├── prepare_archive.sh              Script to rebuild the archive
+  ├── museum_system_deploy_*.tar.gz   Complete deployment archive
+  ├── 001_timesheet_approval_system.sql    ┐
+  ├── 002_exhibition_planner.sql           │
+  ├── 002_timesheet_schema_fixes.sql       │
+  ├── 003_exhibition_access_control.sql    │ Incremental database
+  ├── 003_fix_sync_trigger.sql             │ migration scripts
+  ├── 004_archive_verification_system.sql  │
+  ├── 004_timesheet_audit_log.sql          │
+  ├── 005_digital_signatures.sql           │
+  ├── 005_optimize_sync_trigger.sql        │
+  └── 005_user_notifications.sql           ┘
+
+  The deployment archive (tar.gz) contains:
+  - All Python application source code
+  - HTML templates (Jinja2)
+  - Static assets (CSS, JavaScript, images, map tiles)
+  - Database schemas (db/*.sql)
+  - PostgreSQL data dump (museum_system_full.sql) if available
+  - Data files (JSON configs, SQLite databases)
+  - PrirodnjackiMuzej mineral subsystem
+  - Configuration templates
+
+  NOT included (too large for portable archive):
+  - data/cif_files/ (18 GB crystal structure data - optional)
+  - data/mail_cache/ (transient cache)
+  - data/dem_serbia/ (digital elevation model)
+
+
+===============================================================================
+  4. QUICK INSTALL (AUTOMATED)
+===============================================================================
+
+  The fastest way to deploy. The script handles everything automatically
+  and only asks for a username and password.
+
+  Step 1: Copy the archive to the target Fedora machine
+
+      scp museum_system_deploy_*.tar.gz youruser@target-ip:~/
+
+  Step 2: On the target machine, extract the archive
+
+      cd ~
+      tar xzf museum_system_deploy_*.tar.gz
+
+  Step 3: Run the automated deployment
+
+      cd museum_deploy
+      sudo bash migration/deploy.sh
+
+  Step 4: The script will ask for:
+
+      - Username:  The Linux user that will own and run the application.
+                   If the user doesn't exist, it will be created.
+
+      - Password:  Used for BOTH the PostgreSQL database and the web
+                   admin account. Must meet the password policy:
+                   * At least 12 characters
+                   * At least one uppercase letter (A-Z)
+                   * At least one lowercase letter (a-z)
+                   * At least one number (0-9)
+                   * At least one special character (!@#$%^&*)
+
+  Step 5: Wait for the script to complete (~5-10 minutes)
+
+  Step 6: Open a browser and go to:
+
+      https://<server-ip>/
+
+      Log in with:
+        Email:    admin@nhmbeo.rs
+        Password: (the password you entered during setup)
+
+  NOTE: The browser will warn about the self-signed SSL certificate.
+  This is normal. Accept the warning to proceed.
+
+
+===============================================================================
+  5. MANUAL INSTALLATION (STEP-BY-STEP)
+===============================================================================
+
+  Use these instructions if you prefer to install manually or if the
+  automated script doesn't work for your setup.
+
+  In the examples below, replace:
+    <APP_USER>      with your chosen username (e.g., museumadmin)
+    <APP_PASSWORD>  with your chosen password
+    <SERVER_IP>     with the server's IP address
+
+
+  ─── 5.1 System Packages ─────────────────────────────────────────────────
+
+      sudo dnf install -y \
+        python3 python3-pip python3-devel \
+        gcc gcc-c++ make redhat-rpm-config \
+        postgresql-server postgresql-contrib postgresql-devel \
+        nginx \
+        libjpeg-turbo-devel zlib-devel libffi-devel \
+        libxml2-devel libxslt-devel openssl-devel \
+        gdal gdal-devel \
+        openssl curl policycoreutils-python-utils
+
+
+  ─── 5.2 Create Application User ─────────────────────────────────────────
+
+      sudo useradd -m -s /bin/bash <APP_USER>
+      sudo chmod 755 /home/<APP_USER>
+
+
+  ─── 5.3 Deploy Application Files ────────────────────────────────────────
+
+      # Extract archive
+      tar xzf museum_system_deploy_*.tar.gz
+
+      # Move to the user's home directory
+      sudo mv museum_deploy /home/<APP_USER>/MuseumInfoSystem
+      sudo chown -R <APP_USER>:<APP_USER> /home/<APP_USER>/MuseumInfoSystem
+
+      # Create required directories
+      sudo -u <APP_USER> mkdir -p /home/<APP_USER>/MuseumInfoSystem/{logs,flask_session,exports/timesheets,storage/uploads,static/uploads}
+
+
+  ─── 5.4 PostgreSQL Setup ────────────────────────────────────────────────
+
+      # Initialize PostgreSQL
+      sudo postgresql-setup --initdb
+      sudo systemctl enable --now postgresql
+
+      # Edit authentication config to allow password login
+      sudo cp /var/lib/pgsql/data/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf.backup
+
+      # Replace the content of pg_hba.conf with:
+      #
+      #   local  all  postgres            peer
+      #   local  all  all                 md5
+      #   host   all  all  127.0.0.1/32   md5
+      #   host   all  all  ::1/128        md5
+
+      sudo systemctl restart postgresql
+
+      # Create database user and database
+      sudo -u postgres psql -c "CREATE ROLE <APP_USER> WITH LOGIN PASSWORD '<APP_PASSWORD>' CREATEDB;"
+      sudo -u postgres createdb -O <APP_USER> museum_system
+
+      # Install PostgreSQL extensions
+      sudo -u postgres psql -d museum_system -c "
+        CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        CREATE EXTENSION IF NOT EXISTS citext;
+        CREATE EXTENSION IF NOT EXISTS postgis;
+      "
+
+      # Grant permissions
+      sudo -u postgres psql -d museum_system -c "GRANT ALL ON SCHEMA public TO <APP_USER>;"
+
+
+  ─── 5.5 Database Schema & Data Import ───────────────────────────────────
+
+      cd /home/<APP_USER>/MuseumInfoSystem
+
+      # Option A: If you have the full database dump (with data):
+
+      sudo -u postgres psql -d museum_system -f museum_system_full.sql
+
+      # Option B: If you only have schemas (empty database):
+
+      export PGPASSWORD='<APP_PASSWORD>'
+
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema_phase3a.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/rruff_schema.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema_collections.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema_vehicles.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema_timesheet_complete.sql
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f db/schema_news_articles.sql
+
+      # Insert default roles
+      psql -U <APP_USER> -h 127.0.0.1 -d museum_system -c "
+        INSERT INTO roles (name, description) VALUES
+          ('admin',    'System administrator with full access'),
+          ('employee', 'Museum employee with standard access'),
+          ('curator',  'Collection curator with extended access'),
+          ('viewer',   'Read-only viewer')
+        ON CONFLICT (name) DO NOTHING;
+      "
+
+      # Apply incremental migrations (in order)
+      for f in migration/0*.sql; do
+        psql -U <APP_USER> -h 127.0.0.1 -d museum_system -f "$f"
+      done
+
+      unset PGPASSWORD
+
+      # Grant permissions on all created objects
+      sudo -u postgres psql -d museum_system -c "
+        GRANT ALL ON ALL TABLES IN SCHEMA public TO <APP_USER>;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO <APP_USER>;
+        GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO <APP_USER>;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO <APP_USER>;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO <APP_USER>;
+      "
+
+
+  ─── 5.6 Python Virtual Environment ──────────────────────────────────────
+
+      cd /home/<APP_USER>/MuseumInfoSystem
+
+      sudo -u <APP_USER> python3 -m venv venv
+      sudo -u <APP_USER> venv/bin/pip install --upgrade pip setuptools wheel
+      sudo -u <APP_USER> venv/bin/pip install -r requirements.txt
+
+      # If rasterio fails to install:
+      sudo -u <APP_USER> venv/bin/pip install --no-binary rasterio rasterio
+
+      # Verify critical packages
+      sudo -u <APP_USER> venv/bin/python3 -c "import flask, psycopg, gunicorn, bcrypt; print('All OK')"
+
+
+  ─── 5.7 Environment Configuration (.env) ────────────────────────────────
+
+      cd /home/<APP_USER>/MuseumInfoSystem
+      sudo -u <APP_USER> cp .env.example .env
+
+      # Edit .env and set these values:
+      #
+      #   SECRET_KEY=<generate with: python3 -c "import secrets; print(secrets.token_hex(32))">
+      #   DATABASE_URL=postgresql+psycopg://<APP_USER>:<APP_PASSWORD>@localhost:5432/museum_system
+      #   ADMIN_DEFAULT_PASSWORD=<APP_PASSWORD>
+      #   FLASK_ENV=production
+      #   FLASK_DEBUG=False
+      #
+      # See .env.example for all available settings.
+
+      # Secure the file
+      sudo chmod 600 /home/<APP_USER>/MuseumInfoSystem/.env
+
+
+  ─── 5.8 Gunicorn Configuration ──────────────────────────────────────────
+
+      # Edit gunicorn.conf.py and change the user/group lines:
+      #
+      #   user = '<APP_USER>'
+      #   group = '<APP_USER>'
+      #
+      # Default settings (usually fine):
+      #   bind = "127.0.0.1:8000"
+      #   workers = 4
+      #   timeout = 120
+
+
+  ─── 5.9 SSL Certificates ────────────────────────────────────────────────
+
+      # For testing / internal use, generate a self-signed certificate:
+
+      sudo mkdir -p /etc/ssl/private
+
+      sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /etc/ssl/private/museum_key.pem \
+        -out /etc/ssl/certs/museum_cert.pem \
+        -subj "/C=RS/ST=Belgrade/L=Belgrade/O=Museum/CN=$(hostname)" \
+        -addext "subjectAltName=IP:<SERVER_IP>,IP:127.0.0.1,DNS:localhost"
+
+      sudo chmod 600 /etc/ssl/private/museum_key.pem
+      sudo chmod 644 /etc/ssl/certs/museum_cert.pem
+
+      # For production, use a proper certificate from Let's Encrypt or
+      # your organization's CA.
+
+
+  ─── 5.10 Nginx Configuration ────────────────────────────────────────────
+
+      # Copy and edit the provided nginx config:
+
+      sudo cp /home/<APP_USER>/MuseumInfoSystem/nginx_museum.conf \
+              /etc/nginx/conf.d/museum.conf
+
+      # Edit /etc/nginx/conf.d/museum.conf:
+      #   - Change server_name to your server's IP or hostname
+      #   - Change all /home/aleksandarlukovic/ paths to /home/<APP_USER>/
+      #   - Verify SSL certificate paths
+
+      # Remove default config if it conflicts:
+      sudo rm -f /etc/nginx/conf.d/default.conf
+
+      # Test configuration:
+      sudo nginx -t
+
+
+  ─── 5.11 Systemd Service ────────────────────────────────────────────────
+
+      # Create /etc/systemd/system/museum-system.service with content:
+      #
+      #   [Unit]
+      #   Description=Museum Information System - Gunicorn
+      #   After=network.target postgresql.service
+      #   Wants=postgresql.service
+      #
+      #   [Service]
+      #   Type=exec
+      #   User=<APP_USER>
+      #   Group=<APP_USER>
+      #   WorkingDirectory=/home/<APP_USER>/MuseumInfoSystem
+      #   Environment="PATH=/home/<APP_USER>/MuseumInfoSystem/venv/bin:/usr/local/bin:/usr/bin:/bin"
+      #   Environment="FLASK_ENV=production"
+      #   Environment="PYTHONPATH=/home/<APP_USER>/MuseumInfoSystem"
+      #   ExecStartPre=/bin/mkdir -p /run/museum
+      #   ExecStart=/home/<APP_USER>/MuseumInfoSystem/venv/bin/python3 -m gunicorn --config gunicorn.conf.py wsgi:application
+      #   ExecReload=/bin/kill -s HUP $MAINPID
+      #   KillMode=mixed
+      #   TimeoutStopSec=35
+      #   Restart=always
+      #   RestartSec=10
+      #   PrivateTmp=true
+      #   ProtectSystem=strict
+      #   ProtectHome=read-only
+      #   NoNewPrivileges=true
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/data
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/logs
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/exports
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/static/uploads
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/flask_session
+      #   ReadWritePaths=/home/<APP_USER>/MuseumInfoSystem/storage
+      #   ReadWritePaths=/run/museum
+      #   RuntimeDirectory=museum
+      #
+      #   [Install]
+      #   WantedBy=multi-user.target
+
+      sudo systemctl daemon-reload
+      sudo systemctl enable museum-system
+
+
+  ─── 5.12 SELinux & Firewall ─────────────────────────────────────────────
+
+      # SELinux (if enforcing):
+      sudo setsebool -P httpd_can_network_connect 1
+      sudo setsebool -P httpd_read_user_content 1
+      sudo semanage fcontext -a -t httpd_sys_content_t \
+        "/home/<APP_USER>/MuseumInfoSystem/static(/.*)?"
+      sudo restorecon -Rv /home/<APP_USER>/MuseumInfoSystem/static
+
+      # Firewall:
+      sudo firewall-cmd --permanent --add-service=http
+      sudo firewall-cmd --permanent --add-service=https
+      sudo firewall-cmd --reload
+
+
+  ─── 5.13 Create Admin User ──────────────────────────────────────────────
+
+      # If you imported the full database dump, admin users are already
+      # present. Otherwise, create one using the app's Python code:
+
+      cd /home/<APP_USER>/MuseumInfoSystem
+      sudo -u <APP_USER> bash -c '
+        source venv/bin/activate
+        python3 -c "
+import os, psycopg
+from security_utils import PasswordHasher
+
+os.environ[\"DATABASE_URL\"] = \"postgresql+psycopg://<APP_USER>:<APP_PASSWORD>@localhost:5432/museum_system\"
+pg_url = \"postgresql://<APP_USER>:<APP_PASSWORD>@localhost:5432/museum_system\"
+
+hasher = PasswordHasher()
+pw_hash, salt = hasher.hash_password(\"<APP_PASSWORD>\")
+
+with psycopg.connect(pg_url) as conn:
+    with conn.cursor() as cur:
+        cur.execute(\"SELECT id FROM roles WHERE name = %s\", (\"admin\",))
+        role_id = cur.fetchone()[0]
+        cur.execute(\"\"\"
+            INSERT INTO users (email, password_hash, salt, full_name, role_id,
+                             position, is_active, is_first_login, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE, TRUE, NOW(), NOW())
+            ON CONFLICT (email) DO NOTHING
+        \"\"\", (\"admin@nhmbeo.rs\", pw_hash, salt, \"System Administrator\", role_id, \"Administrator\"))
+        conn.commit()
+        print(\"Admin user created: admin@nhmbeo.rs\")
+"
+      '
+
+
+  ─── 5.14 Start Services ─────────────────────────────────────────────────
+
+      sudo systemctl start museum-system
+      sudo systemctl enable --now nginx
+
+      # Verify everything is running:
+      sudo systemctl status postgresql
+      sudo systemctl status museum-system
+      sudo systemctl status nginx
+      ss -tlnp | grep -E ':(80|443|8000|5432)\s'
+
+
+===============================================================================
+  6. POST-INSTALLATION
+===============================================================================
+
+  After installation:
+
+  1. Open https://<SERVER_IP>/ in a browser
+     (accept the self-signed certificate warning)
+
+  2. Log in with admin@nhmbeo.rs and your password
+
+  3. On first login you will be prompted to change the password
+
+  4. Go to the Admin Panel to:
+     - Create additional user accounts
+     - Configure module access permissions
+     - Set up email settings (for notifications)
+     - Review system settings
+
+  5. Optional - install CIF crystal structure data:
+     Copy the data/cif_files/ directory from the source machine
+     (approximately 18 GB) to enable crystal structure viewing:
+
+       scp -r source:/path/MuseumInfoSystem/data/cif_files/ \
+         /home/<APP_USER>/MuseumInfoSystem/data/
+
+  6. Optional - install Redis for better caching:
+
+       sudo dnf install -y redis
+       sudo systemctl enable --now redis
+       # Edit .env: change CACHE_TYPE=simple to CACHE_TYPE=redis
+
+
+===============================================================================
+  7. DEFAULT CREDENTIALS
+===============================================================================
+
+  Web Admin Login:
+    Email:     admin@nhmbeo.rs
+    Password:  (set during installation)
+
+  PostgreSQL Database:
+    Host:      localhost
+    Port:      5432
+    Database:  museum_system
+    User:      (set during installation)
+    Password:  (set during installation)
+
+
+===============================================================================
+  8. SERVICE MANAGEMENT COMMANDS
+===============================================================================
+
+  Start the application:
+      sudo systemctl start museum-system
+
+  Stop the application:
+      sudo systemctl stop museum-system
+
+  Restart the application:
+      sudo systemctl restart museum-system
+
+  Reload without downtime (Gunicorn graceful reload):
+      sudo systemctl reload museum-system
+
+  Check application status:
+      sudo systemctl status museum-system
+
+  Start/stop/restart Nginx:
+      sudo systemctl start nginx
+      sudo systemctl stop nginx
+      sudo systemctl restart nginx
+
+  Start/stop/restart PostgreSQL:
+      sudo systemctl start postgresql
+      sudo systemctl stop postgresql
+      sudo systemctl restart postgresql
+
+  Start everything:
+      sudo systemctl start postgresql museum-system nginx
+
+  Stop everything:
+      sudo systemctl stop nginx museum-system
+
+
+===============================================================================
+  9. LOG FILES & MONITORING
+===============================================================================
+
+  Application logs (Gunicorn):
+      /home/<APP_USER>/MuseumInfoSystem/logs/gunicorn_access.log
+      /home/<APP_USER>/MuseumInfoSystem/logs/gunicorn_error.log
+
+  Application log (Flask):
+      /home/<APP_USER>/MuseumInfoSystem/logs/museum_info_system.log
+
+  Nginx logs:
+      /var/log/nginx/museum_access.log
+      /var/log/nginx/museum_error.log
+
+  Systemd journal (live):
+      sudo journalctl -u museum-system -f
+
+  PostgreSQL logs:
+      sudo journalctl -u postgresql -f
+
+  Quick health check:
+      sudo systemctl status museum-system nginx postgresql
+      ss -tlnp | grep -E ':(80|443|8000|5432)\s'
+      curl -sk https://localhost/ | head -5
+
+
+===============================================================================
+  10. BACKUP & RESTORE
+===============================================================================
+
+  BACKUP:
+
+  Database:
+      pg_dump museum_system > backup_$(date +%Y%m%d).sql
+
+  Application data (JSON files, SQLite databases, uploads):
+      tar czf data_backup_$(date +%Y%m%d).tar.gz \
+        /home/<APP_USER>/MuseumInfoSystem/data/ \
+        /home/<APP_USER>/MuseumInfoSystem/storage/ \
+        /home/<APP_USER>/MuseumInfoSystem/PrirodnjackiMuzej/
+
+  Full backup (everything):
+      tar czf full_backup_$(date +%Y%m%d).tar.gz \
+        --exclude='venv' --exclude='__pycache__' --exclude='flask_session' \
+        /home/<APP_USER>/MuseumInfoSystem/
+
+  RESTORE:
+
+  Database:
+      sudo -u postgres psql -d museum_system -f backup_YYYYMMDD.sql
+
+  Data files:
+      tar xzf data_backup_YYYYMMDD.tar.gz -C /
+
+
+===============================================================================
+  11. TROUBLESHOOTING
+===============================================================================
+
+  PROBLEM: "502 Bad Gateway" in browser
+  CAUSE:   Gunicorn is not running or not listening on port 8000
+  FIX:     sudo systemctl restart museum-system
+           sudo journalctl -u museum-system -n 50
+           ss -tlnp | grep 8000
+
+  PROBLEM: Gunicorn fails to start
+  CAUSE:   Python dependency missing or .env misconfigured
+  FIX:     cd /home/<APP_USER>/MuseumInfoSystem
+           source venv/bin/activate
+           python3 -c "from app import app"    # shows the actual error
+           Check .env DATABASE_URL is correct
+
+  PROBLEM: "Permission denied" errors in logs
+  CAUSE:   SELinux blocking access
+  FIX:     sudo setsebool -P httpd_can_network_connect 1
+           sudo ausearch -m avc -ts recent     # see what's blocked
+           # Or temporarily set permissive to confirm:
+           sudo setenforce 0
+
+  PROBLEM: Database connection refused
+  CAUSE:   PostgreSQL not running or auth misconfigured
+  FIX:     sudo systemctl status postgresql
+           sudo -u <APP_USER> psql -h 127.0.0.1 -U <APP_USER> -d museum_system
+           Check /var/lib/pgsql/data/pg_hba.conf
+
+  PROBLEM: Static files not loading (CSS/JS missing)
+  CAUSE:   Nginx can't read the static directory
+  FIX:     sudo restorecon -Rv /home/<APP_USER>/MuseumInfoSystem/static
+           Check permissions: ls -la static/
+           Ensure home directory is 755: chmod 755 /home/<APP_USER>
+
+  PROBLEM: SSL certificate warning in browser
+  CAUSE:   Using self-signed certificate (expected)
+  FIX:     This is normal for self-signed certs. For production,
+           install a certificate from Let's Encrypt:
+           sudo dnf install certbot python3-certbot-nginx
+           sudo certbot --nginx -d your-domain.com
+
+  PROBLEM: "Address already in use" for port 8000
+  CAUSE:   Previous Gunicorn process still running
+  FIX:     sudo fuser -k 8000/tcp
+           sudo systemctl restart museum-system
+
+  PROBLEM: pip install fails for rasterio or scipy
+  CAUSE:   Missing system GDAL or Fortran libraries
+  FIX:     sudo dnf install gdal-devel gcc-gfortran lapack-devel
+           venv/bin/pip install --no-binary rasterio rasterio
+
+
+===============================================================================
+  12. ARCHITECTURE OVERVIEW
+===============================================================================
+
+  Request flow:
+
+  Browser (HTTPS)
+      |
+      v
+  Nginx (port 443)
+      |  - SSL termination
+      |  - Rate limiting (10 req/s general, 1 req/s login)
+      |  - Static file serving (/static, cached 30 days)
+      |  - Security headers (HSTS, X-Frame-Options, CSP)
+      |
+      v
+  Gunicorn (port 8000, localhost only)
+      |  - 4 worker processes
+      |  - 120s request timeout
+      |  - Auto-restart on failure
+      |
+      v
+  Flask Application (app.py)
+      |
+      +---> PostgreSQL (port 5432)
+      |       - User authentication
+      |       - Minerals, exhibitions, library
+      |       - Heritage items, meteorites
+      |       - Timesheets, vehicles, news
+      |       - Employee profiles
+      |
+      +---> SQLite databases (local files)
+      |       - data/bird_ringing.db
+      |       - data/inventory_book.db
+      |       - data/scientific_papers.db
+      |       - data/chat_room.db
+      |       - PrirodnjackiMuzej/prirodnjacki_muzej.sqlite
+      |
+      +---> JSON data files (data/*.json)
+      |       - Configuration, caches, geocoding
+      |
+      +---> File storage
+              - storage/uploads/ (user uploads)
+              - static/ (CSS, JS, images)
+              - exports/ (generated reports)
+
+  Database schemas (applied in order):
+      1. db/schema.sql              Core tables (users, minerals, audit)
+      2. db/schema_phase3a.sql      Library, exhibitions, heritage, meteorites
+      3. db/rruff_schema.sql        RRUFF scientific mineral data
+      4. db/schema_collections.sql  Unified biological collections
+      5. db/schema_vehicles.sql     Vehicle management
+      6. db/schema_timesheet_complete.sql  Timesheet system
+      7. db/schema_news_articles.sql       News articles
+
+  Incremental migrations (applied after base schemas):
+      001_timesheet_approval_system.sql
+      002_exhibition_planner.sql
+      002_timesheet_schema_fixes.sql
+      003_exhibition_access_control.sql
+      003_fix_sync_trigger.sql
+      004_archive_verification_system.sql
+      004_timesheet_audit_log.sql
+      005_digital_signatures.sql
+      005_optimize_sync_trigger.sql
+      005_user_notifications.sql
+
+
+===============================================================================
+  END OF MANUAL
+===============================================================================

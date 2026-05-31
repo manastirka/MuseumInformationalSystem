@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Научне вести{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-newspaper me-2"></i>Научне вести</h2>
+            <p class="text-muted mb-0">Геонауке, минералогија, палеонтологија и сродна истраживања.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Минералошка збирка
+            </a>
+            {% if is_admin() %}
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addScienceNewsModal">
+                <i class="bi bi-plus-lg me-1"></i>Додај вест
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-lg-5">
+                    <label class="form-label">Претрага</label>
+                    <input type="search" class="form-control" id="scienceNewsSearch" placeholder="Наслов или сажетак">
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Регион</label>
+                    <select class="form-select" id="scienceNewsRegion">
+                        <option value="">Сви региони</option>
+                        <option value="balkans">Балкан</option>
+                        <option value="europe">Европа</option>
+                        <option value="world">Свет</option>
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">Категорија</label>
+                    <select class="form-select" id="scienceNewsCategory">
+                        <option value="">Све категорије</option>
+                        <option value="geology">Геологија</option>
+                        <option value="mineralogy">Минералогија</option>
+                        <option value="paleontology">Палеонтологија</option>
+                        <option value="petrology">Петрологија</option>
+                        <option value="seismology">Сеизмологија</option>
+                        <option value="research">Истраживање</option>
+                    </select>
+                </div>
+                <div class="col-lg-1">
+                    <button type="button" class="btn btn-primary w-100" onclick="loadScienceNews()">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scienceNewsStatus" class="text-muted mb-3">Учитавање...</div>
+    <div id="scienceNewsList" class="row g-3"></div>
+</div>
+
+{% if is_admin() %}
+<div class="modal fade" id="addScienceNewsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Додај научну вест</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scienceNewsForm">
+                    <div class="mb-3">
+                        <label class="form-label">Наслов</label>
+                        <input type="text" class="form-control" id="scienceNewsTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Сажетак</label>
+                        <textarea class="form-control" id="scienceNewsSummary" rows="3"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Категорија</label>
+                            <select class="form-select" id="scienceNewsFormCategory" required>
+                                <option value="mineralogy">Минералогија</option>
+                                <option value="geology">Геологија</option>
+                                <option value="paleontology">Палеонтологија</option>
+                                <option value="petrology">Петрологија</option>
+                                <option value="seismology">Сеизмологија</option>
+                                <option value="research">Истраживање</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Регион</label>
+                            <select class="form-select" id="scienceNewsFormRegion" required>
+                                <option value="balkans">Балкан</option>
+                                <option value="europe">Европа</option>
+                                <option value="world">Свет</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Датум</label>
+                            <input type="date" class="form-control" id="scienceNewsDate">
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-0">
+                        <div class="col-md-6">
+                            <label class="form-label">Извор</label>
+                            <input type="text" class="form-control" id="scienceNewsSource">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Линк</label>
+                            <input type="url" class="form-control" id="scienceNewsUrl">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-success" onclick="saveScienceNews()">Сачувај</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SCIENCE_NEWS_CATEGORIES = {
+    geology: 'Геологија',
+    mineralogy: 'Минералогија',
+    paleontology: 'Палеонтологија',
+    petrology: 'Петрологија',
+    seismology: 'Сеизмологија',
+    research: 'Истраживање'
+};
+const SCIENCE_NEWS_REGIONS = {
+    balkans: 'Балкан',
+    europe: 'Европа',
+    world: 'Свет'
+};
+
+function scienceNewsEscape(value) {
+    const div = document.createElement('div');
+    div.textContent = value || '';
+    return div.innerHTML;
+}
+
+async function loadScienceNews() {
+    const status = document.getElementById('scienceNewsStatus');
+    const list = document.getElementById('scienceNewsList');
+    status.textContent = 'Учитавање...';
+    list.innerHTML = '';
+
+    const params = new URLSearchParams();
+    const search = document.getElementById('scienceNewsSearch').value.trim();
+    const region = document.getElementById('scienceNewsRegion').value;
+    const category = document.getElementById('scienceNewsCategory').value;
+    if (search) params.set('q', search);
+    if (region) params.set('region', region);
+    if (category) params.set('category', category);
+
+    try {
+        const response = await fetch(`/api/science-news?${params.toString()}`, {headers: {'Accept': 'application/json'}});
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Грешка при учитавању.');
+
+        status.textContent = `Пронађено: ${data.total}`;
+        if (!data.news.length) {
+            list.innerHTML = '<div class="col-12"><div class="alert alert-info">Нема вести за изабране филтере.</div></div>';
+            return;
+        }
+
+        list.innerHTML = data.news.map(item => {
+            const url = item.url ? scienceNewsEscape(item.url) : '#';
+            const target = item.url ? ' target="_blank" rel="noopener"' : '';
+            return `
+                <div class="col-md-6 col-xl-4">
+                    <article class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex gap-2 flex-wrap mb-2">
+                                <span class="badge bg-success">${scienceNewsEscape(SCIENCE_NEWS_CATEGORIES[item.category] || item.category)}</span>
+                                <span class="badge bg-secondary">${scienceNewsEscape(SCIENCE_NEWS_REGIONS[item.region] || item.region)}</span>
+                            </div>
+                            <h5 class="card-title">${scienceNewsEscape(item.title)}</h5>
+                            <p class="card-text text-muted">${scienceNewsEscape(item.summary || '')}</p>
+                            <div class="small text-muted mb-3">
+                                ${scienceNewsEscape(item.source || '')}
+                                ${item.date ? ' • ' + scienceNewsEscape(item.date) : ''}
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="${url}"${target}>Отвори</a>
+                            {% if is_admin() %}
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="deleteScienceNews('${scienceNewsEscape(item.id)}')">Обриши</button>
+                            {% endif %}
+                        </div>
+                    </article>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        status.textContent = '';
+        list.innerHTML = `<div class="col-12"><div class="alert alert-danger">${scienceNewsEscape(error.message)}</div></div>`;
+    }
+}
+
+{% if is_admin() %}
+async function saveScienceNews() {
+    const payload = {
+        title: document.getElementById('scienceNewsTitle').value.trim(),
+        summary: document.getElementById('scienceNewsSummary').value.trim(),
+        category: document.getElementById('scienceNewsFormCategory').value,
+        region: document.getElementById('scienceNewsFormRegion').value,
+        date: document.getElementById('scienceNewsDate').value,
+        source: document.getElementById('scienceNewsSource').value.trim(),
+        url: document.getElementById('scienceNewsUrl').value.trim()
+    };
+    if (!payload.title) {
+        alert('Наслов је обавезан.');
+        return;
+    }
+    const response = await secureFetch('/api/science-news', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!data.success) {
+        alert(data.message || 'Грешка при чувању.');
+        return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('addScienceNewsModal')).hide();
+    document.getElementById('scienceNewsForm').reset();
+    loadScienceNews();
+}
+
+async function deleteScienceNews(newsId) {
+    if (!confirm('Да ли сте сигурни да желите да обришете ову вест?')) return;
+    const response = await secureFetch(`/api/science-news/${encodeURIComponent(newsId)}`, {
+        method: 'DELETE',
+        headers: {'Accept': 'application/json'}
+    });
+    const data = await response.json();
+    if (!data.success) {
+        alert(data.message || 'Грешка при брисању.');
+        return;
+    }
+    loadScienceNews();
+}
+{% endif %}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const date = document.getElementById('scienceNewsDate');
+    if (date) date.value = new Date().toISOString().split('T')[0];
+    document.getElementById('scienceNewsSearch').addEventListener('keydown', event => {
+        if (event.key === 'Enter') loadScienceNews();
+    });
+    loadScienceNews();
+});
+</script>
+{% endblock %}
