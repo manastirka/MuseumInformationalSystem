@@ -190,6 +190,9 @@ PACKAGES=(
     # Nginx
     nginx
 
+    # Redis (REQUIRED: session store + rate-limit backend in production)
+    redis
+
     # Libraries for Python packages
     libjpeg-turbo-devel zlib-devel libffi-devel
     libxml2-devel libxslt-devel
@@ -296,6 +299,11 @@ fi
 substep "Starting PostgreSQL..."
 systemctl enable postgresql
 systemctl restart postgresql
+
+# Start Redis (required: session store + rate-limit backend)
+substep "Starting Redis..."
+systemctl enable redis
+systemctl restart redis
 
 # Wait for PostgreSQL to be ready
 for i in $(seq 1 15); do
@@ -509,7 +517,7 @@ DB_CHARSET=utf8mb4
 # Security
 WTF_CSRF_ENABLED=True
 WTF_CSRF_TIME_LIMIT=3600
-SESSION_TYPE=filesystem
+SESSION_TYPE=redis
 SESSION_PERMANENT=False
 SESSION_USE_SIGNER=True
 SESSION_KEY_PREFIX=museum:
@@ -518,9 +526,10 @@ SESSION_COOKIE_SECURE=True
 SESSION_COOKIE_HTTPONLY=True
 SESSION_COOKIE_SAMESITE=Lax
 
-# Rate Limiting
+# Rate Limiting (must be Redis when WORKERS>1, else login throttling/lockout
+# state is per-worker and the production config refuses to start)
 RATELIMIT_ENABLED=True
-RATELIMIT_STORAGE_URL=memory://
+RATELIMIT_STORAGE_URL=redis://localhost:6379/1
 
 # Password Policy
 PASSWORD_MIN_LENGTH=12
@@ -551,14 +560,16 @@ LOG_BACKUP_COUNT=10
 # Server
 HOST=0.0.0.0
 PORT=5555
-WORKERS=4
+# 2 workers is plenty for this internal LAN tool; >1 requires the Redis
+# SESSION_TYPE + RATELIMIT_STORAGE_URL above (enforced by the production config).
+WORKERS=2
 
 # File Upload
 MAX_CONTENT_LENGTH=52428800
 UPLOAD_FOLDER=storage/uploads
 ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,pdf,xlsx,csv
 
-# Redis/Caching (optional)
+# Redis/Caching (REQUIRED in production: session store + rate-limit backend)
 REDIS_URL=redis://localhost:6379/0
 CACHE_TYPE=simple
 CACHE_DEFAULT_TIMEOUT=300
@@ -600,8 +611,10 @@ import multiprocessing
 bind = "127.0.0.1:8000"
 backlog = 2048
 
-# Worker processes
-workers = min(4, multiprocessing.cpu_count() * 2 + 1)
+# Worker processes (honor WORKERS from the environment/.env; default 2 — plenty
+# for this internal LAN tool, and >1 is safe because session + rate-limit state
+# live in Redis)
+workers = int(os.environ.get('WORKERS', '2'))
 worker_class = 'sync'
 worker_connections = 1000
 timeout = 120
@@ -813,8 +826,8 @@ substep "Installing systemd service..."
 cat > /etc/systemd/system/museum-system.service <<SERVICE
 [Unit]
 Description=Museum Information System - Gunicorn
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
 
 [Service]
 Type=exec
