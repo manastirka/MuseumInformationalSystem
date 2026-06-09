@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Regression tests for director-scoped admin access.
 
-Business rule: the museum director (user_role='direktor') gets access to
-business/oversight admin routes (admin panel, statistics, manage_access view,
-cross-department timesheet reports) but NOT to technical/security routes
-(password manager, SMTP, system settings, DB ops).
+Business rule (updated 2026-06): the museum director (user_role='direktor')
+has FULL admin parity — all `admin_required` routes admit the director.
+The director keeps director-specific behavior where being admin would take
+something away: mailbox access stays (mail is blocked for 'admin' only) and
+the timesheet self-approval guard still treats the director as 'direktor'
+(cannot verify their own report).
 """
 
 import os
@@ -133,35 +135,39 @@ class DirectorRouteAccessTests(unittest.TestCase):
         self.assertNotEqual(response.status_code, 302,
                             "director was redirected (blocked) from /admin/manage_access")
 
-    # ---- Director-blocked (technical/security) ----
-    def test_director_blocked_from_password_manager(self):
+    # ---- Director has full admin parity (business decision 2026-06) ----
+    def test_director_can_access_password_manager(self):
         self._login_as_director()
         response = self.client.get('/admin/password_manager', base_url=self.base_url, follow_redirects=False)
-        self.assertIn(response.status_code, (302, 403),
-                      f"director should be blocked, got {response.status_code}")
+        self.assertEqual(response.status_code, 200,
+                         f"director should have admin parity, got {response.status_code}")
 
-    def test_director_blocked_from_system_settings(self):
+    def test_director_can_access_system_settings(self):
         self._login_as_director()
         response = self.client.get('/admin/system-settings', base_url=self.base_url, follow_redirects=False)
-        self.assertIn(response.status_code, (302, 403))
+        self.assertEqual(response.status_code, 200)
 
-    def test_director_blocked_from_mail_settings(self):
+    def test_director_can_access_mail_settings(self):
         self._login_as_director()
         response = self.client.get('/admin/mail-settings', base_url=self.base_url, follow_redirects=False)
-        self.assertIn(response.status_code, (302, 403))
+        self.assertEqual(response.status_code, 200)
 
-    def test_director_blocked_from_add_user(self):
+    def test_director_can_access_add_user(self):
         self._login_as_director()
         response = self.client.get('/admin/add_user', base_url=self.base_url, follow_redirects=False)
-        self.assertIn(response.status_code, (302, 403))
+        self.assertEqual(response.status_code, 200)
 
-    def test_director_blocked_from_grant_access(self):
+    def test_director_can_reach_grant_access(self):
         self._login_as_director()
+        # Unknown module key: handler runs (proving the decorator admits the
+        # director) but bails out before persisting anything.
         response = self.client.post(
             '/admin/grant_access', base_url=self.base_url,
-            data={'user_email': 'x@y.com', 'module_key': 'museum_databases'},
+            data={'user_email': 'x@y.com', 'module_key': 'nonexistent_module_xyz'},
         )
-        self.assertIn(response.status_code, (302, 403))
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn('/dashboard', response.headers.get('Location', ''),
+                         "redirect to /dashboard means the decorator denied access")
 
     # ---- Regular employee still blocked everywhere ----
     def test_employee_blocked_from_admin_panel(self):
@@ -1541,13 +1547,15 @@ class DirectorNavMenuTests(unittest.TestCase):
             sess['user_department'] = 'Директор'
             sess['is_department_head'] = False
 
-    def test_director_nav_shows_all_employees_reports_link(self):
+    def test_director_nav_shows_admin_timesheet_link(self):
         self._login_as_director()
         response = self.client.get('/', base_url=self.base_url, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         body = response.get_data(as_text=True)
-        # Director-specific label (added in base.html elif is_director() branch).
-        self.assertIn('Извештаји (сви запослени)', body)
+        # Director shares the admin nav: direct link to the reports overview,
+        # no personal entry form (the director does not fill a monthly report).
+        self.assertIn('/admin/timesheet', body)
+        self.assertNotIn('Унос радних листа', body)
         # Must NOT show the department-head label (which is scoped).
         self.assertNotIn('Извештаји (одељење)', body)
 

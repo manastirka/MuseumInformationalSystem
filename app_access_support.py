@@ -106,7 +106,7 @@ def user_has_module_access(
     """Check whether a user can access the requested dashboard module."""
     module_access = resolved_module_access if resolved_module_access is not None else (load_module_access() or module_access)
 
-    if user_role == 'admin':
+    if user_role in ('admin', 'direktor'):
         return True
 
     module = module_access.get(module_key)

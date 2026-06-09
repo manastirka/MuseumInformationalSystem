@@ -383,7 +383,11 @@ def login_required(f):
 
 
 def admin_required(f):
-    """Decorator to require admin role for a route."""
+    """Decorator to require admin-level role for a route.
+
+    The museum director (`direktor`) has full admin parity by business
+    decision (2026-06): both roles pass this check.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         from flask import request, jsonify
@@ -397,7 +401,7 @@ def admin_required(f):
             flash('Морате бити пријављени да бисте приступили овој страници.', 'warning')
             return redirect(url_for('login'))
 
-        if session.get('user_role') != 'admin':
+        if session.get('user_role') not in ('admin', 'direktor'):
             if is_api_request:
                 return jsonify({'success': False, 'message': 'Немате дозволу за приступ'}), 403
             flash('Немате дозволу за приступ овој страници.', 'danger')

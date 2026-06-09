@@ -96,26 +96,6 @@
     color: inherit;
 }
 
-.heritage-dashboard .dashboard-search {
-    background: linear-gradient(180deg, rgba(111, 67, 45, 0.92), rgba(76, 40, 28, 0.96));
-    border: 1px solid rgba(237, 205, 145, 0.24);
-    border-radius: 12px;
-    padding: 0.72rem 1rem;
-    color: #f2e4c5;
-    width: min(260px, 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 241, 213, 0.09), 0 10px 18px rgba(32, 8, 8, 0.15);
-}
-
-.heritage-dashboard .dashboard-search::placeholder {
-    color: rgba(241, 222, 186, 0.56);
-}
-
-.heritage-dashboard .dashboard-search:focus {
-    outline: none;
-    border-color: rgba(244, 217, 164, 0.42);
-    box-shadow: 0 0 0 3px rgba(222, 180, 107, 0.14), inset 0 1px 0 rgba(255, 241, 213, 0.12);
-}
-
 .heritage-dashboard .card {
     position: relative;
     border-radius: 18px;
@@ -908,10 +888,6 @@
         padding: 1.25rem 0.85rem 2rem;
     }
 
-    .heritage-dashboard .dashboard-search {
-        width: 100%;
-    }
-
     .weather-modal-backdrop {
         padding: 0.85rem;
     }
@@ -949,7 +925,6 @@
                 <div class="row align-items-center position-relative" style="z-index: 1;">
                     <div class="col-md-6">
                         <h1 class="h3 mb-1 fw-bold d-flex align-items-center">
-                            <img src="{{ url_for('static', filename='images/logotransparent.png') }}" alt="Лого" height="52" class="me-2 dashboard-header-logo">
                             Добродошли, {{ user_name }}!
                         </h1>
                         <p class="mb-0 opacity-75">
@@ -966,7 +941,7 @@
                             } %}
                             <button type="button"
                                     class="dashboard-weather-widget"
-                                    title="Клик за 7 дана прогнозе и RHMZ упозорења"
+                                    title="Клик за 5 дана прогнозе и RHMZ упозорења"
                                     @click="openWeatherDetails()"
                                     @keydown.enter.prevent="openWeatherDetails()"
                                     @keydown.space.prevent="openWeatherDetails()">
@@ -977,7 +952,7 @@
                                     {% if weather_temperature is not none %}
                                     <span class="weather-temp">{{ weather_temperature|round|int }}°C</span>
                                     {% else %}
-                                    <span class="weather-temp weather-temp-placeholder">7 дана</span>
+                                    <span class="weather-temp weather-temp-placeholder">5 дана</span>
                                     {% endif %}
                                     <span class="weather-desc">{{ weather_description if weather_description else 'Прогноза и упозорења' }}</span>
                                     {% if weather_windspeed is not none %}
@@ -989,11 +964,6 @@
                                 </div>
                                 <span class="weather-widget-cta" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
                             </button>
-                            <input type="text"
-                                   class="dashboard-search"
-                                   placeholder="Претражи модуле..."
-                                   x-model="searchQuery"
-                                   @input="filterModules()">
                             <div class="position-relative">
                                 <button class="btn dashboard-control-btn btn-sm" @click="showNotifications = !showNotifications; if(showNotifications) markAllRead()">
                                     <i class="bi bi-bell"></i>
@@ -1080,6 +1050,41 @@
 
     <!-- Available Modules -->
     {% if accessible_modules %}
+    {% set module_endpoints = {
+        'museum_databases': 'museum_databases',
+        'mineral_database': 'mineral_database_app',
+        'botany_collection': 'botany_collection',
+        'ichthyology_collection': 'ichthyology_collection',
+        'entomology_collection': 'entomology_collection',
+        'mycology_collection': 'mycology_collection',
+        'herpetology_collection': 'herpetology_collection',
+        'ornithology_collection': 'ornithology_collection',
+        'paleozoology_collection': 'paleozoology_collection',
+        'sanja_paleogene_neogene_mammals': 'sanja_paleogene_neogene_mammals',
+        'paleobotany_collection': 'paleobotany_collection',
+        'petrology_collection': 'petrology_collection',
+        'meteorite_collection': 'meteorite_collection',
+        'employees_database': 'employees_database',
+        'employee_profiles': 'employee_profiles_database',
+        'library_database': 'library_database',
+        'exhibits_database': 'exhibits_database',
+        'exhibitions_database': 'exhibitions_database',
+        'news': 'museum_news',
+        'cultural_heritage': 'cultural_heritage_database',
+        'curator_collections': 'museum_databases',
+        'user_management': 'manage_user_access',
+        'reports_analytics': 'admin_panel',
+        'system_logs': 'admin_panel',
+        'bird_ringing_database': 'bird_ringing_database_view',
+        'nhm_data_portal': 'nhm_data_portal',
+        'maps_karte': 'maps.admin_maps',
+        'bilja_kenozojske_invertebrate': 'bilja_kenozojske_invertebrate',
+        'bilja_hydrobioidea_radoman': 'bilja_hydrobioidea_radoman',
+        'bilja_suvozemni_puzevi_pavlovic': 'bilja_suvozemni_puzevi_pavlovic',
+        'bilja_opsta_zbirka_mollusca': 'bilja_opsta_zbirka_mollusca',
+        'bilja_skoljke_tadic': 'bilja_skoljke_tadic',
+        'bilja_recentni_morski_mekusci': 'bilja_recentni_morski_mekusci'
+    } %}
     <div class="row g-4 mb-5 stagger-children" id="modules-container">
         {% for module in accessible_modules %}
         <div class="col-lg-6 module-col" data-module-name="{{ module.name }}">
@@ -1100,65 +1105,30 @@
 
                     <div class="d-grid">
                         {% if module.key == 'timesheet' %}
+                            {% if user_role in ('admin', 'direktor') %}
+                            <a href="{{ url_for('admin_timesheet_reports') }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="bi bi-collection me-2"></i>
+                                Извештаји радних листа
+                            </a>
+                            {% else %}
                             <a href="{{ url_for('timesheet_entry') }}" class="btn btn-primary btn-lg btn-ripple">
                                 <i class="bi bi-pencil-square me-2"></i>
                                 Унос радне листе
                             </a>
-                        {% elif module.key == 'museum_databases' %}
-                            <a href="{{ url_for('museum_databases') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-database me-2"></i>
-                                Музејске базе података
+                            {% endif %}
+                        {% else %}
+                            {% set module_endpoint = module_endpoints.get(module.key) %}
+                            {% if module_endpoint %}
+                            <a href="{{ url_for(module_endpoint) }}" class="btn btn-primary btn-lg btn-ripple">
+                                <i class="{{ module.icon }} me-2"></i>
+                                Отвори
                             </a>
-                        {% elif module.key == 'mineral_database' %}
-                            <a href="{{ url_for('mineral_database_app') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-gem me-2"></i>
-                                База минерала
+                            {% else %}
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg disabled" aria-disabled="true">
+                                <i class="{{ module.icon }} me-2"></i>
+                                Није повезано
                             </a>
-                        {% elif module.key == 'employees_database' %}
-                            <a href="{{ url_for('employees_database') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-people-fill me-2"></i>
-                                База запослених
-                            </a>
-                        {% elif module.key == 'employee_profiles' %}
-                            <a href="{{ url_for('employee_profiles_database') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-person-badge me-2"></i>
-                                Профили запослених
-                            </a>
-                        {% elif module.key == 'library_database' %}
-                            <a href="{{ url_for('library_database') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-book me-2"></i>
-                                База библиотеке
-                            </a>
-                        {% elif module.key == 'cultural_heritage' %}
-                            <a href="{{ url_for('cultural_heritage_database') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-award me-2"></i>
-                                Културна добра
-                            </a>
-                        {% elif module.key == 'curator_collections' %}
-                            <a href="{{ url_for('museum_databases') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-collection me-2"></i>
-                                Кустоске збирке
-                            </a>
-                        {% elif module.key == 'user_management' %}
-                            <a href="{{ url_for('manage_user_access') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-people me-2"></i>
-                                Управљање корисницима
-                            </a>
-                        {% elif module.key == 'reports_analytics' %}
-                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-graph-up me-2"></i>
-                                Извештаји
-                            </a>
-                        {% elif module.key == 'system_logs' %}
-                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-shield-check me-2"></i>
-                                Системски логови
-                            </a>
-                        {% elif module.key == 'news' %}
-                            <a href="{{ url_for('museum_news') }}" class="btn btn-primary btn-lg btn-ripple">
-                                <i class="bi bi-newspaper me-2"></i>
-                                Музејске вести
-                            </a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -1225,18 +1195,21 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="fb-page-container" style="overflow: auto; display: flex; justify-content: center;">
-                        <iframe
-                            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fprirodnjacki&tabs=timeline&width=500&height=600&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
-                            width="100%"
-                            height="600"
-                            style="border:none; overflow:hidden; max-width: 500px;"
-                            scrolling="no"
-                            frameborder="0"
-                            allowfullscreen="true"
-                            loading="lazy"
-                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                        </iframe>
+                    <div class="p-4 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 600px;">
+                        <i class="bi bi-facebook text-primary mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="mb-2">Facebook садржај се отвара директно</h5>
+                        <p class="text-muted mb-4" style="max-width: 28rem;">
+                            Уграђени Facebook widget прави нестабилне console грешке у прегледачу.
+                            Отворите званичну страницу музеја у новом табу.
+                        </p>
+                        <div class="d-grid gap-2 w-100" style="max-width: 20rem;">
+                            <a href="https://www.facebook.com/prirodnjacki" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                                <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Facebook страницу
+                            </a>
+                            <a href="https://www.facebook.com/prirodnjacki/events" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
+                                <i class="bi bi-calendar-event me-2"></i>Догађаји
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1263,25 +1236,22 @@
                 </div>
                 <div class="card-body p-0">
                     <div id="instagram-feed-container" class="h-100">
-                        <script src="https://snapwidget.com/js/snapwidget.js"></script>
-                        <iframe src="https://snapwidget.com/embed/1089057"
-                                class="snapwidget-widget"
-                                allowtransparency="true"
-                                frameborder="0"
-                                scrolling="yes"
-                                style="border:none; overflow:hidden; width:100%; height:600px;"
-                                title="Instagram Feed">
-                        </iframe>
-                        <noscript>
-                            <div class="text-center py-5">
-                                <i class="bi bi-instagram" style="font-size: 3rem; color: #E1306C;"></i>
-                                <p class="mt-3">
-                                    <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-danger">
-                                        Погледај на Instagram
-                                    </a>
-                                </p>
+                        <div class="p-4 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 600px;">
+                            <i class="bi bi-instagram mb-3" style="font-size: 3rem; color: #E1306C;"></i>
+                            <h5 class="mb-2">Instagram feed је отворен преко профила</h5>
+                            <p class="text-muted mb-4" style="max-width: 28rem;">
+                                SnapWidget embed враћа 401 и Meta/Instagram JavaScript грешке.
+                                Отворите музејски Instagram профил директно.
+                            </p>
+                            <div class="d-grid gap-2 w-100" style="max-width: 20rem;">
+                                <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" rel="noopener noreferrer" class="btn btn-danger">
+                                    <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Instagram профил
+                                </a>
+                                <a href="https://www.instagram.com/prirodnjacki_muzej/reels/" target="_blank" rel="noopener noreferrer" class="btn btn-outline-danger">
+                                    <i class="bi bi-film me-2"></i>Reels
+                                </a>
                             </div>
-                        </noscript>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1336,10 +1306,10 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('timesheet_entry') }}'">
+            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('admin_timesheet_reports') if user_role in ('admin', 'direktor') else url_for('timesheet_entry') }}'">
                 <div class="card-body text-center py-4">
                     <i class="bi bi-calendar-event d-block mb-2" style="font-size: 2rem; color: var(--museum-primary);"></i>
-                    <span class="fw-medium">Радна листа</span>
+                    <span class="fw-medium">{{ 'Извештаји радних листа' if user_role in ('admin', 'direktor') else 'Радна листа' }}</span>
                 </div>
             </div>
         </div>
@@ -1374,8 +1344,8 @@
             <div class="weather-modal-header">
                 <div>
                     <span class="weather-modal-kicker">Београд</span>
-                    <h4 class="fw-bold">7-дневна прогноза и RHMZ упозорења</h4>
-                    <p>Open-Meteo прогноза по данима + дневна провера упозорења са званичног сајта РХМЗ.</p>
+                    <h4 class="fw-bold">5-дневна прогноза и RHMZ упозорења</h4>
+                    <p>Званична RHMZ прогноза по данима уз дневну проверу упозорења са сајта РХМЗ.</p>
                 </div>
                 <button type="button" class="weather-modal-close" @click="closeWeatherDetails()">
                     <i class="bi bi-x-lg"></i>
@@ -1490,7 +1460,7 @@
                         <template x-if="!weatherDetails.forecast || !weatherDetails.forecast.length">
                             <div class="weather-empty-state">
                                 <strong class="d-block mb-1">Прогноза није доступна</strong>
-                                <span>Open-Meteo тренутно није вратио 7-дневне податке.</span>
+                                <span>Тренутно нема доступних прогнозних података.</span>
                             </div>
                         </template>
                     </div>
@@ -1505,7 +1475,6 @@
 // Alpine.js Dashboard Component
 function dashboard() {
     return {
-        searchQuery: '',
         showNotifications: false,
         notifications: 0,
         notificationsList: [],
@@ -1608,6 +1577,71 @@ function dashboard() {
             this.showWeatherModal = false;
         },
 
+        weatherCacheKey() {
+            return 'museum-dashboard-weather-cache-v1';
+        },
+
+        readCachedWeather(maxAgeMs = 30 * 60 * 1000) {
+            try {
+                const raw = window.localStorage.getItem(this.weatherCacheKey());
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.timestamp || !parsed.data) return null;
+                if ((Date.now() - parsed.timestamp) > maxAgeMs) return null;
+                return parsed.data;
+            } catch (_) {
+                return null;
+            }
+        },
+
+        writeCachedWeather(data) {
+            try {
+                window.localStorage.setItem(this.weatherCacheKey(), JSON.stringify({
+                    timestamp: Date.now(),
+                    data
+                }));
+            } catch (_) {}
+        },
+
+        hasUsefulWeatherData(data) {
+            if (!data || typeof data !== 'object') return false;
+            if (data.current && typeof data.current === 'object') return true;
+            if (Array.isArray(data.forecast)) return true;
+            return !!(data.rhmz && typeof data.rhmz === 'object');
+        },
+
+        syncWeatherWidget(details) {
+            const widget = document.querySelector('.dashboard-weather-widget');
+            if (!widget || !details || !details.current) return;
+
+            const current = details.current;
+            const condition = current.condition || 'none';
+            const iconWrap = widget.querySelector('.weather-icon-wrap');
+            const iconMain = widget.querySelector('.weather-icon-main');
+            const tempNode = widget.querySelector('.weather-temp');
+            const descNode = widget.querySelector('.weather-desc');
+            const windNode = widget.querySelector('.weather-wind');
+
+            if (iconWrap) iconWrap.className = `weather-icon-wrap weather-${condition}`;
+            if (iconMain) iconMain.textContent = this.weatherIcon(condition);
+            if (tempNode) {
+                tempNode.textContent = current.temperature === null || current.temperature === undefined
+                    ? '5 дана'
+                    : this.formatTemperature(current.temperature);
+                tempNode.classList.toggle('weather-temp-placeholder', current.temperature === null || current.temperature === undefined);
+            }
+            if (descNode) {
+                descNode.textContent = current.description || 'Прогноза и упозорења';
+            }
+            if (windNode) {
+                if (current.windspeed === null || current.windspeed === undefined || current.windspeed === '') {
+                    windNode.innerHTML = '<i class="bi bi-shield-exclamation"></i> RHMZ дневна провера';
+                } else {
+                    windNode.innerHTML = `<i class="bi bi-wind"></i> ${Math.round(Number(current.windspeed))} km/h`;
+                }
+            }
+        },
+
         loadWeatherDetails() {
             this.weatherLoading = true;
             this.weatherError = '';
@@ -1615,19 +1649,33 @@ function dashboard() {
             fetch('/api/weather/details?days=7')
                 .then(async response => {
                     const data = await response.json();
-                    if (!response.ok || !data.success) {
-                        throw new Error(data.message || 'Није могуће учитати временске податке.');
+                    if (!this.hasUsefulWeatherData(data)) {
+                        throw new Error((data && data.message) || 'Није могуће учитати временске податке.');
                     }
-                    return data;
-                })
-                .then(data => {
+                    if (!response.ok || !data.success) {
+                        data.forecast_stale = true;
+                        data.message = data.message || 'Приказани су резервни временски подаци.';
+                    }
                     this.weatherDetails = data;
+                    this.writeCachedWeather(data);
+                    this.syncWeatherWidget(data);
+                    if (data.message) {
+                        this.weatherError = data.message;
+                    }
                 })
                 .catch(error => {
-                    this.weatherError = error.message || 'Није могуће учитати временске податке.';
-                    if (!this.weatherDetails) {
-                        this.weatherDetails = null;
+                    const cached = this.readCachedWeather(6 * 60 * 60 * 1000);
+                    if (cached) {
+                        this.weatherDetails = {
+                            ...cached,
+                            forecast_stale: true,
+                        };
+                        this.weatherError = 'Приказани су кеширани временски подаци.';
+                        this.syncWeatherWidget(this.weatherDetails);
+                        return;
                     }
+                    this.weatherError = error.message || 'Није могуће учитати временске податке.';
+                    this.weatherDetails = null;
                 })
                 .finally(() => {
                     this.weatherLoading = false;
@@ -1806,15 +1854,6 @@ function dashboard() {
             }
 
             return checkedText;
-        },
-
-        // Filter modules based on search
-        filterModules() {
-            const query = this.searchQuery.toLowerCase();
-            document.querySelectorAll('.module-col').forEach(col => {
-                const name = col.dataset.moduleName.toLowerCase();
-                col.style.display = name.includes(query) ? '' : 'none';
-            });
         },
 
         // Toggle card minimize/maximize

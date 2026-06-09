@@ -59,7 +59,7 @@
                             <i class="bi bi-calendar-check me-2"></i>
                             Преглед радних листи
                         </a>
-                        {% if user_role == 'admin' %}
+                        {% if user_role in ('admin', 'direktor') %}
                         <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-primary">
                             <i class="bi bi-gear me-2"></i>
                             Администрација

@@ -1213,7 +1213,10 @@ def api_nabavka_list():
                     return jsonify({'success': True, 'requests': []})
 
                 user_email = session.get('user_email')
-                is_admin = session.get('user_role') == 'admin' or session.get('is_admin', False)
+                is_admin = (
+                    session.get('user_role') in ('admin', 'direktor')
+                    or session.get('is_admin', False)
+                )
                 if is_admin:
                     cur.execute(
                         """

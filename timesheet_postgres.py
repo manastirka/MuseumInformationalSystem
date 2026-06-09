@@ -740,7 +740,14 @@ def save_timesheet_to_postgres(
                         RETURNING version
                     """, (user_name, user_email, work_description, organization_unit, position, report_id))
 
-                    new_version = cur.fetchone()['version']
+                    updated_row = cur.fetchone()
+                    if updated_row is None:
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.CONCURRENT_MODIFICATION,
+                            "Извештај је у међувремену измењен или обрисан. "
+                            "Освежите страницу и покушајте поново."
+                        )
+                    new_version = updated_row['version']
 
                     # Delete old daily entries
                     cur.execute("""

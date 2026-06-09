@@ -196,6 +196,8 @@ def generate_word_document(report_id, database_url):
 
     month = header['month']
     year = header['year']
+    if not isinstance(month, int) or not 1 <= month <= 12:
+        raise ValueError(f"Извештај {report_id} има неисправан месец: {month}")
     days_in_month = calendar.monthrange(year, month)[1]
 
     month_names = [

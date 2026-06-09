@@ -149,10 +149,11 @@ class LazyLoadedDict(dict):
 
 
 def current_user_is_admin():
-    """Return True when the current session belongs to an admin user."""
-    return session.get('user_role') == 'admin' or session.get('is_admin', False)
+    """Return True when the current session belongs to an admin-level user
+    (admin or direktor — the director has full admin parity)."""
+    return session.get('user_role') in ('admin', 'direktor') or session.get('is_admin', False)
 
 
 def can_access_owned_record(owner_email, user_email, user_role):
-    """Allow record access to the owner or an admin user."""
-    return user_role == 'admin' or (owner_email and owner_email == user_email)
+    """Allow record access to the owner or an admin-level user."""
+    return user_role in ('admin', 'direktor') or (owner_email and owner_email == user_email)

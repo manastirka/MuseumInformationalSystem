@@ -209,7 +209,7 @@ def api_clear_notifications():
 @login_required
 def timesheet_entry():
     """Employee timesheet entry page."""
-    if session.get('user_role') == 'admin':
+    if session.get('user_role') in ('admin', 'direktor'):
         return redirect(url_for('admin_timesheet_reports'))
     return timesheet_employee_views.render_timesheet_entry()
 

@@ -82,8 +82,49 @@
 }
 
 /* Notification dropdown */
+.notification-dropdown {
+    width: min(350px, calc(100vw - 1.5rem)) !important;
+    overflow-x: hidden;
+}
+
+.notification-dropdown .card-header {
+    gap: 0.75rem;
+}
+
+.notification-dropdown .card-header .d-flex {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.notification-dropdown .notification-item {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
 .notification-dropdown .notification-item:hover {
     background-color: var(--gray-50, #f9fafb);
+}
+
+.notification-dropdown .notification-icon {
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+}
+
+.notification-dropdown .notification-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.notification-dropdown .notification-title,
+.notification-dropdown .notification-message,
+.notification-dropdown .notification-time {
+    display: block;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.25;
 }
 
 /* Alpine.js */
@@ -114,7 +155,7 @@
                                    x-model="searchQuery"
                                    @input="filterCards()">
                             <div class="position-relative">
-                                <button class="btn btn-light btn-sm" @click="showNotifications = !showNotifications">
+                                <button class="btn btn-light btn-sm" @click="showNotifications = !showNotifications; if(showNotifications) markAllRead()">
                                     <i class="bi bi-bell"></i>
                                 </button>
                                 <span class="notification-badge" x-show="notifications > 0" x-text="notifications"></span>
@@ -207,24 +248,32 @@
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('manage_user_access') }}" class="btn btn-warning">
                             <i class="bi bi-shield-check me-2"></i>
-                            Управљај приступом модулима
+                            {% if is_admin() or is_director() %}Управљај приступом модулима{% else %}Преглед приступа модулима{% endif %}
                         </a>
+                        {% if is_admin() or is_director() %}
                         <a href="{{ url_for('admin_password_manager') }}" class="btn btn-danger">
                             <i class="bi bi-key-fill me-2"></i>
                             Менаџер лозинки
+                        </a>
+                        <a href="{{ url_for('admin_mail_configuration') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-envelope-gear me-2"></i>
+                            Администрација поште
                         </a>
                         <a href="{{ url_for('add_user') }}" class="btn btn-outline-warning">
                             <i class="bi bi-person-plus me-2"></i>
                             Додај корисника
                         </a>
+                        {% endif %}
                         <a href="{{ url_for('employees_database') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-list me-2"></i>
                             Листа корисника
                         </a>
+                        {% if is_admin() or is_director() %}
                         <a href="{{ url_for('system_reports') }}" class="btn btn-outline-info">
                             <i class="bi bi-graph-up me-2"></i>
                             Извештаји система
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -268,6 +317,7 @@
         </div>
 
         <!-- System Settings -->
+        {% if is_admin() or is_director() %}
         <div class="col-lg-6">
             <div class="card h-100 card-minimizable card-glass card-shine" data-card-id="system-settings">
                 <div class="card-header bg-info text-white" @click="toggleCard('system-settings')">
@@ -307,6 +357,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Notification Dropdown -->
@@ -319,16 +370,21 @@
          x-transition:leave-end="opacity-0"
          @click.away="showNotifications = false"
          class="notification-dropdown position-fixed"
-         style="top: 120px; right: 30px; z-index: 1050; width: 350px;">
+         style="top: 120px; right: 30px; z-index: 1050;">
         <div class="card shadow-lg border-0">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <h6 class="mb-0 fw-bold">
                     <i class="bi bi-bell me-2"></i>
                     Обавештења
                 </h6>
-                <button class="btn btn-sm btn-outline-secondary" @click="clearNotifications()">
-                    Обриши све
-                </button>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary" @click="markAllRead()" x-show="notifications > 0">
+                        Прочитано
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @click="clearNotifications()">
+                        Обриши све
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
                 <template x-if="notificationsList.length === 0">
@@ -343,10 +399,10 @@
                             <div class="notification-icon me-3" :class="'bg-' + notification.type + '-subtle'">
                                 <i class="bi" :class="notification.icon" :style="'color: var(--museum-' + notification.type + ')'"></i>
                             </div>
-                            <div class="flex-grow-1">
-                                <p class="mb-1 small fw-medium" x-text="notification.title"></p>
-                                <p class="mb-1 text-muted small" x-text="notification.message"></p>
-                                <small class="text-muted" x-text="notification.time"></small>
+                            <div class="notification-copy">
+                                <p class="mb-1 small fw-medium notification-title" x-text="notification.title"></p>
+                                <p class="mb-1 text-muted small notification-message" x-text="notification.message"></p>
+                                <small class="text-muted notification-time" x-text="notification.time"></small>
                             </div>
                         </div>
                     </div>
@@ -392,6 +448,7 @@
             </div>
         </div>
 
+        {% if is_admin() or is_director() %}
         <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="card border-0 card-glass quick-action icon-pulse" @click="performBackup()">
                 <div class="card-body text-center py-3">
@@ -431,6 +488,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('museum_databases') }}'">
@@ -518,41 +576,64 @@ function adminPanel() {
 
         // Load notifications
         loadNotifications() {
-            // Sample notifications - replace with API call
-            this.notificationsList = [
-                {
-                    title: 'Нови радни лист',
-                    message: 'Марко Петровић је предао радни лист за јануар',
-                    time: 'Пре 5 минута',
-                    icon: 'bi-calendar-check',
-                    type: 'success',
-                    read: false
-                },
-                {
-                    title: 'Захтев за одобрење',
-                    message: 'Нови захтев за службено путовање',
-                    time: 'Пре 1 сат',
-                    icon: 'bi-file-earmark-text',
-                    type: 'warning',
-                    read: false
-                },
-                {
-                    title: 'Систем ажуриран',
-                    message: 'База података је успешно синхронизована',
-                    time: 'Пре 2 сата',
-                    icon: 'bi-database-check',
-                    type: 'info',
-                    read: true
-                }
-            ];
-            this.notifications = this.notificationsList.filter(n => !n.read).length;
+            fetch('/api/notifications')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.notificationsList = data.notifications.map(n => ({
+                            id: n.id,
+                            title: n.title,
+                            message: n.message,
+                            time: n.time,
+                            icon: n.icon || 'bi-bell',
+                            type: n.type || 'info',
+                            read: n.is_read
+                        }));
+                        this.notifications = data.unread_count;
+                    }
+                })
+                .catch(() => {
+                    this.notificationsList = [];
+                    this.notifications = 0;
+                });
         },
 
         // Clear all notifications
         clearNotifications() {
-            this.notificationsList = [];
-            this.notifications = 0;
-            this.showToast('info', 'Обавештења', 'Сва обавештења су обрисана', 'bi-bell-slash');
+            fetch('/api/notifications/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.notificationsList = [];
+                    this.notifications = 0;
+                    this.showToast('info', 'Обавештења', 'Сва обавештења су обрисана', 'bi-bell-slash');
+                }
+            });
+        },
+
+        // Mark all notifications as read
+        markAllRead() {
+            if (this.notifications === 0) return;
+            fetch('/api/notifications/read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.notificationsList.forEach(n => n.read = true);
+                    this.notifications = 0;
+                }
+            });
         },
 
         // Show toast notification
