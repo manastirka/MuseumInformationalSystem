@@ -8,7 +8,7 @@
         <h1 class="display-6">
             <i class="bi bi-file-earmark-ruled text-success"></i> Изабери формат налепница
         </h1>
-        <a href="{{ back_url }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin_qr_generator') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Назад
         </a>
     </div>
@@ -21,32 +21,6 @@
                     Изаберите формат Sigma налепница за A4 папир. Сваки формат има различите димензије и број налепница по листу.
                     Систем ће аутоматски прилагодити QR кодове изабраном формату.
                 </p>
-                {% if session.qr_generated_data %}
-                <hr>
-                <div class="row">
-                    <div class="col-md-6">
-                        <strong><i class="bi bi-collection me-2"></i>Збирка:</strong> {{ session.qr_generated_data.collection_info.name }}
-                    </div>
-                    <div class="col-md-6">
-                        <strong><i class="bi bi-qr-code me-2"></i>Број QR кодова:</strong> {{ session.qr_generated_data.collection_info.count }}
-                    </div>
-                </div>
-                {% if session.qr_generated_data.fields %}
-                <div class="mt-2">
-                    <strong><i class="bi bi-sliders me-2"></i>Прилагођена поља:</strong> {{ session.qr_generated_data.fields|join(', ') }}
-                </div>
-                {% endif %}
-                {% if session.qr_generated_data.selected_boxes %}
-                <div class="mt-2">
-                    <strong><i class="bi bi-box-seam me-2"></i>Изабране кутије:</strong> {{ session.qr_generated_data.selected_boxes|join(', ') }}
-                </div>
-                {% endif %}
-                {% if session.qr_generated_data.selected_specimens %}
-                <div class="mt-2">
-                    <strong><i class="bi bi-filter-square me-2"></i>Изабрани примерци:</strong> {{ session.qr_generated_data.selected_specimens|length }} примерака
-                </div>
-                {% endif %}
-                {% endif %}
             </div>
         </div>
     </div>
@@ -58,7 +32,7 @@
                 <div class="card-body">
                     <h5 class="card-title"><i class="bi bi-printer me-2"></i>Режим штампања</h5>
                     <div class="btn-group w-100" role="group">
-                        <input type="radio" class="btn-check" name="print_mode" id="mode_regular" value="regular">
+                        <input type="radio" class="btn-check" name="print_mode" id="mode_regular" value="regular" checked>
                         <label class="btn btn-outline-primary" for="mode_regular">
                             <i class="bi bi-file-earmark-text me-2"></i>
                             <div class="d-block">
@@ -67,7 +41,7 @@
                             </div>
                         </label>
 
-                        <input type="radio" class="btn-check" name="print_mode" id="mode_sticker" value="sticker" checked>
+                        <input type="radio" class="btn-check" name="print_mode" id="mode_sticker" value="sticker">
                         <label class="btn btn-outline-success" for="mode_sticker">
                             <i class="bi bi-sticky me-2"></i>
                             <div class="d-block">
@@ -82,12 +56,8 @@
     </div>
 
     <!-- Sigma Label Formats -->
-    <form method="POST" action="{{ continue_url }}" id="formatForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        <!-- Hidden field to always submit print mode -->
-        <input type="hidden" name="print_mode" id="hidden_print_mode" value="sticker">
-        
-        <div id="stickerFormats" style="display: none;">
+    <div id="stickerFormats" style="display: none;">
+        <form method="POST" action="{{ continue_url }}" id="formatForm">
             <div class="row mb-4">
                 <div class="col-lg-10 mx-auto">
                     <h5 class="mb-3"><i class="bi bi-grid-3x3 me-2"></i>Sigma формати налепница (A4)</h5>
@@ -691,10 +661,11 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </form>
+    </div>
 
-        <!-- Regular Print Instructions -->
-        <div id="regularPrintInfo" class="row mt-4">
+    <!-- Regular Print Instructions -->
+    <div id="regularPrintInfo" class="row mt-4">
         <div class="col-lg-10 mx-auto">
             <div class="alert alert-light">
                 <i class="bi bi-info-circle me-2"></i>
@@ -702,14 +673,13 @@
                 Можете их исећи и користити по потреби.
             </div>
             <div class="d-grid">
-                <button type="button" class="btn btn-primary btn-lg" onclick="submitRegularMode()">
+                <a href="{{ continue_url }}?format=regular" class="btn btn-primary btn-lg">
                     <i class="bi bi-arrow-right me-2"></i>
                     Настави са обичном штампом
-                </button>
+                </a>
             </div>
         </div>
     </div>
-    </form>
 </div>
 
 <style>
@@ -785,10 +755,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateVisibility() {
         const selectedMode = document.querySelector('input[name="print_mode"]:checked').value;
-        const hiddenPrintMode = document.getElementById('hidden_print_mode');
-
-        // Update hidden field with selected mode
-        hiddenPrintMode.value = selectedMode;
 
         if (selectedMode === 'sticker') {
             stickerFormats.style.display = 'block';
@@ -798,18 +764,6 @@ document.addEventListener('DOMContentLoaded', function() {
             regularPrintInfo.style.display = 'block';
         }
     }
-    
-    // Auto-select sticker mode when a Sigma format is clicked
-    const formatRadios = document.querySelectorAll('input[name="label_format"]');
-    const stickerModeRadio = document.getElementById('mode_sticker');
-    
-    formatRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            // Automatically switch to sticker mode when a Sigma format is selected
-            stickerModeRadio.checked = true;
-            updateVisibility();
-        });
-    });
 
     printModeRadios.forEach(radio => {
         radio.addEventListener('change', updateVisibility);
@@ -818,17 +772,5 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     updateVisibility();
 });
-
-// Function to submit form with regular mode
-function submitRegularMode() {
-    const hiddenPrintMode = document.getElementById('hidden_print_mode');
-    const formatForm = document.getElementById('formatForm');
-    
-    // Set print mode to regular
-    hiddenPrintMode.value = 'regular';
-    
-    // Submit the form
-    formatForm.submit();
-}
 </script>
 {% endblock %}

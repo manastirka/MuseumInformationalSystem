@@ -56,7 +56,10 @@
         'total_categories': 'Број категорија',
         'total_heritage_items': 'Укупно предмета',
         'exceptional_significance': 'Изузетан значај',
-        'great_significance': 'Велики значај'
+        'great_significance': 'Велики значај',
+        'total_taxa': 'Број таксона',
+        'total_localities': 'Број локалитета',
+        'identified_by_count': 'Број идентификатора'
     } %}
     <div class="row mb-4">
         {% for key, value in statistics.items() %}
@@ -74,19 +77,23 @@
     <!-- Specimens Table -->
     <div class="row">
         <div class="col-md-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm collection-table-card" id="collection-table-card">
                 <div class="card-header bg-white py-3">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0">
                             <i class="bi bi-list-ul me-2"></i>Примерци у збирци
                         </h5>
                         <div class="d-flex gap-2">
+                            {% if collection_add_enabled|default(collection_actions_enabled|default(true)) %}
                             <a href="{{ url_for('add_collection_item', collection_type=collection_type) }}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-plus-circle me-1"></i>Додај примерак
                             </a>
+                            {% endif %}
+                            {% if collection_export_enabled|default(collection_actions_enabled|default(true)) %}
                             <a href="{{ url_for('export_collection_to_pdf', collection_type=collection_type) }}" class="btn btn-sm btn-danger" title="Извоз збирке у ПДФ">
                                 <i class="bi bi-file-pdf me-1"></i>Извоз ПДФ
                             </a>
+                            {% endif %}
                             <button class="btn btn-sm btn-outline-primary" onclick="toggleColumnSelector()">
                                 <i class="bi bi-sliders me-1"></i>Колоне
                             </button>
@@ -109,8 +116,25 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="specimensTable">
+                    <div class="collection-table-toolbar">
+                        <div class="collection-table-toolbar-copy">
+                            <strong><span id="visibleColumnCount">0</span> изабраних колона</strong>
+                            <small>Користите горњи или доњи клизач за табелу, или укључите прилагођавање екрану.</small>
+                        </div>
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                id="collection-fit-toggle"
+                                aria-pressed="false"
+                                onclick="toggleCollectionTableFit()">
+                            <i class="bi bi-arrows-angle-contract me-1"></i>
+                            Уклопи у екран
+                        </button>
+                    </div>
+                    <div class="collection-table-scroll collection-table-top-scroll" id="collection-table-top-scroll" aria-label="Горњи клизач табеле">
+                        <div class="collection-table-top-scroll-spacer" id="collection-table-top-scroll-spacer"></div>
+                    </div>
+                    <div class="table-responsive collection-table-scroll collection-table-bottom-scroll">
+                        <table class="table table-hover mb-0 collection-data-table" id="specimensTable">
                             <thead class="table-light">
                                 <tr id="tableHeaders">
                                     <th style="width: 80px;">Слика</th>
@@ -139,19 +163,27 @@
 
 <!-- Specimen Details Modal -->
 <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="{{ collection_icon }} me-2"></i>Детаљни подаци о примерку
-                </h5>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content detail-modal-content">
+            <div class="modal-header detail-modal-header">
+                <div class="detail-modal-header-inner">
+                    <div class="detail-modal-icon-wrap">
+                        <i class="{{ collection_icon }}"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0" id="detailModalTitle">Детаљни подаци о примерку</h5>
+                        <small class="detail-modal-subtitle" id="detailModalSubtitle"></small>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="modalBody">
                 <!-- Details will be inserted here by JavaScript -->
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
+            <div class="modal-footer detail-modal-footer" id="detailModalFooter">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Затвори
+                </button>
             </div>
         </div>
     </div>
@@ -161,17 +193,131 @@
 // Store specimens data in JavaScript
 const specimens = {{ specimens|tojson }};
 const collectionType = '{{ collection_type }}';
+const hiddenCollectionFields = new Set(['source_file']);
+const defaultColumnLayouts = {
+    sanja_paleogene_neogene_mammals: [
+        'inventory_sequence',
+        'specimen_name',
+        'catalog_number',
+        'quantity',
+        'acquisition_method',
+        'entered_by',
+        'acquisition_date',
+        'description',
+        'location_found',
+        'material',
+        'identified_by'
+    ],
+    bilja_kenozojske_invertebrate: [
+        'inventarski_broj', 'klasa', 'familija', 'rod', 'vrsta',
+        'lokalitet', 'stratigrafski_nivo', 'datum_nalaska', 'nalazac'
+    ],
+    bilja_hydrobioidea_radoman: [
+        'inventarski_broj', 'familija', 'rod', 'vrsta', 'lokalitet',
+        'broj_primeraka', 'holotip', 'paratip', 'legator'
+    ],
+    bilja_suvozemni_puzevi_pavlovic: [
+        'inventarski_broj', 'familija', 'rod', 'vrsta', 'lokalitet',
+        'datum_nalaska', 'broj_primeraka', 'zbirka_orman_kutija'
+    ],
+    bilja_opsta_zbirka_mollusca: [
+        'inventarski_broj', 'klasa', 'familija', 'rod', 'vrsta',
+        'lokalitet', 'broj_primeraka', 'ps_pavlovic'
+    ],
+    bilja_skoljke_tadic: [
+        'inventarski_broj', 'familija', 'rod', 'vrsta', 'podvrsta',
+        'lokalitet', 'datum_nalaska', 'broj_primeraka', 'sakupljac'
+    ],
+    bilja_recentni_morski_mekusci: [
+        'inventarski_broj', 'klasa', 'familija', 'rod', 'vrsta',
+        'lokalitet', 'broj_primeraka', 'izbrojan_broj_primeraka'
+    ],
+    meteorite: [
+        'catalog_number', 'specimen_name', 'meteorite_class',
+        'mass', 'mass_unit', 'total_mass', 'total_mass_unit',
+        'quantity', 'chemical_composition', 'mineralogy',
+        'fall_date_text', 'fall_type', 'fall_location', 'fall_witnessed',
+        'collector', 'acquisition_date_text', 'acquisition_method',
+        'shock_stage', 'weathering_grade', 'parent_body',
+        'cosmic_ray_exposure', 'widmanstatten_pattern', 'fusion_crust',
+        'meteorite_bulletin_number', 'serbian_meteorite', 'description',
+        'meteorite_name', 'classification', 'location_found', 'curator', 'source'
+    ]
+};
+const defaultColumnLayoutVersions = {
+    sanja_paleogene_neogene_mammals: '2026-04-14-sanja-requested-default-order-only',
+    bilja_kenozojske_invertebrate: '2026-04-15-bilja-initial',
+    bilja_hydrobioidea_radoman: '2026-04-15-bilja-initial',
+    bilja_suvozemni_puzevi_pavlovic: '2026-04-15-bilja-initial',
+    bilja_opsta_zbirka_mollusca: '2026-04-15-bilja-initial',
+    bilja_skoljke_tadic: '2026-04-15-bilja-initial',
+    bilja_recentni_morski_mekusci: '2026-04-15-bilja-initial',
+    meteorite: '2026-04-15-meteorite-populated-snapshot'
+};
 
 // Get all unique column names from specimens
 let allColumns = new Set();
 specimens.forEach(spec => {
-    Object.keys(spec).forEach(key => allColumns.add(key));
+    Object.keys(spec).forEach(key => {
+        if (!hiddenCollectionFields.has(key)) {
+            allColumns.add(key);
+        }
+    });
 });
 allColumns = Array.from(allColumns);
 
+function sanitizeColumnList(columns) {
+    const availableColumns = new Set(allColumns);
+    return (columns || []).filter(col => availableColumns.has(col) && !hiddenCollectionFields.has(col));
+}
+
+function isValuePopulated(value) {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    if (Array.isArray(value)) return value.some(isValuePopulated);
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return true;
+}
+
+function columnsWithData() {
+    return allColumns.filter(col =>
+        specimens.some(spec => isValuePopulated(spec[col]))
+    );
+}
+
+function getDefaultVisibleColumns() {
+    const configuredLayout = defaultColumnLayouts[collectionType];
+    if (configuredLayout) {
+        return sanitizeColumnList(configuredLayout);
+    }
+
+    // No hardcoded layout: show only columns that contain data in at least one row.
+    const populated = columnsWithData();
+    if (populated.length > 0) return populated;
+    return allColumns.slice(0, Math.min(7, allColumns.length));
+}
+
+function getInitialVisibleColumns() {
+    const columnsKey = `columns_${collectionType}`;
+    const layoutVersionKey = `columns_layout_version_${collectionType}`;
+    const expectedVersion = defaultColumnLayoutVersions[collectionType];
+    const defaultColumns = getDefaultVisibleColumns();
+
+    if (expectedVersion && localStorage.getItem(layoutVersionKey) !== expectedVersion) {
+        localStorage.setItem(columnsKey, JSON.stringify(defaultColumns));
+        localStorage.setItem(layoutVersionKey, expectedVersion);
+        return defaultColumns;
+    }
+
+    const storedColumns = JSON.parse(localStorage.getItem(columnsKey) || 'null');
+    if (Array.isArray(storedColumns)) {
+        return sanitizeColumnList(storedColumns);
+    }
+    return defaultColumns;
+}
+
 // Default visible columns (stored in localStorage)
-let visibleColumns = JSON.parse(localStorage.getItem(`columns_${collectionType}`) || 'null') || 
-    allColumns.slice(0, Math.min(7, allColumns.length));
+let visibleColumns = getInitialVisibleColumns();
 
 // Current sort state
 let currentSort = { column: null, direction: 'asc' };
@@ -229,6 +375,38 @@ const fieldTranslations = {
     'keywords': 'Кључне речи',
     'notes': 'Напомене',
     'status': 'Статус',
+    'source_row': 'Ред у извору',
+    'collection_group': 'Група збирке',
+    'collection_number': 'Колекцијски број',
+    'collector_number': 'Колекторски број',
+    'inventory_sequence': 'Инв. број',
+    'inventory_number': 'Инвентарски број',
+    'specimen_name': 'Предмет',
+    'taxon_name': 'Назив',
+    'level': 'Ниво',
+    'database_entry_date': 'Датум уноса у базу',
+    'entered_by': 'Унео у базу',
+    'donor_collector': 'Легатор / нашао / донео',
+    'identified_by': 'Идентификовао',
+    'comment': 'Коментар/напомена',
+    'locality_text': 'Локалитет текст',
+    'utm_x': 'UTM X',
+    'utm_y': 'UTM Y',
+    'utm_z': 'UTM Z',
+    'country': 'Држава',
+    'exposure': 'Експозиција',
+    'specimen_part_2': 'Предмет 2',
+    'specimen_part_3': 'Предмет 3',
+    'specimen_part_4': 'Предмет 4',
+    'specimen_part_5': 'Предмет 5',
+    'storage_location': 'Где се налази',
+    'material': 'Материјал',
+    'uncertain_determination': 'Несигурна детерминација',
+    'length_mm': 'Дужина (mm)',
+    'width_mm': 'Ширина (mm)',
+    'biostratigraphic_zone': 'Биостратиграфска зона',
+    'bibliography_flag': 'У библиографији',
+    'locality_code': 'Шифра локалитета',
 
     // Meteorite-specific fields - Basic Information
     'serbian_meteorite': 'Српски метеорит',
@@ -299,13 +477,53 @@ const fieldTranslations = {
     // Meteorite - Storage & Display
     'storage_location': 'Локација складишта',
     'storage_conditions': 'Услови складиштења',
-    'display_status': 'Статус излагања'
+    'display_status': 'Статус излагања',
+
+    // Bilja mollusc collections
+    'redni_broj': 'Редни број',
+    'inventarski_broj': 'Инвентарски број',
+    'klasa': 'Класа',
+    'red': 'Ред',
+    'familija': 'Фамилија',
+    'rod': 'Род',
+    'vrsta': 'Врста',
+    'podvrsta': 'Подврста',
+    'tipska_vrsta': 'Типска врста',
+    'sinonim': 'Синоним',
+    'lokalitet': 'Локалитет',
+    'rasprostranjenost': 'Распрострањеност',
+    'stratigrafski_nivo': 'Стратиграфски ниво',
+    'datum_nalaska': 'Датум налаза',
+    'nalazac': 'Налазач',
+    'legator': 'Легатор',
+    'sakupljac': 'Сакупљач',
+    'odredba': 'Одредба',
+    'napomena': 'Напомена',
+    'literatura': 'Литература',
+    'dimenzije': 'Димензије',
+    'dimenzije_ljusture': 'Димензије љуштуре',
+    'dimenzije_kapka': 'Димензије капка',
+    'tip_brave': 'Тип браве',
+    'broj_primeraka': 'Број примерака',
+    'izbrojan_broj_primeraka': 'Избројан број примерака',
+    'broj_levih_kapaka': 'Бр. левих капака',
+    'broj_desnih_kapaka': 'Бр. десних капака',
+    'boja_ljusture_forel_ule': 'Боја љуштуре (Forel–Ule)',
+    'ekoloske_osobine': 'Еколошке особине',
+    'holotip': 'Холотип',
+    'paratip': 'Паратип',
+    'lektotip': 'Лектотип',
+    'paralektotip': 'Паралектотип',
+    'zbirka_orman_kutija': 'Збирка (орман, кутија)',
+    'ugrozenost': 'Угроженост',
+    'ps_pavlovic': 'П. С. Павловић'
 };
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     initializeColumnSelector();
     renderTable();
+    initCollectionTableControls();
 });
 
 // Toggle column selector visibility
@@ -387,6 +605,10 @@ function sortTable(column) {
 function renderTable() {
     const headersRow = document.getElementById('tableHeaders');
     const tbody = document.getElementById('tableBody');
+    const columnCount = document.getElementById('visibleColumnCount');
+    if (columnCount) {
+        columnCount.textContent = visibleColumns.length;
+    }
     
     // Clear existing content
     headersRow.innerHTML = '';
@@ -395,6 +617,7 @@ function renderTable() {
     // Add image column header first
     const imgTh = document.createElement('th');
     imgTh.style.width = '80px';
+    imgTh.className = 'collection-image-cell';
     imgTh.textContent = 'Слика';
     headersRow.appendChild(imgTh);
 
@@ -404,6 +627,7 @@ function renderTable() {
         const label = fieldTranslations[col] || col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         
         th.className = 'sortable-header';
+        th.classList.add(`collection-column-${col.replace(/[^a-zA-Z0-9_-]/g, '-')}`);
         th.style.cursor = 'pointer';
         th.onclick = () => sortTable(col);
         
@@ -420,6 +644,7 @@ function renderTable() {
     
     // Add actions column
     const actionsTh = document.createElement('th');
+    actionsTh.className = 'collection-actions-cell';
     actionsTh.textContent = 'Акције';
     headersRow.appendChild(actionsTh);
     
@@ -452,12 +677,13 @@ function renderTable() {
     
     // Create table rows
     sortedSpecimens.forEach((specimen, index) => {
+        const originalIndex = specimens.indexOf(specimen);
         const tr = document.createElement('tr');
         tr.setAttribute('data-original-index', index);
 
         // Add thumbnail column first
         const imgTd = document.createElement('td');
-        imgTd.className = 'text-center';
+        imgTd.className = 'text-center collection-image-cell';
 
         // Determine entity_id - try common id fields
         let entityId = specimen.id || specimen.record_id || specimen.catalog_number || specimen.record_number || index;
@@ -476,11 +702,12 @@ function renderTable() {
         const dbName = databaseMap[collectionType] || collectionType;
         const imgUrl = `/api/specimen_thumbnail/${dbName}/${collectionType}/${entityId}`;
 
-        imgTd.innerHTML = `<img src="${imgUrl}" alt="Specimen" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;">`;
+        imgTd.innerHTML = `<img src="${imgUrl}" alt="Specimen" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;" onerror="this.onerror=null; this.style.display='none';">`;
         tr.appendChild(imgTd);
 
         visibleColumns.forEach(col => {
             const td = document.createElement('td');
+            td.className = `collection-column-${col.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
             let value = specimen[col];
             
             // Format value based on field type
@@ -513,10 +740,13 @@ function renderTable() {
         
         // Actions column
         const actionsTd = document.createElement('td');
+        actionsTd.className = 'collection-actions-cell';
         actionsTd.innerHTML = `
-            <button class="btn btn-sm btn-outline-info" onclick="showDetails(${index})">
+            <div class="d-flex gap-1 flex-wrap">
+            <button class="btn btn-sm btn-outline-info" onclick="showDetails(${originalIndex})">
                 <i class="bi bi-eye"></i> Детаљи
             </button>
+            </div>
         `;
         tr.appendChild(actionsTd);
         
@@ -525,6 +755,87 @@ function renderTable() {
     
     // Update filtered count
     updateFilteredCount();
+    requestAnimationFrame(updateCollectionTableTopScroll);
+}
+
+const COLLECTION_TABLE_FIT_KEY = `collectionTableFitToScreen_${collectionType}`;
+let collectionTableScrollSyncing = false;
+
+function getCollectionTableParts() {
+    return {
+        card: document.getElementById('collection-table-card'),
+        table: document.getElementById('specimensTable'),
+        bottomScroll: document.querySelector('#collection-table-card .collection-table-bottom-scroll'),
+        topScroll: document.getElementById('collection-table-top-scroll'),
+        topSpacer: document.getElementById('collection-table-top-scroll-spacer'),
+        toggle: document.getElementById('collection-fit-toggle')
+    };
+}
+
+function updateCollectionFitScale() {
+    const parts = getCollectionTableParts();
+    if (!parts.card) return;
+
+    const totalColumns = Math.max(1, visibleColumns.length + 2);
+    const fontSize = Math.max(0.46, Math.min(0.78, 0.92 - (totalColumns * 0.018)));
+    const headerSize = Math.max(0.44, fontSize - 0.06);
+    parts.card.style.setProperty('--collection-fit-font-size', `${fontSize.toFixed(2)}rem`);
+    parts.card.style.setProperty('--collection-fit-header-font-size', `${headerSize.toFixed(2)}rem`);
+}
+
+function updateCollectionTableTopScroll() {
+    const parts = getCollectionTableParts();
+    if (!parts.table || !parts.topSpacer || !parts.bottomScroll) return;
+
+    parts.topSpacer.style.width = `${parts.table.scrollWidth}px`;
+    if (parts.topScroll) {
+        parts.topScroll.scrollLeft = parts.bottomScroll.scrollLeft;
+    }
+    updateCollectionFitScale();
+}
+
+function setCollectionTableFit(enabled) {
+    const parts = getCollectionTableParts();
+    if (!parts.card) return;
+
+    parts.card.classList.toggle('collection-table-fit', enabled);
+    if (parts.toggle) {
+        parts.toggle.setAttribute('aria-pressed', String(enabled));
+        parts.toggle.classList.toggle('btn-primary', enabled);
+        parts.toggle.classList.toggle('btn-outline-primary', !enabled);
+        parts.toggle.innerHTML = enabled
+            ? '<i class="bi bi-arrows-angle-expand me-1"></i>Нормалан приказ'
+            : '<i class="bi bi-arrows-angle-contract me-1"></i>Уклопи у екран';
+    }
+    localStorage.setItem(COLLECTION_TABLE_FIT_KEY, enabled ? '1' : '0');
+    updateCollectionFitScale();
+    requestAnimationFrame(updateCollectionTableTopScroll);
+}
+
+function toggleCollectionTableFit() {
+    const parts = getCollectionTableParts();
+    if (!parts.card) return;
+    setCollectionTableFit(!parts.card.classList.contains('collection-table-fit'));
+}
+
+function initCollectionTableControls() {
+    const parts = getCollectionTableParts();
+    if (!parts.card || !parts.table || !parts.bottomScroll || !parts.topScroll) return;
+
+    const syncScroll = (source, target) => {
+        if (collectionTableScrollSyncing) return;
+        collectionTableScrollSyncing = true;
+        target.scrollLeft = source.scrollLeft;
+        collectionTableScrollSyncing = false;
+    };
+
+    parts.topScroll.addEventListener('scroll', () => syncScroll(parts.topScroll, parts.bottomScroll));
+    parts.bottomScroll.addEventListener('scroll', () => syncScroll(parts.bottomScroll, parts.topScroll));
+    window.addEventListener('resize', updateCollectionTableTopScroll);
+
+    const storedFitPref = localStorage.getItem(COLLECTION_TABLE_FIT_KEY);
+    setCollectionTableFit(storedFitPref === null ? true : storedFitPref === '1');
+    updateCollectionTableTopScroll();
 }
 
 // Filter table function
@@ -570,6 +881,20 @@ function updateFilteredCount() {
     filteredSpan.style.display = 'none';
 }
 
+// Field grouping definitions for professional detail card layout
+const detailFieldGroups = {
+    sanja_paleogene_neogene_mammals: [
+        { title: 'Идентификација', icon: 'bi-tag', fields: ['inventory_sequence', 'catalog_number', 'collection_number', 'collector_number', 'collection_group'] },
+        { title: 'Таксономија', icon: 'bi-diagram-3', fields: ['specimen_name', 'taxon_name', 'level', 'uncertain_determination'] },
+        { title: 'Локалитет', icon: 'bi-geo-alt', fields: ['location_found', 'locality_code', 'locality_text', 'country', 'utm_x', 'utm_y', 'utm_z', 'exposure'] },
+        { title: 'Набавка и евиденција', icon: 'bi-clipboard-check', fields: ['acquisition_method', 'acquisition_date', 'quantity', 'donor_collector', 'database_entry_date', 'entered_by'] },
+        { title: 'Детерминација', icon: 'bi-search', fields: ['identified_by', 'material', 'biostratigraphic_zone', 'length_mm', 'width_mm'] },
+        { title: 'Смештај и напомене', icon: 'bi-archive', fields: ['storage_location', 'description', 'comment', 'bibliography_flag'] },
+        { title: 'Додатни примерци', icon: 'bi-layers', fields: ['specimen_part_2', 'specimen_part_3', 'specimen_part_4', 'specimen_part_5'] },
+    ],
+    _default: null
+};
+
 // Show specimen details in modal
 function showDetails(index) {
     const specimen = specimens[index];
@@ -589,31 +914,121 @@ function showDetails(index) {
     const dbName = databaseMap[collectionType] || collectionType;
     const imgUrl = `/api/specimen_image/${dbName}/${collectionType}/${entityId}`;
 
-    let html = '<div class="row g-3">';
+    // Update modal subtitle
+    const subtitle = document.getElementById('detailModalSubtitle');
+    const specimenLabel = specimen.specimen_name || specimen.scientific_name || specimen.catalog_number || '';
+    subtitle.textContent = specimenLabel;
 
-    // Add image at the top
+    // Build edit button for footer
+    const footer = document.getElementById('detailModalFooter');
+    let footerHtml = '';
+    if (collectionType === 'sanja_paleogene_neogene_mammals') {
+        footerHtml += `
+            <a class="btn btn-primary" href="/admin/edit_sanja_paleogene_neogene_mammal/${encodeURIComponent(entityId)}">
+                <i class="bi bi-pencil me-1"></i>Уреди / додај слику
+            </a>
+        `;
+    } else if (collectionType && collectionType.startsWith('bilja_')) {
+        footerHtml += `
+            <a class="btn btn-primary" href="/admin/edit_bilja/${encodeURIComponent(collectionType)}/${encodeURIComponent(entityId)}">
+                <i class="bi bi-pencil me-1"></i>Уреди / обриши
+            </a>
+        `;
+    }
+    footerHtml += `<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Затвори</button>`;
+    footer.innerHTML = footerHtml;
+
+    let html = '';
+
+    // Image section
     html += `
-        <div class="col-12 text-center mb-3">
-            <img src="${imgUrl}" alt="Specimen" class="img-fluid rounded shadow-sm" style="max-height: 300px; object-fit: contain;">
+        <div class="detail-image-section">
+            <img src="${imgUrl}" alt="Specimen" class="detail-image" onerror="this.onerror=null; this.closest('.detail-image-section').style.display='none';">
         </div>
     `;
 
-    // Iterate through all fields
-    for (const [key, value] of Object.entries(specimen)) {
-        if (value !== null && value !== undefined && value !== '') {
-            const label = fieldTranslations[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    // Grouped layout if available
+    const groups = detailFieldGroups[collectionType];
+    if (groups) {
+        const usedFields = new Set();
+        groups.forEach(group => {
+            const groupFields = group.fields.filter(key => {
+                const val = specimen[key];
+                return val !== null && val !== undefined && val !== '' && val !== 0 && !hiddenCollectionFields.has(key);
+            });
+            if (groupFields.length === 0) return;
+            groupFields.forEach(f => usedFields.add(f));
             html += `
-                <div class="col-md-6">
-                    <div class="border-bottom pb-2">
-                        <strong class="text-muted d-block small">${label}:</strong>
-                        <span>${value}</span>
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <i class="bi ${group.icon} me-2"></i>${group.title}
                     </div>
-                </div>
+                    <div class="detail-section-body">
+                        <div class="row g-2">
             `;
+            groupFields.forEach(key => {
+                const val = specimen[key];
+                const label = fieldTranslations[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="col-sm-6">
+                        <div class="detail-field">
+                            <span class="detail-field-label">${label}</span>
+                            <span class="detail-field-value">${val}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div></div>`;
+        });
+
+        // Remaining fields not in any group
+        const remaining = Object.entries(specimen).filter(([key, val]) =>
+            !usedFields.has(key) && !hiddenCollectionFields.has(key) &&
+            key !== 'id' && key !== 'source_row' &&
+            val !== null && val !== undefined && val !== ''
+        );
+        if (remaining.length > 0) {
+            html += `
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <i class="bi bi-three-dots me-2"></i>Остало
+                    </div>
+                    <div class="detail-section-body">
+                        <div class="row g-2">
+            `;
+            remaining.forEach(([key, val]) => {
+                const label = fieldTranslations[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="col-sm-6">
+                        <div class="detail-field">
+                            <span class="detail-field-label">${label}</span>
+                            <span class="detail-field-value">${val}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div></div>`;
         }
+    } else {
+        // Flat layout for collections without groups
+        html += '<div class="detail-section"><div class="detail-section-body"><div class="row g-2">';
+        for (const [key, value] of Object.entries(specimen)) {
+            if (hiddenCollectionFields.has(key)) continue;
+            if (value !== null && value !== undefined && value !== '') {
+                const label = fieldTranslations[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="col-sm-6">
+                        <div class="detail-field">
+                            <span class="detail-field-label">${label}</span>
+                            <span class="detail-field-value">${value}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        html += '</div></div></div>';
     }
 
-    html += '</div>';
     modalBody.innerHTML = html;
 
     // Show modal
@@ -635,8 +1050,113 @@ function showDetails(index) {
     font-weight: 500;
 }
 
-.modal-body .border-bottom:last-child {
-    border-bottom: none !important;
+/* Detail modal styles */
+.detail-modal-content {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.detail-modal-header {
+    background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    border-bottom: none;
+}
+
+.detail-modal-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.detail-modal-icon-wrap {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.detail-modal-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.detail-modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.detail-image-section {
+    text-align: center;
+    padding: 1rem 0 0.5rem;
+}
+
+.detail-image {
+    max-height: 280px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.detail-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.detail-section-header {
+    background: #f0f4f8;
+    color: #1a5276;
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-section-body {
+    padding: 0.75rem 1rem;
+    background: #fff;
+}
+
+.detail-field {
+    padding: 0.4rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.detail-field-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detail-field-value {
+    font-size: 0.92rem;
+    color: #212529;
+    word-break: break-word;
 }
 
 .sortable-header {
@@ -679,8 +1199,139 @@ function showDetails(index) {
     user-select: none;
 }
 
+.collection-table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.collection-table-top-scroll {
+    min-height: 16px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.collection-table-top-scroll-spacer {
+    height: 1px;
+}
+
+.collection-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.collection-table-toolbar-copy {
+    min-width: 0;
+}
+
+.collection-table-toolbar-copy strong,
+.collection-table-toolbar-copy small {
+    display: block;
+}
+
+.collection-table-toolbar-copy small {
+    color: #6c757d;
+}
+
+.collection-data-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.collection-data-table th,
+.collection-data-table td {
+    min-width: 150px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.collection-data-table .collection-image-cell {
+    width: 88px;
+    min-width: 88px;
+}
+
+.collection-data-table .collection-actions-cell {
+    width: 115px;
+    min-width: 115px;
+}
+
+.collection-data-table .collection-column-id,
+.collection-data-table .collection-column-source_row,
+.collection-data-table .collection-column-quantity,
+.collection-data-table .collection-column-utm_x,
+.collection-data-table .collection-column-utm_y,
+.collection-data-table .collection-column-utm_z,
+.collection-data-table .collection-column-length_mm,
+.collection-data-table .collection-column-width_mm {
+    min-width: 110px;
+}
+
+.collection-data-table .collection-column-comment,
+.collection-data-table .collection-column-description,
+.collection-data-table .collection-column-notes,
+.collection-data-table .collection-column-locality_text,
+.collection-data-table .collection-column-biostratigraphic_zone {
+    min-width: 220px;
+}
+
+.collection-table-fit .collection-table-top-scroll {
+    display: none;
+}
+
+.collection-table-fit .collection-data-table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+    font-size: var(--collection-fit-font-size, 0.62rem);
+}
+
+.collection-table-fit .collection-data-table th,
+.collection-table-fit .collection-data-table td,
+.collection-table-fit .collection-data-table .collection-image-cell,
+.collection-table-fit .collection-data-table .collection-actions-cell,
+.collection-table-fit .collection-data-table [class*="collection-column-"] {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 0.3rem 0.22rem !important;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.collection-table-fit .collection-data-table th {
+    font-size: var(--collection-fit-header-font-size, 0.56rem);
+    letter-spacing: 0;
+}
+
+.collection-table-fit .collection-data-table .img-thumbnail {
+    max-width: 30px !important;
+    max-height: 30px !important;
+}
+
+.collection-table-fit .collection-data-table .btn {
+    padding: 0.18rem 0.22rem;
+    font-size: var(--collection-fit-header-font-size, 0.56rem);
+    line-height: 1.1;
+}
+
 /* Responsive table improvements */
 @media (max-width: 768px) {
+    .collection-table-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .collection-table-toolbar .btn {
+        width: 100%;
+    }
+
     .table-responsive {
         font-size: 0.85rem;
     }

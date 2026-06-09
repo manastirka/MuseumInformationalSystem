@@ -8,7 +8,7 @@
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('scientific_papers_view') }}">Научни радови</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('science.scientific_papers_view') }}">Научни радови</a></li>
             <li class="breadcrumb-item active" aria-current="page">Детаљи рада</li>
         </ol>
     </nav>
@@ -140,7 +140,7 @@
                 </div>
                 <div class="card-body">
                     {% for loc in paper.localities %}
-                    <a href="{{ url_for('scientific_papers_by_locality', locality_name=loc.locality_name) }}" class="btn btn-sm btn-outline-success me-1 mb-1">
+                    <a href="{{ url_for('science.scientific_papers_by_locality', locality_name=loc.locality_name) }}" class="btn btn-sm btn-outline-success me-1 mb-1">
                         <i class="bi bi-map me-1"></i>{{ loc.locality_name }}
                         {% if loc.ogk_code %}<small>({{ loc.ogk_code }})</small>{% endif %}
                     </a>
@@ -220,7 +220,7 @@
 
     <!-- Back button -->
     <div class="mt-3 mb-4">
-        <a href="{{ url_for('scientific_papers_view') }}" class="btn btn-secondary">
+        <a href="{{ url_for('science.scientific_papers_view') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left me-1"></i> Назад на листу
         </a>
     </div>

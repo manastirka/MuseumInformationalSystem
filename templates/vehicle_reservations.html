@@ -22,7 +22,7 @@
                         <div class="col-md-4 text-md-end mt-3 mt-md-0">
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end">
                                 {% if is_admin() %}
-                                <a href="{{ url_for('vehicle_management') }}" class="btn btn-light">
+                                <a href="{{ url_for('vehicles.vehicle_management') }}" class="btn btn-light">
                                     <i class="bi bi-gear me-1"></i>
                                     Управљање возилима
                                 </a>
@@ -167,7 +167,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('add_vehicle_reservation') }}">
+            <form method="POST" action="{{ url_for('vehicles.add_vehicle_reservation') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="row g-3">

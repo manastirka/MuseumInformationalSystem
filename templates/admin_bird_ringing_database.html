@@ -11,7 +11,7 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
-<div class="container-main">
+<div class="container-main bird-ringing-wide">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
@@ -951,15 +951,51 @@
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 }
 
+.container-main.bird-ringing-wide {
+    max-width: 100%;
+    padding: 1.5rem 1.25rem;
+}
+
+#birdRingingTable {
+    width: 100%;
+    font-size: 0.82rem;
+}
+
+#birdRingingTable th,
+#birdRingingTable td {
+    padding: 0.4rem 0.5rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+@media (max-width: 1400px) {
+    #birdRingingTable {
+        font-size: 0.76rem;
+    }
+    #birdRingingTable th,
+    #birdRingingTable td {
+        padding: 0.3rem 0.4rem;
+    }
+}
+
 .table-responsive {
     max-height: 600px;
 }
 
+/* Sticky column headers must stay fully opaque — Bootstrap's .table-light
+   drives th backgrounds via CSS vars that render semi-transparent when
+   rows scroll underneath the sticky header. Force a solid fill + subtle
+   shadow so cells can't bleed through. */
+#birdRingingTable thead th,
+.table thead.table-light th,
 .table th {
     position: sticky;
     top: 0;
-    background-color: #f8f9fa;
+    background-color: #e9ecef !important;
+    color: #212529;
+    background-clip: padding-box;
     z-index: 10;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
 }
 
 .sortable {

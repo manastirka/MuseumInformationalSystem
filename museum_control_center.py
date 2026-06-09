@@ -24,6 +24,9 @@ import string
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+POSTGRES_CONTROL_ROOT = Path('/home/aleksandarlukovic/PostgresControlApp')
+POSTGRES_CONTROL_PORT = 5075
+POSTGRES_CONTROL_URL = f'http://127.0.0.1:{POSTGRES_CONTROL_PORT}'
 SYSTEMD_UNIT_DIRS = (
     Path('/etc/systemd/system'),
     Path('/usr/lib/systemd/system'),
@@ -744,6 +747,7 @@ class MuseumControlCenter:
         # Database operations
         operations = [
             ("📊 Провери статус база података", self.check_database_status),
+            ("🧭 Отвори PostgreSQL Browser", self.open_postgres_control_app),
             ("🐘 Омогући PostgreSQL ауто-старт", self.enable_postgresql_autostart),
             ("💾 Направи резервну копију", self.backup_databases),
             ("📈 Статистика база података", self.show_database_stats),
@@ -754,6 +758,9 @@ class MuseumControlCenter:
             # Highlight PostgreSQL button
             if "PostgreSQL" in text:
                 bg_color = '#4CAF50'
+                fg_color = 'white'
+            elif "Browser" in text:
+                bg_color = '#0f766e'
                 fg_color = 'white'
             else:
                 bg_color = '#f0f0f0'
@@ -1902,6 +1909,78 @@ WantedBy=multi-user.target
     def optimize_databases(self):
         """Optimize databases"""
         messagebox.showinfo("Информација", "Функција оптимизације је у развоју")
+
+    def open_postgres_control_app(self):
+        """Start the local PostgreSQL browser app and open it in the browser."""
+        if not POSTGRES_CONTROL_ROOT.exists():
+            messagebox.showerror(
+                "PostgreSQL Browser",
+                f"Апликација није пронађена:\n{POSTGRES_CONTROL_ROOT}"
+            )
+            return
+
+        if not (POSTGRES_CONTROL_ROOT / 'app.py').exists():
+            messagebox.showerror(
+                "PostgreSQL Browser",
+                f"Недостаје app.py у:\n{POSTGRES_CONTROL_ROOT}"
+            )
+            return
+
+        self.db_status_text.delete('1.0', tk.END)
+        self.db_status_text.insert('1.0', "Покрећем PostgreSQL Browser...\n\n")
+
+        try:
+            if self.check_port(POSTGRES_CONTROL_PORT):
+                self.db_status_text.insert(
+                    tk.END,
+                    f"✅ PostgreSQL Browser је већ активан: {POSTGRES_CONTROL_URL}\n"
+                )
+            else:
+                logs_dir = POSTGRES_CONTROL_ROOT / 'logs'
+                logs_dir.mkdir(exist_ok=True)
+                log_path = logs_dir / 'postgres_control_app.log'
+                log_handle = open(log_path, 'a', encoding='utf-8')
+                try:
+                    subprocess.Popen(
+                        ['python3', 'app.py'],
+                        cwd=str(POSTGRES_CONTROL_ROOT),
+                        stdout=log_handle,
+                        stderr=subprocess.STDOUT,
+                        start_new_session=True
+                    )
+                finally:
+                    log_handle.close()
+
+                for _attempt in range(15):
+                    time.sleep(0.3)
+                    if self.check_port(POSTGRES_CONTROL_PORT):
+                        break
+
+                if not self.check_port(POSTGRES_CONTROL_PORT):
+                    self.db_status_text.insert(
+                        tk.END,
+                        f"❌ Није успело покретање. Проверите лог:\n{log_path}\n"
+                    )
+                    messagebox.showerror(
+                        "PostgreSQL Browser",
+                        f"Није успело покретање PostgreSQL Browser-а.\n\nЛог:\n{log_path}"
+                    )
+                    return
+
+                self.db_status_text.insert(
+                    tk.END,
+                    f"✅ PostgreSQL Browser покренут: {POSTGRES_CONTROL_URL}\n"
+                    f"Лог: {log_path}\n"
+                )
+
+            self.db_status_text.insert(
+                tk.END,
+                "\nУнесите PostgreSQL корисника и лозинку у отвореном прозору, затим изаберите базу.\n"
+            )
+            self.open_browser(POSTGRES_CONTROL_URL)
+        except Exception as exc:
+            self.db_status_text.insert(tk.END, f"❌ Грешка: {exc}\n")
+            messagebox.showerror("PostgreSQL Browser", f"Грешка:\n{exc}")
     
     def open_browser(self, url):
         """Open URL in browser"""

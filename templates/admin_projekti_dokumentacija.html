@@ -152,7 +152,7 @@
                     Преглед документације нове зграде Природњачког музеја директно унутар система.
                 </p>
             </div>
-            <a class="btn btn-light" href="{{ url_for('admin_projekti') }}">
+            <a class="btn btn-light" href="{{ url_for('projects.admin_projekti') }}">
                 <i class="bi bi-building me-1"></i>Назад на пројекат
             </a>
         </div>
@@ -180,10 +180,10 @@
                     </div>
                     <div class="text-muted small">{{ doc.description }}</div>
                     <div class="doc-actions">
-                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('projekti_file', filename=doc.filename) }}" target="_blank">
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('projects.projekti_file', filename=doc.filename) }}" target="_blank">
                             <i class="bi bi-box-arrow-up-right me-1"></i>Отвори фајл
                         </a>
-                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('projekti_file', filename=doc.filename) }}" download>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('projects.projekti_file', filename=doc.filename) }}" download>
                             <i class="bi bi-download me-1"></i>Преузми
                         </a>
                     </div>
@@ -194,7 +194,7 @@
                         Фајл није пронађен на серверу.
                     </div>
                     {% elif doc.inline_type == 'pdf' %}
-                    <iframe class="doc-preview-frame" src="{{ url_for('projekti_file', filename=doc.filename) }}#toolbar=1"></iframe>
+                    <iframe class="doc-preview-frame" src="{{ url_for('projects.projekti_file', filename=doc.filename) }}#toolbar=1"></iframe>
                     {% elif doc.content %}
                     <div class="doc-preview-text">{{ doc.content }}</div>
                     {% else %}

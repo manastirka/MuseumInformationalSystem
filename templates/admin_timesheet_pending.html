@@ -126,7 +126,7 @@
                                 </thead>
                                 <tbody>
                                     {% for req in pending_requests %}
-                                    <tr class="{% if req.status == 'approved' %}table-success{% elif req.status == 'rejected' %}table-danger{% endif %}">
+                                    <tr class="{% if req.status == 'approved' %}table-success{% elif req.status == 'rejected' %}table-danger{% endif %}" data-testid="edit-request-{{ req.id }}">
                                         <td>
                                             {% if req.status == 'pending' %}
                                                 <span class="badge bg-warning text-dark">
@@ -159,11 +159,13 @@
                                         <td>
                                             {% if req.status == 'pending' %}
                                                 <button class="btn btn-sm btn-success"
+                                                        data-testid="edit-request-approve-{{ req.id }}"
                                                         onclick="handleRequest({{ req.id }}, 'approve')"
                                                         title="Одобри">
                                                     <i class="bi bi-check-circle"></i> Одобри
                                                 </button>
                                                 <button class="btn btn-sm btn-danger"
+                                                        data-testid="edit-request-reject-{{ req.id }}"
                                                         onclick="handleRequest({{ req.id }}, 'reject')"
                                                         title="Одбиј">
                                                     <i class="bi bi-x-circle"></i> Одбиј

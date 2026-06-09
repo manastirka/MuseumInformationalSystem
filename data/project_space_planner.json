@@ -75,8 +75,8 @@
       "room_type": "specimen_storage",
       "shape": "rect",
       "points": [],
-      "x": 59.354,
-      "y": 26.844,
+      "x": 59.278,
+      "y": 25.149,
       "width": 14.774,
       "height": 15.442,
       "area_m2": 194.27,
@@ -117,7 +117,7 @@
       "room_type": "specimen_storage",
       "shape": "rect",
       "points": [],
-      "x": 77.244,
+      "x": 77.23,
       "y": 19.651,
       "width": 12.4,
       "height": 20.067,
@@ -764,6 +764,6 @@
     }
   ],
   "last_active_view": "depot",
-  "last_updated_at": "2026-03-18T14:08:12.898325Z",
-  "last_updated_by": "System Administrator"
+  "last_updated_at": "2026-03-27T12:51:13.910805Z",
+  "last_updated_by": "Ана Ковачевић"
 }

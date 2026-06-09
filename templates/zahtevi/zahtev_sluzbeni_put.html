@@ -4,6 +4,8 @@
 
 {% block content %}
 <style>
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
 .document-preview {
     font-family: 'Times New Roman', Times, serif;
     font-size: 14px;
@@ -133,115 +135,134 @@
     color: #856404;
 }
 
-/* Google Maps Modal Styles */
-.map-modal {
+.osm-route-modal {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: 9999;
+    inset: 0;
+    background: rgba(33, 37, 41, 0.65);
+    z-index: 2000;
+    padding: 20px;
 }
 
-.map-modal.show {
+.osm-route-modal.show {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
 }
 
-.map-modal-content {
-    background: white;
-    border-radius: 10px;
-    width: 95%;
-    max-width: 1200px;
-    height: 85vh;
+.osm-route-panel {
+    background: #fff;
+    border-radius: 12px;
+    width: min(1200px, 100%);
+    height: calc(100vh - 40px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
 }
 
-.map-modal-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #ddd;
+.osm-route-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #dee2e6;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
 }
 
-.map-modal-body {
-    flex: 1;
+.osm-route-body {
     display: flex;
-    overflow: hidden;
-}
-
-.map-container {
+    min-height: 0;
     flex: 1;
-    min-height: 400px;
 }
 
-.map-sidebar {
-    width: 320px;
-    border-left: 1px solid #ddd;
-    padding: 15px;
+.osm-route-sidebar {
+    width: 360px;
+    border-right: 1px solid #dee2e6;
+    padding: 16px;
     overflow-y: auto;
     background: #f8f9fa;
 }
 
-.route-option {
-    padding: 12px;
-    margin-bottom: 10px;
-    border: 2px solid #ddd;
+.osm-route-map {
+    flex: 1;
+    min-height: 420px;
+}
+
+.osm-waypoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.osm-waypoint-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
     border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: white;
+    background: #fff;
+    align-items: flex-start;
 }
 
-.route-option:hover {
-    border-color: #007bff;
-    background: #f0f7ff;
+.osm-waypoint-index {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: #198754;
+    color: #fff;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
 }
 
-.route-option.selected {
-    border-color: #28a745;
-    background: #d4edda;
+.osm-waypoint-item.return .osm-waypoint-index {
+    background: #6c757d;
 }
 
-.route-option .route-name {
-    font-weight: bold;
-    color: #333;
+.osm-stop-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
 }
 
-.route-option .route-details {
-    font-size: 0.9em;
-    color: #666;
-    margin-top: 5px;
+.selected-locations-summary {
+    border: 1px dashed #c7ced6;
+    border-radius: 8px;
+    padding: 12px;
+    background: #f8f9fa;
 }
 
-.route-option .route-via {
-    font-size: 0.8em;
-    color: #888;
-    margin-top: 3px;
+.osm-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
 }
 
-.toll-estimate {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #ddd;
-    font-size: 0.85em;
+.osm-summary-card {
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
 }
 
-@media (max-width: 768px) {
-    .map-modal-body {
+.osm-segment-table {
+    font-size: 0.85rem;
+}
+
+@media (max-width: 991px) {
+    .osm-route-body {
         flex-direction: column;
     }
-    .map-sidebar {
+
+    .osm-route-sidebar {
         width: 100%;
-        height: 200px;
-        border-left: none;
-        border-top: 1px solid #ddd;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
     }
 }
 </style>
@@ -291,17 +312,14 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label mb-0">Локација *</label>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="openMapPlanner()" title="Изабери на мапи">
-                                        <i class="bi bi-map me-1"></i>Мапа
-                                    </button>
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="checkbox" id="multipleLocations">
-                                        <label class="form-check-label small" for="multipleLocations">Више локација</label>
-                                    </div>
-                                </div>
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="openOpenStreetMap()" title="Планирај руту на мапи">
+                                    <i class="bi bi-map me-1"></i>Планер руте
+                                </button>
                             </div>
-                            <div id="locationsContainer">
+                            <div id="selectedLocationsSummary" class="selected-locations-summary small text-muted mb-2">
+                                Локације још нису изабране. Отворите `Планер руте`.
+                            </div>
+                            <div id="locationsContainer" style="display: none;">
                                 <div class="location-entry mb-2" data-index="0">
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
@@ -309,17 +327,10 @@
                                     </div>
                                 </div>
                             </div>
+                            <input class="form-check-input" type="checkbox" id="multipleLocations" hidden>
                             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" id="addLocationBtn" style="display: none;">
                                 <i class="bi bi-plus-circle me-1"></i>Додај локацију
                             </button>
-                            <div id="mapDataIndicator" class="mt-2" style="display: none;">
-                                <span class="badge bg-success">
-                                    <i class="bi bi-map me-1"></i>Подаци са Google Maps
-                                </span>
-                                <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-2" onclick="clearMapData()">
-                                    <i class="bi bi-x-circle"></i> Поништи
-                                </button>
-                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -391,17 +402,6 @@
                         <div class="mb-3" id="fuelSection" style="display: none;">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label mb-0">Процењена километража</label>
-                                <div class="btn-group btn-group-sm" id="routeCalculationBtns">
-                                    <button type="button" class="btn btn-outline-primary" id="calculateRouteBtn" onclick="calculateRoute()">
-                                        <i class="bi bi-calculator me-1"></i>Израчунај (AI)
-                                    </button>
-                                    <button type="button" class="btn btn-outline-success" onclick="openMapPlanner()">
-                                        <i class="bi bi-map me-1"></i>Мапа
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="aiDisabledNotice" class="alert alert-info py-1 px-2 small mb-2" style="display: none;">
-                                <i class="bi bi-info-circle me-1"></i>AI калкулација је онемогућена јер користите податке са Google Maps
                             </div>
                             <div class="input-group mb-2">
                                 <input type="number" class="form-control" id="kilometraza" placeholder="800">
@@ -514,38 +514,41 @@
                 </div>
             </div>
 
-            <!-- Accommodation Search -->
+            <!-- Accommodation Details -->
             <div class="card mt-3" id="accommodationCard" style="display: none;">
                 <div class="card-header bg-info text-white">
                     <i class="bi bi-building me-2"></i>
-                    Претрага смештаја
+                    Подаци о смештају
                 </div>
                 <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Број гостију</label>
-                            <input type="number" class="form-control" id="brojGostiju" value="2" min="1" max="10">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Макс. цена/ноћ</label>
+                    <div class="mb-3">
+                        <label class="form-label">Назив смештаја</label>
+                        <input type="text" class="form-control" id="accommodationName" placeholder="нпр. Конак Тара">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Адреса или место</label>
+                        <input type="text" class="form-control" id="accommodationLocation" placeholder="нпр. Калуђерске баре, Тара">
+                    </div>
+                    <div class="row">
+                        <div class="col-4">
+                            <label class="form-label">Цена по ноћи</label>
                             <div class="input-group">
-                                <input type="number" class="form-control" id="maxCena" value="5000">
+                                <input type="number" class="form-control" id="accommodationPrice" min="0" step="1" placeholder="5000">
                                 <span class="input-group-text">дин</span>
                             </div>
                         </div>
-                    </div>
-
-                    <button type="button" class="btn btn-info w-100 mb-3" onclick="searchAccommodation()">
-                        <i class="bi bi-search me-1"></i>
-                        Претражи смештај
-                    </button>
-
-                    <div id="accommodationResults">
-                        <div class="text-center text-muted py-3">
-                            <i class="bi bi-house" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2 small">Кликните "Претражи смештај" за понуде</p>
+                        <div class="col-4">
+                            <label class="form-label">Број ноћења</label>
+                            <input type="number" class="form-control" id="accommodationNights" min="0" step="1" placeholder="Аутоматски">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Број особа</label>
+                            <input type="number" class="form-control" id="accommodationPersons" min="1" step="1" value="1" placeholder="1">
                         </div>
                     </div>
+                    <small class="text-muted d-block mt-2">
+                        Ако број ноћења оставите празан, користи се `број дана - 1`.
+                    </small>
                 </div>
             </div>
 
@@ -567,7 +570,7 @@
                         </li>
                         <li>
                             <i class="bi bi-check-circle text-success me-2"></i>
-                            За смештај одаберите 3 понуде за рачуноводство
+                            Смештај уносите ручно према понуди или рачуну
                         </li>
                     </ul>
                 </div>
@@ -695,118 +698,71 @@
     </div>
 </div>
 
-<!-- Google Maps Route Planner Modal -->
-<div id="mapModal" class="map-modal">
-    <div class="map-modal-content">
-        <div class="map-modal-header">
-            <h5 class="mb-0">
-                <i class="bi bi-map me-2"></i>
-                Планирање руте на мапи
-            </h5>
+<div id="osmRouteModal" class="osm-route-modal" aria-hidden="true">
+    <div class="osm-route-panel">
+        <div class="osm-route-header">
             <div>
-                <span class="badge bg-info me-2" id="mapInstructions">Кликните на мапу да додате локацију</span>
-                <button type="button" class="btn-close" onclick="closeMapPlanner()"></button>
+                <h5 class="mb-1"><i class="bi bi-map me-2"></i>OSM планер руте</h5>
+                <div class="small text-muted">Рута се формира од Музеја, преко унетих локација, и назад до Музеја.</div>
             </div>
-        </div>
-        <div class="map-modal-body">
-            <div id="routeMap" class="map-container"></div>
-            <div class="map-sidebar">
-                <!-- Locations Section -->
-                <div class="mb-3">
-                    <h6 class="mb-2"><i class="bi bi-geo-alt me-2"></i>Локације</h6>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold text-success">
-                            <i class="bi bi-circle-fill me-1" style="color: #28a745;"></i>Полазиште:
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <input type="text" class="form-control map-location-input" id="mapOrigin" placeholder="Кликните на мапу или унесите...">
-                            <button class="btn btn-outline-secondary" type="button" onclick="setDefaultOrigin()">
-                                <i class="bi bi-house"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted">Кликните <i class="bi bi-house"></i> за Природњачки музеј</small>
-                    </div>
-
-                    <div id="mapWaypointsContainer" class="mb-2">
-                        <label class="form-label small fw-bold text-primary">
-                            <i class="bi bi-circle-fill me-1" style="color: #007bff;"></i>Међутачке:
-                        </label>
-                        <div id="mapWaypointsList"></div>
-                        <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-1" onclick="addWaypointField()">
-                            <i class="bi bi-plus-circle me-1"></i>Додај међутачку
-                        </button>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold text-danger">
-                            <i class="bi bi-circle-fill me-1" style="color: #dc3545;"></i>Крајња дестинација:
-                        </label>
-                        <input type="text" class="form-control form-control-sm map-location-input" id="mapDestination" placeholder="Кликните на мапу или унесите...">
-                    </div>
-                </div>
-
-                <hr>
-
-                <!-- Route Options -->
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0"><i class="bi bi-signpost-2 me-2"></i>Руте</h6>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="calculateMapRoute()">
-                            <i class="bi bi-search me-1"></i>Прикажи
-                        </button>
-                    </div>
-                    <div id="routeOptions">
-                        <p class="text-muted small">Додајте локације и кликните "Прикажи"</p>
-                    </div>
-                </div>
-
-                <hr>
-
-                <!-- Summary -->
-                <div id="routeSummary" class="mb-3" style="display: none;">
-                    <h6 class="mb-2"><i class="bi bi-calculator me-2"></i>Резиме</h6>
-                    <div class="small">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Километража:</span>
-                            <strong id="summaryDistance">0</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Време вожње:</span>
-                            <strong id="summaryTime">0</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Manual Toll Selection -->
-                <div id="tollSelectionSection" class="mb-3" style="display: none;">
-                    <h6 class="mb-2">
-                        <i class="bi bi-cash-coin me-2"></i>Путарина (ручни избор)
-                    </h6>
-                    <div id="tollSegmentSelectors" class="small">
-                        <!-- Dynamically populated -->
-                    </div>
-                    <hr class="my-2">
-                    <div class="d-flex justify-content-between">
-                        <strong>Укупно путарина:</strong>
-                        <strong id="summaryTollTotal" class="text-success">0 дин</strong>
-                    </div>
-                </div>
-
-                <button type="button" class="btn btn-success w-100" onclick="applySelectedRoute()" id="applyRouteBtn" disabled>
-                    <i class="bi bi-check-lg me-1"></i>Примени и пренеси у форму
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="refreshOsmRouteBtn" onclick="loadOsmRoutePreview()">
+                    <i class="bi bi-arrow-repeat me-1"></i>Освежи руту
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeOsmRouteModal()">
+                    <i class="bi bi-x-lg me-1"></i>Затвори
                 </button>
             </div>
+        </div>
+        <div class="osm-route-body">
+            <div class="osm-route-sidebar">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Тачке руте</label>
+                    <div id="osmWaypointList" class="osm-waypoint-list"></div>
+                </div>
+
+                <div id="osmRouteStatus" class="alert alert-light small mb-3">
+                    Кликните на `OSM` да бисте учитали руту.
+                </div>
+
+                <div id="osmRouteSummary" style="display: none;">
+                    <div class="osm-summary-grid mb-3">
+                        <div class="osm-summary-card">
+                            <div class="small text-muted">Укупна километража</div>
+                            <div class="fw-semibold" id="osmSummaryDistance">0 км</div>
+                        </div>
+                        <div class="osm-summary-card">
+                            <div class="small text-muted">Време вожње</div>
+                            <div class="fw-semibold" id="osmSummaryDuration">0 мин</div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless osm-segment-table mb-3">
+                            <thead>
+                                <tr>
+                                    <th>Деоница</th>
+                                    <th class="text-end">км</th>
+                                </tr>
+                            </thead>
+                            <tbody id="osmRouteSegments"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success w-100" id="applyOsmRouteBtn" onclick="applyOsmRouteToForm()" disabled>
+                    <i class="bi bi-check-lg me-1"></i>Примени руту у форму
+                </button>
+            </div>
+            <div id="osmRouteMap" class="osm-route-map"></div>
         </div>
     </div>
 </div>
 
-<!-- Google Maps API -->
-<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_API_KEY if config.GOOGLE_API_KEY else '' }}&libraries=places&callback=initMapCallback" async defer></script>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const userFullName = "{{ user_full_name|e }}";
 const memorandumUrl = "{{ url_for('static', filename='images/memorandum.png') }}";
+const BUSINESS_TRIP_DRAFT_NAMESPACE = 'operativni-zahtev-sluzbeni-put';
 
 // Fuel prices in Serbia (RSD per liter) - January 2026
 const FUEL_PRICES = {
@@ -817,1111 +773,654 @@ const FUEL_PRICES = {
     'Евродизел': 191
 };
 
-let selectedAccommodations = [];
 let currentRouteData = null;
-let usingGoogleMapsData = false;  // Track if Google Maps data is being used
-
-// Google Maps variables
-let map = null;
-let directionsService = null;
-let directionsRenderers = [];
-let mapRoutes = [];
-let selectedRouteIndex = -1;
-let mapMarkers = [];
-let geocoder = null;
-let activeLocationField = null;
-let waypointCount = 0;
-
-// Serbian toll prices - Official Putevi Srbije rates (Category K1 - passenger vehicles)
-// Prices in RSD from starting point of each highway section
-// To calculate segment price: |price_point_B - price_point_A|
-const TOLL_PRICES = {
-    // === БЕОГРАД (E-75 Југ према Прешеву) ===
-    'BG-South': {
-        name: 'Београд - Југ (Е-75)',
-        stations: [
-            { id: 'bg-beograd', name: 'Београд', price: 0 },
-            { id: 'bg-mali-pozarevac', name: 'Мали Пожаревац', price: 100 },
-            { id: 'bg-umcari', name: 'Умчари', price: 140 },
-            { id: 'bg-vodanj', name: 'Водањ', price: 170 },
-            { id: 'bg-kolari', name: 'Колари', price: 200 },
-            { id: 'bg-smederevo', name: 'Смедерево', price: 230 },
-            { id: 'bg-pozarevac', name: 'Пожаревац', price: 240 },
-            { id: 'bg-velika-plana', name: 'Велика Плана', price: 400 },
-            { id: 'bg-markovac', name: 'Марковац', price: 460 },
-            { id: 'bg-lapovo', name: 'Лапово', price: 500 },
-            { id: 'bg-batocina', name: 'Баточина', price: 520 },
-            { id: 'bg-jagodina', name: 'Јагодина', price: 640 },
-            { id: 'bg-cuprija', name: 'Ћуприја', price: 710 },
-            { id: 'bg-paracin', name: 'Параћин', price: 770 },
-            { id: 'bg-cicevac', name: 'Ћићевац', price: 860 },
-            { id: 'bg-razanj', name: 'Ражањ', price: 900 },
-            { id: 'bg-krusevac-istok', name: 'Крушевац исток', price: 960 },
-            { id: 'bg-krusevac-zapad', name: 'Крушевац запад', price: 970 },
-            { id: 'bg-kosevi', name: 'Кошеви', price: 1000 },
-            { id: 'bg-aleksinacki-rudnici', name: 'Алексиначки рудници', price: 1020 },
-            { id: 'bg-aleksinac', name: 'Алексинац', price: 1050 },
-            { id: 'bg-velika-drenova', name: 'Велика Дренова', price: 1050 },
-            { id: 'bg-trstenik', name: 'Трстеник', price: 1120 },
-            { id: 'bg-nis-jug', name: 'Ниш југ', price: 1180 },
-            { id: 'bg-vrnjacka-banja', name: 'Врњачка Бања', price: 1190 },
-            { id: 'bg-merosina', name: 'Мерошина', price: 1210 },
-            { id: 'bg-vrba', name: 'Врба', price: 1260 },
-            { id: 'bg-doljevac-selo', name: 'Дољевац село', price: 1270 },
-            { id: 'bg-brestovac', name: 'Брестовац', price: 1300 },
-            { id: 'bg-leskovac-centar', name: 'Лесковац центар', price: 1340 },
-            { id: 'bg-leskovac-jug', name: 'Лесковац југ', price: 1430 },
-            { id: 'bg-grdelica', name: 'Грделица', price: 1490 },
-            { id: 'bg-predejane', name: 'Предејане', price: 1580 },
-            { id: 'bg-vladicin-han', name: 'Владичин Хан', price: 1720 },
-            { id: 'bg-vranje', name: 'Врање', price: 1850 },
-            { id: 'bg-bujanovac-sever', name: 'Бујановац север', price: 1920 },
-            { id: 'bg-bujanovac-jug', name: 'Бујановац југ', price: 1940 },
-            { id: 'bg-presevo', name: 'Прешево', price: 2060 }
-        ]
-    },
-    // === БЕОГРАД - СЕВЕР (Е-75 према Суботици) ===
-    'BG-North': {
-        name: 'Београд - Север (Е-75)',
-        stations: [
-            { id: 'sp-beograd', name: 'Београд', price: 0 },
-            { id: 'sp-indjija', name: 'Инђија', price: 100 },
-            { id: 'sp-maradik', name: 'Марадик', price: 120 },
-            { id: 'sp-beska', name: 'Бешка', price: 150 },
-            { id: 'sp-kovilj', name: 'Ковиљ', price: 230 },
-            { id: 'sp-novi-sad', name: 'Нови Сад', price: 340 },
-            { id: 'sp-zmajevo', name: 'Змајево', price: 430 },
-            { id: 'sp-vrbas', name: 'Врбас', price: 500 },
-            { id: 'sp-feketic', name: 'Фекетић', price: 550 },
-            { id: 'sp-backa-topola', name: 'Бачка Топола', price: 670 },
-            { id: 'sp-zednik', name: 'Жедник', price: 730 },
-            { id: 'sp-subotica', name: 'Суботица', price: 850 }
-        ]
-    },
-    // === БЕОГРАД - ШИД (А1 Запад) ===
-    'BG-Sid': {
-        name: 'Београд - Шид (А1)',
-        stations: [
-            { id: 'sid-beograd', name: 'Београд', price: 0 },
-            { id: 'sid-simanovci', name: 'Шимановци', price: 260 },
-            { id: 'sid-pecinci', name: 'Пећинци', price: 190 },
-            { id: 'sid-ruma', name: 'Рума', price: 160 },
-            { id: 'sid-sremska-mitrovica', name: 'Сремска Митровица', price: 120 },
-            { id: 'sid-kuzmin', name: 'Кузмин', price: 60 },
-            { id: 'sid-adasevci', name: 'Адашевци', price: 20 }
-        ]
-    },
-    // === БЕОГРАД - ПОЖЕГА (Милош Велики) ===
-    'BG-Pozega': {
-        name: 'Београд - Пожега (Милош Велики)',
-        stations: [
-            { id: 'ob-beograd', name: 'Београд', price: 0 },
-            { id: 'ob-ub', name: 'Уб', price: 150 },
-            { id: 'ob-lajkovac', name: 'Лајковац', price: 220 },
-            { id: 'ob-ljig', name: 'Љиг', price: 360 },
-            { id: 'ob-takovo', name: 'Таково', price: 540 },
-            { id: 'ob-preljina', name: 'Прељина', price: 640 },
-            { id: 'ob-cacak', name: 'Чачак', price: 720 },
-            { id: 'ob-lucani', name: 'Лучани', price: 860 },
-            { id: 'ob-prilipac', name: 'Прилипац', price: 950 }
-        ]
-    },
-    // === НИШ - ДИМИТРОВГРАД (Е-80) ===
-    'Nis-Dimitrovgrad': {
-        name: 'Ниш - Димитровград (Е-80)',
-        stations: [
-            { id: 'dim-nis-istok', name: 'Ниш исток', price: 0 },
-            { id: 'dim-nis-malca', name: 'Ниш Малча', price: 80 },
-            { id: 'dim-bela-palanka', name: 'Бела Паланка', price: 280 },
-            { id: 'dim-pirot-zapad', name: 'Пирот запад', price: 350 },
-            { id: 'dim-pirot-istok', name: 'Пирот исток', price: 410 },
-            { id: 'dim-dimitrovgrad', name: 'Димитровград', price: 490 }
-        ]
-    }
-};
-
-// Flatten all stations for easy access
-const ALL_TOLL_STATIONS = [];
-Object.values(TOLL_PRICES).forEach(highway => {
-    highway.stations.forEach(station => {
-        ALL_TOLL_STATIONS.push({
-            ...station,
-            highway: highway.name
-        });
-    });
-});
-
-// Route colors for display - transparent blue
-const ROUTE_COLORS = ['#4A90D9', '#4A90D9', '#4A90D9', '#4A90D9'];
-
-// Marker icons
-const MARKER_ICONS = {
-    origin: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
-    waypoint: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-    destination: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
-};
-
-// Default museum address constant
 const DEFAULT_MUSEUM_ADDRESS = 'Природњачки музеј, Београд';
+let osmMap = null;
+let osmRouteLayer = null;
+let osmMarkers = [];
+let osmRoutePreview = null;
+let osmRouteGeometry = null;
+let osmResolvedPoints = [];
+let osmRouteController = null;
+let osmRefreshTimeout = null;
 
-// Initialize Google Maps callback
-function initMapCallback() {
-    console.log('Google Maps API loaded');
-}
-
-function openMapPlanner() {
-    const modal = document.getElementById('mapModal');
-    modal.classList.add('show');
-
-    // Reset waypoint list and active field
-    document.getElementById('mapWaypointsList').innerHTML = '';
-    waypointCount = 0;
-    activeLocationField = null;
-
-    // Set default origin and destination to Museum
-    document.getElementById('mapOrigin').value = DEFAULT_MUSEUM_ADDRESS;
-    document.getElementById('mapDestination').value = DEFAULT_MUSEUM_ADDRESS;
-
-    // Override with form locations if user has entered them
-    const locations = getLocations();
-    if (locations.length > 0) {
-        // Keep origin as Museum, set field locations as waypoints, destination back to Museum
-        // User's locations become waypoints (intermediate destinations)
-        locations.forEach((loc) => {
-            addWaypointField(loc);
-        });
+function toSerbianCyrillic(text) {
+    if (!text) {
+        return '';
     }
 
-    // Initialize map if not already done
-    setTimeout(() => {
-        if (!map) {
-            initializeMap();
-        } else {
-            google.maps.event.trigger(map, 'resize');
-            clearMapMarkers();
-            updateMarkersFromFields();
-        }
-        // Update initial instruction and set museum markers
-        setDefaultOriginMarker();
-        setDefaultDestinationMarker();
-        updateInitialInstruction();
-    }, 100);
-}
-
-// Set default origin marker on map
-function setDefaultOriginMarker() {
-    const originValue = document.getElementById('mapOrigin').value;
-    if (originValue === DEFAULT_MUSEUM_ADDRESS && geocoder) {
-        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                addOrUpdateMarker('origin', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
-                if (map && !document.querySelector('.waypoint-input')?.value) {
-                    map.setCenter(results[0].geometry.location);
-                    map.setZoom(12);
-                }
-            }
-        });
-    }
-}
-
-// Set default destination marker on map
-function setDefaultDestinationMarker() {
-    const destValue = document.getElementById('mapDestination').value;
-    if (destValue === DEFAULT_MUSEUM_ADDRESS && geocoder) {
-        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                addOrUpdateMarker('destination', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
-            }
-        });
-    }
-}
-
-function updateInitialInstruction() {
-    const origin = document.getElementById('mapOrigin').value.trim();
-    const dest = document.getElementById('mapDestination').value.trim();
-
-    if (!origin) {
-        updateInstructions('Кликните на мапу за полазиште или користите 🏠');
-    } else if (!dest) {
-        updateInstructions('Кликните на мапу за дестинацију');
-    } else {
-        updateInstructions('Кликните за међутачку или "Прикажи"');
-    }
-}
-
-function closeMapPlanner() {
-    document.getElementById('mapModal').classList.remove('show');
-}
-
-function initializeMap() {
-    const mapElement = document.getElementById('routeMap');
-
-    // Check if Google Maps API is loaded
-    if (typeof google === 'undefined' || !google.maps) {
-        mapElement.innerHTML = `
-            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-                <div class="text-center">
-                    <i class="bi bi-exclamation-triangle display-4 mb-3"></i>
-                    <p>Google Maps API није учитан.<br>Проверите API кључ у подешавањима.</p>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Serbia center coordinates
-    const serbiaCenter = { lat: 44.0165, lng: 21.0059 };
-
-    map = new google.maps.Map(mapElement, {
-        zoom: 7,
-        center: serbiaCenter,
-        mapTypeControl: true,
-        streetViewControl: false,
-        fullscreenControl: false
+    const digraphs = [
+        ['Dž', 'Џ'], ['DŽ', 'Џ'], ['dž', 'џ'],
+        ['Lj', 'Љ'], ['LJ', 'Љ'], ['lj', 'љ'],
+        ['Nj', 'Њ'], ['NJ', 'Њ'], ['nj', 'њ'],
+    ];
+    let converted = String(text);
+    digraphs.forEach(([latin, cyr]) => {
+        converted = converted.split(latin).join(cyr);
     });
 
-    directionsService = new google.maps.DirectionsService();
-    geocoder = new google.maps.Geocoder();
-
-    // Click on map to add location
-    map.addListener('click', (event) => {
-        handleMapClick(event.latLng);
-    });
-
-    // Initialize Places Autocomplete for all location inputs
-    initializeAutocomplete('mapOrigin', 'origin');
-    initializeAutocomplete('mapDestination', 'destination');
-
-    // Set focus handlers for location fields
-    document.getElementById('mapOrigin').addEventListener('focus', () => {
-        activeLocationField = 'origin';
-        updateInstructions('Кликните на мапу за полазиште');
-    });
-    document.getElementById('mapDestination').addEventListener('focus', () => {
-        activeLocationField = 'destination';
-        updateInstructions('Кликните на мапу за дестинацију');
-    });
-
-    // Set default origin marker
-    setDefaultOrigin();
-}
-
-function initializeAutocomplete(inputId, type) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-
-    const autocomplete = new google.maps.places.Autocomplete(input, {
-        componentRestrictions: { country: 'rs' },
-        fields: ['place_id', 'geometry', 'name', 'formatted_address']
-    });
-
-    autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry) {
-            addOrUpdateMarker(type, place.geometry.location, place.name || place.formatted_address);
-        }
-    });
-}
-
-function updateInstructions(text) {
-    document.getElementById('mapInstructions').textContent = text;
-}
-
-function handleMapClick(latLng) {
-    // Reverse geocode to get address
-    geocoder.geocode({ location: latLng }, (results, status) => {
-        if (status === 'OK' && results[0]) {
-            const address = results[0].formatted_address;
-            const shortAddress = address.split(',').slice(0, 2).join(',');
-
-            // Check if user focused on a specific field
-            if (activeLocationField === 'origin') {
-                document.getElementById('mapOrigin').value = shortAddress;
-                addOrUpdateMarker('origin', latLng, shortAddress);
-                activeLocationField = null;  // Reset after setting
-                updateInstructions('Кликните на мапу за следећу локацију');
-            } else if (activeLocationField === 'destination') {
-                document.getElementById('mapDestination').value = shortAddress;
-                addOrUpdateMarker('destination', latLng, shortAddress);
-                activeLocationField = null;
-                updateInstructions('Кликните на мапу за међутачку');
-            } else if (activeLocationField && activeLocationField.startsWith('waypoint_')) {
-                const waypointId = activeLocationField;
-                const input = document.getElementById(waypointId);
-                if (input) {
-                    input.value = shortAddress;
-                    addOrUpdateMarker(waypointId, latLng, shortAddress);
-                }
-                activeLocationField = null;
-                updateInstructions('Кликните на мапу за следећу локацију');
-            } else {
-                // Smart auto-assignment: check what's empty and fill in order
-                const originInput = document.getElementById('mapOrigin');
-                const destInput = document.getElementById('mapDestination');
-
-                if (!originInput.value.trim()) {
-                    // Origin empty - set origin
-                    originInput.value = shortAddress;
-                    addOrUpdateMarker('origin', latLng, shortAddress);
-                    updateInstructions('Кликните за дестинацију');
-                } else if (!destInput.value.trim()) {
-                    // Destination empty - set destination
-                    destInput.value = shortAddress;
-                    addOrUpdateMarker('destination', latLng, shortAddress);
-                    updateInstructions('Кликните за међутачку или "Прикажи"');
-                } else {
-                    // Both set - add as waypoint
-                    addWaypointField(shortAddress);
-                    const lastWaypointId = `waypoint_${waypointCount - 1}`;
-                    addOrUpdateMarker(lastWaypointId, latLng, shortAddress);
-                    updateInstructions('Међутачка додата. Кликните за још или "Прикажи"');
-                }
-            }
-        }
-    });
-}
-
-function addOrUpdateMarker(type, position, title) {
-    // Remove existing marker of this type
-    const existingIndex = mapMarkers.findIndex(m => m.type === type);
-    if (existingIndex >= 0) {
-        mapMarkers[existingIndex].marker.setMap(null);
-        mapMarkers.splice(existingIndex, 1);
-    }
-
-    // Determine icon
-    let icon = MARKER_ICONS.waypoint;
-    if (type === 'origin') icon = MARKER_ICONS.origin;
-    else if (type === 'destination') icon = MARKER_ICONS.destination;
-
-    // Create new marker
-    const marker = new google.maps.Marker({
-        position: position,
-        map: map,
-        title: title,
-        icon: icon,
-        draggable: true,
-        animation: google.maps.Animation.DROP
-    });
-
-    // Handle marker drag
-    marker.addListener('dragend', () => {
-        const newPos = marker.getPosition();
-        geocoder.geocode({ location: newPos }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                const address = results[0].formatted_address;
-                const shortAddress = address.split(',').slice(0, 2).join(',');
-                marker.setTitle(shortAddress);
-
-                // Update corresponding input field
-                if (type === 'origin') {
-                    document.getElementById('mapOrigin').value = shortAddress;
-                } else if (type === 'destination') {
-                    document.getElementById('mapDestination').value = shortAddress;
-                } else if (type.startsWith('waypoint_')) {
-                    const input = document.getElementById(type);
-                    if (input) input.value = shortAddress;
-                }
-            }
-        });
-    });
-
-    mapMarkers.push({ type, marker, position });
-
-    // Fit bounds to show all markers
-    if (mapMarkers.length > 1) {
-        const bounds = new google.maps.LatLngBounds();
-        mapMarkers.forEach(m => bounds.extend(m.marker.getPosition()));
-        map.fitBounds(bounds);
-    }
-}
-
-function clearMapMarkers() {
-    mapMarkers.forEach(m => m.marker.setMap(null));
-    mapMarkers = [];
-}
-
-function updateMarkersFromFields() {
-    const origin = document.getElementById('mapOrigin').value;
-    if (origin) {
-        geocodeAndAddMarker(origin, 'origin');
-    }
-
-    const destination = document.getElementById('mapDestination').value;
-    if (destination) {
-        geocodeAndAddMarker(destination, 'destination');
-    }
-
-    document.querySelectorAll('.map-waypoint-input').forEach(input => {
-        if (input.value) {
-            geocodeAndAddMarker(input.value, input.id);
-        }
-    });
-}
-
-function geocodeAndAddMarker(address, type) {
-    geocoder.geocode({ address: address + ', Србија' }, (results, status) => {
-        if (status === 'OK' && results[0]) {
-            addOrUpdateMarker(type, results[0].geometry.location, address);
-        }
-    });
-}
-
-function setDefaultOrigin() {
-    document.getElementById('mapOrigin').value = DEFAULT_MUSEUM_ADDRESS;
-    activeLocationField = null;
-
-    if (geocoder) {
-        geocoder.geocode({ address: DEFAULT_MUSEUM_ADDRESS + ', Србија' }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                addOrUpdateMarker('origin', results[0].geometry.location, DEFAULT_MUSEUM_ADDRESS);
-                if (map) map.setCenter(results[0].geometry.location);
-            }
-        });
-    }
-
-    // Update instructions
-    updateInitialInstruction();
-}
-
-function addWaypointField(value = '') {
-    const container = document.getElementById('mapWaypointsList');
-    const waypointId = `waypoint_${waypointCount}`;
-
-    const html = `
-        <div class="input-group input-group-sm mb-1" id="${waypointId}_container">
-            <input type="text" class="form-control map-waypoint-input" id="${waypointId}"
-                   value="${value}" placeholder="Међутачка ${waypointCount + 1}..."
-                   onfocus="setActiveWaypoint('${waypointId}')">
-            <button class="btn btn-outline-danger" type="button" onclick="removeWaypoint('${waypointId}')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', html);
-
-    // Initialize autocomplete for new waypoint
-    if (typeof google !== 'undefined' && google.maps) {
-        initializeWaypointAutocomplete(waypointId);
-    }
-
-    waypointCount++;
-
-    // If value provided, add marker
-    if (value && geocoder) {
-        geocoder.geocode({ address: value + ', Србија' }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                addOrUpdateMarker(waypointId, results[0].geometry.location, value);
-            }
-        });
-    }
-}
-
-function initializeWaypointAutocomplete(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-
-    const autocomplete = new google.maps.places.Autocomplete(input, {
-        componentRestrictions: { country: 'rs' },
-        fields: ['place_id', 'geometry', 'name', 'formatted_address']
-    });
-
-    autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry) {
-            addOrUpdateMarker(inputId, place.geometry.location, place.name || place.formatted_address);
-        }
-    });
-}
-
-function setActiveWaypoint(waypointId) {
-    activeLocationField = waypointId;
-    updateInstructions('Кликните на мапу за међутачку');
-}
-
-function removeWaypoint(waypointId) {
-    // Remove marker
-    const markerIndex = mapMarkers.findIndex(m => m.type === waypointId);
-    if (markerIndex >= 0) {
-        mapMarkers[markerIndex].marker.setMap(null);
-        mapMarkers.splice(markerIndex, 1);
-    }
-
-    // Remove input field
-    const container = document.getElementById(`${waypointId}_container`);
-    if (container) container.remove();
-}
-
-function calculateMapRoute() {
-    if (!directionsService) {
-        alert('Google Maps није иницијализован');
-        return;
-    }
-
-    const origin = document.getElementById('mapOrigin').value;
-    const destination = document.getElementById('mapDestination').value;
-
-    if (!origin) {
-        alert('Унесите полазиште');
-        return;
-    }
-    if (!destination) {
-        alert('Унесите дестинацију');
-        return;
-    }
-
-    // Clear previous routes
-    directionsRenderers.forEach(renderer => renderer.setMap(null));
-    directionsRenderers = [];
-    mapRoutes = [];
-    selectedRouteIndex = -1;
-    document.getElementById('applyRouteBtn').disabled = true;
-    document.getElementById('routeSummary').style.display = 'none';
-
-    // Get waypoints
-    const waypoints = [];
-    document.querySelectorAll('.map-waypoint-input').forEach(input => {
-        if (input.value.trim()) {
-            waypoints.push({
-                location: input.value.trim() + ', Србија',
-                stopover: true
-            });
-        }
-    });
-
-    const request = {
-        origin: origin + ', Србија',
-        destination: destination + ', Србија',
-        waypoints: waypoints,
-        travelMode: google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: waypoints.length === 0, // Alternatives only without waypoints
-        region: 'rs'
+    const chars = {
+        A: 'А', a: 'а', B: 'Б', b: 'б', V: 'В', v: 'в', G: 'Г', g: 'г',
+        D: 'Д', d: 'д', Đ: 'Ђ', đ: 'ђ', E: 'Е', e: 'е', Ž: 'Ж', ž: 'ж',
+        Z: 'З', z: 'з', I: 'И', i: 'и', J: 'Ј', j: 'ј', K: 'К', k: 'к',
+        L: 'Л', l: 'л', M: 'М', m: 'м', N: 'Н', n: 'н', O: 'О', o: 'о',
+        P: 'П', p: 'п', R: 'Р', r: 'р', S: 'С', s: 'с', T: 'Т', t: 'т',
+        Ć: 'Ћ', ć: 'ћ', U: 'У', u: 'у', F: 'Ф', f: 'ф', H: 'Х', h: 'х',
+        C: 'Ц', c: 'ц', Č: 'Ч', č: 'ч', Š: 'Ш', š: 'ш', Y: 'Y', y: 'y',
+        X: 'X', x: 'x', Q: 'Q', q: 'q', W: 'W', w: 'w'
     };
 
-    document.getElementById('routeOptions').innerHTML = '<p class="text-muted small">Учитавање...</p>';
+    return converted.split('').map(char => chars[char] || char).join('');
+}
 
-    directionsService.route(request, (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK) {
-            mapRoutes = result.routes;
-            displayRouteOptions(result.routes);
+function getPlannerLocationValues() {
+    const modalInputs = Array.from(document.querySelectorAll('.osm-route-stop-input'));
+    if (modalInputs.length > 0) {
+        return modalInputs.map(input => input.value.trim());
+    }
 
-            // Clear existing markers when showing route
-            clearMapMarkers();
+    const hiddenInputs = Array.from(document.querySelectorAll('#locationsContainer .location-input'));
+    if (hiddenInputs.length > 0) {
+        return hiddenInputs.map(input => input.value.trim());
+    }
 
-            // Display all routes on map with different colors
-            result.routes.forEach((route, index) => {
-                const renderer = new google.maps.DirectionsRenderer({
-                    map: map,
-                    directions: result,
-                    routeIndex: index,
-                    polylineOptions: {
-                        strokeColor: ROUTE_COLORS[index % ROUTE_COLORS.length],
-                        strokeOpacity: 0.6,
-                        strokeWeight: 5
-                    },
-                    suppressMarkers: false
-                });
-                directionsRenderers.push(renderer);
-            });
+    return [''];
+}
 
-            // Auto-select first route
-            selectRoute(0);
-        } else {
-            document.getElementById('routeOptions').innerHTML = `
-                <div class="alert alert-warning small p-2">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    Руте није могуће пронаћи: ${status}
+function getManualAccommodationData() {
+    return {
+        name: document.getElementById('accommodationName').value.trim(),
+        location: document.getElementById('accommodationLocation').value.trim(),
+        price_per_night: parseInt(document.getElementById('accommodationPrice').value, 10) || 0,
+        nights: parseInt(document.getElementById('accommodationNights').value, 10) || null,
+        persons: parseInt(document.getElementById('accommodationPersons').value, 10) || 1
+    };
+}
+
+function getAccommodationNights() {
+    const manualAccommodation = getManualAccommodationData();
+    if (manualAccommodation.nights !== null && manualAccommodation.nights >= 0) {
+        return manualAccommodation.nights;
+    }
+
+    const days = calculateDays();
+    return days > 0 ? Math.max(days - 1, 0) : 0;
+}
+
+function getAccommodationCost() {
+    const manualAccommodation = getManualAccommodationData();
+    return getAccommodationNights() * manualAccommodation.price_per_night * manualAccommodation.persons;
+}
+
+function ensurePlannerSeedLocation() {
+    if (getLocations().length === 0) {
+        syncLocationFields(['']);
+    }
+}
+
+function ensureOsmMap() {
+    if (osmMap || typeof L === 'undefined') {
+        return;
+    }
+
+    osmMap = L.map('osmRouteMap');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(osmMap);
+    osmMap.setView([44.8176, 20.4633], 7);
+}
+
+function openOpenStreetMap() {
+    ensurePlannerSeedLocation();
+    const modal = document.getElementById('osmRouteModal');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    renderOsmWaypointList();
+
+    setTimeout(() => {
+        ensureOsmMap();
+        if (osmMap) {
+            osmMap.invalidateSize();
+        }
+        loadOsmRoutePreview();
+    }, 60);
+}
+
+function closeOsmRouteModal() {
+    const modal = document.getElementById('osmRouteModal');
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function getOsmPlannerStops() {
+    const locations = getPlannerLocationValues();
+    return [
+        { label: DEFAULT_MUSEUM_ADDRESS, query: `${DEFAULT_MUSEUM_ADDRESS}, Serbia`, isMuseum: true },
+        ...locations.map((location, index) => ({
+            label: location,
+            query: `${location}, Serbia`,
+            index
+        })),
+        { label: DEFAULT_MUSEUM_ADDRESS, query: `${DEFAULT_MUSEUM_ADDRESS}, Serbia`, isMuseum: true, isReturn: true }
+    ];
+}
+
+function renderOsmWaypointList(resolvedPoints = []) {
+    const waypointList = document.getElementById('osmWaypointList');
+    const stops = getOsmPlannerStops();
+    waypointList.innerHTML = '';
+
+    stops.forEach((stop, index) => {
+        const resolvedPoint = resolvedPoints[index];
+        const resolvedLabel = resolvedPoint ? resolvedPoint.displayName : '';
+        if (stop.isMuseum || stop.isReturn) {
+            waypointList.innerHTML += `
+                <div class="osm-waypoint-item ${stop.isReturn ? 'return' : ''}">
+                    <span class="osm-waypoint-index">${index + 1}</span>
+                    <div>
+                        <div class="fw-semibold">${stop.isReturn ? 'Повратак у Музеј' : stop.label}</div>
+                        <div class="small text-muted">${resolvedLabel || 'Полазна тачка Музеја'}</div>
+                    </div>
                 </div>
             `;
+            return;
+        }
+
+        waypointList.innerHTML += `
+            <div class="osm-waypoint-item">
+                <span class="osm-waypoint-index">${index + 1}</span>
+                <div class="w-100">
+                    <div class="osm-stop-controls">
+                        <input
+                            type="text"
+                            class="form-control form-control-sm osm-route-stop-input"
+                            value="${stop.label.replace(/"/g, '&quot;')}"
+                            data-index="${stop.index}"
+                            placeholder="Унесите дестинацију"
+                            oninput="handleOsmStopInputChange()"
+                        >
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOsmRouteStop(${stop.index})">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="small text-muted mt-1">${resolvedLabel || 'Унесите адресу или назив локације.'}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    waypointList.innerHTML += `
+        <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="addOsmRouteStop()">
+            <i class="bi bi-plus-circle me-1"></i>Додај дестинацију
+        </button>
+    `;
+}
+
+function handleOsmStopInputChange() {
+    const locations = getPlannerLocationValues();
+    syncLocationFields(locations);
+    document.getElementById('applyOsmRouteBtn').disabled = true;
+    document.getElementById('osmRouteSummary').style.display = 'none';
+    scheduleOsmRouteRefresh();
+}
+
+function scheduleOsmRouteRefresh() {
+    if (osmRefreshTimeout) {
+        clearTimeout(osmRefreshTimeout);
+    }
+
+    osmRefreshTimeout = setTimeout(() => {
+        const hasEnoughData = getPlannerLocationValues().filter(Boolean).length > 0;
+        if (hasEnoughData && document.getElementById('osmRouteModal').classList.contains('show')) {
+            loadOsmRoutePreview();
+        }
+    }, 500);
+}
+
+function addOsmRouteStop() {
+    const locations = getPlannerLocationValues();
+    locations.push('');
+    syncLocationFields(locations);
+    renderOsmWaypointList();
+}
+
+function removeOsmRouteStop(index) {
+    const locations = getPlannerLocationValues();
+    locations.splice(index, 1);
+    syncLocationFields(locations);
+    renderOsmWaypointList();
+}
+
+function clearOsmMapLayers() {
+    if (osmRouteLayer && osmMap) {
+        osmMap.removeLayer(osmRouteLayer);
+        osmRouteLayer = null;
+    }
+
+    osmMarkers.forEach(marker => {
+        if (osmMap) {
+            osmMap.removeLayer(marker);
         }
     });
+    osmMarkers = [];
 }
 
-function displayRouteOptions(routes) {
-    const container = document.getElementById('routeOptions');
-    container.innerHTML = '';
-
-    routes.forEach((route, index) => {
-        const totalDistance = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0);
-        const totalDuration = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0);
-
-        const distanceKm = Math.round(totalDistance / 1000);
-        const durationHours = Math.floor(totalDuration / 3600);
-        const durationMins = Math.round((totalDuration % 3600) / 60);
-
-        const routeHtml = `
-            <div class="route-option" data-index="${index}" onclick="selectRoute(${index})">
-                <div class="route-name">
-                    <span style="color: ${ROUTE_COLORS[index % ROUTE_COLORS.length]}">●</span>
-                    Рута ${index + 1}
-                </div>
-                <div class="route-details">
-                    <i class="bi bi-speedometer2 me-1"></i>${distanceKm} км
-                    <span class="mx-2">|</span>
-                    <i class="bi bi-clock me-1"></i>${durationHours}ч ${durationMins}мин
-                </div>
-                <div class="route-via small">
-                    <i class="bi bi-signpost me-1"></i>${route.summary || 'Главни пут'}
-                </div>
-                <div class="small text-muted">
-                    <i class="bi bi-info-circle me-1"></i>${route.legs.length} деоница - изаберите путарину ручно
-                </div>
-            </div>
-        `;
-        container.innerHTML += routeHtml;
-    });
-}
-
-function selectRoute(index) {
-    selectedRouteIndex = index;
-
-    // Update visual selection
-    document.querySelectorAll('.route-option').forEach((el, i) => {
-        el.classList.toggle('selected', i === index);
-    });
-
-    // Update route opacity on map - transparent blue style
-    directionsRenderers.forEach((renderer, i) => {
-        renderer.setOptions({
-            polylineOptions: {
-                strokeOpacity: 0.6,
-                strokeWeight: 5
-            }
-        });
-    });
-
-    // Update summary - show actual total values (route is already round trip)
-    const route = mapRoutes[index];
-    if (route) {
-        const totalDistance = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0);
-        const totalDuration = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0);
-        const distanceKm = Math.round(totalDistance / 1000);
-        const durationHours = Math.floor(totalDuration / 3600);
-        const durationMins = Math.round((totalDuration % 3600) / 60);
-
-        document.getElementById('summaryDistance').textContent = `${distanceKm} км`;
-        document.getElementById('summaryTime').textContent = `${durationHours}ч ${durationMins}мин`;
-        document.getElementById('routeSummary').style.display = 'block';
-
-        // Build manual toll selectors for each leg
-        buildTollSelectors(route);
+function formatDurationFromSeconds(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.round((totalSeconds % 3600) / 60);
+    if (hours > 0) {
+        return `${hours}ч ${minutes}мин`;
     }
-
-    // Enable apply button
-    document.getElementById('applyRouteBtn').disabled = false;
+    return `${minutes} мин`;
 }
 
-// Build toll selection - simple two-point selector for segment pricing
-function buildTollSelectors(route) {
-    const container = document.getElementById('tollSegmentSelectors');
+function buildFuelMetrics(distanceKm) {
+    const vehicle = getVehicleData();
+    const fuelPrice = FUEL_PRICES[vehicle.fuelType] || 199;
+    const liters = Math.round((distanceKm * vehicle.consumption / 100) * 10) / 10;
+    const cost = Math.round(liters * fuelPrice);
+    return {
+        liters,
+        cost,
+        consumption: vehicle.consumption,
+        fuelType: vehicle.fuelType,
+        fuelPrice
+    };
+}
 
-    // Build options for all toll stations grouped by highway
-    let stationsHtml = '<option value="0" data-name="">-- Изаберите наплатну станицу --</option>';
-    Object.entries(TOLL_PRICES).forEach(([key, highway]) => {
-        stationsHtml += `<optgroup label="${highway.name}">`;
-        highway.stations.forEach(station => {
-            stationsHtml += `<option value="${station.price}" data-name="${station.name}" data-highway="${highway.name}">${station.name}</option>`;
-        });
-        stationsHtml += '</optgroup>';
+function buildOsmRoutePreview(route, resolvedPoints) {
+    const segments = route.legs.map((leg, index) => {
+        const fromPoint = resolvedPoints[index];
+        const toPoint = resolvedPoints[index + 1];
+        return {
+            from: fromPoint.formLabel,
+            to: toPoint.formLabel,
+            distance_km: Math.round(leg.distance / 1000),
+            toll_station: null,
+            toll_cost: 0,
+            is_return: index === route.legs.length - 1
+        };
     });
 
-    container.innerHTML = `
-        <div class="toll-segment-selector p-2 bg-light rounded">
-            <div class="small text-muted mb-2">
-                <i class="bi bi-info-circle me-1"></i>
-                Изаберите две наплатне станице на истом аутопуту. Цена = разлика између две тачке.
-            </div>
-            <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <label class="form-label small mb-1 fw-bold">Од:</label>
-                    <select class="form-select form-select-sm" id="tollPointFrom" onchange="calculateTollSegment()">
-                        ${stationsHtml}
-                    </select>
-                </div>
-                <div class="col-6">
-                    <label class="form-label small mb-1 fw-bold">До:</label>
-                    <select class="form-select form-select-sm" id="tollPointTo" onchange="calculateTollSegment()">
-                        ${stationsHtml}
-                    </select>
-                </div>
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-                <div id="tollSegmentResult" class="small">
-                    <span class="badge bg-secondary">Путарина: 0 дин</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTollSegment()">
-                    <i class="bi bi-plus-lg me-1"></i>Додај
-                </button>
-            </div>
-        </div>
-        <div id="addedTollSegments" class="mt-2"></div>
-    `;
+    const outboundSegments = segments.slice(0, -1);
+    const returnSegment = segments[segments.length - 1] || {
+        distance_km: 0
+    };
+    const distanceRoundTrip = Math.round(route.distance / 1000);
+    const fuel = buildFuelMetrics(distanceRoundTrip);
+    const destinations = resolvedPoints.slice(1, -1).map(point => point.formLabel);
 
-    document.getElementById('tollSelectionSection').style.display = 'block';
-    window.tollSegments = [];
-    updateTollTotal();
-}
-
-// Calculate toll for selected segment
-function calculateTollSegment() {
-    const fromSelect = document.getElementById('tollPointFrom');
-    const toSelect = document.getElementById('tollPointTo');
-    const resultDiv = document.getElementById('tollSegmentResult');
-
-    const fromPrice = parseInt(fromSelect.value) || 0;
-    const toPrice = parseInt(toSelect.value) || 0;
-    const segmentToll = Math.abs(toPrice - fromPrice);
-
-    const fromName = fromSelect.options[fromSelect.selectedIndex]?.dataset?.name || '';
-    const toName = toSelect.options[toSelect.selectedIndex]?.dataset?.name || '';
-
-    if (fromName && toName && segmentToll > 0) {
-        resultDiv.innerHTML = `<span class="badge bg-info">${fromName} → ${toName}: <strong>${formatNumber(segmentToll)}</strong> дин</span>`;
-    } else {
-        resultDiv.innerHTML = `<span class="badge bg-secondary">Путарина: 0 дин</span>`;
-    }
-
-    return { fromName, toName, toll: segmentToll };
-}
-
-// Add toll segment to list
-function addTollSegment() {
-    const fromSelect = document.getElementById('tollPointFrom');
-    const toSelect = document.getElementById('tollPointTo');
-
-    const fromPrice = parseInt(fromSelect.value) || 0;
-    const toPrice = parseInt(toSelect.value) || 0;
-    const segmentToll = Math.abs(toPrice - fromPrice);
-
-    const fromName = fromSelect.options[fromSelect.selectedIndex]?.dataset?.name || '';
-    const toName = toSelect.options[toSelect.selectedIndex]?.dataset?.name || '';
-
-    if (!fromName || !toName || segmentToll === 0) {
-        return;
-    }
-
-    // Add to list
-    const segmentId = Date.now();
-    window.tollSegments = window.tollSegments || [];
-    window.tollSegments.push({
-        id: segmentId,
-        from: fromName,
-        to: toName,
-        toll: segmentToll
-    });
-
-    // Render added segments
-    renderTollSegments();
-
-    // Reset selectors
-    fromSelect.selectedIndex = 0;
-    toSelect.selectedIndex = 0;
-    calculateTollSegment();
-
-    updateTollTotal();
-}
-
-// Render added toll segments
-function renderTollSegments() {
-    const container = document.getElementById('addedTollSegments');
-    if (!window.tollSegments || window.tollSegments.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-
-    let html = '';
-    window.tollSegments.forEach(seg => {
-        html += `
-            <div class="d-flex justify-content-between align-items-center p-2 mb-1 bg-white border rounded small">
-                <span><i class="bi bi-signpost-2 me-1 text-primary"></i>${seg.from} → ${seg.to}</span>
-                <span>
-                    <strong>${formatNumber(seg.toll)} дин</strong>
-                    <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="removeTollSegment(${seg.id})">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </span>
-            </div>
-        `;
-    });
-    container.innerHTML = html;
-}
-
-// Remove toll segment
-function removeTollSegment(id) {
-    window.tollSegments = window.tollSegments.filter(s => s.id !== id);
-    renderTollSegments();
-    updateTollTotal();
-}
-
-// Calculate total toll from added segments
-function updateTollTotal() {
-    let total = 0;
-    window.selectedTolls = [];
-
-    // Sum all added toll segments
-    if (window.tollSegments && window.tollSegments.length > 0) {
-        window.tollSegments.forEach(seg => {
-            total += seg.toll;
-            window.selectedTolls.push({
-                price: seg.toll,
-                name: `${seg.from} → ${seg.to}`,
-                from: seg.from,
-                to: seg.to
-            });
-        });
-    }
-
-    document.getElementById('summaryTollTotal').textContent = `${formatNumber(total)} дин`;
-
-    return total;
-}
-
-// Get total toll from manual selection (for use in applySelectedRoute)
-function getManualTollTotal() {
-    return updateTollTotal();
-}
-
-function applySelectedRoute() {
-    if (selectedRouteIndex < 0 || !mapRoutes[selectedRouteIndex]) {
-        alert('Прво изаберите руту');
-        return;
-    }
-
-    const route = mapRoutes[selectedRouteIndex];
-
-    // Get manual toll selection
-    const manualTollTotal = getManualTollTotal();
-    const selectedTollStations = window.selectedTolls || [];
-
-    // Get origin from first leg (starting point - should be Museum)
-    const originAddress = route.legs[0].start_address.split(',')[0].trim();
-
-    // Get all leg endpoints - these are the field work locations
-    // Last one should be Museum (return), so we exclude it from field work locations
-    const allEndpoints = route.legs.map(leg => leg.end_address.split(',')[0].trim());
-
-    // Field work locations = all waypoints except the return to museum
-    // Check if last destination is museum (return leg)
-    const lastEndpoint = allEndpoints[allEndpoints.length - 1].toLowerCase();
-    const isReturnToMuseum = lastEndpoint.includes('музеј') || lastEndpoint.includes('muzej');
-
-    // Field work locations exclude origin and final return to museum
-    const fieldWorkLocations = isReturnToMuseum ? allEndpoints.slice(0, -1) : allEndpoints;
-
-    // Update form location fields with field work locations only
-    syncLocationsToForm(fieldWorkLocations);
-
-    // Build segments array - one segment per leg with manual toll
-    const segments = [];
-    let totalDistanceKm = 0;
-
-    route.legs.forEach((leg, idx) => {
-        const legDistance = Math.round(leg.distance.value / 1000);
-        totalDistanceKm += legDistance;
-
-        const isReturnLeg = idx === route.legs.length - 1 && isReturnToMuseum;
-
-        // Find toll for this leg from manual selection
-        const legToll = selectedTollStations.find(t => t.leg == idx);
-
-        segments.push({
-            from: leg.start_address.split(',')[0].trim(),
-            to: leg.end_address.split(',')[0].trim(),
-            distance_km: legDistance,
-            toll_station: legToll ? legToll.name : (isReturnLeg ? 'повратак' : null),
-            toll_cost: legToll ? legToll.price : 0,
-            is_return: isReturnLeg
-        });
-    });
-
-    // Update form kilometraza with total round trip
-    document.getElementById('kilometraza').value = totalDistanceKm;
-
-    // Get toll station names for display
-    const tollStationNames = selectedTollStations.map(t => t.name);
-
-    currentRouteData = {
+    return {
         success: true,
-        source: 'GoogleMaps',
-        origin: originAddress,
-        destinations: fieldWorkLocations,
-        destination: fieldWorkLocations.join(' → '),
-        distance_round_trip: totalDistanceKm,
-        toll_stations: tollStationNames,
-        toll_station: tollStationNames.join(', ') || 'без путарине',
-        toll_round_trip: manualTollTotal,
-        route_info: segments.map(s => s.from).concat([segments[segments.length-1].to]).join(' → '),
-        segments: segments
+        source: 'OpenStreetMap',
+        destinations,
+        destination: destinations.join(' → '),
+        distance_km_outbound: outboundSegments.reduce((sum, segment) => sum + segment.distance_km, 0),
+        distance_km_return: returnSegment.distance_km,
+        distance_round_trip: distanceRoundTrip,
+        toll_station: 'без путарине',
+        toll_stations: [],
+        toll_outbound: 0,
+        toll_return: 0,
+        toll_round_trip: 0,
+        fuel_consumption: fuel.consumption,
+        fuel_type: fuel.fuelType,
+        fuel_liters: fuel.liters,
+        fuel_price_per_liter: fuel.fuelPrice,
+        fuel_cost: fuel.cost,
+        total_transport_cost: fuel.cost,
+        route_info: ['Београд'].concat(destinations).concat(['Београд']).join(' → '),
+        duration_seconds: Math.round(route.duration),
+        segments
+    };
+}
+
+async function estimateTollsForOsmRoute(destinations) {
+    const vozilo = document.getElementById('vozilo').value;
+    const requestData = {
+        destinations,
+        vehicle_id: vozilo || null
     };
 
-    // Calculate fuel with manual toll
-    finalizeFuelCalculation(totalDistanceKm, manualTollTotal);
+    // Send OSM route geometry so the backend can match actual toll stations
+    if (osmRouteGeometry && osmRouteGeometry.coordinates) {
+        requestData.route_geometry = osmRouteGeometry.coordinates;
+    }
 
-    // Mark that we're using Google Maps data
-    usingGoogleMapsData = true;
-    disableAICalculation();
+    if (vozilo === 'sopstveni') {
+        requestData.consumption = parseFloat(document.getElementById('ownConsumption').value) || 8;
+        requestData.fuel_type = document.getElementById('ownFuelType').value;
+    }
 
-    // Update display
-    updateRouteDisplay();
+    const response = await secureFetch('/api/route/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(requestData)
+    });
 
-    // Close modal
-    closeMapPlanner();
+    if (!response.ok) {
+        throw new Error(`Route estimate ${response.status}`);
+    }
+
+    return response.json();
 }
 
-// Calculate return route to Museum and finalize all data
-function calculateReturnToMuseum(fromLocation, toMuseum, outboundKm, tollOutbound) {
-    const museumFullAddress = DEFAULT_MUSEUM_ADDRESS + ', Србија';
+function mergeEstimatedTollsIntoOsmRoute(osmRouteData, estimatedRouteData) {
+    if (!estimatedRouteData || !estimatedRouteData.success) {
+        return osmRouteData;
+    }
 
-    // Use Directions API to get actual return distance
-    if (directionsService) {
-        const request = {
-            origin: fromLocation + ', Србија',
-            destination: museumFullAddress,
-            travelMode: google.maps.TravelMode.DRIVING,
-            region: 'rs'
+    const mergedSegments = osmRouteData.segments.map((segment, index) => {
+        const estimatedSegment = estimatedRouteData.segments && estimatedRouteData.segments[index];
+        if (!estimatedSegment) {
+            return segment;
+        }
+
+        return {
+            ...segment,
+            toll_station: estimatedSegment.toll_station,
+            toll_cost: estimatedSegment.toll_cost || 0,
+            is_return: Boolean(estimatedSegment.is_return) || segment.is_return
         };
+    });
 
-        directionsService.route(request, (result, status) => {
-            let returnDistanceKm = 0;
+    return {
+        ...osmRouteData,
+        toll_station: estimatedRouteData.toll_station || osmRouteData.toll_station,
+        toll_stations: estimatedRouteData.toll_stations || osmRouteData.toll_stations,
+        toll_outbound: estimatedRouteData.toll_outbound || 0,
+        toll_return: estimatedRouteData.toll_return || 0,
+        toll_round_trip: estimatedRouteData.toll_round_trip || 0,
+        total_transport_cost: osmRouteData.fuel_cost + (estimatedRouteData.toll_round_trip || 0),
+        segments: mergedSegments
+    };
+}
 
-            if (status === google.maps.DirectionsStatus.OK && result.routes[0]) {
-                returnDistanceKm = Math.round(result.routes[0].legs[0].distance.value / 1000);
-            } else {
-                // Fallback: estimate as 80% of outbound (rough estimate)
-                returnDistanceKm = Math.round(outboundKm * 0.8);
-                console.log('Could not calculate return, using estimate:', returnDistanceKm);
+function renderOsmRoutePreview(preview, geometry, resolvedPoints) {
+    clearOsmMapLayers();
+
+    if (!osmMap) {
+        return;
+    }
+
+    osmRouteLayer = L.geoJSON(geometry, {
+        style: {
+            color: '#198754',
+            weight: 5,
+            opacity: 0.8
+        }
+    }).addTo(osmMap);
+
+    resolvedPoints.forEach((point, index) => {
+        const marker = L.marker([point.lat, point.lon]).addTo(osmMap);
+        marker.bindPopup(`${index + 1}. ${point.formLabel}`);
+        osmMarkers.push(marker);
+    });
+
+    const bounds = osmRouteLayer.getBounds();
+    if (bounds.isValid()) {
+        osmMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+
+    document.getElementById('osmSummaryDistance').textContent = `${preview.distance_round_trip} км`;
+    document.getElementById('osmSummaryDuration').textContent = formatDurationFromSeconds(preview.duration_seconds || 0);
+
+    const segmentsBody = document.getElementById('osmRouteSegments');
+    segmentsBody.innerHTML = '';
+    preview.segments.forEach(segment => {
+        const icon = segment.is_return ? 'bi-arrow-return-left text-muted' : 'bi-geo-alt text-success';
+        segmentsBody.innerHTML += `
+            <tr>
+                <td><i class="bi ${icon} me-1"></i>${segment.from} → ${segment.to}</td>
+                <td class="text-end">${segment.distance_km}</td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('osmRouteSummary').style.display = 'block';
+    document.getElementById('applyOsmRouteBtn').disabled = false;
+}
+
+async function loadOsmRoutePreview() {
+    const locations = getPlannerLocationValues().filter(Boolean);
+    const status = document.getElementById('osmRouteStatus');
+
+    if (locations.length === 0) {
+        status.className = 'alert alert-warning small mb-3';
+        status.textContent = 'Унесите бар једну локацију у форми пре отварања OSM руте.';
+        document.getElementById('applyOsmRouteBtn').disabled = true;
+        document.getElementById('osmRouteSummary').style.display = 'none';
+        clearOsmMapLayers();
+        return;
+    }
+
+    status.className = 'alert alert-info small mb-3';
+    status.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Учитавање OSM руте...';
+    document.getElementById('applyOsmRouteBtn').disabled = true;
+
+    if (osmRouteController) {
+        osmRouteController.abort();
+    }
+    osmRouteController = new AbortController();
+
+    try {
+        const routeResponse = await secureFetch('/api/osm/route-preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ locations }),
+            signal: osmRouteController.signal
+        });
+
+        if (!routeResponse.ok) {
+            throw new Error(`OSM proxy ${routeResponse.status}`);
+        }
+
+        const routeData = await routeResponse.json();
+        if (!routeData.success || !routeData.route) {
+            throw new Error(routeData.message || 'Рута није пронађена');
+        }
+
+        const resolvedPoints = [
+            { formLabel: DEFAULT_MUSEUM_ADDRESS, displayName: DEFAULT_MUSEUM_ADDRESS, ...routeData.resolved_points[0] },
+            ...locations.map((location, index) => ({
+                formLabel: location,
+                displayName: routeData.resolved_points[index + 1]?.display_name || location,
+                ...routeData.resolved_points[index + 1]
+            })),
+            {
+                formLabel: DEFAULT_MUSEUM_ADDRESS,
+                displayName: DEFAULT_MUSEUM_ADDRESS,
+                ...routeData.resolved_points[routeData.resolved_points.length - 1]
             }
+        ];
 
-            // Update route data with actual return distance
-            currentRouteData.distance_km_return = returnDistanceKm;
-            currentRouteData.distance_round_trip = outboundKm + returnDistanceKm;
+        osmResolvedPoints = resolvedPoints;
+        renderOsmWaypointList(resolvedPoints);
+        osmRoutePreview = buildOsmRoutePreview(routeData.route, resolvedPoints);
+        osmRouteGeometry = routeData.route.geometry;
+        renderOsmRoutePreview(osmRoutePreview, osmRouteGeometry, resolvedPoints);
 
-            // Add return segment
-            currentRouteData.segments.push({
-                from: fromLocation,
-                to: 'Природњачки музеј',
-                distance_km: returnDistanceKm,
-                toll_station: 'повратак',
-                toll_cost: tollOutbound,
-                is_return: true
-            });
+        status.className = 'alert alert-success small mb-3';
+        status.textContent = 'OSM рута је учитана. Кликните "Примени руту у форму" да се користи у калкулацији и документу.';
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return;
+        }
 
-            // Update form kilometraza
-            document.getElementById('kilometraza').value = outboundKm + returnDistanceKm;
-
-            // Calculate fuel with final distance
-            finalizeFuelCalculation(outboundKm + returnDistanceKm, tollOutbound);
-
-            // Mark that we're using Google Maps data
-            usingGoogleMapsData = true;
-            disableAICalculation();
-
-            // Update display
-            updateRouteDisplay();
-
-            // Close modal
-            closeMapPlanner();
-        });
-    } else {
-        // No directions service - use estimate
-        const returnDistanceKm = Math.round(outboundKm * 0.8);
-        currentRouteData.distance_km_return = returnDistanceKm;
-        currentRouteData.distance_round_trip = outboundKm + returnDistanceKm;
-
-        currentRouteData.segments.push({
-            from: fromLocation,
-            to: 'Природњачки музеј',
-            distance_km: returnDistanceKm,
-            toll_station: 'повратак',
-            toll_cost: tollOutbound,
-            is_return: true
-        });
-
-        document.getElementById('kilometraza').value = outboundKm + returnDistanceKm;
-        finalizeFuelCalculation(outboundKm + returnDistanceKm, tollOutbound);
-
-        usingGoogleMapsData = true;
-        disableAICalculation();
-        updateRouteDisplay();
-        closeMapPlanner();
+        osmRoutePreview = null;
+        osmRouteGeometry = null;
+        osmResolvedPoints = [];
+        clearOsmMapLayers();
+        document.getElementById('osmRouteSummary').style.display = 'none';
+        status.className = 'alert alert-danger small mb-3';
+        status.textContent = `Грешка при OSM рутирању: ${error.message}`;
     }
 }
 
-// Calculate fuel costs based on total round trip distance
-function finalizeFuelCalculation(totalKm, totalToll) {
-    const vehicleSelect = document.getElementById('vozilo');
-    let fuelConsumption = 10;
-    let fuelType = 'Бензин';
-
-    if (vehicleSelect.value === 'sopstveni') {
-        fuelConsumption = parseFloat(document.getElementById('ownConsumption').value) || 8;
-        fuelType = document.getElementById('ownFuelType').value;
-    } else if (vehicleSelect.value) {
-        const option = vehicleSelect.options[vehicleSelect.selectedIndex];
-        fuelConsumption = parseFloat(option.dataset.consumption) || 10;
-        fuelType = option.dataset.fuel || 'Бензин';
+async function applyOsmRouteToForm() {
+    if (!osmRoutePreview) {
+        alert('Прво учитајте OSM руту.');
+        return;
     }
 
-    const fuelPrice = FUEL_PRICES[fuelType] || 174;
-    const fuelLiters = (totalKm * fuelConsumption) / 100;
-    const fuelCost = Math.round(fuelLiters * fuelPrice);
+    syncLocationsToForm(osmRoutePreview.destinations);
+    document.getElementById('kilometraza').value = osmRoutePreview.distance_round_trip;
 
-    currentRouteData.fuel_consumption = fuelConsumption;
-    currentRouteData.fuel_type = fuelType;
-    currentRouteData.fuel_liters = Math.round(fuelLiters * 10) / 10;
-    currentRouteData.fuel_price_per_liter = fuelPrice;
-    currentRouteData.fuel_cost = fuelCost;
-    currentRouteData.total_transport_cost = fuelCost + totalToll;
+    let nextRouteData = {
+        ...osmRoutePreview
+    };
+
+    try {
+        const estimatedRoute = await estimateTollsForOsmRoute(nextRouteData.destinations);
+        nextRouteData = mergeEstimatedTollsIntoOsmRoute(nextRouteData, estimatedRoute);
+    } catch (error) {
+        console.warn('Local toll estimate unavailable for OSM route:', error);
+    }
+
+    currentRouteData = nextRouteData;
+
+    updateRouteDisplay();
+    closeOsmRouteModal();
 }
 
-// Disable AI calculation when Google Maps is used
-function disableAICalculation() {
-    const aiBtn = document.getElementById('calculateRouteBtn');
-    const notice = document.getElementById('aiDisabledNotice');
-    const indicator = document.getElementById('mapDataIndicator');
+function bindLocationInputEvents(input) {
+    if (!input || input.dataset.boundDraftListeners === '1') {
+        return;
+    }
 
-    if (aiBtn) {
-        aiBtn.disabled = true;
-        aiBtn.classList.remove('btn-outline-primary');
-        aiBtn.classList.add('btn-secondary');
-    }
-    if (notice) {
-        notice.style.display = 'block';
-    }
-    if (indicator) {
-        indicator.style.display = 'block';
-    }
+    input.dataset.boundDraftListeners = '1';
+    input.addEventListener('blur', function() {
+        if (this.value && document.getElementById('vozilo').value) {
+            calculateRoute();
+        }
+        persistDraft();
+    });
+    input.addEventListener('input', function() {
+        updatePreview();
+        persistDraft();
+    });
+    input.addEventListener('change', persistDraft);
 }
 
-// Clear Google Maps data and re-enable AI calculation
-function clearMapData() {
-    usingGoogleMapsData = false;
+function syncLocationFields(locations) {
+    const normalizedLocations = Array.isArray(locations) && locations.length > 0 ? locations : [''];
+    const container = document.getElementById('locationsContainer');
+    const multipleLocationsCheckbox = document.getElementById('multipleLocations');
+
+    container.querySelectorAll('.location-entry').forEach((entry, index) => {
+        if (index > 0) {
+            entry.remove();
+        }
+    });
+
+    const firstInput = container.querySelector('.location-input');
+    if (firstInput) {
+        firstInput.value = normalizedLocations[0] || '';
+        bindLocationInputEvents(firstInput);
+    }
+
+    multipleLocationsCheckbox.checked = normalizedLocations.length > 1;
+    document.getElementById('addLocationBtn').style.display = multipleLocationsCheckbox.checked ? 'block' : 'none';
+
+    for (let index = 1; index < normalizedLocations.length; index++) {
+        addLocationField(normalizedLocations[index]);
+    }
+
+    renderSelectedLocationsSummary();
+}
+
+function renderSelectedLocationsSummary() {
+    const summary = document.getElementById('selectedLocationsSummary');
+    const locations = getLocations();
+
+    if (locations.length === 0) {
+        summary.className = 'selected-locations-summary small text-muted mb-2';
+        summary.textContent = 'Локације још нису изабране. Отворите `Планер руте`.';
+        return;
+    }
+
+    const routeSource = currentRouteData && currentRouteData.source ? `Извор: ${currentRouteData.source}` : 'Локације из планера руте';
+    summary.className = 'selected-locations-summary small mb-2';
+    summary.innerHTML = `
+        <div class="fw-semibold mb-1">Изабране дестинације</div>
+        <div>${locations.map(location => toSerbianCyrillic(location)).join(' → ')}</div>
+        <div class="text-muted mt-1">${routeSource}</div>
+    `;
+}
+
+function collectDraftData() {
+    return {
+        odDatuma: document.getElementById('odDatuma').value,
+        doDatuma: document.getElementById('doDatuma').value,
+        datumDokumenta: document.getElementById('datumDokumenta').value,
+        cilj: document.getElementById('cilj').value,
+        sefOdeljenja: document.getElementById('sefOdeljenja').value,
+        vozilo: document.getElementById('vozilo').value,
+        ownConsumption: document.getElementById('ownConsumption').value,
+        ownFuelType: document.getElementById('ownFuelType').value,
+        kilometraza: document.getElementById('kilometraza').value,
+        includeToll: document.getElementById('includeToll').checked,
+        troskoviPrevoza: document.getElementById('troskoviPrevoza').checked,
+        dnevnica: document.getElementById('dnevnica').checked,
+        dnevnicaValue: document.getElementById('dnevnicaValue').value,
+        smestaj: document.getElementById('smestaj').checked,
+        updateTimesheet: document.getElementById('updateTimesheet').checked,
+        accommodationName: document.getElementById('accommodationName').value,
+        accommodationLocation: document.getElementById('accommodationLocation').value,
+        accommodationPrice: document.getElementById('accommodationPrice').value,
+        accommodationPersons: document.getElementById('accommodationPersons').value,
+        accommodationNights: document.getElementById('accommodationNights').value,
+        multipleLocations: document.getElementById('multipleLocations').checked,
+        locations: getLocations(),
+        currentRouteData,
+    };
+}
+
+function persistDraft() {
+    removeUserScopedDraft(BUSINESS_TRIP_DRAFT_NAMESPACE);
+}
+
+function restoreDraft() {
+    return true;
+}
+
+function resetBusinessTripFormState() {
+    const tripForm = document.getElementById('tripForm');
+    tripForm.reset();
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('datumDokumenta').value = today;
+    document.getElementById('dnevnicaValue').value = 3000;
+    document.getElementById('accommodationName').value = '';
+    document.getElementById('accommodationLocation').value = '';
+    document.getElementById('accommodationPrice').value = '';
+    document.getElementById('accommodationNights').value = '';
+    document.getElementById('accommodationPersons').value = '1';
+    document.getElementById('ownConsumption').value = 8;
+    document.getElementById('ownFuelType').value = 'BMB 95';
+    document.getElementById('multipleLocations').checked = false;
+
     currentRouteData = null;
+    osmRoutePreview = null;
+    osmRouteGeometry = null;
+    osmResolvedPoints = [];
+    clearOsmMapLayers();
 
-    const aiBtn = document.getElementById('calculateRouteBtn');
-    const notice = document.getElementById('aiDisabledNotice');
-    const indicator = document.getElementById('mapDataIndicator');
-
-    if (aiBtn) {
-        aiBtn.disabled = false;
-        aiBtn.classList.remove('btn-secondary');
-        aiBtn.classList.add('btn-outline-primary');
-    }
-    if (notice) {
-        notice.style.display = 'none';
-    }
-    if (indicator) {
-        indicator.style.display = 'none';
-    }
-
-    // Clear route display
+    syncLocationFields(['']);
     document.getElementById('routeInfo').innerHTML = '';
-    document.getElementById('kilometraza').value = '';
+    document.getElementById('tollRouteInfo').textContent = '';
     document.getElementById('fuelLiters').textContent = '0';
     document.getElementById('fuelCost').textContent = '0';
     document.getElementById('tollCost').textContent = '0';
-
-    updatePreview();
+    document.getElementById('fuelSection').style.display = 'none';
+    document.getElementById('tollSection').style.display = 'none';
+    document.getElementById('ownVehicleSection').style.display = 'none';
+    document.getElementById('dnevnicaAmount').style.display = 'none';
+    document.getElementById('accommodationCard').style.display = 'none';
+    document.getElementById('integrationStatus').style.display = 'none';
 }
 
 // Sync locations from map to form fields
@@ -1986,6 +1485,8 @@ function addLocationField(value = '') {
         </div>
     `;
     container.insertAdjacentHTML('beforeend', html);
+    const newInput = container.querySelector(`.location-entry[data-index="${newIndex}"] .location-input`);
+    bindLocationInputEvents(newInput);
 }
 
 function updateRouteDisplay() {
@@ -1996,7 +1497,7 @@ function updateRouteDisplay() {
     document.getElementById('tollSection').style.display = 'block';
 
     const routeInfo = document.getElementById('routeInfo');
-    let routeHtml = `<div class="mb-2"><i class="bi bi-check-circle text-success"></i> <strong>Рута са Google Maps</strong></div>`;
+    let routeHtml = `<div class="mb-2"><i class="bi bi-check-circle text-success"></i> <strong>Рута израчуната</strong></div>`;
 
     if (currentRouteData.segments && currentRouteData.segments.length > 0) {
         routeHtml += `<div class="route-segments small">`;
@@ -2049,18 +1550,21 @@ function updateRouteDisplay() {
     }
 
     updatePreview();
+    persistDraft();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Set default date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('datumDokumenta').value = today;
+    removeUserScopedDraft(BUSINESS_TRIP_DRAFT_NAMESPACE);
+    resetBusinessTripFormState();
 
     // Auto-update preview on input change
     document.querySelectorAll('#tripForm input, #tripForm select, #tripForm textarea').forEach(function(el) {
         el.addEventListener('change', updatePreview);
         el.addEventListener('input', updatePreview);
+        el.addEventListener('change', persistDraft);
+        el.addEventListener('input', persistDraft);
     });
+    document.querySelectorAll('.location-input').forEach(bindLocationInputEvents);
 
     // Vehicle selection handler
     document.getElementById('vozilo').addEventListener('change', function() {
@@ -2093,7 +1597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Auto-calculate route if location is set
-        if (this.value && document.getElementById('lokacija').value) {
+        if (this.value && getLocations().length > 0) {
             calculateRoute();
         }
         updatePreview();
@@ -2113,59 +1617,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updatePreview();
     });
 
-    // Multiple locations checkbox handler
-    document.getElementById('multipleLocations').addEventListener('change', function() {
-        document.getElementById('addLocationBtn').style.display = this.checked ? 'block' : 'none';
-        if (!this.checked) {
-            // Remove all except first location when unchecked
-            const container = document.getElementById('locationsContainer');
-            const entries = container.querySelectorAll('.location-entry');
-            entries.forEach((entry, index) => {
-                if (index > 0) entry.remove();
-            });
-        }
-        updatePreview();
-    });
-
-    // Add location button handler
-    document.getElementById('addLocationBtn').addEventListener('click', function() {
-        const container = document.getElementById('locationsContainer');
-        const entries = container.querySelectorAll('.location-entry');
-        const newIndex = entries.length;
-
-        const newEntry = document.createElement('div');
-        newEntry.className = 'location-entry mb-2';
-        newEntry.dataset.index = newIndex;
-        newEntry.innerHTML = `
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-geo-alt"></i> ${newIndex + 1}</span>
-                <input type="text" class="form-control location-input" placeholder="Следећа локација...">
-                <button type="button" class="btn btn-outline-danger" onclick="removeLocation(this)">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-        `;
-        container.appendChild(newEntry);
-
-        // Add event listener to new input
-        const newInput = newEntry.querySelector('.location-input');
-        newInput.addEventListener('blur', function() {
-            if (getLocations().length > 0 && document.getElementById('vozilo').value) {
-                calculateRoute();
-            }
-        });
-        newInput.addEventListener('input', updatePreview);
-    });
-
-    // Location change - auto-calculate route (for first location)
-    document.querySelector('.location-input').addEventListener('blur', function() {
-        if (this.value && document.getElementById('vozilo').value) {
-            calculateRoute();
-        }
-    });
-
-    document.querySelector('.location-input').addEventListener('input', updatePreview);
-
     // Dnevnica checkbox handler
     document.getElementById('dnevnica').addEventListener('change', function() {
         document.getElementById('dnevnicaAmount').style.display = this.checked ? 'block' : 'none';
@@ -2177,6 +1628,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('accommodationCard').style.display = this.checked ? 'block' : 'none';
         updatePreview();
     });
+    document.querySelectorAll('#accommodationCard input').forEach(function(el) {
+        el.addEventListener('change', updatePreview);
+        el.addEventListener('input', updatePreview);
+        el.addEventListener('change', persistDraft);
+        el.addEventListener('input', persistDraft);
+    });
 
     // Toll checkbox handler
     document.getElementById('includeToll').addEventListener('change', updatePreview);
@@ -2184,7 +1641,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Kilometraza change handler
     document.getElementById('kilometraza').addEventListener('input', updatePreview);
 
-    // Initial preview update
     updatePreview();
 });
 
@@ -2216,8 +1672,8 @@ function getLocations() {
 function getLocationsText() {
     const locations = getLocations();
     if (locations.length === 0) return '________________';
-    if (locations.length === 1) return locations[0];
-    return locations.join(' → ');
+    if (locations.length === 1) return toSerbianCyrillic(locations[0]);
+    return locations.map(location => toSerbianCyrillic(location)).join(' → ');
 }
 
 function removeLocation(btn) {
@@ -2237,6 +1693,7 @@ function removeLocation(btn) {
     if (getLocations().length > 0 && document.getElementById('vozilo').value) {
         calculateRoute();
     }
+    persistDraft();
 }
 
 function getVehicleData() {
@@ -2266,7 +1723,7 @@ function calculateFuelCost() {
     const km = parseInt(document.getElementById('kilometraza').value) || 0;
     const vehicle = getVehicleData();
     const fuelPrice = FUEL_PRICES[vehicle.fuelType] || 199;
-    const liters = Math.round((km * 2) * vehicle.consumption / 100 * 10) / 10; // Round trip
+    const liters = Math.round(km * vehicle.consumption / 100 * 10) / 10;
     const cost = Math.round(liters * fuelPrice);
     return { liters, cost, consumption: vehicle.consumption, fuelType: vehicle.fuelType, fuelPrice };
 }
@@ -2470,6 +1927,7 @@ function recalculateWithExclusions() {
     }
 
     updatePreview();
+    persistDraft();
 }
 
 function updatePreview() {
@@ -2574,12 +2032,11 @@ function updatePreview() {
     const smestajRow = document.getElementById('smestajRow');
 
     if (smestaj && days > 0) {
-        const nights = days - 1;
-        let smestajCost = 0;
-        if (selectedAccommodations.length > 0) {
-            smestajCost = selectedAccommodations[0].price_per_night * nights;
-        }
-        document.getElementById('previewSmestajNoci').textContent = nights;
+        const nights = getAccommodationNights();
+        const persons = getManualAccommodationData().persons;
+        const smestajCost = getAccommodationCost();
+        const nociLabel = persons > 1 ? `${nights} ноћи x ${persons} особа` : `${nights} ноћи`;
+        document.getElementById('previewSmestajNoci').textContent = nociLabel;
         document.getElementById('previewSmestajCost').textContent = formatNumber(smestajCost);
         smestajRow.style.display = '';
         totalCost += smestajCost;
@@ -2595,6 +2052,7 @@ function updatePreview() {
     // Show integration status if vehicle or timesheet selected
     const showIntegration = vozilo || document.getElementById('updateTimesheet').checked;
     document.getElementById('integrationStatus').style.display = showIntegration ? 'block' : 'none';
+    renderSelectedLocationsSummary();
 }
 
 function formatDateSerbian(dateStr) {
@@ -2607,112 +2065,6 @@ function formatDateSerbian(dateStr) {
 
 function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-
-function searchAccommodation() {
-    const locations = getLocations();
-    const lokacija = locations[0] || '';  // Use first location for accommodation
-    const brojGostiju = document.getElementById('brojGostiju').value;
-    const maxCena = document.getElementById('maxCena').value;
-    const odDatuma = document.getElementById('odDatuma').value;
-    const doDatuma = document.getElementById('doDatuma').value;
-
-    if (!lokacija) {
-        alert('Молимо унесите локацију');
-        return;
-    }
-
-    const resultsDiv = document.getElementById('accommodationResults');
-    resultsDiv.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-info" role="status"></div><p class="mt-2">Претрага у току...</p></div>';
-
-    secureFetch('/api/accommodation/search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-            location: lokacija,
-            guests: brojGostiju,
-            max_price: maxCena,
-            check_in: odDatuma,
-            check_out: doDatuma
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            let html = '';
-
-            // Show source info
-            if (data.source) {
-                const sourceIcon = data.source === 'Демо подаци' ? 'bi-info-circle text-warning' : 'bi-cloud-check text-success';
-                html += `<div class="alert alert-light py-2 mb-2 small"><i class="bi ${sourceIcon} me-1"></i> Извор: <strong>${data.source}</strong></div>`;
-            }
-
-            data.accommodations.forEach((acc, index) => {
-                const accJson = JSON.stringify(acc).replace(/'/g, "\\'");
-                html += `
-                    <div class="accommodation-card" onclick="selectAccommodation(${index}, this)" data-accommodation='${accJson}'>
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6 class="mb-1">${acc.name}</h6>
-                                <small class="text-muted">${acc.type}</small>
-                            </div>
-                            <div class="text-end">
-                                <div class="price">${formatNumber(acc.price_per_night)} дин</div>
-                                <small class="text-muted">по ноћи</small>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <small><i class="bi bi-star-fill text-warning"></i> ${acc.rating} | ${acc.distance}</small>
-                        </div>
-                        <div class="mt-1">
-                            ${acc.amenities.map(a => `<span class="badge bg-light text-dark me-1">${a}</span>`).join('')}
-                        </div>
-                        ${acc.booking_url ? `<div class="mt-2"><a href="${acc.booking_url}" target="_blank" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right me-1"></i>Booking.com</a></div>` : ''}
-                    </div>
-                `;
-            });
-            html += `<div class="alert alert-info mt-2 small"><i class="bi bi-info-circle me-2"></i>${data.note}</div>`;
-            resultsDiv.innerHTML = html;
-        } else {
-            resultsDiv.innerHTML = `<div class="alert alert-danger">Грешка при претрази: ${data.message || 'Непозната грешка'}</div>`;
-        }
-    })
-    .catch(error => {
-        console.error('Accommodation search error:', error);
-        if (error.message.includes('401')) {
-            resultsDiv.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Сесија је истекла. Молимо освежите страницу.</div>`;
-        } else {
-            resultsDiv.innerHTML = `<div class="alert alert-danger">Грешка при повезивању: ${error.message}</div>`;
-        }
-    });
-}
-
-function selectAccommodation(index, element) {
-    // Toggle selection
-    const card = element;
-    const isSelected = card.classList.contains('selected');
-
-    if (isSelected) {
-        card.classList.remove('selected');
-        selectedAccommodations = selectedAccommodations.filter(a => a.id !== JSON.parse(card.dataset.accommodation).id);
-    } else {
-        if (selectedAccommodations.length >= 3) {
-            alert('Можете одабрати максимално 3 понуде');
-            return;
-        }
-        card.classList.add('selected');
-        selectedAccommodations.push(JSON.parse(card.dataset.accommodation));
-    }
-
-    updatePreview();
 }
 
 function submitTrip() {
@@ -2734,9 +2086,11 @@ function submitTrip() {
         locations: locations,
         location: lokacija,
         purpose: cilj,
-        vehicle_id: document.getElementById('vozilo').value || null,
+        vehicle_id: (document.getElementById('vozilo').value && document.getElementById('vozilo').value !== 'sopstveni')
+            ? document.getElementById('vozilo').value
+            : null,
         update_timesheet: document.getElementById('updateTimesheet').checked,
-        accommodations: selectedAccommodations
+        accommodation: document.getElementById('smestaj').checked ? getManualAccommodationData() : null
     };
 
     secureFetch('/api/field-trip/create', {
@@ -2763,6 +2117,7 @@ function submitTrip() {
             alert('Захтев је успешно креиран!\n' +
                   (result.vehicle_reserved ? '- Возило резервисано\n' : '') +
                   (result.timesheet_updated ? '- Месечни извештај ажуриран' : ''));
+            persistDraft();
         } else {
             alert('Грешка: ' + result.message);
         }
@@ -2827,12 +2182,11 @@ function printDocument() {
     }
 
     if (smestaj && days > 0) {
-        const nights = days - 1;
-        let smestajCost = 0;
-        if (selectedAccommodations.length > 0) {
-            smestajCost = selectedAccommodations[0].price_per_night * nights;
-        }
-        costRows += `<tr><td>Трошкови смештаја (${nights} ноћи)</td><td style="text-align: right;">= ${formatNumber(smestajCost)} дин.</td></tr>`;
+        const nights = getAccommodationNights();
+        const persons = getManualAccommodationData().persons;
+        const smestajCost = getAccommodationCost();
+        const smestajLabel = persons > 1 ? `${nights} ноћи x ${persons} особа` : `${nights} ноћи`;
+        costRows += `<tr><td>Трошкови смештаја (${smestajLabel})</td><td style="text-align: right;">= ${formatNumber(smestajCost)} дин.</td></tr>`;
         totalCost += smestajCost;
     }
 
@@ -2873,8 +2227,8 @@ function printDocument() {
         }
         .memorandum-date-overlay {
             position: absolute;
-            bottom: 13px;
-            right: 68px;
+            bottom: 18px;
+            right: 78px;
             font-size: 11pt;
             font-family: 'Times New Roman', Times, serif;
             color: #000;
@@ -3047,10 +2401,9 @@ function saveRequest() {
         troskovi.dnevnice = days * rate;
     }
     if (document.getElementById('smestaj').checked && days > 0) {
-        const nights = days - 1;
-        if (typeof selectedAccommodations !== 'undefined' && selectedAccommodations.length > 0) {
-            troskovi.smestaj = selectedAccommodations[0].price_per_night * nights;
-        }
+        troskovi.smestaj = getAccommodationCost();
+        troskovi.smestaj_detalji = getManualAccommodationData();
+        troskovi.smestaj_nocenja = getAccommodationNights();
     }
 
     const payload = {
@@ -3069,6 +2422,12 @@ function saveRequest() {
             vozilo: vozilo,
             vozilo_opis: voziloOpis,
             kilometraza: km,
+            ruta: currentRouteData,
+            smestaj_podaci: document.getElementById('smestaj').checked ? {
+                ...getManualAccommodationData(),
+                nights: getAccommodationNights(),
+                total_cost: getAccommodationCost()
+            } : null,
             troskovi: troskovi,
             datum_dokumenta: datumDokumenta,
             podnosilac: userFullName
@@ -3085,6 +2444,7 @@ function saveRequest() {
         if (data.success) {
             btn.className = 'btn btn-success btn-sm';
             btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Сачувано (#' + data.id + ')';
+            persistDraft();
         } else {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';

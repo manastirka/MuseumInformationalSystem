@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Интерактивни editor plana -5{% endblock %}
+{% block title %}Интерактивни план музеја -5{% endblock %}
 
 {% block content %}
 <style>
@@ -523,33 +523,22 @@
 <div class="container-fluid px-4 py-3"
      x-data="spacePlanner()"
      x-init="init()"
-     @keydown.window.escape="cancelDraft()"
-     @keydown.window.enter.prevent="finishPolygonDraft()"
-     @keydown.window.delete.prevent="deleteSelectedSpaces()">
+     @keydown.window.escape="selectedIds = new Set(); selectedSpace = null">
     <div class="space-planner" :class="{ 'has-detail': selectedSpace || selectedCount > 1 }">
         <section class="space-shell" x-ref="fullscreenHost">
             <div class="space-toolbar">
                 <div>
-                    <h1><i class="bi bi-bounding-box-circles me-2"></i>Интерактивни editor plana -5</h1>
+                    <h1><i class="bi bi-bounding-box-circles me-2"></i>Интерактивни план музеја -5</h1>
                     <div class="space-toolbar-meta">
-                        За прецизно цртање користи полигон и прати контуре просторије. У normal view радиш над podeljenim high-res prikazom, a fullscreen prelazi na ceo plan.
+                        Кликни на просторију да видиш детаље. Fullscreen приказује цео план.
                     </div>
                 </div>
                 <div class="space-toolbar-actions">
-                    <button class="btn btn-outline-light btn-sm" @click="syncDetectedSpaces()">
-                        <i class="bi bi-magic me-1"></i>Освежи auto prostore
-                    </button>
-                    <button class="btn btn-outline-light btn-sm" @click="deleteSelectedSpaces()" :disabled="selectedCount === 0 || lockOverlays">
-                        <i class="bi bi-trash me-1"></i>Обриши селектоване
-                    </button>
                     <button class="btn btn-outline-light btn-sm" @click="toggleFullscreen()">
                         <i class="bi" :class="isFullscreen ? 'bi-fullscreen-exit me-1' : 'bi-fullscreen me-1'"></i>
                         <span x-text="isFullscreen ? 'Izađi iz fullscreen' : 'Fullscreen'"></span>
                     </button>
-                    <button class="btn btn-outline-light btn-sm" @click="saveNow()" :disabled="saving">
-                        <i class="bi" :class="saving ? 'bi-arrow-repeat spin' : 'bi-save me-1'"></i>Сачувај
-                    </button>
-                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('admin_projekti') }}">
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('projects.admin_projekti') }}">
                         <i class="bi bi-building me-1"></i>Пројекти
                     </a>
                 </div>
@@ -568,34 +557,6 @@
                 </div>
 
                 <div class="space-draw-tabs">
-                    <button class="btn btn-sm"
-                            :class="drawingMode === 'polygon' ? 'btn-primary' : 'btn-outline-secondary'"
-                            @click="toggleDrawMode('polygon')"
-                            :disabled="lockOverlays">
-                        <i class="bi bi-bezier2 me-1"></i>Crtaj prostor
-                    </button>
-                    <button class="btn btn-sm"
-                            :class="drawingMode === 'rect' ? 'btn-primary' : 'btn-outline-secondary'"
-                            @click="toggleDrawMode('rect')"
-                            :disabled="lockOverlays">
-                        <i class="bi bi-bounding-box me-1"></i>Pravougaonik
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary"
-                            @click="finishPolygonDraft()"
-                            :disabled="draftPolygon.length < 3 || lockOverlays">
-                        <i class="bi bi-check2 me-1"></i>Završi konturu
-                    </button>
-                    <button class="btn btn-sm"
-                            :class="panMode ? 'btn-warning' : 'btn-outline-secondary'"
-                            @click="togglePanMode()">
-                        <i class="bi bi-hand-index me-1"></i>Pomeri prikaz
-                    </button>
-                    <button class="btn btn-sm"
-                            :class="lockOverlays ? 'btn-danger' : 'btn-outline-secondary'"
-                            @click="toggleLockOverlays()">
-                        <i class="bi me-1" :class="lockOverlays ? 'bi-lock-fill' : 'bi-unlock'"></i>
-                        <span x-text="lockOverlays ? 'Откључај' : 'Закључај'"></span>
-                    </button>
                     <div class="btn-group btn-group-sm" role="group" aria-label="Zoom controls">
                         <button class="btn btn-outline-secondary" @click="zoomOut()"><i class="bi bi-dash-lg"></i></button>
                         <button class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true" x-text="zoomLabel()"></button>
@@ -611,12 +572,12 @@
                     <span x-text="selectionStatus()"></span>
                 </div>
                 <div class="planner-view-meta">
-                    Točkić miša zumira bez mutnog CSS scale-a, `Shift + drag` ili `Pomeri prikaz` radi pan, `Ctrl/Shift + klik` dodaje ili skida prostor iz selekcije, `Delete` briše selektovane.
+                    Точкић миша зумира. Кликни на просторију за детаље.
                 </div>
 
                 <template x-if="loading">
                     <div class="planner-empty">
-                        <div class="spinner-border spinner-border-sm me-2"></div>Учитавање editora...
+                        <div class="spinner-border spinner-border-sm me-2"></div>Учитавање плана...
                     </div>
                 </template>
 
@@ -625,14 +586,7 @@
                          :class="canvasClasses()"
                          :style="viewportStyle()"
                          x-ref="planViewport"
-                         @pointerdown="onCanvasPointerDown($event)"
-                         @pointermove="onCanvasPointerMove($event)"
-                         @pointerup="onCanvasPointerUp($event)"
-                         @pointerleave="onCanvasPointerLeave($event)"
                          @wheel.prevent="onWheelZoom($event)"
-                         @click="onCanvasClick($event)"
-                         @dblclick.prevent="onCanvasDoubleClick($event)"
-                         @auxclick.prevent="onMiddleClick($event)"
                          @contextmenu.prevent>
                         <div class="space-stage" x-ref="planStage" :style="stageStyle()">
                             <img :src="planImageUrl" alt="Основа кота -5,00" x-ref="planImage" @load="handlePlanImageLoad($event)">
@@ -641,24 +595,11 @@
                             <template x-for="space in viewFilteredSpaces()" :key="'shape-' + space.id">
                                 <div class="space-shape-div"
                                      :class="shapeClasses(space)"
-                                     :style="shapeDivStyle(space) + (lockOverlays ? 'pointer-events:none;' : '')"
-                                     @pointerdown.stop="startSpaceDrag(space, $event)"
+                                     :style="shapeDivStyle(space)"
                                      @click.stop="selectSpace(space.id, $event)"
                                      @mouseenter="showHoverTooltip(space, $event)"
                                      @mouseleave="hideHoverTooltip()"
                                      @mousemove="moveHoverTooltip(space, $event)">
-                                    <template x-if="isSelected(space.id) && selectedCount === 1 && space.shape === 'rect'">
-                                        <div>
-                                            <div class="space-resize-handle se" @pointerdown.stop="startRectResize(space, $event, 'se')"></div>
-                                            <div class="space-resize-handle sw" @pointerdown.stop="startRectResize(space, $event, 'sw')"></div>
-                                            <div class="space-resize-handle ne" @pointerdown.stop="startRectResize(space, $event, 'ne')"></div>
-                                            <div class="space-resize-handle nw" @pointerdown.stop="startRectResize(space, $event, 'nw')"></div>
-                                            <div class="space-resize-handle n" @pointerdown.stop="startRectResize(space, $event, 'n')"></div>
-                                            <div class="space-resize-handle s" @pointerdown.stop="startRectResize(space, $event, 's')"></div>
-                                            <div class="space-resize-handle e" @pointerdown.stop="startRectResize(space, $event, 'e')"></div>
-                                            <div class="space-resize-handle w" @pointerdown.stop="startRectResize(space, $event, 'w')"></div>
-                                        </div>
-                                    </template>
                                 </div>
                             </template>
 
@@ -678,33 +619,12 @@
                                 </template>
                             </div>
 
-                            <template x-for="(vtx, vtxIdx) in polygonVertices()" :key="vtx.key">
-                                <div class="space-vertex-div"
-                                     :style="`left:${vtx.x}%;top:${vtx.y}%`"
-                                     @pointerdown.stop="startVertexDrag(spaceById(vtx.spaceId), vtx.idx, $event)"></div>
-                            </template>
-
-                            <!-- Draft rect overlay -->
-                            <template x-if="draftRect">
-                                <div class="space-draft-div"
-                                     :style="`left:${draftRect.x}%;top:${draftRect.y}%;width:${draftRect.width}%;height:${draftRect.height}%`"></div>
-                            </template>
-
-                            <!-- Draft polygon overlay -->
-                            <template x-if="draftPolygon.length > 0">
-                                <div class="space-draft-div"
-                                     :style="draftPolygonDivStyle()"></div>
-                            </template>
-                            <template x-for="(pt, idx) in draftPolygon" :key="'draftpt-' + idx">
-                                <div class="space-vertex-div draft"
-                                     :style="`left:${pt.x}%;top:${pt.y}%`"></div>
-                            </template>
 
                             <template x-for="space in viewFilteredSpaces()" :key="'label-' + space.id">
                                 <button type="button"
                                         class="space-label"
                                         :class="{ selected: isSelected(space.id) }"
-                                        :style="spaceLabelStyle(space) + (drawingMode || lockOverlays ? 'pointer-events:none;' : '')"
+                                        :style="spaceLabelStyle(space)"
                                         @click.stop="selectSpace(space.id, $event)"
                                         x-text="spaceTitle(space)"></button>
                             </template>
@@ -719,9 +639,6 @@
                 <section class="space-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h5 class="mb-0"><i class="bi bi-door-open me-1"></i>Просторије</h5>
-                        <button class="btn btn-sm btn-outline-secondary" @click="toggleDrawMode('polygon')" title="Нови простор" style="padding:0.1rem 0.3rem;font-size:0.65rem;">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
                     </div>
 
                     <div class="room-search-wrap mb-2">
@@ -759,90 +676,60 @@
                 <div class="space-detail-scroll">
                     <div class="space-detail-top">
                         <h5 class="mb-0" x-text="selectedSpace.name || 'Без назива'"></h5>
-                        <div class="room-detail-actions">
-                            <button class="btn btn-outline-secondary btn-sm" @click="duplicateSelectedSpace()" title="Дуплирај">
-                                <i class="bi bi-copy"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" @click="deleteSelectedSpaces()" title="Обриши">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
                     </div>
                     <div class="room-detail-grid">
                         <div>
                             <label>Назив простора</label>
-                            <input class="form-control form-control-sm" x-model="selectedSpace.name" @input="spaceChanged()" @focus="setActiveField('name')">
+                            <div class="form-control form-control-sm bg-light" x-text="selectedSpace.name || '—'"></div>
                         </div>
                         <div class="d-flex gap-2">
                             <div style="flex: 1;">
                                 <label>Тип простора</label>
-                                <select class="form-select form-select-sm" x-model="selectedSpace.room_type" @change="applyRoomTypeDefaults(); spaceChanged()" @focus="setActiveField('room_type')">
-                                    <option value="">Изабери тип</option>
-                                    <template x-for="(config, key) in roomLibrary" :key="'dtype-' + key">
-                                        <option :value="key" x-text="config.label"></option>
-                                    </template>
-                                </select>
+                                <div class="form-control form-control-sm bg-light" x-text="selectedSpace.room_type && roomLibrary[selectedSpace.room_type] ? roomLibrary[selectedSpace.room_type].label : (selectedSpace.room_type || '—')"></div>
                             </div>
                             <div style="width: 90px;">
                                 <label>m²</label>
-                                <input type="number" step="0.1" min="0" class="form-control form-control-sm" x-model.number="selectedSpace.area_m2" @input="spaceChanged()">
+                                <div class="form-control form-control-sm bg-light" x-text="selectedSpace.area_m2 || '—'"></div>
                             </div>
                         </div>
                         <div>
                             <label><i class="bi bi-person-badge me-1"></i>Одговорни кустос</label>
-                            <select class="form-select form-select-sm" x-model="selectedSpace.specs.curator" @change="spaceChanged()">
-                                <option value="">— без кустоса —</option>
-                                <template x-for="c in curators" :key="c.email">
-                                    <option :value="c.name" x-text="c.name + (c.position ? ' (' + c.position + ')' : '')"></option>
-                                </template>
-                            </select>
+                            <div class="form-control form-control-sm bg-light" x-text="selectedSpace.specs.curator || '—'"></div>
                         </div>
                         <div>
                             <label>Намена простора</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.purpose" @input="spaceChanged()" @focus="setActiveField('purpose')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.purpose || '—'"></div>
                         </div>
                         <div>
                             <label>Материјали пода</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.floor_materials" @input="spaceChanged()" @focus="setActiveField('floor_materials')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.floor_materials || '—'"></div>
                         </div>
                         <div>
                             <label>Материјали зидова</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.wall_materials" @input="spaceChanged()" @focus="setActiveField('wall_materials')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.wall_materials || '—'"></div>
                         </div>
                         <div>
                             <label>Вентилација и HVAC</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.ventilation" @input="spaceChanged()" @focus="setActiveField('ventilation')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.ventilation || '—'"></div>
                         </div>
                         <div>
                             <label>Опрема</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.equipment" @input="spaceChanged()" @focus="setActiveField('equipment')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.equipment || '—'"></div>
                         </div>
                         <div>
                             <label>Инсталације</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.utilities" @input="spaceChanged()" @focus="setActiveField('utilities')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.utilities || '—'"></div>
                         </div>
                         <div>
                             <label>Напомене</label>
-                            <textarea class="form-control form-control-sm" x-model="selectedSpace.specs.notes" @input="spaceChanged()" @focus="setActiveField('notes')"></textarea>
+                            <div class="form-control form-control-sm bg-light" style="white-space:pre-wrap;min-height:2.2em" x-text="selectedSpace.specs.notes || '—'"></div>
                         </div>
                         <template x-if="selectedSpace.shape !== 'polygon'">
                             <div class="room-detail-geo">
-                                <div>
-                                    <label>X %</label>
-                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.x" @input="normalizeSelectedGeometry(); spaceChanged()">
-                                </div>
-                                <div>
-                                    <label>Y %</label>
-                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.y" @input="normalizeSelectedGeometry(); spaceChanged()">
-                                </div>
-                                <div>
-                                    <label>Ширина %</label>
-                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.width" @input="normalizeSelectedGeometry(); spaceChanged()">
-                                </div>
-                                <div>
-                                    <label>Висина %</label>
-                                    <input type="number" step="0.1" class="form-control form-control-sm" x-model.number="selectedSpace.height" @input="normalizeSelectedGeometry(); spaceChanged()">
-                                </div>
+                                <div><label>X %</label><div class="form-control form-control-sm bg-light" x-text="selectedSpace.x"></div></div>
+                                <div><label>Y %</label><div class="form-control form-control-sm bg-light" x-text="selectedSpace.y"></div></div>
+                                <div><label>Ширина %</label><div class="form-control form-control-sm bg-light" x-text="selectedSpace.width"></div></div>
+                                <div><label>Висина %</label><div class="form-control form-control-sm bg-light" x-text="selectedSpace.height"></div></div>
                             </div>
                         </template>
                         <template x-if="selectedSpace.shape === 'polygon'">
@@ -850,43 +737,6 @@
                                 Полигон: <span x-text="selectedSpace.points.length"></span> тачака · <span x-text="geometrySummary(selectedSpace)"></span>
                             </div>
                         </template>
-
-                        <!-- Collapsible term suggestions -->
-                        <div>
-                            <button class="room-terms-toggle" @click="showTerms = !showTerms" type="button">
-                                <i class="bi" :class="showTerms ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-                                <span>Предлози термина</span>
-                                <span x-show="activeFieldKey" class="text-muted">(<span x-text="activeFieldLabel()"></span>)</span>
-                            </button>
-                            <template x-if="showTerms">
-                                <div>
-                                    <input class="form-control form-control-sm mb-2" placeholder="Претражи термине..." x-model="termQuery">
-                                    <template x-for="group in visibleTermGroups()" :key="group.key">
-                                        <div class="term-group">
-                                            <div class="term-group-title" x-text="group.label"></div>
-                                            <div class="term-chips">
-                                                <template x-for="term in group.terms" :key="group.key + term">
-                                                    <button type="button" class="term-chip" @click="applySuggestedTerm(group.key, term)" x-text="term"></button>
-                                                </template>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </template>
-
-        <template x-if="!selectedSpace && selectedCount > 1">
-            <aside class="space-detail-aside">
-                <div class="space-detail-scroll">
-                    <div class="planner-summary">
-                        Селектовано <strong x-text="selectedCount"></strong> простора.
-                        <button class="btn btn-outline-danger btn-sm mt-2 d-block" @click="deleteSelectedSpaces()">
-                            <i class="bi bi-trash me-1"></i>Обриши селектоване
-                        </button>
                     </div>
                 </div>
             </aside>

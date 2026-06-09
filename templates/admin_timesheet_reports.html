@@ -11,32 +11,49 @@
     }
     .timesheet-table {
         width: 100%;
-        font-size: 0.9rem;
+        font-size: 0.78rem;
+        table-layout: auto;
     }
     .timesheet-table th,
     .timesheet-table td {
         white-space: nowrap;
         vertical-align: middle;
-        padding: 0.5rem 0.75rem;
+        padding: 0.3rem 0.4rem;
     }
     .timesheet-table .col-employee {
         white-space: normal;
-        min-width: 160px;
-        max-width: 220px;
+        min-width: 130px;
+        max-width: 180px;
     }
     .timesheet-table .col-org {
         white-space: normal;
-        min-width: 120px;
-        max-width: 200px;
+        min-width: 100px;
+        max-width: 160px;
     }
     .timesheet-table .col-status {
-        min-width: 130px;
+        min-width: 110px;
+    }
+    .timesheet-table .col-status .badge {
+        font-size: 0.7rem;
     }
     .timesheet-table .col-actions {
-        min-width: 160px;
+        min-width: 128px;
+    }
+    .timesheet-table .col-actions .btn {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.75rem;
     }
     .timesheet-table .col-number {
-        min-width: 70px;
+        min-width: 56px;
+    }
+    @media (max-width: 1400px) {
+        .timesheet-table {
+            font-size: 0.72rem;
+        }
+        .timesheet-table th,
+        .timesheet-table td {
+            padding: 0.25rem 0.3rem;
+        }
     }
 </style>
 <div class="container-main timesheet-reports-wide">
@@ -152,7 +169,28 @@
                         <i class="bi bi-search me-1"></i> Примени
                     </button>
                 </div>
+                {% if not is_admin() %}
+                <div class="col-12 mt-1">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="onlyVerifiableCheckbox"
+                               name="only_verifiable" value="1"
+                               {% if only_verifiable %}checked{% endif %}
+                               onchange="this.form.submit()">
+                        <label class="form-check-label" for="onlyVerifiableCheckbox">
+                            Прикажи само извештаје које ја одобравам
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
             </form>
+            {% if only_verifiable and reports.filtered_total is defined %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-funnel-fill me-1"></i>
+                    Филтер активан: приказано {{ reports.filtered_total }} извештај(а) за Вашу верификацију.
+                </small>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -191,37 +229,39 @@
                 <tbody>
                     {% if reports.reports %}
                         {% for report in reports.reports %}
-                        <tr class="{% if report.is_verified %}table-success{% endif %}" data-report-id="{{ report.id }}">
+                        <tr class="{% if report.is_verified %}table-success{% endif %}" data-report-id="{{ report.id }}" data-testid="timesheet-report-{{ report.id }}">
                             <td>
                                 <input type="checkbox" class="form-check-input report-checkbox"
                                        value="{{ report.id }}" onchange="updateBatchSelection()">
                             </td>
                             <td class="col-status">
-                                {% if report.status is defined and report.status %}
-                                    {% if report.status == 'APPROVED' %}
-                                        <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
-                                            <i class="bi bi-check-circle-fill"></i> Одобрено
-                                        </span>
-                                    {% elif report.status == 'SUBMITTED' %}
-                                        <span class="badge bg-warning text-dark">
-                                            <i class="bi bi-hourglass-split"></i> Поднето
-                                        </span>
-                                    {% elif report.status == 'REJECTED' %}
-                                        <span class="badge bg-danger">
-                                            <i class="bi bi-x-circle"></i> Враћено
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">
-                                            <i class="bi bi-pencil"></i> Нацрт
-                                        </span>
+                                {# is_verified takes precedence — a report marked verified
+                                   always shows the green badge, even if the legacy `status`
+                                   column hasn't been bumped to 'APPROVED' yet. #}
+                                {% if report.is_verified %}
+                                    <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
+                                        <i class="bi bi-check-circle-fill"></i> Одобрено
+                                    </span>
+                                {% elif report.status is defined and report.status == 'SUBMITTED' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-hourglass-split"></i> Поднето
+                                    </span>
+                                    {% if report.rejection_note %}
+                                    <span class="badge bg-info text-dark ms-1" title="Поновно поднет после враћања — реевалуација">
+                                        <i class="bi bi-arrow-repeat"></i> реевалуација
+                                    </span>
                                     {% endif %}
-                                {% elif report.is_verified %}
-                                    <span class="badge bg-success" title="Верификовано {{ report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '' }}">
-                                        <i class="bi bi-check-circle-fill"></i> Верификовано
+                                {% elif report.status is defined and report.status == 'REJECTED' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> Враћено
+                                    </span>
+                                {% elif report.status is defined and report.status == 'DRAFT' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-pencil"></i> Нацрт
                                     </span>
                                 {% else %}
                                     <span class="badge bg-secondary">
-                                        <i class="bi bi-pencil"></i> Нацрт
+                                        <i class="bi bi-exclamation-circle"></i> Неверификовано
                                     </span>
                                 {% endif %}
                             </td>
@@ -240,6 +280,7 @@
                             <td class="text-end col-actions">
                                 <div class="btn-group btn-group-sm" role="group">
                                     <button type="button" class="btn btn-outline-info"
+                                            data-testid="timesheet-report-view-{{ report.id }}"
                                             onclick="viewReport({{ report.id }})"
                                             title="Преглед детаља">
                                         <i class="bi bi-eye"></i>
@@ -247,25 +288,49 @@
 
                                     {% if report.is_verified %}
                                         <button type="button" class="btn btn-outline-warning"
-                                                onclick="toggleApproval({{ report.id }}, false)"
-                                                title="Повуци верификацију">
+                                                data-testid="timesheet-report-unapprove-{{ report.id }}"
+                                                {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, false)" title="Повуци верификацију"{% endif %}>
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     {% else %}
-                                        <button type="button" class="btn btn-outline-success"
-                                                onclick="toggleApproval({{ report.id }}, true)"
-                                                title="Верификуј и закључај">
-                                            <i class="bi bi-check-circle"></i>
+                                        {# Verify button only for SUBMITTED reports — the backend
+                                           blocks verification on DRAFT/REJECTED with a
+                                           'Само поднете радне листе' error, so the button would
+                                           lead nowhere for those states. #}
+                                        {% if report.status == 'SUBMITTED' %}
+                                            <button type="button" class="btn btn-outline-success"
+                                                    data-testid="timesheet-report-approve-{{ report.id }}"
+                                                    {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, true)" title="Верификуј и закључај"{% endif %}>
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-outline-success"
+                                                    disabled
+                                                    title="{% if report.status == 'REJECTED' %}Враћено — чека на поновно подношење{% elif report.status == 'DRAFT' %}Још увек није поднето на преглед{% else %}Није доступно за верификацију{% endif %}">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {# Return to employee — shown for unverified SUBMITTED/DRAFT reports that the current user is authorized to verify. Opens a note modal (reject path) for SUBMITTED; force-edits DRAFT/REJECTED that still have is_locked=TRUE (requires unlock). #}
+                                    {% if not report.is_verified and report.can_verify is defined and report.can_verify and (report.status == 'SUBMITTED' or report.is_locked) %}
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                data-testid="timesheet-report-return-{{ report.id }}"
+                                                onclick="returnReportToEmployee({{ report.id }}, '{{ report.employee_name|replace("'", "&#39;") }}', '{{ report.status or '' }}')"
+                                                title="Врати запосленом на измену">
+                                            <i class="bi bi-arrow-return-left"></i>
                                         </button>
                                     {% endif %}
 
                                     <button type="button" class="btn btn-outline-primary"
+                                            data-testid="timesheet-report-export-{{ report.id }}"
                                             onclick="exportReport({{ report.id }})"
                                             title="Извоз у Word">
                                         <i class="bi bi-file-earmark-word"></i>
                                     </button>
 
                                     <button type="button" class="btn btn-outline-danger"
+                                            data-testid="timesheet-report-delete-{{ report.id }}"
                                             onclick="deleteReport({{ report.id }}, '{{ report.employee_name }}', '{{ calendar.month_name[report.month] }} {{ report.year }}')"
                                             title="Обриши извештај">
                                         <i class="bi bi-trash"></i>
@@ -293,7 +358,7 @@
             <div>
                 {% if reports.page > 1 %}
                 <a class="btn btn-outline-secondary btn-sm"
-                   href="{{ url_for('admin_timesheet_reports', page=reports.page-1, month=month, year=year, search=search) }}">Назад</a>
+                   href="{{ url_for('admin_timesheet_reports', page=reports.page-1, month=month, year=year, search=search, only_verifiable='1' if only_verifiable else None) }}">Назад</a>
                 {% endif %}
                 {% if reports.page < reports.total_pages %}
                 <a class="btn btn-outline-secondary btn-sm ms-2"
@@ -302,6 +367,72 @@
             </div>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Verification Confirmation Modal (balloon-style) -->
+<div class="modal fade" id="verifyConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <i id="verifyConfirmIcon" class="bi bi-question-circle-fill text-primary" style="font-size: 3rem;"></i>
+                <h5 class="mt-3 mb-2" id="verifyConfirmTitle">Да ли заиста желите да верификујете извештај?</h5>
+                <p class="text-muted small mb-4" id="verifyConfirmSubtitle"></p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn btn-success px-4" id="verifyConfirmYes">
+                        <i class="bi bi-check-lg me-1"></i> Да
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="verifyConfirmNo" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i> Не
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return-to-employee Modal -->
+<div class="modal fade" id="returnReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-return-left me-1 text-secondary"></i>
+                    Врати извештај запосленом на измену
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Враћате извештај: <strong id="returnReportEmployeeName"></strong></p>
+                <p class="text-muted small mb-3">
+                    Запослени ће имати 24 часа да допуни извештај и поново га поднесе.
+                    После тога мора затражити ново откључавање.
+                </p>
+                <label for="returnReportNote" class="form-label">Разлог враћања (обавезно за поднете извештаје)</label>
+                <textarea id="returnReportNote" class="form-control" rows="3"
+                          placeholder="Нпр. недостаје потпис на обрасцу, погрешан број сати..."></textarea>
+                <input type="hidden" id="returnReportId"/>
+                <input type="hidden" id="returnReportStatus"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Одустани</button>
+                <button type="button" class="btn btn-secondary" id="returnReportConfirmBtn">
+                    <i class="bi bi-arrow-return-left me-1"></i> Врати запосленом
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verification Result Modal (balloon-style, auto-dismiss) -->
+<div class="modal fade" id="verifyResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <i id="verifyResultIcon" class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3 mb-0" id="verifyResultMessage">Извештај је одобрен и закључан</h5>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -328,6 +459,74 @@
 </div>
 
 <script>
+// Show a balloon-style result modal (success or error), auto-dismiss,
+// then run the optional `onClose` callback (used for the reload after
+// successful approval).
+function showVerifyResult({ success, message, autoCloseMs, onClose }) {
+    const modalEl = document.getElementById('verifyResultModal');
+    const iconEl = document.getElementById('verifyResultIcon');
+    const msgEl = document.getElementById('verifyResultMessage');
+
+    if (success) {
+        iconEl.className = 'bi bi-check-circle-fill text-success';
+    } else {
+        iconEl.className = 'bi bi-x-circle-fill text-danger';
+    }
+    iconEl.style.fontSize = '3rem';
+    msgEl.textContent = message || (success ? 'Успешно' : 'Грешка');
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const delay = typeof autoCloseMs === 'number' ? autoCloseMs : 1600;
+
+    const onHidden = () => {
+        modalEl.removeEventListener('hidden.bs.modal', onHidden);
+        if (onClose) onClose();
+    };
+    modalEl.addEventListener('hidden.bs.modal', onHidden);
+    modal.show();
+    setTimeout(() => modal.hide(), delay);
+}
+
+// Promise-based replacement for window.confirm() that shows the
+// Bootstrap "verifyConfirmModal" with green-YES / red-NO buttons.
+// Resolves to `true` on Yes and `false` on No (or dismiss).
+function askVerifyConfirmation(options) {
+    const opts = Object.assign({
+        title: 'Да ли заиста желите да верификујете извештај?',
+        subtitle: '',
+        icon: 'bi-question-circle-fill',
+        iconColor: 'text-primary',
+    }, options || {});
+
+    const modalEl = document.getElementById('verifyConfirmModal');
+    const titleEl = document.getElementById('verifyConfirmTitle');
+    const subtitleEl = document.getElementById('verifyConfirmSubtitle');
+    const iconEl = document.getElementById('verifyConfirmIcon');
+    const yesBtn = document.getElementById('verifyConfirmYes');
+    const noBtn = document.getElementById('verifyConfirmNo');
+
+    titleEl.textContent = opts.title;
+    subtitleEl.textContent = opts.subtitle;
+    // Reset icon classes to just the base + new icon + color.
+    iconEl.className = 'bi ' + opts.icon + ' ' + opts.iconColor;
+    iconEl.style.fontSize = '3rem';
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    return new Promise((resolve) => {
+        let settled = false;
+        const onYes = () => { if (!settled) { settled = true; modal.hide(); resolve(true); } };
+        const onHidden = () => {
+            yesBtn.removeEventListener('click', onYes);
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            if (!settled) { settled = true; resolve(false); }
+        };
+        yesBtn.addEventListener('click', onYes);
+        modalEl.addEventListener('hidden.bs.modal', onHidden);
+        modal.show();
+    });
+}
+
 // Batch selection management
 function toggleSelectAll(masterCheckbox) {
     const checkboxes = document.querySelectorAll('.report-checkbox');
@@ -369,17 +568,22 @@ function getSelectedReportIds() {
     return Array.from(checkboxes).map(cb => parseInt(cb.value));
 }
 
-function batchApprove(approve) {
+async function batchApprove(approve) {
     const reportIds = getSelectedReportIds();
     if (reportIds.length === 0) {
         alert('Изаберите најмање један извештај');
         return;
     }
 
-    const action = approve ? 'верификовати и закључати' : 'повући верификацију за';
-    if (!confirm(`Да ли сте сигурни да желите да ${action} ${reportIds.length} извештај(а)?`)) {
-        return;
-    }
+    const confirmed = await askVerifyConfirmation({
+        title: approve
+            ? 'Да ли заиста желите да верификујете извештаје?'
+            : 'Да ли заиста желите да повучете верификацију?',
+        subtitle: `${reportIds.length} извештај(а)`,
+        icon: approve ? 'bi-check-circle-fill' : 'bi-arrow-counterclockwise',
+        iconColor: approve ? 'text-success' : 'text-warning',
+    });
+    if (!confirmed) return;
 
     secureFetch('/api/admin/timesheet/reports/batch-approve', {
         method: 'POST',
@@ -394,15 +598,15 @@ function batchApprove(approve) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('Грешка: ' + data.message);
-        }
+        showVerifyResult({
+            success: data.success,
+            message: data.success ? data.message : ('Грешка: ' + data.message),
+            autoCloseMs: 2400,
+            onClose: data.success ? () => location.reload() : null,
+        });
     })
     .catch(error => {
-        alert('Грешка при обради: ' + error);
+        showVerifyResult({ success: false, message: 'Грешка при обради: ' + error });
     });
 }
 
@@ -579,12 +783,15 @@ function displayReportDetails(report) {
 }
 
 // Toggle approval status
-function toggleApproval(reportId, approve) {
-    const action = approve ? 'верификовати и закључати' : 'повући верификацију';
-
-    if (!confirm(`Да ли сте сигурни да желите да ${action} овај извештај?`)) {
-        return;
-    }
+async function toggleApproval(reportId, approve) {
+    const confirmed = await askVerifyConfirmation({
+        title: approve
+            ? 'Да ли заиста желите да верификујете извештај?'
+            : 'Да ли заиста желите да повучете верификацију?',
+        icon: approve ? 'bi-check-circle-fill' : 'bi-arrow-counterclockwise',
+        iconColor: approve ? 'text-success' : 'text-warning',
+    });
+    if (!confirmed) return;
 
     secureFetch(`/api/admin/timesheet/report/${reportId}/approve`, {
         method: 'POST',
@@ -596,15 +803,14 @@ function toggleApproval(reportId, approve) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert('Грешка: ' + data.message);
-        }
+        showVerifyResult({
+            success: data.success,
+            message: data.success ? data.message : ('Грешка: ' + data.message),
+            onClose: data.success ? () => location.reload() : null,
+        });
     })
     .catch(error => {
-        alert('Грешка при обради: ' + error);
+        showVerifyResult({ success: false, message: 'Грешка при обради: ' + error });
     });
 }
 
@@ -613,6 +819,62 @@ function exportReport(reportId) {
     // Open export URL in new window to trigger download
     window.location.href = `/api/admin/timesheet/export/${reportId}`;
 }
+
+// Return a report to the employee for re-entry. For SUBMITTED reports
+// uses the reject path (which requires a note); for any other state it
+// uses force-edit so the report goes back to DRAFT + 24h window.
+function returnReportToEmployee(reportId, employeeName, status) {
+    const modalEl = document.getElementById('returnReportModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    document.getElementById('returnReportEmployeeName').textContent = employeeName;
+    document.getElementById('returnReportId').value = reportId;
+    document.getElementById('returnReportStatus').value = status || '';
+    document.getElementById('returnReportNote').value = '';
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('returnReportConfirmBtn');
+    if (!confirmBtn) return;
+    confirmBtn.addEventListener('click', () => {
+        const reportId = document.getElementById('returnReportId').value;
+        const status = document.getElementById('returnReportStatus').value;
+        const note = document.getElementById('returnReportNote').value.trim();
+
+        const isSubmitted = status === 'SUBMITTED';
+        if (isSubmitted && !note) {
+            alert('За поднет извештај разлог враћања је обавезан.');
+            return;
+        }
+
+        const url = isSubmitted
+            ? `/api/timesheet/${reportId}/reject`
+            : `/api/timesheet/${reportId}/force-edit`;
+        const body = isSubmitted ? JSON.stringify({ note: note }) : '{}';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: body,
+        })
+        .then(r => r.json())
+        .then(data => {
+            bootstrap.Modal.getInstance(document.getElementById('returnReportModal')).hide();
+            showVerifyResult({
+                success: data.success,
+                message: data.success ? data.message : ('Грешка: ' + data.message),
+                onClose: data.success ? () => location.reload() : null,
+            });
+        })
+        .catch(err => showVerifyResult({
+            success: false,
+            message: 'Грешка при комуникацији: ' + err,
+        }));
+    });
+});
 
 // Delete report
 function deleteReport(reportId, employeeName, period) {

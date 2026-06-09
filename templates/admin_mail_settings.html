@@ -1,123 +1,195 @@
 {% extends "base.html" %}
-{% block title %}Подешавања поште — Природњачки музеј{% endblock %}
+{% block title %}Администрација поште — Природњачки музеј{% endblock %}
 
 {% block content %}
-<div class="container py-4" x-data="mailSettings()" x-init="load()">
-    <div class="d-flex align-items-center mb-4">
-        <a href="{{ url_for('mail_client_page') }}" class="btn btn-outline-secondary btn-sm me-3">
-            <i class="bi bi-arrow-left"></i>
+<div class="container py-4" x-data="adminMailSettings()" x-init="loadState()">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm me-3">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="mb-0"><i class="bi bi-envelope-gear me-2"></i>Администрација поште</h4>
+                <div class="text-muted small">Подешавања се чувају по корисничком налогу, а политика host-ова важи глобално.</div>
+            </div>
+        </div>
+        <a href="{{ url_for('mail.mail_client_page') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-envelope me-1"></i>Отвори mail клијент
         </a>
-        <h4 class="mb-0"><i class="bi bi-gear me-2"></i>Подешавања електронске поште</h4>
     </div>
 
     <div class="row g-4">
-        <!-- IMAP Settings -->
-        <div class="col-md-6">
+        <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
-                    <i class="bi bi-download me-2"></i>IMAP сервер (пријем поште)
+                    <i class="bi bi-people me-2"></i>Кориснички налози
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Сервер</label>
-                        <input type="text" class="form-control" x-model="settings.imap_server"
-                               placeholder="imap.example.com">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Порт</label>
-                        <input type="number" class="form-control" x-model="settings.imap_port"
-                               placeholder="993">
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" x-model="settings.imap_ssl" id="imapSsl">
-                        <label class="form-check-label" for="imapSsl">Користи SSL</label>
-                    </div>
-                    <button class="btn btn-outline-primary btn-sm" @click="testConnection('imap')" :disabled="testingImap">
-                        <span x-show="!testingImap"><i class="bi bi-plug me-1"></i>Тестирај IMAP</span>
-                        <span x-show="testingImap"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
-                    </button>
-                    <div class="mt-2" x-show="imapResult">
-                        <div class="alert alert-sm py-1 px-2 mb-0"
-                             :class="imapSuccess ? 'alert-success' : 'alert-danger'"
-                             x-text="imapResult"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <label class="form-label">Изаберите корисника</label>
+                    <select class="form-select mb-3" x-model="selectedEmail" @change="loadState(selectedEmail)">
+                        <option value="">-- Изаберите корисника --</option>
+                        <template x-for="user in users" :key="user.email">
+                            <option :value="user.email" x-text="user.full_name + ' (' + user.email + ')'"></option>
+                        </template>
+                    </select>
 
-        <!-- SMTP Settings -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-upload me-2"></i>SMTP сервер (слање поште)
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Сервер</label>
-                        <input type="text" class="form-control" x-model="settings.smtp_server"
-                               placeholder="smtp.example.com">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Порт</label>
-                        <input type="number" class="form-control" x-model="settings.smtp_port"
-                               placeholder="587">
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" x-model="settings.smtp_starttls" id="smtpTls">
-                        <label class="form-check-label" for="smtpTls">Користи STARTTLS</label>
-                    </div>
-                    <button class="btn btn-outline-primary btn-sm" @click="testConnection('smtp')" :disabled="testingSmtp">
-                        <span x-show="!testingSmtp"><i class="bi bi-plug me-1"></i>Тестирај SMTP</span>
-                        <span x-show="testingSmtp"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
-                    </button>
-                    <div class="mt-2" x-show="smtpResult">
-                        <div class="alert alert-sm py-1 px-2 mb-0"
-                             :class="smtpSuccess ? 'alert-success' : 'alert-danger'"
-                             x-text="smtpResult"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Account Settings -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <i class="bi bi-person me-2"></i>Налог
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Е-пошта адреса</label>
-                        <input type="email" class="form-control" x-model="settings.email_address"
-                               placeholder="korisnik@nhmbeo.rs">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Лозинка</label>
-                        <div class="input-group">
-                            <input :type="showPw ? 'text' : 'password'" class="form-control"
-                                   x-model="password" placeholder="Унесите лозинку">
-                            <button class="btn btn-outline-secondary" type="button" @click="showPw = !showPw">
-                                <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'"></i>
-                            </button>
+                    <template x-if="selectedUser">
+                        <div class="border rounded p-3 bg-light-subtle">
+                            <div class="fw-semibold" x-text="selectedUser.full_name"></div>
+                            <div class="small text-muted" x-text="selectedUser.email"></div>
+                            <div class="small text-muted" x-text="selectedUser.department || ''"></div>
+                            <div class="mt-2">
+                                <span class="badge" :class="selectedUser.mail_configured ? 'bg-success' : 'bg-secondary'"
+                                      x-text="selectedUser.mail_configured ? 'Mail подешен' : 'Нема подешавања'"></span>
+                            </div>
                         </div>
-                        <div class="form-text" x-show="hasExistingPassword && !password">
-                            <i class="bi bi-lock-fill me-1"></i>Лозинка је сачувана (оставите празно да бисте задржали постојећу)
-                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-shield-lock me-2"></i>Глобална политика host-ова
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">White list</label>
+                        <textarea class="form-control" rows="6" x-model="allowedHostsText"
+                                  placeholder="imap.nhmbeo.rs&#10;smtp.nhmbeo.rs"></textarea>
+                        <div class="form-text">Ако листа није празна, mail сервер мора бити на овој листи.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Banned list</label>
+                        <textarea class="form-control" rows="5" x-model="bannedHostsText"
+                                  placeholder="old-mail.example.com&#10;blocked.example.net"></textarea>
+                        <div class="form-text">Host на banned листи је увек блокиран, чак и ако је и на white листи.</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Save -->
-        <div class="col-12">
-            <button class="btn btn-primary" @click="save()" :disabled="saving">
-                <span x-show="!saving"><i class="bi bi-check-lg me-1"></i>Сачувај подешавања</span>
-                <span x-show="saving"><span class="spinner-border spinner-border-sm me-1"></span>Чувам...</span>
-            </button>
-            <div class="mt-2" x-show="saveResult">
-                <div class="alert py-1 px-2 d-inline-block"
-                     :class="saveSuccess ? 'alert-success' : 'alert-danger'"
-                     x-text="saveResult"></div>
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-person-vcard me-2"></i>Подешавања изабраног налога
+                </div>
+                <div class="card-body">
+                    <template x-if="!selectedEmail">
+                        <div class="text-muted">Изаберите корисника са леве стране.</div>
+                    </template>
+
+                    <template x-if="selectedEmail">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <i class="bi bi-download me-2"></i>IMAP сервер
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Сервер</label>
+                                            <input type="text" class="form-control" x-model="settings.imap_server"
+                                                   placeholder="imap.nhmbeo.rs">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Порт</label>
+                                            <input type="number" class="form-control" x-model="settings.imap_port"
+                                                   placeholder="993">
+                                        </div>
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" x-model="settings.imap_ssl" id="imapSsl">
+                                            <label class="form-check-label" for="imapSsl">Користи SSL</label>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-sm" @click="testConnection('imap')" :disabled="testingImap">
+                                            <span x-show="!testingImap"><i class="bi bi-plug me-1"></i>Тестирај IMAP</span>
+                                            <span x-show="testingImap"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
+                                        </button>
+                                        <div class="mt-2" x-show="imapResult">
+                                            <div class="alert alert-sm py-1 px-2 mb-0"
+                                                 :class="imapSuccess ? 'alert-success' : 'alert-danger'"
+                                                 x-text="imapResult"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <i class="bi bi-upload me-2"></i>SMTP сервер
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Сервер</label>
+                                            <input type="text" class="form-control" x-model="settings.smtp_server"
+                                                   placeholder="smtp.nhmbeo.rs">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Порт</label>
+                                            <input type="number" class="form-control" x-model="settings.smtp_port"
+                                                   placeholder="587">
+                                        </div>
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" x-model="settings.smtp_starttls" id="smtpTls">
+                                            <label class="form-check-label" for="smtpTls">Користи STARTTLS</label>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-sm" @click="testConnection('smtp')" :disabled="testingSmtp">
+                                            <span x-show="!testingSmtp"><i class="bi bi-plug me-1"></i>Тестирај SMTP</span>
+                                            <span x-show="testingSmtp"><span class="spinner-border spinner-border-sm me-1"></span>Тестирам...</span>
+                                        </button>
+                                        <div class="mt-2" x-show="smtpResult">
+                                            <div class="alert alert-sm py-1 px-2 mb-0"
+                                                 :class="smtpSuccess ? 'alert-success' : 'alert-danger'"
+                                                 x-text="smtpResult"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="bi bi-person me-2"></i>Налог за пошту
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Е-пошта адреса</label>
+                                            <input type="email" class="form-control" x-model="settings.email_address"
+                                                   placeholder="korisnik@nhmbeo.rs">
+                                        </div>
+                                        <div class="mb-0">
+                                            <label class="form-label">Лозинка</label>
+                                            <div class="input-group">
+                                                <input :type="showPw ? 'text' : 'password'" class="form-control"
+                                                       x-model="password" placeholder="Унесите лозинку">
+                                                <button class="btn btn-outline-secondary" type="button" @click="showPw = !showPw">
+                                                    <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text" x-show="hasExistingPassword && !password">
+                                                Лозинка је већ сачувана за овај налог. Оставите празно да бисте задржали постојећу.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div>
+                                    <button class="btn btn-primary" @click="save()" :disabled="saving">
+                                        <span x-show="!saving"><i class="bi bi-check-lg me-1"></i>Сачувај подешавања</span>
+                                        <span x-show="saving"><span class="spinner-border spinner-border-sm me-1"></span>Чувам...</span>
+                                    </button>
+                                    <div class="mt-2" x-show="saveResult">
+                                        <div class="alert py-1 px-2 d-inline-block mb-0"
+                                             :class="saveSuccess ? 'alert-success' : 'alert-danger'"
+                                             x-text="saveResult"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
     </div>
@@ -126,8 +198,11 @@
 
 {% block scripts %}
 <script>
-function mailSettings() {
+function adminMailSettings() {
     return {
+        users: [],
+        selectedEmail: '',
+        selectedUser: null,
         settings: {
             imap_server: '',
             imap_port: 993,
@@ -140,6 +215,8 @@ function mailSettings() {
         password: '',
         showPw: false,
         hasExistingPassword: false,
+        allowedHostsText: '',
+        bannedHostsText: '',
         saving: false,
         saveResult: '',
         saveSuccess: false,
@@ -150,47 +227,105 @@ function mailSettings() {
         smtpResult: '',
         smtpSuccess: false,
 
-        async load() {
+        resetUserSettings() {
+            this.settings = {
+                imap_server: '',
+                imap_port: 993,
+                imap_ssl: true,
+                smtp_server: '',
+                smtp_port: 587,
+                smtp_starttls: true,
+                email_address: '',
+            };
+            this.password = '';
+            this.hasExistingPassword = false;
+            this.imapResult = '';
+            this.smtpResult = '';
+        },
+
+        async loadState(email = null) {
+            const selected = email ?? this.selectedEmail;
+            const url = selected
+                ? `/api/admin/mail-settings/state?email=${encodeURIComponent(selected)}`
+                : '/api/admin/mail-settings/state';
             try {
-                const r = await fetch('/api/mail/settings');
-                const d = await r.json();
-                if (d.success && d.settings) {
-                    Object.assign(this.settings, d.settings);
+                const response = await fetch(url);
+                const data = await response.json();
+                if (!data.success) return;
+
+                this.users = data.users || [];
+                this.allowedHostsText = Array.isArray(data.allowed_hosts) ? data.allowed_hosts.join('\n') : '';
+                this.bannedHostsText = Array.isArray(data.banned_hosts) ? data.banned_hosts.join('\n') : '';
+
+                this.selectedEmail = data.selected_email || selected || '';
+                this.selectedUser = this.users.find(user => user.email === this.selectedEmail) || null;
+
+                this.resetUserSettings();
+                if (data.settings) {
+                    Object.assign(this.settings, data.settings);
                     this.hasExistingPassword = true;
                 }
-            } catch (e) { /* first time */ }
+            } catch (error) {
+                console.error('Mail admin state load failed:', error);
+            }
         },
 
         async save() {
+            if (!this.selectedEmail) {
+                this.saveResult = 'Изаберите корисника.';
+                this.saveSuccess = false;
+                return;
+            }
+
             this.saving = true;
             this.saveResult = '';
             try {
-                const payload = { ...this.settings };
+                const payload = {
+                    target_email: this.selectedEmail,
+                    ...this.settings,
+                    allowed_hosts: this.allowedHostsText,
+                    banned_hosts: this.bannedHostsText,
+                };
                 if (this.password) payload.password = this.password;
-                const r = await secureFetch('/api/mail/settings', {
+
+                const response = await secureFetch('/api/admin/mail-settings', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                const d = await r.json();
-                this.saveResult = d.message;
-                this.saveSuccess = d.success;
-                if (d.success) this.hasExistingPassword = true;
-            } catch (e) {
-                this.saveResult = 'Грешка при чувању.';
+                const data = await this.readJsonResponse(response);
+                this.saveResult = data.message || '';
+                this.saveSuccess = !!data.success;
+                if (data.success) {
+                    this.hasExistingPassword = true;
+                    await this.loadState(this.selectedEmail);
+                }
+            } catch (error) {
+                this.saveResult = error.message || 'Грешка при чувању.';
                 this.saveSuccess = false;
             }
             this.saving = false;
         },
 
         async testConnection(type) {
-            if (type === 'imap') { this.testingImap = true; this.imapResult = ''; }
-            else { this.testingSmtp = true; this.smtpResult = ''; }
+            if (!this.selectedEmail) return;
+
+            if (type === 'imap') {
+                this.testingImap = true;
+                this.imapResult = '';
+            } else {
+                this.testingSmtp = true;
+                this.smtpResult = '';
+            }
+
             try {
                 const payload = {
+                    target_email: this.selectedEmail,
                     type,
                     email_address: this.settings.email_address,
                     password: this.password || '',
+                    allowed_hosts: this.allowedHostsText,
+                    banned_hosts: this.bannedHostsText,
                     imap_server: this.settings.imap_server,
                     imap_port: this.settings.imap_port,
                     imap_ssl: this.settings.imap_ssl,
@@ -198,21 +333,49 @@ function mailSettings() {
                     smtp_port: this.settings.smtp_port,
                     smtp_starttls: this.settings.smtp_starttls,
                 };
-                const r = await secureFetch('/api/mail/test-connection', {
+
+                const response = await secureFetch('/api/admin/mail-settings/test', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                const d = await r.json();
-                if (type === 'imap') { this.imapResult = d.message; this.imapSuccess = d.success; }
-                else { this.smtpResult = d.message; this.smtpSuccess = d.success; }
-            } catch (e) {
-                const msg = 'Грешка при тестирању.';
-                if (type === 'imap') { this.imapResult = msg; this.imapSuccess = false; }
-                else { this.smtpResult = msg; this.smtpSuccess = false; }
+                const data = await this.readJsonResponse(response);
+                if (type === 'imap') {
+                    this.imapResult = data.message || '';
+                    this.imapSuccess = !!data.success;
+                } else {
+                    this.smtpResult = data.message || '';
+                    this.smtpSuccess = !!data.success;
+                }
+            } catch (error) {
+                const message = error.message || 'Грешка при тестирању.';
+                if (type === 'imap') {
+                    this.imapResult = message;
+                    this.imapSuccess = false;
+                } else {
+                    this.smtpResult = message;
+                    this.smtpSuccess = false;
+                }
             }
+
             if (type === 'imap') this.testingImap = false;
             else this.testingSmtp = false;
+        },
+
+        async readJsonResponse(response) {
+            const text = await response.text();
+            let data = {};
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    throw new Error(`Сервер није вратио исправан одговор (${response.status}).`);
+                }
+            }
+            if (!response.ok && !data.message) {
+                throw new Error(`Серверска грешка (${response.status}).`);
+            }
+            return data;
         }
     }
 }

@@ -75,7 +75,7 @@
             <i class="bi bi-file-earmark-text me-2 text-success"></i>Захтеви
         </h2>
     </div>
-    <button class="btn btn-success" @click="showNewModal = true">
+    <button class="btn btn-success" data-testid="new-request" @click="showNewModal = true">
         <i class="bi bi-plus-lg me-2"></i>Нови захтев
     </button>
 </div>
@@ -131,7 +131,7 @@
                     </div>
                 </template>
                 <template x-for="req in requests" :key="req.id">
-                    <div class="request-card p-3 m-2" :class="{'selected': selectedId === req.id}" @click="selectRequest(req.id)">
+                    <div class="request-card p-3 m-2" :data-testid="'archive-request-card-' + req.id" :class="{'selected': selectedId === req.id}" @click="selectRequest(req.id)">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="mb-0" x-text="req.title"></h6>
                             <span class="status-badge badge" :class="{
@@ -289,14 +289,14 @@
                             <div class="mb-4 p-3 bg-light rounded">
                                 <h6 class="mb-3">Ваша одлука</h6>
                                 <div class="mb-3">
-                                    <textarea class="form-control" rows="2" placeholder="Коментар (опционо за одобрење, обавезно за одбијање)" x-model="approvalComment"></textarea>
+                                    <textarea class="form-control" data-testid="archive-approval-comment" rows="2" placeholder="Коментар (опционо за одобрење, обавезно за одбијање)" x-model="approvalComment"></textarea>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button class="btn btn-success" @click="approveRequest()" :disabled="processing">
+                                    <button class="btn btn-success" data-testid="archive-approve-request" @click="approveRequest()" :disabled="processing">
                                         <span x-show="processing" class="spinner-border spinner-border-sm me-2"></span>
                                         <i class="bi bi-check-lg me-2" x-show="!processing"></i>Одобри
                                     </button>
-                                    <button class="btn btn-danger" @click="rejectRequest()" :disabled="processing || !approvalComment.trim()">
+                                    <button class="btn btn-danger" data-testid="archive-reject-request" @click="rejectRequest()" :disabled="processing || !approvalComment.trim()">
                                         <i class="bi bi-x-lg me-2"></i>Одбиј
                                     </button>
                                 </div>
@@ -356,7 +356,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Подтип</label>
-                    <select class="form-select" x-model="newRequest.subtype">
+                    <select class="form-select" data-testid="archive-type-zahtev" x-model="newRequest.subtype">
                         <option value="">-- Изаберите --</option>
                         <template x-for="st in subtypes" :key="st.value">
                             <option :value="st.value" x-text="st.label"></option>
@@ -365,11 +365,11 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Наслов</label>
-                    <input type="text" class="form-control" x-model="newRequest.title">
+                    <input type="text" class="form-control" data-testid="archive-title" x-model="newRequest.title">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Опис</label>
-                    <textarea class="form-control" rows="4" x-model="newRequest.description"></textarea>
+                    <textarea class="form-control" data-testid="archive-description" rows="4" x-model="newRequest.description"></textarea>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Приоритет</label>
@@ -383,7 +383,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" @click="showNewModal = false">Откажи</button>
-                <button type="button" class="btn btn-success" @click="createRequest()" :disabled="!newRequest.title.trim() || creating">
+                <button type="button" class="btn btn-success" data-testid="archive-submit" @click="createRequest()" :disabled="!newRequest.title.trim() || creating">
                     <span x-show="creating" class="spinner-border spinner-border-sm me-2"></span>
                     Креирај
                 </button>
@@ -491,7 +491,8 @@ function archiveZahtevi() {
                     this.showNewModal = false;
                     this.newRequest = { subtype: '', title: '', description: '', priority: 'normal' };
                     await this.loadRequests();
-                    this.selectRequest(data.id);
+                    await this.selectRequest(data.id);
+                    window.history.replaceState({}, '', `/admin/archive/zahtevi?id=${data.id}`);
                 } else {
                     alert(data.message);
                 }

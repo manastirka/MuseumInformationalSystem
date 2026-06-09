@@ -3,7 +3,6 @@
 {% block title %}Пријава - Информациони систем Природњачког музеја{% endblock %}
 
 {% block content %}
-<div x-data="loginPage()" x-cloak>
 <style>
 .login-container {
     min-height: calc(100vh - 140px);
@@ -182,10 +181,6 @@
     color: var(--text-primary);
 }
 
-/* Alpine.js */
-[x-cloak] {
-    display: none !important;
-}
 </style>
 
 <div class="login-container">
@@ -203,21 +198,24 @@
 
             <!-- Body -->
             <div class="login-body">
-                <form method="POST" action="{{ url_for('login') }}" @submit="handleSubmit($event)">
+                <form method="POST" action="{{ url_for('login') }}" id="loginForm" data-testid="login-form" autocomplete="on">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                     <!-- Email Field -->
                     <div class="form-floating-custom">
                         <label for="email">Емејл адреса</label>
                         <div class="position-relative">
-                            <input type="text"
+                            <input type="email"
                                    class="form-control"
                                    id="email"
                                    name="email"
+                                   data-testid="login-email"
                                    required
-                                   autocomplete="email"
+                                   autocomplete="username"
+                                   inputmode="email"
+                                   autocapitalize="none"
+                                   spellcheck="false"
                                    placeholder="Унесите Ваш емејл"
-                                   x-model="email"
                                    autofocus>
                             <i class="bi bi-envelope form-icon"></i>
                         </div>
@@ -227,21 +225,21 @@
                     <div class="form-floating-custom">
                         <label for="password">Лозинка</label>
                         <div class="position-relative">
-                            <input :type="showPassword ? 'text' : 'password'"
+                            <input type="password"
                                    class="form-control"
                                    id="password"
                                    name="password"
+                                   data-testid="login-password"
                                    required
                                    autocomplete="current-password"
                                    placeholder="Унесите Вашу лозинку"
-                                   x-model="password"
                                    style="padding-right: 3rem;">
                             <i class="bi bi-lock form-icon"></i>
                             <button type="button"
                                     class="password-toggle"
-                                    @click="showPassword = !showPassword"
-                                    :title="showPassword ? 'Сакриј лозинку' : 'Прикажи лозинку'">
-                                <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+                                    id="passwordToggle"
+                                    title="Прикажи лозинку">
+                                <i class="bi bi-eye" id="passwordToggleIcon"></i>
                             </button>
                         </div>
                     </div>
@@ -250,12 +248,13 @@
                     <div class="d-grid mb-4">
                         <button type="submit"
                                 class="btn btn-login"
-                                :disabled="isLoading || !email || !password">
-                            <span x-show="!isLoading">
+                                id="loginSubmit"
+                                data-testid="login-submit">
+                            <span id="loginSubmitLabel">
                                 <i class="bi bi-box-arrow-in-right me-2"></i>
                                 Пријави се
                             </span>
-                            <span x-show="isLoading" class="d-flex align-items-center justify-content-center">
+                            <span id="loginSubmitLoading" class="d-none align-items-center justify-content-center">
                                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                                 Пријављивање...
                             </span>
@@ -275,31 +274,58 @@
     </div>
 </div>
 
-</div><!-- End Alpine x-data wrapper -->
-
 <script>
-// Alpine.js Login Page Component
-function loginPage() {
-    return {
-        email: '',
-        password: '',
-        showPassword: false,
-        isLoading: false,
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('passwordToggle');
+    const passwordToggleIcon = document.getElementById('passwordToggleIcon');
+    const submitButton = document.getElementById('loginSubmit');
+    const submitLabel = document.getElementById('loginSubmitLabel');
+    const submitLoading = document.getElementById('loginSubmitLoading');
 
-        init() {
-            this.$nextTick(() => {
-                document.getElementById('email').focus();
-            });
-        },
+    function updateSubmitState() {
+        const hasCredentials = Boolean(emailInput.value && passwordInput.value);
+        submitButton.disabled = !hasCredentials;
+    }
 
-        handleSubmit(event) {
-            if (!this.email || !this.password) {
-                event.preventDefault();
-                return;
-            }
-            this.isLoading = true;
+    function setSubmittingState(isSubmitting) {
+        submitButton.disabled = isSubmitting;
+        submitLabel.classList.toggle('d-none', isSubmitting);
+        submitLoading.classList.toggle('d-none', !isSubmitting);
+        submitLoading.classList.toggle('d-flex', isSubmitting);
+    }
+
+    passwordToggle.addEventListener('click', function() {
+        const showPassword = passwordInput.type === 'password';
+        passwordInput.type = showPassword ? 'text' : 'password';
+        passwordToggle.title = showPassword ? 'Сакриј лозинку' : 'Прикажи лозинку';
+        passwordToggleIcon.className = showPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+
+    emailInput.addEventListener('input', updateSubmitState);
+    passwordInput.addEventListener('input', updateSubmitState);
+    emailInput.addEventListener('change', updateSubmitState);
+    passwordInput.addEventListener('change', updateSubmitState);
+
+    form.addEventListener('submit', function(event) {
+        updateSubmitState();
+        if (!emailInput.value || !passwordInput.value) {
+            event.preventDefault();
+            return;
         }
-    };
-}
+        setSubmittingState(true);
+    });
+
+    updateSubmitState();
+    requestAnimationFrame(updateSubmitState);
+    setTimeout(updateSubmitState, 150);
+    setTimeout(updateSubmitState, 500);
+
+    if (!emailInput.value) {
+        emailInput.focus();
+    }
+});
 </script>
 {% endblock %}

@@ -105,7 +105,9 @@
                                             {{ employee.full_name.split()[0][0] }}{{ employee.full_name.split()[1][0] if employee.full_name.split()|length > 1 else '' }}
                                         </div>
                                         <div class="flex-grow-1">
-                                            <h5 class="mb-1">{{ employee.full_name }}</h5>
+                                            <h5 class="mb-1">
+                                                {% if employee.academic_title %}{{ employee.academic_title }} {% endif %}{{ employee.full_name }}
+                                            </h5>
                                             <p class="text-muted mb-1 small">
                                                 <i class="bi bi-briefcase me-1"></i>
                                                 {{ employee.position }}
@@ -276,4 +278,3 @@ function printProfiles() {
 }
 </script>
 {% endblock %}
-

@@ -12,19 +12,20 @@
       "admin@nhmbeo.rs",
       "slavko.spasic@nhmbeo.rs",
       "biljana.mitrovic@nhmbeo.rs",
-      "verica.stojanovic@nhmbeo.rs",
       "aca.lukovic@nhmbeo.rs",
       "nenad.mladenovic@nhmbeo.rs"
     ]
   },
   "employees_database": {
     "authorized_users": [
-      "admin@nhmbeo.rs"
+      "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs"
     ]
   },
   "employee_profiles": {
     "authorized_users": [
-      "admin@nhmbeo.rs"
+      "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs"
     ]
   },
   "library_database": {
@@ -35,12 +36,14 @@
   },
   "exhibits_database": {
     "authorized_users": [
-      "admin@nhmbeo.rs"
+      "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs"
     ]
   },
   "exhibitions_database": {
     "authorized_users": [
       "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs",
       "draganav@nhmbeo.rs"
     ]
   },
@@ -51,7 +54,8 @@
   },
   "cultural_heritage": {
     "authorized_users": [
-      "admin@nhmbeo.rs"
+      "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs"
     ]
   },
   "curator_collections": {
@@ -70,7 +74,8 @@
   },
   "reports_analytics": {
     "authorized_users": [
-      "admin@nhmbeo.rs"
+      "admin@nhmbeo.rs",
+      "slavko.spasic@nhmbeo.rs"
     ]
   },
   "system_logs": {

@@ -46,24 +46,6 @@
     opacity: 0.8;
 }
 
-.btn-new-request {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    padding: 0.6rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 500;
-    backdrop-filter: blur(4px);
-    transition: all 0.25s ease;
-}
-
-.btn-new-request:hover {
-    background: rgba(255,255,255,0.25);
-    border-color: rgba(255,255,255,0.5);
-    color: #fff;
-    transform: translateY(-1px);
-}
-
 /* ── Statistics ──────────────────────────────────────── */
 .stat-card {
     border: none;
@@ -404,6 +386,55 @@
 .animate-in-4 { animation-delay: 0.2s; }
 .animate-in-5 { animation-delay: 0.25s; }
 .animate-in-6 { animation-delay: 0.3s; }
+
+.financial-overview-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.financial-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.financial-overview-kpi {
+    border: 1px solid #f3f4f6;
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    background: #fafbfc;
+}
+
+.financial-overview-kpi strong {
+    display: block;
+    font-size: 1.45rem;
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+}
+
+.classification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.classification-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #fff;
+    padding: 1.25rem;
+}
+
+.classification-card h5 {
+    margin-bottom: 0.4rem;
+}
+
+.classification-card .meta-line {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
 </style>
 
 <!-- Header -->
@@ -414,11 +445,6 @@
                 <i class="bi bi-shield-check me-2"></i>Архива и верификација
             </h2>
             <p class="subtitle text-white mb-0">Управљање захтевима, финансијама и теренским активностима</p>
-        </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-            <button class="btn btn-new-request" @click="showNewRequestModal = true">
-                <i class="bi bi-plus-lg me-2"></i>Нови захтев
-            </button>
         </div>
     </div>
 </div>
@@ -491,96 +517,119 @@
     </div>
 </div>
 
-<!-- Section Cards -->
-<div class="row g-4 mb-4">
-    <!-- Zahtevi -->
-    <div class="col-md-4 animate-in animate-in-4">
-        <a href="/admin/archive/zahtevi" class="text-decoration-none">
-            <div class="section-card card-zahtevi card shadow-sm h-100">
-                <div class="card-body text-center position-relative">
-                    <template x-if="pendingByType.zahtev > 0">
-                        <span class="pending-badge" x-text="pendingByType.zahtev"></span>
-                    </template>
-                    <div class="section-icon icon-zahtevi mx-auto">
-                        <i class="bi bi-file-earmark-text"></i>
-                    </div>
-                    <h4>Захтеви</h4>
-                    <p class="section-desc">Годишњи одмор, слободан дан, боловање, службени путеви, набавке</p>
-                    <div class="approval-chain">
-                        <span class="approval-step">
-                            <i class="bi bi-person-fill"></i> Шеф одељења
-                        </span>
-                        <i class="bi bi-chevron-right approval-arrow"></i>
-                        <span class="approval-step">
-                            <i class="bi bi-person-badge-fill"></i> Директор
-                        </span>
-                    </div>
-                </div>
-            </div>
+<div class="financial-overview-card shadow-sm mb-4 animate-in animate-in-4">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-1"><i class="bi bi-graph-up-arrow me-2 text-warning"></i>Финансијски планови запослених</h5>
+            <small class="text-muted">Обједињен преглед сачуваних планова по корисницима и одељењима.</small>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('archive_signature.admin_archive_finansije') }}">
+            <i class="bi bi-cash-stack me-1"></i>Финансије
         </a>
     </div>
+    <div class="card-body">
+        <div class="financial-overview-grid mb-4">
+            <div class="financial-overview-kpi">
+                <strong x-text="financialPlans.summary.count">0</strong>
+                <span class="text-muted">Планова</span>
+            </div>
+            <div class="financial-overview-kpi">
+                <strong x-text="formatCurrency(financialPlans.summary.grandTotal)">0 РСД</strong>
+                <span class="text-muted">Укупна вредност</span>
+            </div>
+            <div class="financial-overview-kpi">
+                <strong x-text="financialPlans.summary.uniqueUsers">0</strong>
+                <span class="text-muted">Корисника</span>
+            </div>
+            <div class="financial-overview-kpi">
+                <strong x-text="formatCurrency(financialPlans.summary.year2026)">0 РСД</strong>
+                <span class="text-muted">2026</span>
+            </div>
+            <div class="financial-overview-kpi">
+                <strong x-text="formatCurrency(financialPlans.summary.year2027)">0 РСД</strong>
+                <span class="text-muted">2027</span>
+            </div>
+            <div class="financial-overview-kpi">
+                <strong x-text="formatCurrency(financialPlans.summary.year2028)">0 РСД</strong>
+                <span class="text-muted">2028</span>
+            </div>
+        </div>
 
-    <!-- Finansije -->
-    <div class="col-md-4 animate-in animate-in-5">
-        <a href="/admin/archive/finansije" class="text-decoration-none">
-            <div class="section-card card-finansije card shadow-sm h-100">
-                <div class="card-body text-center position-relative">
-                    <template x-if="pendingByType.finansije > 0">
-                        <span class="pending-badge" x-text="pendingByType.finansije"></span>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Корисник</th>
+                        <th>Одељење</th>
+                        <th>Датум</th>
+                        <th>Укупно</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-if="financialPlans.loading">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                                Учитавање планова...
+                            </td>
+                        </tr>
                     </template>
-                    <div class="section-icon icon-finansije mx-auto">
-                        <i class="bi bi-cash-stack"></i>
-                    </div>
-                    <h4>Финансије</h4>
-                    <p class="section-desc">Фактуре, исплате, буџет, финансијски планови, рефундације</p>
-                    <div class="approval-chain">
-                        <span class="approval-step">
-                            <i class="bi bi-calculator-fill"></i> Рачуноводство
-                        </span>
-                        <i class="bi bi-chevron-right approval-arrow"></i>
-                        <span class="approval-step">
-                            <i class="bi bi-person-fill"></i> Шеф одељења
-                        </span>
-                        <i class="bi bi-chevron-right approval-arrow"></i>
-                        <span class="approval-step">
-                            <i class="bi bi-person-badge-fill"></i> Директор
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </a>
+                    <template x-if="!financialPlans.loading && financialPlans.items.length === 0">
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Нема сачуваних финансијских планова.</td>
+                        </tr>
+                    </template>
+                    <template x-for="plan in financialPlans.items.slice(0, 8)" :key="plan.id">
+                        <tr>
+                            <td>
+                                <div class="fw-semibold" x-text="plan.kustos || plan.user_email || '-'"></div>
+                                <small class="text-muted" x-text="plan.user_email || ''"></small>
+                            </td>
+                            <td x-text="plan.odeljenje || '-'"></td>
+                            <td x-text="plan.datum || '-'"></td>
+                            <td class="fw-semibold" x-text="formatCurrency(plan.ukupno)"></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" :href="`/finansije/plan?plan_id=${plan.id}`">
+                                    <i class="bi bi-eye me-1"></i>Отвори
+                                </a>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
     </div>
+</div>
 
-    <!-- Terenska aktivnost -->
-    <div class="col-md-4 animate-in animate-in-6">
-        <a href="/admin/archive/terenska" class="text-decoration-none">
-            <div class="section-card card-terenska card shadow-sm h-100">
-                <div class="card-body text-center position-relative">
-                    <template x-if="pendingByType.terenska_aktivnost > 0">
-                        <span class="pending-badge" x-text="pendingByType.terenska_aktivnost"></span>
+<!-- Classification -->
+<div class="classification-grid mb-4">
+    <template x-for="item in classifiedDocs" :key="item.key">
+        <a class="text-decoration-none" :href="item.href">
+            <div class="classification-card shadow-sm h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <h5 x-text="item.label"></h5>
+                        <div class="meta-line" x-text="item.description"></div>
+                    </div>
+                    <i class="bi fs-3" :class="item.icon" :style="`color:${item.color}`"></i>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Укупно докумената</span>
+                    <strong x-text="item.total"></strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted">Чека одобрење</span>
+                    <strong x-text="item.pending"></strong>
+                </div>
+                <div class="approval-chain justify-content-start">
+                    <template x-for="step in item.chain" :key="step">
+                        <span class="approval-step" x-text="step"></span>
                     </template>
-                    <div class="section-icon icon-terenska mx-auto">
-                        <i class="bi bi-geo-alt-fill"></i>
-                    </div>
-                    <h4>Теренска активност</h4>
-                    <p class="section-desc">Путни налози, дневнице, гориво, теренски извештаји</p>
-                    <div class="approval-chain">
-                        <span class="approval-step">
-                            <i class="bi bi-person-fill"></i> Шеф одељења
-                        </span>
-                        <i class="bi bi-chevron-right approval-arrow"></i>
-                        <span class="approval-step">
-                            <i class="bi bi-person-badge-fill"></i> Директор
-                        </span>
-                        <i class="bi bi-chevron-right approval-arrow"></i>
-                        <span class="approval-step">
-                            <i class="bi bi-calculator-fill"></i> Рачуноводство
-                        </span>
-                    </div>
                 </div>
             </div>
         </a>
-    </div>
+    </template>
 </div>
 
 <!-- Pending Approvals & Recent Activity -->
@@ -686,97 +735,6 @@
     </div>
 </div>
 
-<!-- New Request Modal -->
-<div class="modal fade" :class="{'show d-block': showNewRequestModal}" tabindex="-1" x-show="showNewRequestModal" @click.self="showNewRequestModal = false">
-    <div class="modal-backdrop-custom position-fixed top-0 start-0 w-100 h-100" style="z-index: -1;"></div>
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-semibold">
-                    <i class="bi bi-plus-circle me-2 text-primary"></i>Нови захтев
-                </h5>
-                <button type="button" class="btn-close" @click="showNewRequestModal = false"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Request Type Selection -->
-                <div class="mb-4">
-                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Тип захтева</label>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="type-select-card card h-100" :class="{'selected-zahtev': newRequest.request_type === 'zahtev'}" @click="newRequest.request_type = 'zahtev'; newRequest.subtype = ''">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-file-earmark-text text-success"></i>
-                                    <h6 class="mb-0 fw-semibold">Захтеви</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="type-select-card card h-100" :class="{'selected-finansije': newRequest.request_type === 'finansije'}" @click="newRequest.request_type = 'finansije'; newRequest.subtype = ''">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-cash-stack text-warning"></i>
-                                    <h6 class="mb-0 fw-semibold">Финансије</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="type-select-card card h-100" :class="{'selected-terenska': newRequest.request_type === 'terenska_aktivnost'}" @click="newRequest.request_type = 'terenska_aktivnost'; newRequest.subtype = ''">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-geo-alt" style="color: #8b5cf6;"></i>
-                                    <h6 class="mb-0 fw-semibold">Теренска активност</h6>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Subtype Selection -->
-                <template x-if="newRequest.request_type">
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Подтип</label>
-                        <select class="form-select" x-model="newRequest.subtype" style="border-radius: 10px;">
-                            <option value="">-- Изаберите подтип --</option>
-                            <template x-for="st in subtypes[newRequest.request_type]" :key="st.value">
-                                <option :value="st.value" x-text="st.label"></option>
-                            </template>
-                        </select>
-                    </div>
-                </template>
-
-                <!-- Title -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Наслов</label>
-                    <input type="text" class="form-control" x-model="newRequest.title" placeholder="Унесите наслов захтева" style="border-radius: 10px;">
-                </div>
-
-                <!-- Description -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Опис</label>
-                    <textarea class="form-control" rows="4" x-model="newRequest.description" placeholder="Детаљан опис захтева..." style="border-radius: 10px;"></textarea>
-                </div>
-
-                <!-- Priority -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Приоритет</label>
-                    <select class="form-select" x-model="newRequest.priority" style="border-radius: 10px;">
-                        <option value="low">Низак</option>
-                        <option value="normal" selected>Нормалан</option>
-                        <option value="high">Висок</option>
-                        <option value="urgent">Хитан</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" style="border-radius: 10px;" @click="showNewRequestModal = false">Откажи</button>
-                <button type="button" class="btn btn-primary" style="border-radius: 10px; padding: 0.5rem 1.5rem;" @click="createRequest()" :disabled="!canCreateRequest || creating">
-                    <span x-show="creating" class="spinner-border spinner-border-sm me-2"></span>
-                    <i class="bi bi-send me-1" x-show="!creating"></i>
-                    Креирај захтев
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 </div>
 
 <script>
@@ -797,25 +755,23 @@ function archiveDashboard() {
             finansije: 0,
             terenska_aktivnost: 0
         },
-        showNewRequestModal: false,
-        creating: false,
-        subtypes: {{ subtypes | tojson }},
-        newRequest: {
-            request_type: '',
-            subtype: '',
-            title: '',
-            description: '',
-            priority: 'normal'
+        financialPlans: {
+            loading: false,
+            items: [],
+            summary: {
+                count: 0,
+                grandTotal: 0,
+                uniqueUsers: 0,
+                year2026: 0,
+                year2027: 0,
+                year2028: 0
+            }
         },
-
-        get canCreateRequest() {
-            return this.newRequest.request_type && this.newRequest.title.trim();
-        },
-
         async init() {
             await Promise.all([
                 this.loadStatistics(),
-                this.loadPendingApprovals()
+                this.loadPendingApprovals(),
+                this.loadFinancialPlans()
             ]);
         },
 
@@ -849,40 +805,30 @@ function archiveDashboard() {
             }
         },
 
-        async createRequest() {
-            if (!this.canCreateRequest) return;
-
-            const requestType = this.newRequest.request_type;
-            this.creating = true;
+        async loadFinancialPlans() {
+            this.financialPlans.loading = true;
             try {
-                const response = await secureFetch('/api/archive/requests', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    },
-                    body: JSON.stringify(this.newRequest)
-                });
+                const response = await fetch('/api/finansijski-plan/list');
                 const data = await response.json();
-                if (data.success) {
-                    this.showNewRequestModal = false;
-                    this.newRequest = {
-                        request_type: '',
-                        subtype: '',
-                        title: '',
-                        description: '',
-                        priority: 'normal'
-                    };
-                    const section = requestType === 'terenska_aktivnost' ? 'terenska' : (requestType || 'zahtevi');
-                    window.location.href = `/admin/archive/${section}?id=${data.id}`;
-                } else {
-                    alert(data.message || 'Грешка при креирању захтева');
-                }
+                const plans = data.success ? (data.plans || []) : [];
+                const uniqueUsers = new Set(
+                    plans.map(plan => (plan.user_email || '').trim()).filter(Boolean)
+                );
+
+                this.financialPlans.items = plans;
+                this.financialPlans.summary = {
+                    count: plans.length,
+                    grandTotal: plans.reduce((sum, plan) => sum + (Number(plan.ukupno) || 0), 0),
+                    uniqueUsers: uniqueUsers.size,
+                    year2026: plans.reduce((sum, plan) => sum + (Number(plan.total_2026) || 0), 0),
+                    year2027: plans.reduce((sum, plan) => sum + (Number(plan.total_2027) || 0), 0),
+                    year2028: plans.reduce((sum, plan) => sum + (Number(plan.total_2028) || 0), 0)
+                };
             } catch (error) {
-                console.error('Error creating request:', error);
-                alert('Грешка при креирању захтева');
+                console.error('Error loading financial plans:', error);
+                this.financialPlans.items = [];
             } finally {
-                this.creating = false;
+                this.financialPlans.loading = false;
             }
         },
 
@@ -912,6 +858,48 @@ function archiveDashboard() {
                 'archived': 'је архивирао/ла'
             };
             return texts[action] || action;
+        },
+
+        formatCurrency(value) {
+            return `${(Number(value) || 0).toLocaleString('sr-RS')} РСД`;
+        },
+
+        get classifiedDocs() {
+            return [
+                {
+                    key: 'zahtev',
+                    label: 'Захтеви',
+                    description: 'Годишњи одмор, слободан дан, разно и сродни документи.',
+                    total: this.stats.by_type.zahtev || 0,
+                    pending: this.pendingByType.zahtev || 0,
+                    href: '/admin/archive/zahtevi',
+                    icon: 'bi-file-earmark-text',
+                    color: '#059669',
+                    chain: ['Шеф одељења', 'Директор']
+                },
+                {
+                    key: 'finansije',
+                    label: 'Финансије',
+                    description: 'Финансијски планови, фактуре, исплате и буџетски документи.',
+                    total: this.stats.by_type.finansije || 0,
+                    pending: this.pendingByType.finansije || 0,
+                    href: '/admin/archive/finansije',
+                    icon: 'bi-cash-stack',
+                    color: '#d97706',
+                    chain: ['Рачуноводство', 'Шеф одељења', 'Директор']
+                },
+                {
+                    key: 'terenska_aktivnost',
+                    label: 'Теренска активност',
+                    description: 'Путни налози, трошкови, гориво и теренски извештаји.',
+                    total: this.stats.by_type.terenska_aktivnost || 0,
+                    pending: this.pendingByType.terenska_aktivnost || 0,
+                    href: '/admin/archive/terenska',
+                    icon: 'bi-geo-alt-fill',
+                    color: '#7c3aed',
+                    chain: ['Шеф одељења', 'Директор', 'Рачуноводство']
+                }
+            ];
         }
     };
 }

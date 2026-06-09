@@ -44,25 +44,11 @@ chown -R $ACTUAL_USER:$ACTUAL_USER logs
 echo ""
 echo "Step 4: Setting up Nginx configuration..."
 echo "-----------------------------------------"
-# Copy nginx config to sites-available
-mkdir -p /etc/nginx/sites-available
-mkdir -p /etc/nginx/sites-enabled
-
-cp nginx_museum.conf /etc/nginx/sites-available/museum
-
-# Create symlink to sites-enabled
-if [ ! -L /etc/nginx/sites-enabled/museum ]; then
-    ln -s /etc/nginx/sites-available/museum /etc/nginx/sites-enabled/museum
-    echo -e "${GREEN}✓ Nginx configuration linked${NC}"
-else
-    echo -e "${YELLOW}⚠ Nginx configuration already linked${NC}"
-fi
-
-# Update nginx.conf to include sites-enabled if not already done
-if ! grep -q "include /etc/nginx/sites-enabled" /etc/nginx/nginx.conf; then
-    sed -i '/http {/a \    include /etc/nginx/sites-enabled/*;' /etc/nginx/nginx.conf
-    echo -e "${GREEN}✓ Updated nginx.conf to include sites-enabled${NC}"
-fi
+mkdir -p /etc/nginx/conf.d/backup
+mv /etc/nginx/conf.d/museum.conf /etc/nginx/conf.d/backup/ 2>/dev/null || true
+mv /etc/nginx/conf.d/museum-system.conf /etc/nginx/conf.d/backup/ 2>/dev/null || true
+cp nginx_museum.conf /etc/nginx/conf.d/museum-system.conf
+echo -e "${GREEN}✓ Installed /etc/nginx/conf.d/museum-system.conf${NC}"
 
 # Test nginx configuration
 echo ""
@@ -91,8 +77,9 @@ echo "Step 7: Configuring firewall..."
 echo "-------------------------------"
 if systemctl is-active --quiet firewalld; then
     firewall-cmd --permanent --add-service=http
+    firewall-cmd --permanent --add-service=https
     firewall-cmd --reload
-    echo -e "${GREEN}✓ Firewall configured to allow HTTP${NC}"
+    echo -e "${GREEN}✓ Firewall configured to allow HTTP/HTTPS${NC}"
 else
     echo -e "${YELLOW}⚠ Firewalld not running, skipping firewall configuration${NC}"
 fi
@@ -121,8 +108,7 @@ systemctl status nginx --no-pager -l || true
 
 echo ""
 echo "Access your application at:"
-echo "  Local:   http://localhost"
-echo "  LAN:     http://192.168.144.48"
+echo "  LAN:     https://192.168.144.48"
 echo ""
 echo "Useful commands:"
 echo "  Check service status:  sudo systemctl status museum-system"

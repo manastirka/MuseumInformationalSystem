@@ -229,20 +229,49 @@
 <script>
 const userFullName = "{{ user_full_name|e }}";
 const memorandumUrl = "{{ url_for('static', filename='images/memorandum.png') }}";
+const DAY_OFF_DRAFT_NAMESPACE = 'operativni-zahtev-slobodan-dan';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('datumMolbe').value = today;
+    restoreDraft();
 
     // Auto-update preview on input change
     document.querySelectorAll('#dayOffForm input, #dayOffForm select').forEach(function(el) {
         el.addEventListener('change', updatePreview);
+        el.addEventListener('change', persistDraft);
+        el.addEventListener('input', persistDraft);
     });
 
     // Initial preview update
     updatePreview();
 });
+
+function collectDraftData() {
+    return {
+        datumSlobodnog: document.getElementById('datumSlobodnog').value,
+        razlog: document.getElementById('razlog').value,
+        sefOdeljenja: document.getElementById('sefOdeljenja').value,
+        datumMolbe: document.getElementById('datumMolbe').value,
+    };
+}
+
+function persistDraft() {
+    saveUserScopedDraft(DAY_OFF_DRAFT_NAMESPACE, collectDraftData());
+}
+
+function restoreDraft() {
+    const draft = loadUserScopedDraft(DAY_OFF_DRAFT_NAMESPACE);
+    if (!draft || typeof draft !== 'object') {
+        return;
+    }
+
+    document.getElementById('datumSlobodnog').value = draft.datumSlobodnog || '';
+    document.getElementById('razlog').value = draft.razlog || '';
+    document.getElementById('sefOdeljenja').value = draft.sefOdeljenja || '';
+    document.getElementById('datumMolbe').value = draft.datumMolbe || document.getElementById('datumMolbe').value;
+}
 
 function updatePreview() {
     const datumSlobodnog = document.getElementById('datumSlobodnog').value;
@@ -339,8 +368,8 @@ function printDocument() {
         }
         .memorandum-date-overlay {
             position: absolute;
-            bottom: 13px;
-            right: 68px;
+            bottom: 16px;
+            right: 88px;
             font-size: 11pt;
             font-family: 'Times New Roman', Times, serif;
             color: #000;
@@ -494,6 +523,7 @@ function saveRequest() {
         if (data.success) {
             btn.className = 'btn btn-success btn-sm';
             btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Сачувано (#' + data.id + ')';
+            persistDraft();
         } else {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';

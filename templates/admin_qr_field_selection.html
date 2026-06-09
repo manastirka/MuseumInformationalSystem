@@ -27,7 +27,7 @@
             </div>
 
             <!-- Field Selection Form -->
-            <form method="POST" action="{{ url_for('admin_qr_labels_with_fields', collection_type=collection_type) }}">
+            <form method="POST" action="{{ url_for('qr.admin_qr_labels_with_fields', collection_type=collection_type) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-primary text-white">

@@ -25,6 +25,14 @@
         width: 100%;
         height: 100%;
     }
+    #map-row {
+        flex-wrap: nowrap;
+        align-items: flex-start;
+    }
+    #map-wrapper {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
     .map-controls {
         background: white;
         border-radius: 8px;
@@ -33,6 +41,7 @@
         min-width: 160px;
         max-height: calc(100vh - 240px);
         overflow-y: auto;
+        display: block;
     }
     .map-controls label {
         font-size: 0.85rem;
@@ -78,6 +87,9 @@
         transition: none;
         min-width: 180px;
         max-width: 480px;
+        flex: 0 0 auto;
+        display: block;
+        z-index: 20;
     }
     .sidebar-resize-handle {
         position: absolute;
@@ -159,6 +171,32 @@
         pointer-events: none;
     }
     .fullscreen .left-legends > div { pointer-events: auto; }
+    @media (max-width: 991.98px) {
+        #map-row {
+            flex-wrap: wrap;
+        }
+        #map-wrapper {
+            order: 2;
+            flex: 0 0 100%;
+            width: 100%;
+        }
+        .map-left-col {
+            order: 1;
+            width: 100% !important;
+            max-width: none !important;
+        }
+        .map-right-col {
+            order: 3;
+            width: 100% !important;
+            max-width: none !important;
+        }
+        .map-controls {
+            max-height: none;
+        }
+        .sidebar-resize-handle {
+            display: none;
+        }
+    }
     .loading-spinner {
         display: none;
         position: absolute;
@@ -709,7 +747,10 @@
         flex-direction: column;
         gap: 8px;
         height: calc(100vh - 240px);
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        scrollbar-width: thin;
     }
 
     /* Shared legend styles */
@@ -869,7 +910,7 @@
     <div class="row g-2" id="map-row">
         <!-- Left column: legends -->
         <div class="col-auto map-left-col" id="map-left-col" style="width:200px;min-width:180px;">
-            <div class="left-legends">
+            <div class="left-legends" id="left-legends">
                 <div class="map-legend" id="strat-legend">
                     <div class="map-legend-title"><i class="bi bi-triangle-fill me-1" style="font-size:0.7rem;"></i>Стратиграфија (уџбеник)</div>
                     <div class="map-legend-item"><div class="map-legend-icon"><svg width="12" height="12"><polygon points="6,0 12,12 0,12" fill="#b71c1c"/></svg></div> Камбријум</div>
@@ -1143,6 +1184,24 @@
                             Палеонтологија <span class="badge bg-warning text-dark" id="paleo-count-badge" style="font-size:0.65rem;">0</span>
                         </label>
                     </div>
+                    <!-- Збирке submenu — expandable for future collections -->
+                    <div class="mb-2 mt-1">
+                        <a class="d-flex align-items-center text-decoration-none text-dark" data-bs-toggle="collapse" href="#collectionsLayerSubmenu" role="button" aria-expanded="false" aria-controls="collectionsLayerSubmenu" style="font-size:0.85rem;">
+                            <i class="bi bi-collection me-1"></i><strong>Збирке</strong>
+                            <i class="bi bi-chevron-down ms-auto" style="font-size:0.65rem;transition:transform 0.2s;"></i>
+                        </a>
+                        <div class="collapse" id="collectionsLayerSubmenu">
+                            <div class="ps-3 pt-1">
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-sanja-mammals">
+                                    <label class="form-check-label" for="toggle-sanja-mammals" style="font-size:0.8rem;">
+                                        Крупни сисари палеоген/неоген <span class="badge bg-danger" id="sanja-mammals-count-badge" style="font-size:0.6rem;">0</span>
+                                    </label>
+                                </div>
+                                <!-- Future collection layers go here -->
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="toggle-mining-operations">
                         <label class="form-check-label" for="toggle-mining-operations" style="font-size:0.85rem;">
@@ -1199,7 +1258,7 @@
                     <button class="btn btn-sm btn-outline-secondary w-100 mb-1" id="btn-fullscreen">
                         <i class="bi bi-arrows-fullscreen me-1"></i>Цео екран
                     </button>
-                    <a href="{{ url_for('admin_geological_timeline') }}" class="btn btn-sm w-100 mt-1" style="background:linear-gradient(135deg,#0d47a1,#1565c0,#0097a7,#00838f);color:#fff;border:none;font-weight:600;letter-spacing:0.3px;padding:8px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(13,71,161,0.35);transition:all .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(13,71,161,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(13,71,161,0.35)';this.style.transform='none'">
+                    <a href="{{ url_for('maps.admin_geological_timeline') }}" class="btn btn-sm w-100 mt-1" style="background:linear-gradient(135deg,#0d47a1,#1565c0,#0097a7,#00838f);color:#fff;border:none;font-weight:600;letter-spacing:0.3px;padding:8px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(13,71,161,0.35);transition:all .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(13,71,161,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(13,71,161,0.35)';this.style.transform='none'">
                         <i class="bi bi-globe-americas me-1"></i>Геотектонска историја Балкана
                     </a>
                 </div><!-- end map-controls -->
@@ -1581,10 +1640,66 @@
         maxZoom: 16
     });
 
+    map.createPane('selected-sheet-pane');
+    map.getPane('selected-sheet-pane').style.zIndex = 430;
+    map.createPane('thematic-vector-pane');
+    map.getPane('thematic-vector-pane').style.zIndex = 440;
+    map.createPane('thematic-marker-pane');
+    map.getPane('thematic-marker-pane').style.zIndex = 650;
+    map.createPane('thematic-label-pane');
+    map.getPane('thematic-label-pane').style.zIndex = 660;
+
     baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
+
+    function hardenMapLayerControls() {
+        var row = document.getElementById('map-row');
+        var wrapper = document.getElementById('map-wrapper');
+        var rightCol = document.getElementById('map-right-col');
+        var controls = rightCol ? rightCol.querySelector('.map-controls') : null;
+        if (!row || !wrapper || !rightCol || !controls) {
+            console.error('Geological map layer controls are missing required DOM nodes.');
+            return;
+        }
+
+        if (rightCol.parentElement !== row) {
+            row.appendChild(rightCol);
+        }
+
+        rightCol.hidden = false;
+        rightCol.classList.remove('d-none');
+        rightCol.style.display = 'block';
+        rightCol.style.visibility = 'visible';
+        rightCol.style.opacity = '1';
+        controls.hidden = false;
+        controls.classList.remove('d-none');
+        controls.style.display = 'block';
+        controls.style.visibility = 'visible';
+        controls.style.opacity = '1';
+
+        var isCompact = window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches;
+        if (!isCompact) {
+            var width = parseInt(rightCol.style.width || rightCol.offsetWidth, 10);
+            if (!Number.isFinite(width) || width < 180 || width > 480) {
+                rightCol.style.width = '240px';
+            }
+        }
+
+        var rect = controls.getBoundingClientRect();
+        if (!isCompact && (rect.width < 120 || rect.height < 80)) {
+            rightCol.style.width = '240px';
+        }
+
+        if (map && typeof map.invalidateSize === 'function') {
+            setTimeout(function() { map.invalidateSize(); }, 0);
+        }
+    }
+
+    hardenMapLayerControls();
+    setTimeout(hardenMapLayerControls, 250);
+    window.addEventListener('resize', hardenMapLayerControls);
 
     fieldMarkersLayer = L.layerGroup();
     var oreDepositsLayer = L.layerGroup();
@@ -1597,11 +1712,18 @@
 
     var paleoLayer = L.layerGroup();
     var paleoVisible = false;
+    var sanjaMammalsLayer = L.layerGroup();
+    var sanjaMammalsVisible = false;
+    var allSanjaMammalsData = [];
     var allPaleoData = [];
 
     var sheetsLayer = L.layerGroup();
     var sheetsVisible = false;
     var allSheetsData = [];
+    var activeSheetOverlay = null;
+    var activeSheetRect = null;
+    var activeSheetLabel = null;
+    var activeSheetData = null;
 
     var miningLayer = L.layerGroup();
     var miningVisible = false;
@@ -1706,6 +1828,59 @@
         });
     }
 
+    function toFiniteNumber(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string' && value.trim() !== '') {
+            var parsed = parseFloat(value);
+            if (Number.isFinite(parsed)) return parsed;
+        }
+        return null;
+    }
+
+    function getLatLngPair(item) {
+        var lat = toFiniteNumber(item && item.latitude);
+        var lng = toFiniteNumber(item && item.longitude);
+        if (lat === null || lng === null) return null;
+        return [lat, lng];
+    }
+
+    function formatCoord(value, digits) {
+        var numeric = toFiniteNumber(value);
+        return numeric === null ? '—' : numeric.toFixed(digits);
+    }
+
+    function safeRenderItems(items, layerName, renderItem) {
+        items.forEach(function(item, index) {
+            try {
+                renderItem(item, index);
+            } catch (err) {
+                console.error('Skipping invalid ' + layerName + ' item at index ' + index, err, item);
+            }
+        });
+    }
+
+    function bringLayerGroupToFront(layerGroup) {
+        if (!map.hasLayer(layerGroup)) return;
+        layerGroup.eachLayer(function(layer) {
+            if (typeof layer.bringToFront === 'function') {
+                layer.bringToFront();
+            }
+        });
+    }
+
+    function bringThematicLayersToFront() {
+        bringLayerGroupToFront(licensesLayer);
+        bringLayerGroupToFront(sheetsLayer);
+        if (activeSheetOverlay && typeof activeSheetOverlay.bringToFront === 'function') {
+            activeSheetOverlay.bringToFront();
+        }
+        bringLayerGroupToFront(oreDepositsLayer);
+        bringLayerGroupToFront(stratLayer);
+        bringLayerGroupToFront(paleoLayer);
+        bringLayerGroupToFront(sanjaMammalsLayer);
+        bringLayerGroupToFront(miningLayer);
+    }
+
     // ---- Event listeners ----
     let updateTimer = null;
     function debouncedUpdate() {
@@ -1759,6 +1934,7 @@
         if (oreDepositsVisible) {
             oreDepositsLayer.addTo(map);
             if (allOreDeposits.length === 0) loadOreDeposits();
+            bringThematicLayersToFront();
             document.getElementById('ore-legend').classList.add('open');
         } else {
             map.removeLayer(oreDepositsLayer);
@@ -1772,6 +1948,7 @@
         if (stratVisible) {
             stratLayer.addTo(map);
             if (allStratData.length === 0) loadStratigraphy();
+            bringThematicLayersToFront();
             document.getElementById('strat-legend').classList.add('open');
         } else {
             map.removeLayer(stratLayer);
@@ -1785,10 +1962,23 @@
         if (paleoVisible) {
             paleoLayer.addTo(map);
             if (allPaleoData.length === 0) loadPaleontology();
+            bringThematicLayersToFront();
             document.getElementById('paleo-legend').classList.add('open');
         } else {
             map.removeLayer(paleoLayer);
             document.getElementById('paleo-legend').classList.remove('open');
+        }
+    });
+
+    // Toggle Sanja mammals localities
+    document.getElementById('toggle-sanja-mammals').addEventListener('change', function() {
+        sanjaMammalsVisible = this.checked;
+        if (sanjaMammalsVisible) {
+            sanjaMammalsLayer.addTo(map);
+            if (allSanjaMammalsData.length === 0) loadSanjaMammalsLocalities();
+            bringThematicLayersToFront();
+        } else {
+            map.removeLayer(sanjaMammalsLayer);
         }
     });
 
@@ -1798,6 +1988,7 @@
         if (miningVisible) {
             miningLayer.addTo(map);
             if (allMiningData.length === 0) loadMiningOperations();
+            bringThematicLayersToFront();
             document.getElementById('mining-legend').classList.add('open');
         } else {
             map.removeLayer(miningLayer);
@@ -1811,6 +2002,7 @@
         if (licensesVisible) {
             licensesLayer.addTo(map);
             if (allLicensesData.length === 0) loadExplorationLicenses();
+            bringThematicLayersToFront();
             document.getElementById('licenses-legend').classList.add('open');
         } else {
             map.removeLayer(licensesLayer);
@@ -1824,8 +2016,10 @@
         if (sheetsVisible) {
             sheetsLayer.addTo(map);
             if (allSheetsData.length === 0) loadGeologicalSheets();
+            bringThematicLayersToFront();
         } else {
             map.removeLayer(sheetsLayer);
+            clearSelectedSheetOverlay();
         }
     });
 
@@ -1837,6 +2031,7 @@
         this.innerHTML = isFs
             ? '<i class="bi bi-fullscreen-exit me-1"></i>Изађи из целог екрана'
             : '<i class="bi bi-arrows-fullscreen me-1"></i>Цео екран';
+        hardenMapLayerControls();
         setTimeout(function() { map.invalidateSize(); }, 100);
     });
 
@@ -1848,6 +2043,7 @@
                 row.classList.remove('fullscreen');
                 document.getElementById('btn-fullscreen').innerHTML =
                     '<i class="bi bi-arrows-fullscreen me-1"></i>Цео екран';
+                hardenMapLayerControls();
                 setTimeout(function() { map.invalidateSize(); }, 100);
             }
             if (addMode) toggleAddMode(false);
@@ -2817,11 +3013,13 @@
     function renderOreDeposits() {
         oreDepositsLayer.clearLayers();
 
-        allOreDeposits.forEach(function(dep) {
-            if (!dep.latitude || !dep.longitude) return;
+        safeRenderItems(allOreDeposits, 'ore-deposit', function(dep) {
+            var latLng = getLatLngPair(dep);
+            if (!latLng) return;
 
-            var marker = L.marker([dep.latitude, dep.longitude], {
-                icon: createOreIcon(dep)
+            var marker = L.marker(latLng, {
+                icon: createOreIcon(dep),
+                pane: 'thematic-marker-pane'
             });
 
             // Build commodity list for popup
@@ -2845,13 +3043,15 @@
                 (dep.deposit_type ? '<br><small class="text-muted"><em>' + escHtml(dep.deposit_type) + '</em></small>' : '') +
                 (dep.exploitation_type ? '<br><small>Експлоатација: ' + escHtml(dep.exploitation_type) + '</small>' : '') +
                 (dep.company ? '<br><small>Компанија: ' + escHtml(dep.company) + '</small>' : '') +
-                '<br><small class="text-muted">' + dep.latitude.toFixed(3) + ', ' + dep.longitude.toFixed(3) + '</small>' +
+                '<br><small class="text-muted">' + formatCoord(dep.latitude, 3) + ', ' + formatCoord(dep.longitude, 3) + '</small>' +
                 buildPaperSearchHTML('ore', dep) +
                 '</div>';
 
             marker.bindPopup(popup, { maxWidth: 350 });
             oreDepositsLayer.addLayer(marker);
         });
+
+        bringThematicLayersToFront();
     }
 
     // ==================== STRATIGRAPHY LOCALITIES LAYER ====================
@@ -2923,11 +3123,13 @@
     function renderStratigraphy() {
         stratLayer.clearLayers();
 
-        allStratData.forEach(function(item) {
-            if (!item.latitude || !item.longitude) return;
+        safeRenderItems(allStratData, 'stratigraphy', function(item) {
+            var latLng = getLatLngPair(item);
+            if (!latLng) return;
 
-            var marker = L.marker([item.latitude, item.longitude], {
-                icon: createStratIcon(item)
+            var marker = L.marker(latLng, {
+                icon: createStratIcon(item),
+                pane: 'thematic-marker-pane'
             });
 
             var periodLabel = STRAT_PERIOD_LABELS[item.period_en] || item.period_en;
@@ -2945,13 +3147,15 @@
                 '<small>' + escHtml(item.finds) + '</small>' +
                 '<hr style="margin:6px 0;">' +
                 '<small class="text-muted">Извор: ' + escHtml(item.source) + ', стр. ' + item.page + '</small>' +
-                '<br><small class="text-muted">' + item.latitude.toFixed(3) + ', ' + item.longitude.toFixed(3) + '</small>' +
+                '<br><small class="text-muted">' + formatCoord(item.latitude, 3) + ', ' + formatCoord(item.longitude, 3) + '</small>' +
                 buildPaperSearchHTML('stratigraphy', item) +
                 '</div>';
 
             marker.bindPopup(popup, { maxWidth: 380 });
             stratLayer.addLayer(marker);
         });
+
+        bringThematicLayersToFront();
     }
 
     // ==================== PALEONTOLOGICAL LOCALITIES LAYER ====================
@@ -3015,11 +3219,13 @@
     function renderPaleontology() {
         paleoLayer.clearLayers();
 
-        allPaleoData.forEach(function(item) {
-            if (!item.latitude || !item.longitude) return;
+        safeRenderItems(allPaleoData, 'paleontology', function(item) {
+            var latLng = getLatLngPair(item);
+            if (!latLng) return;
 
-            var marker = L.marker([item.latitude, item.longitude], {
-                icon: createPaleoIcon(item)
+            var marker = L.marker(latLng, {
+                icon: createPaleoIcon(item),
+                pane: 'thematic-marker-pane'
             });
 
             var eraLabel = PALEO_ERA_LABELS[item.era_en] || item.era_en;
@@ -3048,13 +3254,96 @@
                 '<small>' + escHtml(item.finds) + '</small>' +
                 '<hr style="margin:6px 0;">' +
                 '<small class="text-muted">Извор: ' + escHtml(item.source) + '</small>' +
-                '<br><small class="text-muted">' + item.latitude.toFixed(3) + ', ' + item.longitude.toFixed(3) + '</small>' +
+                '<br><small class="text-muted">' + formatCoord(item.latitude, 3) + ', ' + formatCoord(item.longitude, 3) + '</small>' +
                 buildPaperSearchHTML('paleontology', item) +
                 '</div>';
 
             marker.bindPopup(popup, { maxWidth: 400 });
             paleoLayer.addLayer(marker);
         });
+
+        bringThematicLayersToFront();
+    }
+
+    // ==================== SANJA MAMMALS LOCALITIES LAYER ====================
+
+    function createSanjaMammalIcon(specimenCount) {
+        var r = Math.max(8, Math.min(18, 8 + Math.sqrt(specimenCount) * 1.5));
+        var color = specimenCount > 0 ? '#c62828' : '#bdbdbd';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + (r*2) + '" height="' + (r*2) + '" viewBox="0 0 ' + (r*2) + ' ' + (r*2) + '">' +
+            '<circle cx="' + r + '" cy="' + r + '" r="' + (r-1) + '" fill="' + color + '" stroke="#fff" stroke-width="1.5" opacity="0.9"/>' +
+            '<text x="' + r + '" y="' + (r+4) + '" text-anchor="middle" fill="#fff" font-size="' + Math.max(8, r*0.8) + '" font-weight="bold">' + specimenCount + '</text>' +
+            '</svg>';
+        return L.divIcon({
+            html: svg,
+            className: '',
+            iconSize: [r*2, r*2],
+            iconAnchor: [r, r],
+            popupAnchor: [0, -r]
+        });
+    }
+
+    function loadSanjaMammalsLocalities() {
+        fetch('/api/map/sanja-mammals-localities')
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                if (!result.success) return;
+                allSanjaMammalsData = result.data;
+                renderSanjaMammalsLocalities();
+                var withSpecs = allSanjaMammalsData.filter(function(d) { return d.specimen_count > 0; }).length;
+                document.getElementById('sanja-mammals-count-badge').textContent =
+                    withSpecs + '/' + allSanjaMammalsData.length;
+            })
+            .catch(function(err) { console.error('Error loading Sanja mammals:', err); });
+    }
+
+    function renderSanjaMammalsLocalities() {
+        sanjaMammalsLayer.clearLayers();
+
+        safeRenderItems(allSanjaMammalsData, 'sanja-mammals', function(item) {
+            if (!item.lat || !item.lon) return;
+
+            var marker = L.marker([item.lat, item.lon], {
+                icon: createSanjaMammalIcon(item.specimen_count),
+                pane: 'thematic-marker-pane'
+            });
+
+            var popup = '<div style="min-width:280px;max-width:450px;">' +
+                '<strong style="font-size:1.05rem;">' +
+                '<span class="badge bg-danger me-1" style="font-size:0.7rem;">Шифра ' + escHtml(item.code) + '</span> ' +
+                escHtml(item.name) + '</strong>' +
+                '<br><small class="text-muted">' + formatCoord(item.lat, 4) + ', ' + formatCoord(item.lon, 4) + '</small>';
+
+            if (item.specimen_count > 0) {
+                popup += '<hr style="margin:6px 0;">' +
+                    '<strong>Примерци: ' + item.specimen_count + '</strong>' +
+                    '<div style="max-height:300px;overflow-y:auto;margin-top:4px;">' +
+                    '<table class="table table-sm table-bordered mb-0" style="font-size:0.75rem;">' +
+                    '<thead><tr><th>Кат. бр.</th><th>Назив</th><th>Материјал</th><th>Одредио</th></tr></thead><tbody>';
+
+                var specs = item.specimens || [];
+                for (var i = 0; i < specs.length; i++) {
+                    var s = specs[i];
+                    var desc = s.description ? ' <small class="text-muted">(' + escHtml(s.description) + ')</small>' : '';
+                    var uncertain = (s.uncertain_determination === 'True') ? ' <i class="bi bi-question-circle text-warning" title="Несигурна детерминација"></i>' : '';
+                    popup += '<tr>' +
+                        '<td>' + escHtml(s.catalog_number) + '</td>' +
+                        '<td><em>' + escHtml(s.specimen_name) + '</em>' + uncertain + desc + '</td>' +
+                        '<td>' + escHtml(s.material) + '</td>' +
+                        '<td>' + escHtml(s.identified_by) + '</td>' +
+                        '</tr>';
+                }
+                popup += '</tbody></table></div>';
+            } else {
+                popup += '<hr style="margin:6px 0;"><small class="text-muted">Нема евидентираних примерака на овом локалитету.</small>';
+            }
+
+            popup += '</div>';
+            marker.bindPopup(popup, { maxWidth: 500 });
+            sanjaMammalsLayer.addLayer(marker);
+        });
+
+        bringThematicLayersToFront();
     }
 
     // ==================== MINING OPERATIONS LAYER ====================
@@ -3122,11 +3411,13 @@
     function renderMiningOperations() {
         miningLayer.clearLayers();
 
-        allMiningData.forEach(function(op) {
-            if (!op.latitude || !op.longitude) return;
+        safeRenderItems(allMiningData, 'mining-operation', function(op) {
+            var latLng = getLatLngPair(op);
+            if (!latLng) return;
 
-            var marker = L.marker([op.latitude, op.longitude], {
-                icon: createMiningIcon(op)
+            var marker = L.marker(latLng, {
+                icon: createMiningIcon(op),
+                pane: 'thematic-marker-pane'
             });
 
             var statusBadge = '';
@@ -3148,13 +3439,15 @@
                 (op.description ? '<div style="margin-top:6px;font-size:0.82rem;color:#555;">' + escHtml(op.description) + '</div>' : '') +
                 (op.production ? '<div style="margin-top:4px;font-size:0.8rem;color:#2e7d32;"><i class="bi bi-bar-chart me-1"></i>' + escHtml(op.production) + '</div>' : '') +
                 (op.website ? '<div style="margin-top:6px;"><a href="' + escHtml(op.website) + '" target="_blank" rel="noopener" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Веб сајт</a></div>' : '') +
-                '<div style="margin-top:6px;"><small class="text-muted">' + op.latitude.toFixed(4) + ', ' + op.longitude.toFixed(4) + '</small></div>' +
+                '<div style="margin-top:6px;"><small class="text-muted">' + formatCoord(op.latitude, 4) + ', ' + formatCoord(op.longitude, 4) + '</small></div>' +
                 buildPaperSearchHTML('mining', op) +
                 '</div>';
 
             marker.bindPopup(popup, { maxWidth: 400 });
             miningLayer.addLayer(marker);
         });
+
+        bringThematicLayersToFront();
     }
 
     // ==================== EXPLORATION LICENSES LAYER ====================
@@ -3182,8 +3475,9 @@
     function renderExplorationLicenses() {
         licensesLayer.clearLayers();
 
-        allLicensesData.forEach(function(lic) {
-            if (!lic.latitude || !lic.longitude) return;
+        safeRenderItems(allLicensesData, 'exploration-license', function(lic) {
+            var latLng = getLatLngPair(lic);
+            if (!latLng) return;
 
             var colors = LICENSE_STATUS_COLORS[lic.status] || LICENSE_STATUS_COLORS['active'];
 
@@ -3193,13 +3487,14 @@
                 radiusMeters = Math.sqrt(lic.area_km2 / Math.PI) * 1000;
             }
 
-            var circle = L.circle([lic.latitude, lic.longitude], {
+            var circle = L.circle(latLng, {
                 radius: radiusMeters,
                 fillColor: colors.fill,
                 fillOpacity: 0.4,
                 color: colors.stroke,
                 weight: 2,
                 opacity: 0.8,
+                pane: 'thematic-vector-pane',
                 dashArray: lic.status === 'pending' ? '6,4' : (lic.status === 'expired' ? '3,3' : null)
             });
 
@@ -3223,7 +3518,7 @@
                 (lic.area_km2 ? '<div style="margin-bottom:3px;"><i class="bi bi-bounding-box me-1"></i><strong>' + lic.area_km2.toLocaleString() + ' km²</strong></div>' : '') +
                 (lic.deposits ? '<div style="margin-bottom:3px;font-size:0.82rem;"><i class="bi bi-layers me-1"></i>' + escHtml(lic.deposits) + '</div>' : '') +
                 (lic.notes ? '<div style="margin-top:6px;font-size:0.8rem;color:#555;">' + escHtml(lic.notes) + '</div>' : '') +
-                '<div style="margin-top:6px;"><small class="text-muted">' + lic.latitude.toFixed(4) + ', ' + lic.longitude.toFixed(4) + '</small></div>' +
+                '<div style="margin-top:6px;"><small class="text-muted">' + formatCoord(lic.latitude, 4) + ', ' + formatCoord(lic.longitude, 4) + '</small></div>' +
                 buildPaperSearchHTML('license', lic) +
                 '</div>';
 
@@ -3237,11 +3532,17 @@
                 iconSize: [50, 14],
                 iconAnchor: [25, 7]
             });
-            var label = L.marker([lic.latitude, lic.longitude], {icon: labelIcon, interactive: false});
+            var label = L.marker(latLng, {
+                icon: labelIcon,
+                interactive: false,
+                pane: 'thematic-label-pane'
+            });
 
             licensesLayer.addLayer(circle);
             licensesLayer.addLayer(label);
         });
+
+        bringThematicLayersToFront();
     }
 
     // ==================== GEOLOGICAL MAP SHEETS LAYER ====================
@@ -3261,8 +3562,10 @@
 
     function renderSheetRectangles() {
         sheetsLayer.clearLayers();
+        activeSheetRect = null;
+        activeSheetLabel = null;
 
-        allSheetsData.forEach(function(sheet) {
+        safeRenderItems(allSheetsData, 'geological-sheet', function(sheet) {
             var b = sheet.bounds;
             var bounds = [[b.south, b.west], [b.north, b.east]];
 
@@ -3272,6 +3575,7 @@
                 weight: 1.5,
                 fillColor: '#3f51b5',
                 fillOpacity: 0.12,
+                pane: 'thematic-vector-pane',
                 dashArray: '4 3'
             });
 
@@ -3284,11 +3588,13 @@
                     iconSize: [80, 16],
                     iconAnchor: [40, 8]
                 }),
-                interactive: false
+                interactive: false,
+                pane: 'thematic-label-pane'
             });
 
             // Click handler on rectangle
             rect.on('click', function() {
+                showSelectedSheetOnMap(sheet, rect, label);
                 showSheetDetail(sheet);
             });
 
@@ -3304,6 +3610,76 @@
 
             sheetsLayer.addLayer(rect);
             sheetsLayer.addLayer(label);
+        });
+
+        bringThematicLayersToFront();
+    }
+
+    function clearSelectedSheetOverlay() {
+        if (activeSheetOverlay) {
+            map.removeLayer(activeSheetOverlay);
+            activeSheetOverlay = null;
+        }
+
+        if (activeSheetRect) {
+            activeSheetRect.setStyle({
+                color: '#1a237e',
+                weight: 1.5,
+                fillColor: '#3f51b5',
+                fillOpacity: 0.12,
+                dashArray: '4 3'
+            });
+        }
+
+        if (activeSheetLabel && activeSheetLabel.getElement()) {
+            activeSheetLabel.getElement().classList.remove('active');
+        }
+
+        activeSheetRect = null;
+        activeSheetLabel = null;
+        activeSheetData = null;
+    }
+
+    function showSelectedSheetOnMap(sheet, rect, label) {
+        clearSelectedSheetOverlay();
+
+        activeSheetData = sheet;
+        activeSheetRect = rect || null;
+        activeSheetLabel = label || null;
+
+        if (activeSheetRect) {
+            activeSheetRect.setStyle({
+                color: '#ffb300',
+                weight: 3,
+                fillColor: '#ffca28',
+                fillOpacity: 0.18,
+                dashArray: null
+            });
+        }
+
+        if (sheet.files && sheet.files.karta) {
+            var b = sheet.bounds;
+            var imageBounds = [[b.south, b.west], [b.north, b.east]];
+            var imageUrl = '/api/map/geological-sheet-image/' +
+                encodeURIComponent(sheet.folder) + '/karta';
+
+            activeSheetOverlay = L.imageOverlay(imageUrl, imageBounds, {
+                opacity: 0.72,
+                interactive: false,
+                pane: 'selected-sheet-pane'
+            }).addTo(map);
+        }
+
+        if (!sheetsVisible) {
+            sheetsVisible = true;
+            var toggleEl = document.getElementById('toggle-map-sheets');
+            if (toggleEl) toggleEl.checked = true;
+            sheetsLayer.addTo(map);
+        }
+
+        map.fitBounds([[sheet.bounds.south, sheet.bounds.west], [sheet.bounds.north, sheet.bounds.east]], {
+            padding: [24, 24],
+            maxZoom: 11
         });
     }
 
@@ -3631,6 +4007,7 @@
 
     // Clean up modal backdrop on close to prevent page freeze
     document.getElementById('sheetDetailModal').addEventListener('hidden.bs.modal', function() {
+        clearSelectedSheetOverlay();
         document.body.classList.remove('modal-open');
         document.querySelectorAll('.modal-backdrop').forEach(function(el) {
             if (!document.querySelector('.modal.show')) el.remove();
@@ -8853,6 +9230,7 @@
         var elevEl = document.getElementById('cursor-elevation');
         var _elevTimer = null;
         var _elevAbort = null;
+        var _lastElevKey = null;
 
         map.on('mousemove', function(e) {
             var lat = e.latlng.lat;
@@ -8860,16 +9238,31 @@
             coordsEl.textContent = 'Координате: ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
 
             clearTimeout(_elevTimer);
+            var roundedLat = lat.toFixed(4);
+            var roundedLon = lon.toFixed(4);
+            var elevKey = roundedLat + ',' + roundedLon;
             _elevTimer = setTimeout(function() {
+                if (_lastElevKey === elevKey) return;
+                _lastElevKey = elevKey;
                 if (_elevAbort) _elevAbort.abort();
                 _elevAbort = new AbortController();
                 fetch('/api/map/elevation?lat=' + lat + '&lon=' + lon, {signal: _elevAbort.signal})
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        if (!r.ok) {
+                            if (r.status === 429) return { rate_limited: true };
+                            throw new Error('Elevation request failed with status ' + r.status);
+                        }
+                        return r.json();
+                    })
                     .then(function(d) {
+                        if (d && d.rate_limited) {
+                            elevEl.textContent = 'Висина: —';
+                            return;
+                        }
                         elevEl.textContent = d.elevation != null ? 'Висина: ' + d.elevation + ' m' : 'Висина: —';
                     })
                     .catch(function() {});
-            }, 200);
+            }, 450);
         });
 
         map.on('mouseout', function() {
@@ -8877,6 +9270,7 @@
             elevEl.textContent = 'Висина: —';
             clearTimeout(_elevTimer);
             if (_elevAbort) _elevAbort.abort();
+            _lastElevKey = null;
         });
     })();
 

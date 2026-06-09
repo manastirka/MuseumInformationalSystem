@@ -106,7 +106,8 @@
                     <form id="vacationForm">
                         <div class="mb-3">
                             <label class="form-label">Број дана годишњег одмора *</label>
-                            <input type="number" class="form-control" id="brojDana" min="1" max="30" value="1" required>
+                            <input type="number" class="form-control" id="brojDana" min="1" max="365" value="1" required readonly>
+                            <div class="form-text">Аутоматски се израчунава на основу изабраног периода.</div>
                         </div>
 
                         <div class="row mb-3">
@@ -229,25 +230,85 @@
 <script>
 const userFullName = "{{ user_full_name|e }}";
 const memorandumUrl = "{{ url_for('static', filename='images/memorandum.png') }}";
+const VACATION_DRAFT_NAMESPACE = 'operativni-zahtev-godisnji-odmor';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('datumMolbe').value = today;
+    restoreDraft();
 
     // Auto-update preview on input change
     document.querySelectorAll('#vacationForm input, #vacationForm select').forEach(function(el) {
         el.addEventListener('change', updatePreview);
+        el.addEventListener('change', persistDraft);
+        el.addEventListener('input', persistDraft);
     });
+    document.getElementById('odDatuma').addEventListener('input', syncVacationDaysWithRange);
+    document.getElementById('doDatuma').addEventListener('input', syncVacationDaysWithRange);
 
     // Initial preview update
+    syncVacationDaysWithRange();
     updatePreview();
 });
 
-function updatePreview() {
-    const brojDana = document.getElementById('brojDana').value || '__';
+function collectDraftData() {
+    return {
+        brojDana: document.getElementById('brojDana').value,
+        odDatuma: document.getElementById('odDatuma').value,
+        doDatuma: document.getElementById('doDatuma').value,
+        sefOdeljenja: document.getElementById('sefOdeljenja').value,
+        datumMolbe: document.getElementById('datumMolbe').value,
+    };
+}
+
+function persistDraft() {
+    saveUserScopedDraft(VACATION_DRAFT_NAMESPACE, collectDraftData());
+}
+
+function restoreDraft() {
+    const draft = loadUserScopedDraft(VACATION_DRAFT_NAMESPACE);
+    if (!draft || typeof draft !== 'object') {
+        return;
+    }
+
+    document.getElementById('odDatuma').value = draft.odDatuma || '';
+    document.getElementById('doDatuma').value = draft.doDatuma || '';
+    document.getElementById('sefOdeljenja').value = draft.sefOdeljenja || '';
+    document.getElementById('datumMolbe').value = draft.datumMolbe || document.getElementById('datumMolbe').value;
+    document.getElementById('brojDana').value = draft.brojDana || '';
+}
+
+function calculateVacationDays() {
     const odDatuma = document.getElementById('odDatuma').value;
     const doDatuma = document.getElementById('doDatuma').value;
+
+    if (!odDatuma || !doDatuma) {
+        return null;
+    }
+
+    const odDate = new Date(odDatuma + 'T00:00:00');
+    const doDate = new Date(doDatuma + 'T00:00:00');
+    if (Number.isNaN(odDate.getTime()) || Number.isNaN(doDate.getTime()) || doDate < odDate) {
+        return null;
+    }
+
+    const diffMs = doDate.getTime() - odDate.getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function syncVacationDaysWithRange() {
+    const brojDanaInput = document.getElementById('brojDana');
+    const days = calculateVacationDays();
+    brojDanaInput.value = days === null ? '' : days;
+    persistDraft();
+}
+
+function updatePreview() {
+    const odDatuma = document.getElementById('odDatuma').value;
+    const doDatuma = document.getElementById('doDatuma').value;
+    const calculatedDays = calculateVacationDays();
+    const brojDana = calculatedDays === null ? '__' : String(calculatedDays);
     const sefOdeljenja = document.getElementById('sefOdeljenja').value || '________________';
     const datumMolbe = document.getElementById('datumMolbe').value;
 
@@ -256,11 +317,13 @@ function updatePreview() {
     if (odDatuma && doDatuma) {
         const odDate = new Date(odDatuma);
         const doDate = new Date(doDatuma);
-        const odDay = odDate.getDate();
-        const doDay = doDate.getDate();
-        const month = (doDate.getMonth() + 1).toString().padStart(2, '0');
-        const year = doDate.getFullYear();
-        periodText = odDay + '-' + doDay + '.' + month + '.' + year;
+        if (doDate >= odDate) {
+            const odDay = odDate.getDate();
+            const doDay = doDate.getDate();
+            const month = (doDate.getMonth() + 1).toString().padStart(2, '0');
+            const year = doDate.getFullYear();
+            periodText = odDay + '-' + doDay + '.' + month + '.' + year;
+        }
     }
 
     let datumText = '__.__.____';
@@ -313,6 +376,10 @@ function printDocument() {
         alert('Молимо попуните сва обавезна поља пре штампања.');
         return;
     }
+    if (calculateVacationDays() === null) {
+        alert('Период годишњег одмора није исправан. Проверите датуме.');
+        return;
+    }
 
     // Format period like original: "3-5.12.2025"
     const odDate = new Date(odDatuma);
@@ -358,8 +425,8 @@ function printDocument() {
         }
         .memorandum-date-overlay {
             position: absolute;
-            bottom: 13px;
-            right: 68px;
+            bottom: 18px;
+            right: 73px;
             font-size: 11pt;
             font-family: 'Times New Roman', Times, serif;
             color: #000;
@@ -485,6 +552,10 @@ function saveRequest() {
         alert('Молимо попуните сва обавезна поља пре чувања.');
         return;
     }
+    if (calculateVacationDays() === null) {
+        alert('Период годишњег одмора није исправан. Проверите датуме.');
+        return;
+    }
 
     const btn = document.getElementById('saveRequestBtn');
     btn.disabled = true;
@@ -515,6 +586,7 @@ function saveRequest() {
         if (data.success) {
             btn.className = 'btn btn-success btn-sm';
             btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Сачувано (#' + data.id + ')';
+            persistDraft();
         } else {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-save me-1"></i>Сачувај захтев';

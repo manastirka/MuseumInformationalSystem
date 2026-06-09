@@ -167,8 +167,8 @@
                     <div class="widget-selection">
                         {% for module in available_modules %}
                         <div class="widget-card"
-                             :class="{'selected': selectedWidgets.includes('{{ module.key }}')}"
-                             @click="toggleWidget('{{ module.key }}')">
+                             :class="{'selected': selectedWidgets.includes({{ module.key|tojson }})}"
+                             @click="toggleWidget({{ module.key|tojson }})">
                             <div class="row align-items-center">
                                 <div class="col-auto">
                                     <input class="form-check-input"
@@ -176,8 +176,9 @@
                                            name="widgets"
                                            value="{{ module.key }}"
                                            id="widget_{{ module.key }}"
-                                           :checked="selectedWidgets.includes('{{ module.key }}')"
-                                           @click.stop="toggleWidget('{{ module.key }}')">
+                                           x-model="selectedWidgets"
+                                           @click.stop
+                                           @change.stop>
                                 </div>
                                 <div class="col-auto">
                                     <div class="widget-icon stat-icon-primary">
@@ -185,7 +186,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-check-label d-block" for="widget_{{ module.key }}">
+                                    <label class="form-check-label d-block" for="widget_{{ module.key }}" @click.stop>
                                         <strong>{{ module.name }}</strong>
                                         <br>
                                         <small class="text-muted">{{ module.description }}</small>
@@ -193,8 +194,8 @@
                                 </div>
                                 <div class="col-auto">
                                     <span class="badge"
-                                          :class="selectedWidgets.includes('{{ module.key }}') ? 'bg-success' : 'bg-secondary'">
-                                        <i class="bi" :class="selectedWidgets.includes('{{ module.key }}') ? 'bi-check' : 'bi-dash'"></i>
+                                          :class="selectedWidgets.includes({{ module.key|tojson }}) ? 'bg-success' : 'bg-secondary'">
+                                        <i class="bi" :class="selectedWidgets.includes({{ module.key|tojson }}) ? 'bi-check' : 'bi-dash'"></i>
                                     </span>
                                 </div>
                             </div>
@@ -273,13 +274,13 @@
 <script>
 function customizeDashboard() {
     return {
-        selectedWidgets: [{% for key in enabled_widgets %}'{{ key }}',{% endfor %}],
+        selectedWidgets: {{ enabled_widgets|tojson }},
         toasts: [],
 
         // Widget data
         widgetData: {
             {% for module in available_modules %}
-            '{{ module.key }}': { name: '{{ module.name }}', icon: '{{ module.icon }}' },
+            {{ module.key|tojson }}: { name: {{ module.name|tojson }}, icon: {{ module.icon|tojson }} },
             {% endfor %}
         },
 
@@ -294,25 +295,16 @@ function customizeDashboard() {
             } else {
                 this.selectedWidgets.push(key);
             }
-            this.updateFormCheckboxes();
         },
 
         selectAll() {
             this.selectedWidgets = Object.keys(this.widgetData);
-            this.updateFormCheckboxes();
             this.showToast('success', 'Изабрано', 'Сви видгети су изабрани', 'bi-check-all');
         },
 
         deselectAll() {
             this.selectedWidgets = [];
-            this.updateFormCheckboxes();
             this.showToast('info', 'Поништено', 'Сви видгети су поништени', 'bi-x-lg');
-        },
-
-        updateFormCheckboxes() {
-            document.querySelectorAll('input[name="widgets"]').forEach(checkbox => {
-                checkbox.checked = this.selectedWidgets.includes(checkbox.value);
-            });
         },
 
         getWidgetIcon(key) {

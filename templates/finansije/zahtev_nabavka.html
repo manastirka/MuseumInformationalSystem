@@ -6,7 +6,12 @@
 <style>
     /* Print styles */
     @media print {
-        .sidebar, .navbar, .footer, .no-print, .sidebar-toggle, .content-wrapper {
+        @page {
+            size: A4 portrait;
+            margin: 5mm;
+        }
+
+        .sidebar, .navbar, .footer, .no-print, .sidebar-toggle {
             display: none !important;
             margin-left: 0 !important;
         }
@@ -15,30 +20,150 @@
             background: white !important;
             margin: 0;
             padding: 0;
+            font-size: 11px;
+            line-height: 1.2;
         }
 
         .print-container {
+            display: block !important;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             max-width: 100%;
+        }
+
+        .content-wrapper {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         .card {
             box-shadow: none !important;
-            border: none !important;
+            border: 1px solid #d7dde4 !important;
         }
 
         .form-control, .form-select {
-            border: 1px solid #000 !important;
+            border: 1px solid #c7ced6 !important;
             background: white !important;
+            font-size: 11px !important;
+            min-height: 30px !important;
+            padding: 0.15rem 0.35rem !important;
+            color: #1f2933 !important;
         }
 
         .print-header {
-            display: block !important;
+            display: none !important;
         }
 
         .print-form {
             page-break-inside: avoid;
+            display: block !important;
+            zoom: 0.82;
+            transform-origin: top left;
+        }
+
+        .print-form .card-body {
+            padding: 0.5rem !important;
+        }
+
+        .print-form .row {
+            --bs-gutter-x: 0.75rem;
+        }
+
+        .print-form .mb-4 {
+            margin-bottom: 0.45rem !important;
+        }
+
+        .print-form .mt-2 {
+            margin-top: 0.18rem !important;
+        }
+
+        .print-form .p-3 {
+            padding: 0.4rem !important;
+        }
+
+        .print-form h3,
+        .print-form h5,
+        .print-header h4,
+        .print-form .form-label {
+            margin-bottom: 0.25rem !important;
+        }
+
+        .print-header h4 {
+            font-size: 14px !important;
+        }
+
+        .print-form h3 {
+            font-size: 18px !important;
+        }
+
+        .print-form h5 {
+            font-size: 13px !important;
+        }
+
+        .museum-logo-small {
+            display: none !important;
+        }
+
+        .print-form .bi-bank2 {
+            display: none !important;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        .form-table th,
+        .form-table td {
+            padding: 0.14rem 0.18rem !important;
+            font-size: 9.5px !important;
+            line-height: 1.15 !important;
+            border-color: #cfd6dd !important;
+        }
+
+        .form-table .row-num {
+            width: 24px !important;
+        }
+
+        .form-table .amount-cell {
+            width: 90px !important;
+        }
+
+        .form-table textarea {
+            min-height: 30px !important;
+            height: 30px !important;
+            resize: none !important;
+        }
+
+        .form-table input,
+        .form-table textarea {
+            padding: 0.08rem !important;
+            font-size: 9.5px !important;
+            color: #1f2933 !important;
+        }
+
+        .signature-box {
+            min-height: 24px !important;
+            border-color: #cfd6dd !important;
+            background: #fbfcfd !important;
+        }
+
+        .print-form hr {
+            margin: 0.1rem 0 !important;
+        }
+
+        .print-form small {
+            font-size: 8px !important;
+            color: #5b6670 !important;
+        }
+
+        .print-form .border,
+        .print-form .total-row {
+            border-color: #cfd6dd !important;
+        }
+
+        .print-form .total-row {
+            background: #f3f5f7 !important;
         }
     }
 
@@ -368,14 +493,103 @@
 </div>
 
 <script>
+    const PROCUREMENT_DRAFT_NAMESPACE = 'operativni-zahtev-nabavka';
     let rowCount = 4;
 
     // Set today's date
     document.addEventListener('DOMContentLoaded', function() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('datumPodnosenja').value = today;
+        document.addEventListener('input', handleDraftInput);
+        document.addEventListener('change', handleDraftInput);
+        restoreDraft();
+        calculateTotals();
         loadSavedRequests();
     });
+
+    function handleDraftInput(event) {
+        if (!event.target.matches(
+            '#datumPodnosenja, #podnosilacZahteva, #teretAktivnosti, #teretAktivnostiOpis, #saglasanRukovodilac, #sefRacunovodstva, #direktor, .item-description, .estimated-amount, .realized-amount, .receiver, .receipt-date'
+        )) {
+            return;
+        }
+        if (event.target.matches('.estimated-amount, .realized-amount')) {
+            calculateTotals();
+        }
+        persistDraft();
+    }
+
+    function buildItemRowMarkup(rowNumber, rowData = {}, includeReceiptDate = false) {
+        const description = escapeHtml(rowData.description || '');
+        const estimated = rowData.estimated === 0 ? '0' : (rowData.estimated || '');
+        const realized = rowData.realized === 0 ? '0' : (rowData.realized || '');
+        const receiver = escapeHtml(rowData.receiver || '');
+        const receiptDate = rowData.receiptDate || '';
+
+        return `
+            <tr>
+                <td class="row-num">${rowNumber}.</td>
+                <td><textarea class="item-description" rows="2" placeholder="${rowNumber === 1 ? 'Опис добра или услуге...' : ''}">${description}</textarea></td>
+                <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" value="${estimated}" onchange="calculateTotals()"></td>
+                <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" value="${realized}" onchange="calculateTotals()"></td>
+                <td>
+                    <input type="text" class="receiver" placeholder="" value="${receiver}">
+                    ${includeReceiptDate ? `
+                        <hr class="my-2">
+                        <small class="text-muted">Датум пријема:</small>
+                        <input type="date" class="receipt-date" value="${receiptDate}">
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    }
+
+    function collectDraftData() {
+        const rows = Array.from(document.querySelectorAll('#itemsBody tr')).map((row) => ({
+            description: row.querySelector('.item-description')?.value || '',
+            estimated: row.querySelector('.estimated-amount')?.value || '',
+            realized: row.querySelector('.realized-amount')?.value || '',
+            receiver: row.querySelector('.receiver')?.value || '',
+            receiptDate: row.querySelector('.receipt-date')?.value || '',
+        }));
+
+        return {
+            datum: document.getElementById('datumPodnosenja').value,
+            podnosilac: document.getElementById('podnosilacZahteva').value,
+            teretAktivnosti: document.getElementById('teretAktivnosti').value,
+            teretAktivnostiOpis: document.getElementById('teretAktivnostiOpis').value,
+            saglasanRukovodilac: document.getElementById('saglasanRukovodilac').value,
+            sefRacunovodstva: document.getElementById('sefRacunovodstva').value,
+            direktor: document.getElementById('direktor').value,
+            rows,
+        };
+    }
+
+    function persistDraft() {
+        saveUserScopedDraft(PROCUREMENT_DRAFT_NAMESPACE, collectDraftData());
+    }
+
+    function restoreDraft() {
+        const draft = loadUserScopedDraft(PROCUREMENT_DRAFT_NAMESPACE);
+        if (!draft || typeof draft !== 'object') {
+            return;
+        }
+
+        document.getElementById('datumPodnosenja').value = draft.datum || document.getElementById('datumPodnosenja').value;
+        document.getElementById('podnosilacZahteva').value = draft.podnosilac || '{{ session.get("user_name", "") }}';
+        document.getElementById('teretAktivnosti').value = draft.teretAktivnosti || '';
+        document.getElementById('teretAktivnostiOpis').value = draft.teretAktivnostiOpis || '';
+        document.getElementById('saglasanRukovodilac').value = draft.saglasanRukovodilac || '';
+        document.getElementById('sefRacunovodstva').value = draft.sefRacunovodstva || '';
+        document.getElementById('direktor').value = draft.direktor || '';
+
+        if (Array.isArray(draft.rows) && draft.rows.length > 0) {
+            rowCount = draft.rows.length;
+            document.getElementById('itemsBody').innerHTML = draft.rows.map((row, index) =>
+                buildItemRowMarkup(index + 1, row, index === draft.rows.length - 1)
+            ).join('');
+        }
+    }
 
     // Calculate totals
     function calculateTotals() {
@@ -398,15 +612,8 @@
     function addRow() {
         rowCount++;
         const tbody = document.getElementById('itemsBody');
-        const newRow = document.createElement('tr');
-        newRow.innerHTML = `
-            <td class="row-num">${rowCount}.</td>
-            <td><textarea class="item-description" rows="2" placeholder=""></textarea></td>
-            <td class="amount-cell"><input type="number" class="estimated-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
-            <td class="amount-cell"><input type="number" class="realized-amount" min="0" step="0.01" placeholder="0.00" onchange="calculateTotals()"></td>
-            <td><input type="text" class="receiver" placeholder=""></td>
-        `;
-        tbody.appendChild(newRow);
+        tbody.insertAdjacentHTML('beforeend', buildItemRowMarkup(rowCount));
+        persistDraft();
     }
 
     // Remove last row
@@ -416,6 +623,7 @@
             tbody.removeChild(tbody.lastElementChild);
             rowCount--;
             calculateTotals();
+            persistDraft();
         }
     }
 
@@ -471,7 +679,8 @@
                     description: description,
                     estimated: parseFloat(estimated) || 0,
                     realized: parseFloat(realized) || 0,
-                    receiver: receiver
+                    receiver: receiver,
+                    receiptDate: row.querySelector('.receipt-date')?.value || ''
                 });
             }
         });
@@ -514,6 +723,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                persistDraft();
                 alert('Захтев је успешно сачуван!');
                 loadSavedRequests();
             } else {

@@ -25,6 +25,10 @@ else
     echo "Starting application..."
     cd /home/aleksandarlukovic/MuseumInfoSystem
     source venv/bin/activate 2>/dev/null || true
+    export SESSION_INVALIDATE_ON_RESTART="${SESSION_INVALIDATE_ON_RESTART:-false}"
+    if [ "${SESSION_INVALIDATE_ON_RESTART}" = "true" ]; then
+        export SESSION_BOOT_ID="${SESSION_BOOT_ID:-$(date +%s%N)}"
+    fi
     nohup gunicorn -c gunicorn.conf.py wsgi:application > logs/gunicorn.log 2>&1 &
 
     echo "✓ Application restarted manually"
@@ -39,9 +43,8 @@ if pgrep -f "gunicorn.*museum" > /dev/null || pgrep -f "python.*app.py" > /dev/n
     echo "✓ Application is running"
     echo ""
     echo "📝 Next steps:"
-    echo "   1. Clear your browser cookies"
-    echo "   2. Refresh the login page"
-    echo "   3. Try logging in again"
+    echo "   1. Refresh the login page"
+    echo "   2. Log in again"
 else
     echo "✗ Application failed to start"
     echo "   Check logs: tail -f logs/gunicorn_error.log"

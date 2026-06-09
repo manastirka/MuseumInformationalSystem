@@ -4,7 +4,6 @@
 
 {% block head_extra %}
 <style>
-    /* Print styles */
     @media print {
         .sidebar, .navbar, .footer, .no-print, .sidebar-toggle, .content-wrapper {
             display: none !important;
@@ -27,20 +26,6 @@
         .card {
             box-shadow: none !important;
             border: none !important;
-        }
-
-        .nav-tabs {
-            display: none !important;
-        }
-
-        .tab-content > .tab-pane {
-            display: block !important;
-            opacity: 1 !important;
-            page-break-after: always;
-        }
-
-        .tab-content > .tab-pane:last-child {
-            page-break-after: avoid;
         }
 
         .category-section {
@@ -141,12 +126,6 @@
         background: #e9ecef !important;
     }
 
-    .year-tab.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        border-color: #667eea !important;
-    }
-
     .grand-total-card {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         color: white;
@@ -178,7 +157,6 @@
 
 {% block content %}
 <div class="container-main print-container">
-    <!-- Screen Header -->
     <div class="row mb-4 no-print">
         <div class="col-12">
             <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
@@ -190,7 +168,7 @@
                                 {{ page_title }}
                             </h1>
                             <p class="mb-0 opacity-75">
-                                Предлог финансијског плана за наредни период
+                                Предлог финансијског плана за изабрану годину
                             </p>
                         </div>
                         <div class="col-md-6 text-end">
@@ -213,15 +191,14 @@
         </div>
     </div>
 
-    <!-- Plan Info Header -->
     <div class="card mb-4">
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold">Име и презиме:</label>
                     <input type="text" class="form-control" id="imePrezime" value="{{ session.get('user_name', '') }}" placeholder="Име и презиме">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold">Одељење:</label>
                     <select class="form-select" id="odeljenje">
                         <option value="">Изаберите одељење...</option>
@@ -235,7 +212,15 @@
                         <option value="edukacija">Едукација</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Година плана:</label>
+                    <select class="form-select" id="planYear">
+                        {% for year in year_options %}
+                        <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}. година</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label fw-bold">Датум израде:</label>
                     <input type="date" class="form-control" id="datumIzrade" value="{{ today }}">
                 </div>
@@ -243,594 +228,155 @@
         </div>
     </div>
 
-    <!-- Year Tabs -->
-    <ul class="nav nav-tabs mb-4 no-print" id="yearTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link year-tab active" id="year1-tab" data-bs-toggle="tab" data-bs-target="#year2027" type="button" role="tab">
-                <i class="bi bi-calendar me-1"></i>
-                2027. година
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link year-tab" id="year2-tab" data-bs-toggle="tab" data-bs-target="#year2028" type="button" role="tab">
-                <i class="bi bi-calendar me-1"></i>
-                2028. година (пројекција)
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link year-tab" id="year3-tab" data-bs-toggle="tab" data-bs-target="#year2029" type="button" role="tab">
-                <i class="bi bi-calendar me-1"></i>
-                2029. година (пројекција)
-            </button>
-        </li>
-    </ul>
+    <div class="year-header d-none d-print-block">
+        <h3>Финансијски план за <span class="selected-year-display">{{ selected_year }}</span>. годину</h3>
+        <p class="mb-0">
+            Име и презиме: <span class="ime-display"></span> |
+            Одељење: <span class="odeljenje-display"></span>
+        </p>
+    </div>
 
-    <!-- Tab Content -->
-    <div class="tab-content" id="yearTabContent">
-        <!-- Year 2027 -->
-        <div class="tab-pane fade show active" id="year2027" role="tabpanel">
-            <div class="year-header d-none d-print-block">
-                <h3>Финансијски план за 2027. годину</h3>
-                <p class="mb-0">Име и презиме: <span class="ime-display"></span> | Одељење: <span class="odeljenje-display"></span></p>
-            </div>
-
-            <!-- 1. Akvizicija - Teren -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">1</span>
-                    АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА НА ТЕРЕНУ, ТЕРЕНСКА ИСТРАЖИВАЊА
+    <div class="card mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1">
+                    План за <span class="selected-year-display">{{ selected_year }}</span>. годину
+                </h4>
+                <div class="text-muted">
+                    Попуњава се једна година по избору.
                 </div>
-                <table class="plan-table" data-category="akvizicija_teren" data-year="2027">
-                    <thead>
-                        <tr>
-                            <th class="row-num">р.б.</th>
-                            <th>Активност</th>
-                            <th class="amount-cell">Износ (РСД)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot>
-                        <tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr>
-                    </tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_teren', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 2. Akvizicija - Otkup -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">2</span>
-                    АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА ОТКУПОМ
-                </div>
-                <table class="plan-table" data-category="akvizicija_otkup" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_otkup', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 3. Prepariranje -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">3</span>
-                    ПРЕПАРИРАЊЕ И КОНЗЕРВАЦИЈА, СТРУЧНА И НАУЧНА ОБРАДА МУЗЕЈСКИХ ПРЕДМЕТА
-                </div>
-                <table class="plan-table" data-category="prepariranje" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност и потребна средства и материјал</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'prepariranje', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 4. Odrzavanje -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">4</span>
-                    ОДРЖАВАЊЕ ЗБИРКИ И ДЕПОА, СМЕШТАЈ И ЗАШТИТА МУЗЕЈСКИХ ПРЕДМЕТА И ЗБИРКИ
-                </div>
-                <table class="plan-table" data-category="odrzavanje" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, спецификација потребних средстава</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'odrzavanje', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 5. Oprema -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">5</span>
-                    НАБАВКА НЕОПХОДНЕ ОПРЕМЕ
-                </div>
-                <table class="plan-table" data-category="oprema" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација опреме</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'oprema', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 6. Skupovi -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">6</span>
-                    СТРУЧНИ И НАУЧНИ СКУПОВИ
-                </div>
-                <table class="plan-table" data-category="skupovi" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'skupovi', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 7. Projekti -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">7</span>
-                    РЕАЛИЗАЦИЈА СТРУЧНИХ И НАУЧНИХ ПРОЈЕКАТА
-                </div>
-                <table class="plan-table" data-category="projekti" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'projekti', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-                <div class="note-box">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Потребно је уз сваку планирану ставку прецизирати да ли је реч о пројектима који су раније планирани и започети и за чију реализацију су већ планирана и/или добијена средства или се ради о новим пројектима.
+                <div id="editModeIndicator" class="mt-2 d-none">
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-pencil-square me-1"></i>
+                        Измена плана <span id="editModePlanId"></span>
+                    </span>
                 </div>
             </div>
-
-            <!-- 8. Izlozbe -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">8</span>
-                    ИЗЛОЖБЕНА ДЕЛАТНОСТ
-                </div>
-                <div class="exhibition-info">
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <label class="form-label">Назив изложбе:</label>
-                            <input type="text" class="form-control form-control-sm exhibition-name" data-year="2027" placeholder="">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Место:</label>
-                            <input type="text" class="form-control form-control-sm exhibition-place" data-year="2027" placeholder="">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Време:</label>
-                            <input type="text" class="form-control form-control-sm exhibition-time" data-year="2027" placeholder="">
-                        </div>
-                    </div>
-                </div>
-                <table class="plan-table" data-category="izlozbe" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација трошкова</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izlozbe', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 9. Izdavacka -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">9</span>
-                    ИЗДАВАЧКА ДЕЛАТНОСТ (ПРИПРЕМА И ИЗРАДА ПУБЛИКАЦИЈА)
-                </div>
-                <table class="plan-table" data-category="izdavacka" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, средства</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izdavacka', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 10. Literatura -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">10</span>
-                    НАБАВКА НАУЧНЕ И СТРУЧНЕ ЛИТЕРАТУРЕ И ПЕРИОДИКЕ
-                </div>
-                <table class="plan-table" data-category="literatura" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'literatura', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- 11. Usavrsavanje -->
-            <div class="category-section">
-                <div class="category-header">
-                    <span class="category-number">11</span>
-                    УСАВРШАВАЊЕ, СТУДИЈСКИ БОРАВЦИ, САРАДЊА СА ИНСТИТУЦИЈАМА И/ИЛИ ПОЈЕДИНЦИМА
-                </div>
-                <table class="plan-table" data-category="usavrsavanje" data-year="2027">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody>
-                        <tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr>
-                    </tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'usavrsavanje', '2027')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <!-- Year Total -->
-            <div class="card grand-total-card mt-4">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8"><h5 class="mb-0"><i class="bi bi-calculator me-2"></i>УКУПНО ЗА 2027. ГОДИНУ:</h5></div>
-                        <div class="col-md-4 text-end"><h3 class="mb-0 year-total" data-year="2027">0 РСД</h3></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Year 2028 -->
-        <div class="tab-pane fade" id="year2028" role="tabpanel">
-            <div class="year-header d-none d-print-block">
-                <h3>Финансијски план за 2028. годину (пројекција)</h3>
-                <p class="mb-0">Име и презиме: <span class="ime-display"></span> | Одељење: <span class="odeljenje-display"></span></p>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">1</span>АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА НА ТЕРЕНУ, ТЕРЕНСКА ИСТРАЖИВАЊА</div>
-                <table class="plan-table" data-category="akvizicija_teren" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_teren', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">2</span>АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА ОТКУПОМ</div>
-                <table class="plan-table" data-category="akvizicija_otkup" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_otkup', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">3</span>ПРЕПАРИРАЊЕ И КОНЗЕРВАЦИЈА, СТРУЧНА И НАУЧНА ОБРАДА МУЗЕЈСКИХ ПРЕДМЕТА</div>
-                <table class="plan-table" data-category="prepariranje" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност и потребна средства и материјал</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'prepariranje', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">4</span>ОДРЖАВАЊЕ ЗБИРКИ И ДЕПОА, СМЕШТАЈ И ЗАШТИТА МУЗЕЈСКИХ ПРЕДМЕТА И ЗБИРКИ</div>
-                <table class="plan-table" data-category="odrzavanje" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, спецификација потребних средстава</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'odrzavanje', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">5</span>НАБАВКА НЕОПХОДНЕ ОПРЕМЕ</div>
-                <table class="plan-table" data-category="oprema" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација опреме</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'oprema', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">6</span>СТРУЧНИ И НАУЧНИ СКУПОВИ</div>
-                <table class="plan-table" data-category="skupovi" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'skupovi', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">7</span>РЕАЛИЗАЦИЈА СТРУЧНИХ И НАУЧНИХ ПРОЈЕКАТА</div>
-                <table class="plan-table" data-category="projekti" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'projekti', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">8</span>ИЗЛОЖБЕНА ДЕЛАТНОСТ</div>
-                <div class="exhibition-info">
-                    <div class="row g-2">
-                        <div class="col-md-4"><label class="form-label">Назив:</label><input type="text" class="form-control form-control-sm exhibition-name" data-year="2028" placeholder=""></div>
-                        <div class="col-md-4"><label class="form-label">Место:</label><input type="text" class="form-control form-control-sm exhibition-place" data-year="2028" placeholder=""></div>
-                        <div class="col-md-4"><label class="form-label">Време:</label><input type="text" class="form-control form-control-sm exhibition-time" data-year="2028" placeholder=""></div>
-                    </div>
-                </div>
-                <table class="plan-table" data-category="izlozbe" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација трошкова</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izlozbe', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">9</span>ИЗДАВАЧКА ДЕЛАТНОСТ (ПРИПРЕМА И ИЗРАДА ПУБЛИКАЦИЈА)</div>
-                <table class="plan-table" data-category="izdavacka" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, средства</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izdavacka', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">10</span>НАБАВКА НАУЧНЕ И СТРУЧНЕ ЛИТЕРАТУРЕ И ПЕРИОДИКЕ</div>
-                <table class="plan-table" data-category="literatura" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'literatura', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">11</span>УСАВРШАВАЊЕ, СТУДИЈСКИ БОРАВЦИ, САРАДЊА СА ИНСТИТУЦИЈАМА И/ИЛИ ПОЈЕДИНЦИМА</div>
-                <table class="plan-table" data-category="usavrsavanje" data-year="2028">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'usavrsavanje', '2028')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="card grand-total-card mt-4">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8"><h5 class="mb-0"><i class="bi bi-calculator me-2"></i>УКУПНО ЗА 2028. ГОДИНУ:</h5></div>
-                        <div class="col-md-4 text-end"><h3 class="mb-0 year-total" data-year="2028">0 РСД</h3></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Year 2029 -->
-        <div class="tab-pane fade" id="year2029" role="tabpanel">
-            <div class="year-header d-none d-print-block">
-                <h3>Финансијски план за 2029. годину (пројекција)</h3>
-                <p class="mb-0">Име и презиме: <span class="ime-display"></span> | Одељење: <span class="odeljenje-display"></span></p>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">1</span>АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА НА ТЕРЕНУ, ТЕРЕНСКА ИСТРАЖИВАЊА</div>
-                <table class="plan-table" data-category="akvizicija_teren" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_teren', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">2</span>АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА ОТКУПОМ</div>
-                <table class="plan-table" data-category="akvizicija_otkup" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'akvizicija_otkup', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">3</span>ПРЕПАРИРАЊЕ И КОНЗЕРВАЦИЈА, СТРУЧНА И НАУЧНА ОБРАДА МУЗЕЈСКИХ ПРЕДМЕТА</div>
-                <table class="plan-table" data-category="prepariranje" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност и потребна средства и материјал</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'prepariranje', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">4</span>ОДРЖАВАЊЕ ЗБИРКИ И ДЕПОА, СМЕШТАЈ И ЗАШТИТА МУЗЕЈСКИХ ПРЕДМЕТА И ЗБИРКИ</div>
-                <table class="plan-table" data-category="odrzavanje" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, спецификација потребних средстава</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'odrzavanje', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">5</span>НАБАВКА НЕОПХОДНЕ ОПРЕМЕ</div>
-                <table class="plan-table" data-category="oprema" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација опреме</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'oprema', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">6</span>СТРУЧНИ И НАУЧНИ СКУПОВИ</div>
-                <table class="plan-table" data-category="skupovi" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'skupovi', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">7</span>РЕАЛИЗАЦИЈА СТРУЧНИХ И НАУЧНИХ ПРОЈЕКАТА</div>
-                <table class="plan-table" data-category="projekti" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'projekti', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">8</span>ИЗЛОЖБЕНА ДЕЛАТНОСТ</div>
-                <div class="exhibition-info">
-                    <div class="row g-2">
-                        <div class="col-md-4"><label class="form-label">Назив:</label><input type="text" class="form-control form-control-sm exhibition-name" data-year="2029" placeholder=""></div>
-                        <div class="col-md-4"><label class="form-label">Место:</label><input type="text" class="form-control form-control-sm exhibition-place" data-year="2029" placeholder=""></div>
-                        <div class="col-md-4"><label class="form-label">Време:</label><input type="text" class="form-control form-control-sm exhibition-time" data-year="2029" placeholder=""></div>
-                    </div>
-                </div>
-                <table class="plan-table" data-category="izlozbe" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација трошкова</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izlozbe', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">9</span>ИЗДАВАЧКА ДЕЛАТНОСТ (ПРИПРЕМА И ИЗРАДА ПУБЛИКАЦИЈА)</div>
-                <table class="plan-table" data-category="izdavacka" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност, средства</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'izdavacka', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">10</span>НАБАВКА НАУЧНЕ И СТРУЧНЕ ЛИТЕРАТУРЕ И ПЕРИОДИКЕ</div>
-                <table class="plan-table" data-category="literatura" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Спецификација</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'literatura', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="category-section">
-                <div class="category-header"><span class="category-number">11</span>УСАВРШАВАЊЕ, СТУДИЈСКИ БОРАВЦИ, САРАДЊА СА ИНСТИТУЦИЈАМА И/ИЛИ ПОЈЕДИНЦИМА</div>
-                <table class="plan-table" data-category="usavrsavanje" data-year="2029">
-                    <thead><tr><th class="row-num">р.б.</th><th>Активност</th><th class="amount-cell">Износ (РСД)</th></tr></thead>
-                    <tbody><tr><td class="row-num">1.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td></tr></tbody>
-                    <tfoot><tr class="total-row"><td colspan="2" class="text-end pe-3">УКУПНО:</td><td class="amount-cell text-end category-total">0</td></tr></tfoot>
-                </table>
-                <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow(this, 'usavrsavanje', '2029')"><i class="bi bi-plus-lg me-1"></i>Додај</button>
-            </div>
-
-            <div class="card grand-total-card mt-4">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8"><h5 class="mb-0"><i class="bi bi-calculator me-2"></i>УКУПНО ЗА 2029. ГОДИНУ:</h5></div>
-                        <div class="col-md-4 text-end"><h3 class="mb-0 year-total" data-year="2029">0 РСД</h3></div>
-                    </div>
-                </div>
+            <div class="text-end">
+                <div class="small text-muted">Укупно за изабрану годину</div>
+                <div class="h3 mb-0" id="selectedYearTotal">0 РСД</div>
             </div>
         </div>
     </div>
 
-    <!-- Grand Summary -->
-    <div class="card mt-4 no-print">
-        <div class="card-header bg-dark text-white">
-            <i class="bi bi-bar-chart me-2"></i>
-            Збирни преглед по годинама
+    {% for category in financial_plan_categories %}
+    <div class="category-section">
+        <div class="category-header">
+            <span class="category-number">{{ category.number }}</span>
+            {{ category.title }}
         </div>
+        {% if category.get('has_exhibition_fields') %}
+        <div class="exhibition-info">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Назив изложбе:</label>
+                    <input type="text" class="form-control form-control-sm exhibition-name" placeholder="">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Место:</label>
+                    <input type="text" class="form-control form-control-sm exhibition-place" placeholder="">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Време:</label>
+                    <input type="text" class="form-control form-control-sm exhibition-time" placeholder="">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <table class="plan-table" data-category="{{ category.key }}">
+            <thead>
+                <tr>
+                    <th class="row-num">р.б.</th>
+                    <th>{{ category.activity_label }}</th>
+                    <th class="amount-cell">Износ (РСД)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="2" class="text-end pe-3">УКУПНО:</td>
+                    <td class="amount-cell text-end category-total">0</td>
+                </tr>
+            </tfoot>
+        </table>
+        <button class="btn btn-sm btn-outline-primary mt-2 no-print" onclick="addRow('{{ category.key }}')">
+            <i class="bi bi-plus-lg me-1"></i>Додај
+        </button>
+        {% if category.get('note') %}
+        <div class="note-box">
+            <i class="bi bi-info-circle me-1"></i>
+            {{ category.note }}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="card grand-total-card mt-4">
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body text-center">
-                            <h6>2027. година</h6>
-                            <h4 class="year-total-summary" data-year="2027">0 РСД</h4>
-                        </div>
-                    </div>
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calculator me-2"></i>
+                        УКУПНО ЗА <span class="selected-year-display">{{ selected_year }}</span>. ГОДИНУ:
+                    </h5>
                 </div>
-                <div class="col-md-4">
-                    <div class="card bg-info text-white">
-                        <div class="card-body text-center">
-                            <h6>2028. година</h6>
-                            <h4 class="year-total-summary" data-year="2028">0 РСД</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-secondary text-white">
-                        <div class="card-body text-center">
-                            <h6>2029. година</h6>
-                            <h4 class="year-total-summary" data-year="2029">0 РСД</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row mt-3">
-                <div class="col-12">
-                    <div class="card bg-success text-white">
-                        <div class="card-body text-center">
-                            <h5>УКУПНО ЗА СВЕ ТРИ ГОДИНЕ:</h5>
-                            <h3 id="grandTotal">0 РСД</h3>
-                        </div>
-                    </div>
+                <div class="col-md-4 text-end">
+                    <h3 class="mb-0" id="selectedYearGrandTotal">0 РСД</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Action Buttons -->
     <div class="row mt-4 no-print">
         <div class="col-12">
-            <div class="d-flex justify-content-between">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left me-1"></i>Назад
-                </a>
-                <div>
-                    <button class="btn btn-outline-primary me-2" onclick="printPlan()"><i class="bi bi-printer me-1"></i>Штампај</button>
-                    <button class="btn btn-outline-success me-2" onclick="exportToWord()"><i class="bi bi-file-earmark-word me-1"></i>Word</button>
-                    <button class="btn btn-primary" onclick="savePlan()"><i class="bi bi-save me-1"></i>Сачувај</button>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Назад
+                        </a>
+                        <div>
+                            <button class="btn btn-outline-secondary me-2" onclick="startNewPlan()">
+                                <i class="bi bi-file-earmark-plus me-1"></i>Нови план
+                            </button>
+                            <button class="btn btn-outline-primary me-2" onclick="printPlan()">
+                                <i class="bi bi-printer me-1"></i>Штампај
+                            </button>
+                    <button class="btn btn-outline-success me-2" onclick="exportToWord()">
+                        <i class="bi bi-file-earmark-word me-1"></i>Word
+                    </button>
+                    <button class="btn btn-primary" onclick="savePlan()">
+                        <i class="bi bi-save me-1"></i>Сачувај
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Saved Plans -->
     <div class="row mt-5 no-print">
         <div class="col-12">
             <div class="card">
-                <div class="card-header"><i class="bi bi-list-ul me-2"></i>Сачувани финансијски планови</div>
+                <div class="card-header">
+                    <i class="bi bi-list-ul me-2"></i>Сачувани финансијски планови
+                </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover" id="plansTable">
-                            <thead><tr><th>Бр.</th><th>Датум</th><th>Одељење</th><th>Име</th><th>Укупно</th><th>Акције</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Бр.</th>
+                                    <th>Датум</th>
+                                    <th>Одељење</th>
+                                    <th>Име</th>
+                                    <th>Укупно</th>
+                                    <th>Акције</th>
+                                </tr>
+                            </thead>
                             <tbody id="plansBody">
-                                <tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size: 2rem;"></i><p class="mb-0 mt-2">Нема сачуваних планова</p></td></tr>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 mt-2">Нема сачуваних планова</p>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -841,110 +387,291 @@
 </div>
 
 <script>
-    const categories = ['akvizicija_teren', 'akvizicija_otkup', 'prepariranje', 'odrzavanje', 'oprema', 'skupovi', 'projekti', 'izlozbe', 'izdavacka', 'literatura', 'usavrsavanje'];
-    const years = ['2027', '2028', '2029'];
-    const categoryNames = {
-        'akvizicija_teren': '1. АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА НА ТЕРЕНУ',
-        'akvizicija_otkup': '2. АКВИЗИЦИЈА - НАБАВКА МУЗЕЈСКИХ ПРЕДМЕТА ОТКУПОМ',
-        'prepariranje': '3. ПРЕПАРИРАЊЕ И КОНЗЕРВАЦИЈА',
-        'odrzavanje': '4. ОДРЖАВАЊЕ ЗБИРКИ И ДЕПОА',
-        'oprema': '5. НАБАВКА НЕОПХОДНЕ ОПРЕМЕ',
-        'skupovi': '6. СТРУЧНИ И НАУЧНИ СКУПОВИ',
-        'projekti': '7. РЕАЛИЗАЦИЈА СТРУЧНИХ И НАУЧНИХ ПРОЈЕКАТА',
-        'izlozbe': '8. ИЗЛОЖБЕНА ДЕЛАТНОСТ',
-        'izdavacka': '9. ИЗДАВАЧКА ДЕЛАТНОСТ',
-        'literatura': '10. НАБАВКА ЛИТЕРАТУРЕ И ПЕРИОДИКЕ',
-        'usavrsavanje': '11. УСАВРШАВАЊЕ И САРАДЊА'
-    };
+    const YEAR_OPTIONS = {{ year_options | tojson }};
+    const CATEGORY_DEFINITIONS = {{ financial_plan_categories | tojson }};
+    const CATEGORY_KEYS = CATEGORY_DEFINITIONS.map(category => category.key);
+    const FINANCIAL_PLAN_DRAFT_NAMESPACE = 'operativni-finansijski-plan';
+    let draftsByYear = {};
+    let currentRenderedYear = '{{ selected_year }}';
+    let currentPlanId = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('datumIzrade').value = today;
-        loadSavedPlans();
-        updateDisplayFields();
+        document.getElementById('datumIzrade').value = '{{ today }}';
+        document.getElementById('planYear').addEventListener('change', handleYearChange);
         document.getElementById('odeljenje').addEventListener('change', updateDisplayFields);
         document.getElementById('imePrezime').addEventListener('input', updateDisplayFields);
+        document.addEventListener('input', handleDraftInput);
+        document.addEventListener('change', handleDraftInput);
+        const planIdFromUrl = new URLSearchParams(window.location.search).get('plan_id');
+        if (planIdFromUrl && /^\d+$/.test(planIdFromUrl)) {
+            renderYearData(currentRenderedYear);
+            loadPlan(parseInt(planIdFromUrl, 10));
+        } else if (!restorePlanDraft()) {
+            renderYearData(currentRenderedYear);
+        }
+        updateDisplayFields();
+        updateEditModeIndicator();
+        loadSavedPlans();
     });
+
+    function handleDraftInput(event) {
+        if (!event.target.matches(
+            '#imePrezime, #odeljenje, #datumIzrade, .activity-input, .amount-input, .exhibition-name, .exhibition-place, .exhibition-time'
+        )) {
+            return;
+        }
+        persistPlanDraft();
+    }
+
+    function getSelectedYear() {
+        return document.getElementById('planYear').value;
+    }
+
+    function createBlankYearDraft() {
+        return { exhibition: {} };
+    }
+
+    function createRowElement(rowNumber, activity = '', amount = '') {
+        const row = document.createElement('tr');
+
+        const numCell = document.createElement('td');
+        numCell.className = 'row-num';
+        numCell.textContent = `${rowNumber}.`;
+
+        const activityCell = document.createElement('td');
+        const activityInput = document.createElement('input');
+        activityInput.type = 'text';
+        activityInput.className = 'activity-input';
+        activityInput.value = activity;
+        activityCell.appendChild(activityInput);
+
+        const amountCell = document.createElement('td');
+        amountCell.className = 'amount-cell';
+        const amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.className = 'amount-input';
+        amountInput.min = '0';
+        amountInput.step = '1';
+        amountInput.placeholder = '0';
+        amountInput.value = amount === '' || amount === null || amount === undefined ? '' : amount;
+        amountInput.addEventListener('input', calculateTotals);
+        amountCell.appendChild(amountInput);
+
+        row.appendChild(numCell);
+        row.appendChild(activityCell);
+        row.appendChild(amountCell);
+        return row;
+    }
+
+    function updateSelectedYearLabels() {
+        const year = getSelectedYear();
+        document.querySelectorAll('.selected-year-display').forEach(el => {
+            el.textContent = year;
+        });
+    }
 
     function updateDisplayFields() {
         const odeljenje = document.getElementById('odeljenje');
         const ime = document.getElementById('imePrezime').value;
         const odeljenjeText = odeljenje.options[odeljenje.selectedIndex]?.text || '';
-        document.querySelectorAll('.odeljenje-display').forEach(el => el.textContent = odeljenjeText);
-        document.querySelectorAll('.ime-display').forEach(el => el.textContent = ime);
+
+        document.querySelectorAll('.odeljenje-display').forEach(el => {
+            el.textContent = odeljenjeText;
+        });
+        document.querySelectorAll('.ime-display').forEach(el => {
+            el.textContent = ime;
+        });
+        updateSelectedYearLabels();
     }
 
-    function addRow(button, category, year) {
-        const table = document.querySelector(`table[data-category="${category}"][data-year="${year}"]`);
+    function updateEditModeIndicator() {
+        const indicator = document.getElementById('editModeIndicator');
+        const planIdNode = document.getElementById('editModePlanId');
+        if (!indicator || !planIdNode) return;
+
+        if (currentPlanId) {
+            planIdNode.textContent = `#${currentPlanId}`;
+            indicator.classList.remove('d-none');
+        } else {
+            planIdNode.textContent = '';
+            indicator.classList.add('d-none');
+        }
+    }
+
+    function captureCurrentYearDraft() {
+        const draft = createBlankYearDraft();
+
+        const exhibitionName = document.querySelector('.exhibition-name');
+        const exhibitionPlace = document.querySelector('.exhibition-place');
+        const exhibitionTime = document.querySelector('.exhibition-time');
+        if (exhibitionName || exhibitionPlace || exhibitionTime) {
+            draft.exhibition = {
+                name: exhibitionName ? exhibitionName.value : '',
+                place: exhibitionPlace ? exhibitionPlace.value : '',
+                time: exhibitionTime ? exhibitionTime.value : ''
+            };
+        }
+
+        CATEGORY_KEYS.forEach(categoryKey => {
+            const table = document.querySelector(`table[data-category="${categoryKey}"]`);
+            if (!table) return;
+
+            const items = [];
+            table.querySelectorAll('tbody tr').forEach((row, index) => {
+                const activity = row.querySelector('.activity-input')?.value || '';
+                const amountRaw = row.querySelector('.amount-input')?.value;
+                const amount = parseFloat(amountRaw) || 0;
+
+                if (activity.trim() || amount > 0) {
+                    items.push({
+                        rbr: index + 1,
+                        activity,
+                        amount
+                    });
+                }
+            });
+
+            if (items.length > 0) {
+                draft[categoryKey] = items;
+            }
+        });
+
+        draftsByYear[currentRenderedYear] = draft;
+    }
+
+    function renderCategoryRows(categoryKey, items) {
+        const table = document.querySelector(`table[data-category="${categoryKey}"]`);
+        if (!table) return;
+
         const tbody = table.querySelector('tbody');
-        const rowCount = tbody.querySelectorAll('tr').length + 1;
-        const newRow = document.createElement('tr');
-        newRow.innerHTML = `<td class="row-num">${rowCount}.</td><td><input type="text" class="activity-input" placeholder=""></td><td class="amount-cell"><input type="number" class="amount-input" min="0" step="1" placeholder="0" onchange="calculateTotals()"></td>`;
-        tbody.appendChild(newRow);
+        tbody.innerHTML = '';
+
+        const sourceItems = Array.isArray(items) && items.length ? items : [{ activity: '', amount: '' }];
+        sourceItems.forEach((item, index) => {
+            tbody.appendChild(createRowElement(index + 1, item.activity || '', item.amount ?? ''));
+        });
+    }
+
+    function renderYearData(year) {
+        const draft = draftsByYear[year] || createBlankYearDraft();
+        currentRenderedYear = year;
+
+        const exhibitionName = document.querySelector('.exhibition-name');
+        const exhibitionPlace = document.querySelector('.exhibition-place');
+        const exhibitionTime = document.querySelector('.exhibition-time');
+        if (exhibitionName) exhibitionName.value = draft.exhibition?.name || '';
+        if (exhibitionPlace) exhibitionPlace.value = draft.exhibition?.place || '';
+        if (exhibitionTime) exhibitionTime.value = draft.exhibition?.time || '';
+
+        CATEGORY_KEYS.forEach(categoryKey => {
+            renderCategoryRows(categoryKey, draft[categoryKey] || []);
+        });
+
+        updateDisplayFields();
+        calculateTotals();
+    }
+
+    function handleYearChange() {
+        captureCurrentYearDraft();
+        renderYearData(getSelectedYear());
+        persistPlanDraft();
+    }
+
+    function addRow(categoryKey) {
+        const table = document.querySelector(`table[data-category="${categoryKey}"]`);
+        if (!table) return;
+
+        const tbody = table.querySelector('tbody');
+        tbody.appendChild(createRowElement(tbody.querySelectorAll('tr').length + 1));
+        persistPlanDraft();
     }
 
     function calculateTotals() {
-        let grandTotal = 0;
-        years.forEach(year => {
-            let yearTotal = 0;
-            categories.forEach(category => {
-                const table = document.querySelector(`table[data-category="${category}"][data-year="${year}"]`);
-                if (table) {
-                    let categoryTotal = 0;
-                    table.querySelectorAll('.amount-input').forEach(input => {
-                        categoryTotal += parseFloat(input.value) || 0;
-                    });
-                    const totalCell = table.querySelector('.category-total');
-                    if (totalCell) totalCell.textContent = categoryTotal.toLocaleString('sr-RS');
-                    yearTotal += categoryTotal;
-                }
+        let selectedYearTotal = 0;
+
+        CATEGORY_KEYS.forEach(categoryKey => {
+            const table = document.querySelector(`table[data-category="${categoryKey}"]`);
+            if (!table) return;
+
+            let categoryTotal = 0;
+            table.querySelectorAll('.amount-input').forEach(input => {
+                categoryTotal += parseFloat(input.value) || 0;
             });
-            const yearTotalEl = document.querySelector(`.year-total[data-year="${year}"]`);
-            if (yearTotalEl) yearTotalEl.textContent = yearTotal.toLocaleString('sr-RS') + ' РСД';
-            const yearTotalSummary = document.querySelector(`.year-total-summary[data-year="${year}"]`);
-            if (yearTotalSummary) yearTotalSummary.textContent = yearTotal.toLocaleString('sr-RS') + ' РСД';
-            grandTotal += yearTotal;
+
+            const totalCell = table.querySelector('.category-total');
+            if (totalCell) {
+                totalCell.textContent = categoryTotal.toLocaleString('sr-RS');
+            }
+            selectedYearTotal += categoryTotal;
         });
-        document.getElementById('grandTotal').textContent = grandTotal.toLocaleString('sr-RS') + ' РСД';
+
+        document.getElementById('selectedYearTotal').textContent = `${selectedYearTotal.toLocaleString('sr-RS')} РСД`;
+        document.getElementById('selectedYearGrandTotal').textContent = `${selectedYearTotal.toLocaleString('sr-RS')} РСД`;
     }
 
     function collectPlanData() {
-        const planData = {
+        captureCurrentYearDraft();
+        const selectedYear = getSelectedYear();
+
+        return {
+            id: currentPlanId,
             imePrezime: document.getElementById('imePrezime').value,
+            kustos: document.getElementById('imePrezime').value,
             odeljenje: document.getElementById('odeljenje').value,
             odeljenjeText: document.getElementById('odeljenje').options[document.getElementById('odeljenje').selectedIndex]?.text || '',
             datumIzrade: document.getElementById('datumIzrade').value,
-            years: {}
+            selectedYear,
+            years: {
+                [selectedYear]: draftsByYear[selectedYear] || createBlankYearDraft()
+            }
         };
-        years.forEach(year => {
-            planData.years[year] = { exhibition: {} };
-            // Get exhibition info
-            const exName = document.querySelector(`.exhibition-name[data-year="${year}"]`);
-            const exPlace = document.querySelector(`.exhibition-place[data-year="${year}"]`);
-            const exTime = document.querySelector(`.exhibition-time[data-year="${year}"]`);
-            if (exName) planData.years[year].exhibition.name = exName.value;
-            if (exPlace) planData.years[year].exhibition.place = exPlace.value;
-            if (exTime) planData.years[year].exhibition.time = exTime.value;
-
-            categories.forEach(category => {
-                const table = document.querySelector(`table[data-category="${category}"][data-year="${year}"]`);
-                if (table) {
-                    const items = [];
-                    table.querySelectorAll('tbody tr').forEach((row, index) => {
-                        const activity = row.querySelector('.activity-input')?.value || '';
-                        const amount = parseFloat(row.querySelector('.amount-input')?.value) || 0;
-                        if (activity.trim() || amount > 0) {
-                            items.push({ rbr: index + 1, activity: activity, amount: amount });
-                        }
-                    });
-                    if (items.length > 0) planData.years[year][category] = items;
-                }
-            });
-        });
-        return planData;
     }
 
-    function printPlan() { updateDisplayFields(); window.print(); }
+    function collectPlanDraftData() {
+        captureCurrentYearDraft();
+        return {
+            currentPlanId,
+            imePrezime: document.getElementById('imePrezime').value,
+            odeljenje: document.getElementById('odeljenje').value,
+            datumIzrade: document.getElementById('datumIzrade').value,
+            selectedYear: getSelectedYear(),
+            draftsByYear,
+        };
+    }
+
+    function persistPlanDraft() {
+        saveUserScopedDraft(FINANCIAL_PLAN_DRAFT_NAMESPACE, collectPlanDraftData());
+    }
+
+    function restorePlanDraft() {
+        const draft = loadUserScopedDraft(FINANCIAL_PLAN_DRAFT_NAMESPACE);
+        if (!draft || typeof draft !== 'object') {
+            return false;
+        }
+
+        currentPlanId = Number.isInteger(draft.currentPlanId)
+            ? draft.currentPlanId
+            : (String(draft.currentPlanId || '').trim().match(/^\d+$/) ? parseInt(draft.currentPlanId, 10) : null);
+        draftsByYear = draft.draftsByYear && typeof draft.draftsByYear === 'object'
+            ? draft.draftsByYear
+            : {};
+
+        document.getElementById('imePrezime').value = draft.imePrezime || '{{ session.get("user_name", "") }}';
+        document.getElementById('odeljenje').value = draft.odeljenje || '';
+        document.getElementById('datumIzrade').value = draft.datumIzrade || '{{ today }}';
+
+        const selectedYear = draft.selectedYear && YEAR_OPTIONS.includes(String(draft.selectedYear))
+            ? String(draft.selectedYear)
+            : currentRenderedYear;
+        document.getElementById('planYear').value = selectedYear;
+        renderYearData(selectedYear);
+        return true;
+    }
+
+    function printPlan() {
+        updateDisplayFields();
+        window.print();
+    }
 
     function exportToWord() {
         const planData = collectPlanData();
@@ -953,12 +680,15 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(planData)
         })
-        .then(response => { if (response.ok) return response.blob(); throw new Error('Грешка'); })
+        .then(response => {
+            if (response.ok) return response.blob();
+            throw new Error('Грешка при Word експорту');
+        })
         .then(blob => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Finansijski_plan_${planData.datumIzrade}.docx`;
+            a.download = `Finansijski_plan_${planData.selectedYear}_${planData.datumIzrade}.docx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -969,8 +699,15 @@
 
     function savePlan() {
         const planData = collectPlanData();
-        if (!planData.odeljenje) { alert('Молимо изаберите одељење.'); return; }
-        if (!planData.imePrezime.trim()) { alert('Молимо унесите име и презиме.'); return; }
+        if (!planData.odeljenje) {
+            alert('Молимо изаберите одељење.');
+            return;
+        }
+        if (!planData.imePrezime.trim()) {
+            alert('Молимо унесите име и презиме.');
+            return;
+        }
+
         secureFetch('/api/finansijski-plan/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -978,8 +715,15 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) { alert('План је успешно сачуван!'); loadSavedPlans(); }
-            else alert('Грешка: ' + (data.message || 'Непозната грешка'));
+            if (data.success) {
+                currentPlanId = data.id;
+                updateEditModeIndicator();
+                persistPlanDraft();
+                alert(data.updated ? 'План је успешно ажуриран!' : 'План је успешно сачуван!');
+                loadSavedPlans();
+            } else {
+                alert('Грешка: ' + (data.message || 'Непозната грешка'));
+            }
         })
         .catch(error => alert('Грешка: ' + error.message));
     }
@@ -1010,7 +754,56 @@
             .catch(error => console.error('Error:', error));
     }
 
-    function loadPlan(id) { alert('Функција учитавања плана ће бити имплементирана.'); }
-    function exportPlanToWord(id) { window.location.href = `/api/finansijski-plan/export-word/${id}`; }
+    function loadPlan(id) {
+        secureFetch(`/api/finansijski-plan/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success || !data.plan) {
+                    throw new Error(data.message || 'План није доступан.');
+                }
+
+                const plan = data.plan;
+                currentPlanId = plan.id;
+                updateEditModeIndicator();
+                document.getElementById('imePrezime').value = plan.imePrezime || plan.kustos || '';
+                document.getElementById('datumIzrade').value = plan.datumIzrade || '{{ today }}';
+
+                const departmentSelect = document.getElementById('odeljenje');
+                departmentSelect.value = plan.odeljenje || '';
+
+                draftsByYear = {};
+                if (plan.years && typeof plan.years === 'object') {
+                    Object.entries(plan.years).forEach(([year, draft]) => {
+                        draftsByYear[String(year)] = draft || createBlankYearDraft();
+                    });
+                }
+
+                const selectedYear = plan.selectedYear && YEAR_OPTIONS.includes(String(plan.selectedYear))
+                    ? String(plan.selectedYear)
+                    : YEAR_OPTIONS[0];
+                document.getElementById('planYear').value = selectedYear;
+                renderYearData(selectedYear);
+                persistPlanDraft();
+            })
+            .catch(error => {
+                alert('Грешка: ' + error.message);
+            });
+    }
+
+    function startNewPlan() {
+        currentPlanId = null;
+        updateEditModeIndicator();
+        draftsByYear = {};
+        document.getElementById('imePrezime').value = '{{ session.get("user_name", "") }}';
+        document.getElementById('odeljenje').value = '';
+        document.getElementById('datumIzrade').value = '{{ today }}';
+        document.getElementById('planYear').value = YEAR_OPTIONS[0];
+        renderYearData(YEAR_OPTIONS[0]);
+        persistPlanDraft();
+    }
+
+    function exportPlanToWord(id) {
+        window.location.href = `/api/finansijski-plan/export-word/${id}`;
+    }
 </script>
 {% endblock %}

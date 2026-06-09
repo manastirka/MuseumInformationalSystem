@@ -15,14 +15,14 @@
                                 {{ page_title }}
                             </h1>
                             <p class="mb-0 opacity-75">
-                                Евиденција и планирање теренских активности
+                                Преглед теренских активности из захтева за службени пут
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
-                            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#newFieldActivityModal">
+                            <a href="{{ url_for('travel_finance.zahtev_sluzbeni_put') }}" class="btn btn-light">
                                 <i class="bi bi-plus-lg me-1"></i>
-                                Нова активност
-                            </button>
+                                Нови захтев за службени пут
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -32,46 +32,37 @@
 
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card border-0 bg-light h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-calendar-check text-success" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2 mb-0">-</h3>
-                    <small class="text-muted">Завршене активности</small>
+                    <h3 class="mt-2 mb-0">{{ stats.completed }}</h3>
+                    <small class="text-muted">Завршене</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card border-0 bg-light h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2 mb-0">-</h3>
+                    <h3 class="mt-2 mb-0">{{ stats.active }}</h3>
                     <small class="text-muted">У току</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card border-0 bg-light h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-calendar-plus text-primary" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2 mb-0">-</h3>
+                    <h3 class="mt-2 mb-0">{{ stats.planned }}</h3>
                     <small class="text-muted">Планиране</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 bg-light h-100">
-                <div class="card-body text-center">
-                    <i class="bi bi-people text-info" style="font-size: 2rem;"></i>
-                    <h3 class="mt-2 mb-0">-</h3>
-                    <small class="text-muted">Учесника</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-lg-8">
+    <div class="row">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>
@@ -79,164 +70,92 @@
                         Теренске активности
                     </span>
                     <div>
-                        <select class="form-select form-select-sm d-inline-block w-auto">
-                            <option>Све</option>
-                            <option>Планиране</option>
-                            <option>У току</option>
-                            <option>Завршене</option>
+                        <select class="form-select form-select-sm d-inline-block w-auto" id="statusFilter" onchange="filterActivities()">
+                            <option value="all">Све</option>
+                            <option value="Планирана">Планиране</option>
+                            <option value="У току">У току</option>
+                            <option value="Завршена">Завршене</option>
                         </select>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Модул за теренске активности је у припреми. Ускоро ће бити доступан.
-                    </div>
-
+                    {% if activities %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover" id="activitiesTable">
                             <thead>
                                 <tr>
-                                    <th>Датум</th>
-                                    <th>Локација</th>
-                                    <th>Тип</th>
-                                    <th>Водитељ</th>
+                                    <th>Период</th>
+                                    <th>Дестинација</th>
+                                    <th>Сврха</th>
+                                    <th>Подносилац</th>
+                                    <th>Возило</th>
                                     <th>Статус</th>
-                                    <th>Акције</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">
-                                        <i class="bi bi-map" style="font-size: 2rem;"></i>
-                                        <p class="mb-0 mt-2">Нема евидентираних теренских активности</p>
+                                {% for activity in activities %}
+                                <tr class="activity-row" data-status="{{ activity.computed_status }}">
+                                    <td>
+                                        <span class="text-nowrap">
+                                            {{ activity.start_date.strftime('%d.%m.%Y') if activity.start_date else '-' }}
+                                        </span>
+                                        {% if activity.end_date and activity.end_date != activity.start_date %}
+                                        <br><small class="text-muted">до {{ activity.end_date.strftime('%d.%m.%Y') }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ activity.destination or '-' }}</td>
+                                    <td>{{ activity.purpose or '-' }}</td>
+                                    <td>{{ activity.reserved_by or '-' }}</td>
+                                    <td>
+                                        {% if activity.vehicle_name %}
+                                        {{ activity.vehicle_name }}
+                                        {% if activity.vehicle_registration %}
+                                        <br><small class="text-muted">{{ activity.vehicle_registration }}</small>
+                                        {% endif %}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if activity.computed_status == 'У току' %}
+                                        <span class="badge bg-warning text-dark">У току</span>
+                                        {% elif activity.computed_status == 'Планирана' %}
+                                        <span class="badge bg-primary">Планирана</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Завршена</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card mb-4">
-                <div class="card-header bg-light">
-                    <i class="bi bi-calendar3 me-2"></i>
-                    Предстојеће активности
-                </div>
-                <div class="card-body">
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
-                        <p class="mb-0 mt-2 small">Нема планираних активности</p>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-map" style="font-size: 2rem;"></i>
+                        <p class="mb-0 mt-2">Нема евидентираних теренских активности</p>
+                        <a href="{{ url_for('travel_finance.zahtev_sluzbeni_put') }}" class="btn btn-outline-primary btn-sm mt-3">
+                            <i class="bi bi-plus-lg me-1"></i>
+                            Креирај захтев за службени пут
+                        </a>
                     </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header bg-light">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Типови активности
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li class="d-flex align-items-center mb-2">
-                            <span class="badge bg-success me-2">●</span>
-                            Ископавање
-                        </li>
-                        <li class="d-flex align-items-center mb-2">
-                            <span class="badge bg-primary me-2">●</span>
-                            Прикупљање узорака
-                        </li>
-                        <li class="d-flex align-items-center mb-2">
-                            <span class="badge bg-warning me-2">●</span>
-                            Мониторинг
-                        </li>
-                        <li class="d-flex align-items-center mb-2">
-                            <span class="badge bg-info me-2">●</span>
-                            Едукација
-                        </li>
-                        <li class="d-flex align-items-center">
-                            <span class="badge bg-secondary me-2">●</span>
-                            Остало
-                        </li>
-                    </ul>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- New Field Activity Modal -->
-<div class="modal fade" id="newFieldActivityModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);">
-                <h5 class="modal-title">
-                    <i class="bi bi-geo-alt me-2"></i>
-                    Нова теренска активност
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="fieldActivityForm">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Датум почетка *</label>
-                            <input type="date" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Датум завршетка</label>
-                            <input type="date" class="form-control">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Локација *</label>
-                        <input type="text" class="form-control" required placeholder="нпр. Ђердап, Стара Планина...">
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Тип активности *</label>
-                            <select class="form-select" required>
-                                <option value="">Изаберите тип</option>
-                                <option>Ископавање</option>
-                                <option>Прикупљање узорака</option>
-                                <option>Мониторинг</option>
-                                <option>Едукација</option>
-                                <option>Остало</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Водитељ *</label>
-                            <select class="form-select" required>
-                                <option value="">Изаберите водитеља</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Учесници</label>
-                        <select class="form-select" multiple>
-                        </select>
-                        <small class="text-muted">Држите Ctrl за више избора</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Опис/Циљ активности</label>
-                        <textarea class="form-control" rows="3" placeholder="Опишите сврху и циљеве теренске активности..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Потребна опрема</label>
-                        <textarea class="form-control" rows="2" placeholder="Листа потребне опреме..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
-                <button type="button" class="btn text-white" style="background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);">
-                    <i class="bi bi-check-lg me-1"></i>
-                    Сачувај активност
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<script>
+function filterActivities() {
+    const filter = document.getElementById('statusFilter').value;
+    document.querySelectorAll('.activity-row').forEach(function(row) {
+        if (filter === 'all' || row.dataset.status === filter) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
 {% endblock %}

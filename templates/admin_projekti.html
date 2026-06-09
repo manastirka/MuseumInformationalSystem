@@ -139,7 +139,7 @@
                     <i class="bi bi-pencil-square me-1"></i>Пројектант: МИТ-арх д.о.о. Београд
                 </p>
                 <div class="mt-3 d-flex flex-wrap gap-2">
-                    <a href="{{ url_for('admin_projekti_dokumentacija') }}" class="btn btn-light btn-sm">
+                    <a href="{{ url_for('projects.admin_projekti_dokumentacija') }}" class="btn btn-light btn-sm">
                         <i class="bi bi-journal-richtext me-1"></i>Пројектна документација
                     </a>
                 </div>
@@ -180,7 +180,7 @@
     <div class="row g-4 mb-5">
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='01 Situacija prizemlje1.jpg') }}" alt="Ситуација приземље">
+                <img src="{{ url_for('projects.projekti_file', filename='01 Situacija prizemlje1.jpg') }}" alt="Ситуација приземље">
                 <div class="card-body">
                     <h6 class="card-title">Ситуација &mdash; Приземље</h6>
                     <p class="card-text">Ситуациони план приземља нове зграде музеја на Булевару Николе Тесле</p>
@@ -189,7 +189,7 @@
         </div>
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='02 Situacija krov1.jpg') }}" alt="Ситуација кров">
+                <img src="{{ url_for('projects.projekti_file', filename='02 Situacija krov1.jpg') }}" alt="Ситуација кров">
                 <div class="card-body">
                     <h6 class="card-title">Ситуација &mdash; Кров</h6>
                     <p class="card-text">План кровне конструкције са зеленим кровом и стакленим елементима</p>
@@ -198,7 +198,7 @@
         </div>
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='03 osnova kota -5,001.jpg') }}" alt="Основа кота -5.00">
+                <img src="{{ url_for('projects.projekti_file', filename='03 osnova kota -5,001.jpg') }}" alt="Основа кота -5.00">
                 <div class="card-body">
                     <h6 class="card-title">Основа кота -5,00</h6>
                     <p class="card-text">План подземног нивоа: паркинг, депо, техничке просторије</p>
@@ -207,7 +207,7 @@
         </div>
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='04 osnova kota 0,001.jpg') }}" alt="Основа кота 0.00">
+                <img src="{{ url_for('projects.projekti_file', filename='04 osnova kota 0,001.jpg') }}" alt="Основа кота 0.00">
                 <div class="card-body">
                     <h6 class="card-title">Основа кота 0,00</h6>
                     <p class="card-text">План приземља: изложбени простори, лоби, аудиторијум, администрација</p>
@@ -216,7 +216,7 @@
         </div>
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='07 Presek 2-21.jpg') }}" alt="Пресек 2-2">
+                <img src="{{ url_for('projects.projekti_file', filename='07 Presek 2-21.jpg') }}" alt="Пресек 2-2">
                 <div class="card-body">
                     <h6 class="card-title">Пресек 2-2</h6>
                     <p class="card-text">Попречни пресек зграде са видљивим нивоима и конструкцијом крова</p>
@@ -225,7 +225,7 @@
         </div>
         <div class="col-lg-4 col-md-6">
             <div class="plan-card card" onclick="openLightbox(this)">
-                <img src="{{ url_for('projekti_file', filename='08 Presek 3-31.jpg') }}" alt="Пресек 3-3">
+                <img src="{{ url_for('projects.projekti_file', filename='08 Presek 3-31.jpg') }}" alt="Пресек 3-3">
                 <div class="card-body">
                     <h6 class="card-title">Пресек 3-3</h6>
                     <p class="card-text">Уздужни пресек &mdash; комплетан приказ објекта дуж целе дужине</p>
@@ -274,7 +274,7 @@
             <h3 class="section-title"><i class="bi bi-file-earmark-text me-2"></i>Пројектна документација</h3>
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <a href="{{ url_for('projekti_file', filename='ER ИЗВЕШТАЈ ПОСЛОДАВЦА....docx') }}" class="text-decoration-none">
+                    <a href="{{ url_for('projects.projekti_file', filename='ER ИЗВЕШТАЈ ПОСЛОДАВЦА....docx') }}" class="text-decoration-none">
                         <div class="doc-item">
                             <div class="doc-icon docx"><i class="bi bi-file-earmark-word"></i></div>
                             <div class="doc-info">
@@ -287,7 +287,7 @@
                     </a>
                 </div>
                 <div class="col-md-6">
-                    <a href="{{ url_for('projekti_file', filename='Pregled i opis standarda baziran na projektnom zadatku.rtf') }}" class="text-decoration-none">
+                    <a href="{{ url_for('projects.projekti_file', filename='Pregled i opis standarda baziran na projektnom zadatku.rtf') }}" class="text-decoration-none">
                         <div class="doc-item">
                             <div class="doc-icon rtf"><i class="bi bi-file-earmark-richtext"></i></div>
                             <div class="doc-info">
@@ -300,7 +300,7 @@
                     </a>
                 </div>
                 <div class="col-md-6">
-                    <a href="{{ url_for('projekti_file', filename='Geology_department_permanent _exibition_concept.docx') }}" class="text-decoration-none">
+                    <a href="{{ url_for('projects.projekti_file', filename='Geology_department_permanent _exibition_concept.docx') }}" class="text-decoration-none">
                         <div class="doc-item">
                             <div class="doc-icon docx"><i class="bi bi-file-earmark-word"></i></div>
                             <div class="doc-info">
@@ -313,7 +313,7 @@
                     </a>
                 </div>
                 <div class="col-md-6">
-                    <a href="{{ url_for('projekti_file', filename='KONCEPT BIOLOŠKOG DELA STALNE POSTAVKE_draft.pdf') }}" class="text-decoration-none">
+                    <a href="{{ url_for('projects.projekti_file', filename='KONCEPT BIOLOŠKOG DELA STALNE POSTAVKE_draft.pdf') }}" class="text-decoration-none">
                         <div class="doc-item">
                             <div class="doc-icon pdf"><i class="bi bi-file-earmark-pdf"></i></div>
                             <div class="doc-info">

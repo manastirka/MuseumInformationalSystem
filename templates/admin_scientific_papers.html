@@ -89,7 +89,7 @@
                     <div class="list-group list-group-flush">
                         {% for item in stats.top_localities[:10] %}
                         <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <a href="{{ url_for('scientific_papers_by_locality', locality_name=item.locality) }}" class="text-decoration-none text-truncate me-2">
+                            <a href="{{ url_for('science.scientific_papers_by_locality', locality_name=item.locality) }}" class="text-decoration-none text-truncate me-2">
                                 {{ item.locality }}
                             </a>
                             <span class="badge bg-success rounded-pill">{{ item.count }}</span>
@@ -200,7 +200,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ url_for('scientific_papers_view') }}" class="row g-3">
+                    <form method="GET" action="{{ url_for('science.scientific_papers_view') }}" class="row g-3">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="col-md-3">
                             <label class="form-label small">Претрага</label>
@@ -241,7 +241,7 @@
                             <button type="submit" class="btn btn-primary me-2">
                                 <i class="bi bi-search"></i> Филтрирај
                             </button>
-                            <a href="{{ url_for('scientific_papers_view') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('science.scientific_papers_view') }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i>
                             </a>
                         </div>
@@ -278,12 +278,12 @@
                                     <th style="width: 15%;">Аутори</th>
                                     <th style="width: 15%;">Часопис</th>
                                     <th style="width: 5%;" class="text-center">
-                                        <a href="{{ url_for('scientific_papers_view', search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by='publication_year', sort_order='DESC' if sort_order == 'ASC' and sort_by == 'publication_year' else 'ASC' if sort_by == 'publication_year' else 'DESC', page=1) }}" class="text-decoration-none text-dark">
+                                        <a href="{{ url_for('science.scientific_papers_view', search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by='publication_year', sort_order='DESC' if sort_order == 'ASC' and sort_by == 'publication_year' else 'ASC' if sort_by == 'publication_year' else 'DESC', page=1) }}" class="text-decoration-none text-dark">
                                             Год. <i class="bi bi-arrow-down-up"></i>
                                         </a>
                                     </th>
                                     <th style="width: 8%;" class="text-center">
-                                        <a href="{{ url_for('scientific_papers_view', search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by='cited_by_count', sort_order='ASC' if sort_order == 'DESC' and sort_by == 'cited_by_count' else 'DESC', page=1) }}" class="text-decoration-none text-dark">
+                                        <a href="{{ url_for('science.scientific_papers_view', search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by='cited_by_count', sort_order='ASC' if sort_order == 'DESC' and sort_by == 'cited_by_count' else 'DESC', page=1) }}" class="text-decoration-none text-dark">
                                             Цитати <i class="bi bi-arrow-down-up"></i>
                                         </a>
                                     </th>
@@ -296,7 +296,7 @@
                                 {% for paper in papers %}
                                 <tr>
                                     <td>
-                                        <a href="{{ url_for('scientific_paper_detail', paper_id=paper.id) }}" class="text-decoration-none fw-bold">
+                                        <a href="{{ url_for('science.scientific_paper_detail', paper_id=paper.id) }}" class="text-decoration-none fw-bold">
                                             {{ paper.title[:120] }}{% if paper.title|length > 120 %}...{% endif %}
                                         </a>
                                         {% if paper.doi %}
@@ -334,7 +334,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('scientific_paper_detail', paper_id=paper.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ url_for('science.scientific_paper_detail', paper_id=paper.id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     </td>
@@ -351,7 +351,7 @@
                             <ul class="pagination justify-content-center mb-0">
                                 <!-- Previous -->
                                 <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                                    <a class="page-link" href="{{ url_for('scientific_papers_view', page=current_page-1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">
+                                    <a class="page-link" href="{{ url_for('science.scientific_papers_view', page=current_page-1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">
                                         <i class="bi bi-chevron-left"></i>
                                     </a>
                                 </li>
@@ -361,7 +361,7 @@
 
                                 {% if start_page > 1 %}
                                 <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('scientific_papers_view', page=1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">1</a>
+                                    <a class="page-link" href="{{ url_for('science.scientific_papers_view', page=1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">1</a>
                                 </li>
                                 {% if start_page > 2 %}
                                 <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -370,7 +370,7 @@
 
                                 {% for page in range(start_page, end_page + 1) %}
                                 <li class="page-item {% if page == current_page %}active{% endif %}">
-                                    <a class="page-link" href="{{ url_for('scientific_papers_view', page=page, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">{{ page }}</a>
+                                    <a class="page-link" href="{{ url_for('science.scientific_papers_view', page=page, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">{{ page }}</a>
                                 </li>
                                 {% endfor %}
 
@@ -379,13 +379,13 @@
                                 <li class="page-item disabled"><span class="page-link">...</span></li>
                                 {% endif %}
                                 <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('scientific_papers_view', page=total_pages, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">{{ total_pages }}</a>
+                                    <a class="page-link" href="{{ url_for('science.scientific_papers_view', page=total_pages, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">{{ total_pages }}</a>
                                 </li>
                                 {% endif %}
 
                                 <!-- Next -->
                                 <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                                    <a class="page-link" href="{{ url_for('scientific_papers_view', page=current_page+1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">
+                                    <a class="page-link" href="{{ url_for('science.scientific_papers_view', page=current_page+1, search=search, locality=locality_filter, journal=journal_filter, year=year_filter, min_citations=min_citations, sort_by=sort_by, sort_order=sort_order) }}">
                                         <i class="bi bi-chevron-right"></i>
                                     </a>
                                 </li>

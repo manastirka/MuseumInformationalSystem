@@ -20,6 +20,11 @@ fi
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
+export SESSION_INVALIDATE_ON_RESTART="${SESSION_INVALIDATE_ON_RESTART:-false}"
+if [ "${SESSION_INVALIDATE_ON_RESTART}" = "true" ]; then
+    export SESSION_BOOT_ID="${SESSION_BOOT_ID:-$(date +%s%N)}"
+fi
+
 # Kill any existing processes on port 5000
 echo "🧹 Cleaning up existing processes..."
 fuser -k 5000/tcp 2>/dev/null || lsof -ti:5000 | xargs kill -9 2>/dev/null

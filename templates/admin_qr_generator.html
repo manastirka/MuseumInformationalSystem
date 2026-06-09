@@ -47,23 +47,23 @@
                         QR код води директно до детаља примерка у систему
                     </div>
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('admin_qr_field_selection', collection_type=collection.id) }}"
+                        <a href="{{ url_for('qr.admin_qr_field_selection', collection_type=collection.id) }}"
                            class="btn btn-success">
                             <i class="bi bi-sliders me-2"></i>
                             Прилагоди поља и генериши
                         </a>
-                        <a href="{{ url_for('admin_qr_labels', collection_type=collection.id) }}"
+                        <a href="{{ url_for('qr.admin_qr_labels', collection_type=collection.id) }}"
                            class="btn btn-outline-success">
                             <i class="bi bi-qr-code me-2"></i>
                             Брза генерација (сва поља)
                         </a>
-                        <a href="{{ url_for('admin_qr_select_specimens', collection_type=collection.id) }}"
+                        <a href="{{ url_for('qr.admin_qr_select_specimens', collection_type=collection.id) }}"
                            class="btn btn-primary">
                             <i class="bi bi-filter-square me-2"></i>
                             Изабери примерке
                         </a>
                         {% if collection.id == 'minerals' %}
-                        <a href="{{ url_for('admin_qr_mineral_boxes') }}"
+                        <a href="{{ url_for('qr.admin_qr_mineral_boxes') }}"
                            class="btn btn-warning">
                             <i class="bi bi-box-seam me-2"></i>
                             QR за кутије
