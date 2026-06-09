@@ -18,7 +18,17 @@ class PostgresConnectionTests(unittest.TestCase):
         database_url = os.environ.get('DATABASE_URL')
         if not database_url:
             raise unittest.SkipTest('DATABASE_URL is not configured')
-        cls.engine = create_engine(database_url)
+        try:
+            cls.engine = create_engine(database_url)
+            with cls.engine.connect() as conn:
+                conn.execute(text('SELECT 1'))
+        except unittest.SkipTest:
+            raise
+        except Exception as exc:
+            engine = getattr(cls, 'engine', None)
+            if engine is not None:
+                engine.dispose()
+            raise unittest.SkipTest(f'PostgreSQL is not usable: {exc}')
 
     @classmethod
     def tearDownClass(cls):

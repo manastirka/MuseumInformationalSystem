@@ -2,6 +2,8 @@
 """Regression tests for startup-time lazy loading improvements."""
 
 import os
+import subprocess
+import sys
 import json
 import tempfile
 import unittest
@@ -15,24 +17,53 @@ os.environ['REDIS_URL'] = ''
 import app as museum_app
 
 
+def _assert_fresh_import_state(expression):
+    """Import ``app`` in a pristine subprocess and assert ``expression`` there.
+
+    These regressions guard the state of module-level globals *immediately
+    after import*. When the whole suite runs in one process, earlier test
+    modules may legitimately initialize this shared state, so the check must
+    happen in a fresh interpreter to stay order-independent.
+    """
+    code = (
+        "import os;"
+        "os.environ.setdefault('FLASK_ENV', 'testing');"
+        "os.environ.setdefault('SECRET_KEY', 'test-secret');"
+        "os.environ.setdefault('REDIS_URL', '');"
+        "import app;"
+        f"assert {expression}, {expression!r}"
+    )
+    result = subprocess.run(
+        [sys.executable, '-c', code],
+        capture_output=True,
+        text=True,
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        timeout=300,
+    )
+    if result.returncode != 0:
+        raise AssertionError(
+            f'fresh-import check failed: {expression}\n{result.stderr[-2000:]}'
+        )
+
+
 class StartupLazyLoadingTests(unittest.TestCase):
     def test_auth_service_stays_uninitialized_after_import(self):
-        self.assertFalse(museum_app.auth_system.initialized)
+        _assert_fresh_import_state('app.auth_system.initialized is False')
 
     def test_timesheet_service_stays_uninitialized_after_import(self):
-        self.assertFalse(museum_app.timesheet_repository.initialized)
+        _assert_fresh_import_state('app.timesheet_repository.initialized is False')
 
     def test_module_access_state_stays_uninitialized_after_import(self):
-        self.assertIsNone(museum_app._module_access_mtime)
+        _assert_fresh_import_state('app._module_access_mtime is None')
 
     def test_dashboard_preferences_state_stays_uninitialized_after_import(self):
-        self.assertIsNone(museum_app._dashboard_prefs_mtime)
+        _assert_fresh_import_state('app._dashboard_prefs_mtime is None')
 
     def test_login_tracker_stays_uninitialized_after_import(self):
-        self.assertFalse(museum_app._login_tracker_initialized)
+        _assert_fresh_import_state('app._login_tracker_initialized is False')
 
     def test_fallback_employees_stay_uninitialized_after_import(self):
-        self.assertIsNone(museum_app.MUSEUM_EMPLOYEES)
+        _assert_fresh_import_state('app.MUSEUM_EMPLOYEES is None')
 
     def test_create_app_does_not_eagerly_load_library_database(self):
         original_library = museum_app.LIBRARY_DATABASE

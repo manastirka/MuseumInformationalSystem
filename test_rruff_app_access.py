@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Test with PostgreSQL
-os.environ['DATABASE_URL'] = 'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system'
+os.environ.setdefault('DATABASE_URL', 'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system')
 
 from mineral_database_pg import get_mineral_database
 

@@ -7,7 +7,7 @@ Tests the password validator against museum security policy
 from security_utils import PasswordValidator
 from config import DevelopmentConfig
 
-def test_password_validation():
+def run_password_validation():
     """Test password validation rules."""
     validator = PasswordValidator(DevelopmentConfig)
 
@@ -103,6 +103,11 @@ def test_password_validation():
         return 1
 
 
+
+def test_password_validation():
+    assert run_password_validation() == 0
+
+
 if __name__ == '__main__':
     import sys
-    sys.exit(test_password_validation())
+    sys.exit(run_password_validation())
