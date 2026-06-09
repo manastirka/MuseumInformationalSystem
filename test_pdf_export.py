@@ -3,6 +3,8 @@
 Test script for PDF export functionality
 """
 
+import os
+
 from pdf_export import (
     export_collection_pdf,
     export_visitor_report_pdf,
@@ -10,8 +12,11 @@ from pdf_export import (
     export_specimen_certificate_pdf
 )
 
+# Write generated PDFs next to this script instead of a hardcoded home path
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def test_collection_export():
+
+def run_collection_export():
     """Test collection PDF export"""
     print("Testing collection export...")
 
@@ -52,7 +57,7 @@ def test_collection_export():
         pdf_buffer = export_collection_pdf(collection_name, specimens, statistics)
 
         # Save to file
-        with open('/home/aleksandarlukovic/MuseumInfoSystem/test_collection_export.pdf', 'wb') as f:
+        with open(os.path.join(OUTPUT_DIR, 'test_collection_export.pdf'), 'wb') as f:
             f.write(pdf_buffer.read())
 
         print("✓ Collection export successful! File saved: test_collection_export.pdf")
@@ -64,7 +69,7 @@ def test_collection_export():
         return False
 
 
-def test_visitor_report_export():
+def run_visitor_report_export():
     """Test visitor report PDF export"""
     print("\nTesting visitor report export...")
 
@@ -106,7 +111,7 @@ def test_visitor_report_export():
         pdf_buffer = export_visitor_report_pdf(visitor_records, '2025-01-01', '2025-01-31')
 
         # Save to file
-        with open('/home/aleksandarlukovic/MuseumInfoSystem/test_visitor_report.pdf', 'wb') as f:
+        with open(os.path.join(OUTPUT_DIR, 'test_visitor_report.pdf'), 'wb') as f:
             f.write(pdf_buffer.read())
 
         print("✓ Visitor report export successful! File saved: test_visitor_report.pdf")
@@ -118,7 +123,7 @@ def test_visitor_report_export():
         return False
 
 
-def test_research_project_export():
+def run_research_project_export():
     """Test research project PDF export"""
     print("\nTesting research project export...")
 
@@ -144,7 +149,7 @@ def test_research_project_export():
         pdf_buffer = export_research_project_pdf(project)
 
         # Save to file
-        with open('/home/aleksandarlukovic/MuseumInfoSystem/test_research_project.pdf', 'wb') as f:
+        with open(os.path.join(OUTPUT_DIR, 'test_research_project.pdf'), 'wb') as f:
             f.write(pdf_buffer.read())
 
         print("✓ Research project export successful! File saved: test_research_project.pdf")
@@ -156,7 +161,7 @@ def test_research_project_export():
         return False
 
 
-def test_specimen_certificate_export():
+def run_specimen_certificate_export():
     """Test specimen certificate PDF export"""
     print("\nTesting specimen certificate export...")
 
@@ -181,7 +186,7 @@ def test_specimen_certificate_export():
         pdf_buffer = export_specimen_certificate_pdf(specimen, collection_name)
 
         # Save to file
-        with open('/home/aleksandarlukovic/MuseumInfoSystem/test_specimen_certificate.pdf', 'wb') as f:
+        with open(os.path.join(OUTPUT_DIR, 'test_specimen_certificate.pdf'), 'wb') as f:
             f.write(pdf_buffer.read())
 
         print("✓ Specimen certificate export successful! File saved: test_specimen_certificate.pdf")
@@ -193,6 +198,25 @@ def test_specimen_certificate_export():
         return False
 
 
+
+# Pytest entry points - assert on the script helpers above.
+
+def test_collection_export():
+    assert run_collection_export()
+
+
+def test_visitor_report_export():
+    assert run_visitor_report_export()
+
+
+def test_research_project_export():
+    assert run_research_project_export()
+
+
+def test_specimen_certificate_export():
+    assert run_specimen_certificate_export()
+
+
 def main():
     """Run all tests"""
     print("=" * 60)
@@ -202,10 +226,10 @@ def main():
     results = []
 
     # Run tests
-    results.append(("Collection Export", test_collection_export()))
-    results.append(("Visitor Report Export", test_visitor_report_export()))
-    results.append(("Research Project Export", test_research_project_export()))
-    results.append(("Specimen Certificate Export", test_specimen_certificate_export()))
+    results.append(("Collection Export", run_collection_export()))
+    results.append(("Visitor Report Export", run_visitor_report_export()))
+    results.append(("Research Project Export", run_research_project_export()))
+    results.append(("Specimen Certificate Export", run_specimen_certificate_export()))
 
     # Summary
     print("\n" + "=" * 60)

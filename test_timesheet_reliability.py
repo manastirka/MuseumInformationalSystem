@@ -46,6 +46,7 @@ TEST_NAME = 'Test Reliability User'
 
 
 class TestResults:
+    __test__ = False  # plain result holder, not a pytest test class
     def __init__(self):
         self.passed = 0
         self.failed = 0

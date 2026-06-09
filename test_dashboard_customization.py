@@ -15,7 +15,7 @@ from app import (
     MODULE_ACCESS
 )
 
-def test_save_and_load():
+def run_save_and_load():
     """Test saving and loading dashboard preferences."""
     print("=" * 70)
     print("TEST: Dashboard Customization - Save & Load")
@@ -26,12 +26,16 @@ def test_save_and_load():
     prefs = load_dashboard_preferences()
     print(f"   ✓ Loaded {len(prefs)} user preferences")
 
-    # Test 2: Modify preferences for a test user
+    # Test 2: Modify preferences for a dedicated test user.
+    # NOTE: mutate the dict returned by load_dashboard_preferences() -
+    # the loader rebinds app.DASHBOARD_PREFERENCES, so a value imported
+    # with "from app import DASHBOARD_PREFERENCES" goes stale after load.
     print("\n2. Testing preference modification...")
-    test_user = "slavko.spasic@nhmbeo.rs"
+    test_user = "dashboard.test@example.invalid"
+    original_value = prefs.get(test_user)
 
     # Add more widgets
-    DASHBOARD_PREFERENCES[test_user] = {
+    prefs[test_user] = {
         'enabled_widgets': ['museum_databases', 'timesheet', 'news']
     }
 
@@ -44,7 +48,7 @@ def test_save_and_load():
 
     # Test 3: Reload and verify
     print("\n3. Reloading preferences to verify save...")
-    reloaded = load_dashboard_preferences()
+    reloaded = load_dashboard_preferences(force=True)
 
     if test_user in reloaded:
         widgets = reloaded[test_user]['enabled_widgets']
@@ -59,11 +63,14 @@ def test_save_and_load():
         print(f"   ✗ User {test_user} not found in reloaded preferences")
         return False
 
-    # Test 4: Restore original preferences
+    # Test 4: Restore the original state exactly (remove the test user,
+    # or put back whatever value existed before the test ran).
     print("\n4. Restoring original preferences...")
-    DASHBOARD_PREFERENCES[test_user] = {
-        'enabled_widgets': ['museum_databases']
-    }
+    current = load_dashboard_preferences()
+    if original_value is None:
+        current.pop(test_user, None)
+    else:
+        current[test_user] = original_value
 
     if save_dashboard_preferences():
         print(f"   ✓ Restored original preferences")
@@ -117,13 +124,18 @@ def show_current_dashboard_state():
 
     print("\n" + "=" * 70)
 
+
+def test_save_and_load():
+    assert run_save_and_load()
+
+
 if __name__ == "__main__":
     # Run tests
     show_current_dashboard_state()
     show_available_modules()
 
     print("\n")
-    if test_save_and_load():
+    if run_save_and_load():
         print("\n✅ Dashboard customization is working correctly!")
         print("   Users can:")
         print("   1. View only 'Muzejska baza podataka' by default")

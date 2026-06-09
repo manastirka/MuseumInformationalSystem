@@ -8,7 +8,7 @@ import requests
 from time import sleep
 import sys
 
-def test_rate_limiting(base_url='http://localhost:5555'):
+def run_rate_limiting(base_url='http://localhost:5555'):
     """Test login rate limiting."""
     login_url = f'{base_url}/login'
 
@@ -99,7 +99,7 @@ def test_rate_limiting(base_url='http://localhost:5555'):
         return 1
 
 
-def test_rate_limit_reset():
+def run_rate_limit_reset():
     """Test that rate limits reset after time period."""
     print("\n" + "=" * 70)
     print("Testing rate limit reset (60 second wait)")
@@ -137,17 +137,43 @@ def test_rate_limit_reset():
         return 1
 
 
+
+def _server_available(base_url='http://localhost:5555'):
+    """Return True when the application server is reachable."""
+    try:
+        requests.get(base_url, timeout=3)
+        return True
+    except requests.exceptions.RequestException:
+        return False
+
+
+# Pytest entry points: live-server tests, skipped when the app is not running.
+
+def test_rate_limiting():
+    if not _server_available():
+        import pytest
+        pytest.skip('Application server is not running - live rate-limit test skipped')
+    assert run_rate_limiting() == 0
+
+
+def test_rate_limit_reset():
+    if not _server_available():
+        import pytest
+        pytest.skip('Application server is not running - live rate-limit test skipped')
+    assert run_rate_limit_reset() == 0
+
+
 if __name__ == '__main__':
     # Run main test
-    result = test_rate_limiting()
+    result = run_rate_limiting()
 
     if result == 0:
         # Optionally test reset (takes 60 seconds)
         print("\nRate limiting is working!")
         print("\nTo test rate limit reset (takes 60 seconds):")
-        print("  python3 test_rate_limiting.py --test-reset")
+        print("  python3 run_rate_limiting.py --test-reset")
 
         if '--test-reset' in sys.argv:
-            result = test_rate_limit_reset()
+            result = run_rate_limit_reset()
 
     sys.exit(result)

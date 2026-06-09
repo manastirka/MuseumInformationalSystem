@@ -18,7 +18,11 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import torch
+try:
+    import torch
+except ImportError:  # pragma: no cover
+    import pytest
+    pytest.skip('torch is not installed (GPU benchmark script)', allow_module_level=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)

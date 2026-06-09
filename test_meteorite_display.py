@@ -5,7 +5,7 @@ import os
 import sys
 
 # Set DATABASE_URL
-os.environ['DATABASE_URL'] = 'postgresql://aleksandarlukovic@localhost:5432/museum_system'
+os.environ.setdefault('DATABASE_URL', 'postgresql://aleksandarlukovic@localhost:5432/museum_system')
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))

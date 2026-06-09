@@ -36,7 +36,22 @@ def print_section(msg):
 # Database connection
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://aleksandarlukovic@localhost/museum_system')
 
-def test_database_schema():
+
+def _postgres_available():
+    """Return True when the configured PostgreSQL database is reachable."""
+    try:
+        with psycopg.connect(DATABASE_URL, connect_timeout=3):
+            return True
+    except Exception:
+        return False
+
+
+def _require_postgres():
+    if not _postgres_available():
+        import pytest
+        pytest.skip('PostgreSQL is not reachable - integration test skipped')
+
+def run_database_schema():
     """Test 1: Verify database schema has all required columns"""
     print_section("TEST 1: Database Schema Validation")
 
@@ -93,7 +108,7 @@ def test_database_schema():
         print_error(f"Database schema test failed: {e}")
         return False
 
-def test_create_sample_report():
+def run_create_sample_report():
     """Test 2: Create a sample timesheet report"""
     print_section("TEST 2: Create Sample Timesheet Report")
 
@@ -153,7 +168,7 @@ def test_create_sample_report():
         print_error(f"Failed to create sample report: {e}")
         return None
 
-def test_verify_report(report_id):
+def run_verify_report(report_id):
     """Test 3: Verify a report (simulate admin approval)"""
     print_section("TEST 3: Verify/Lock Report")
 
@@ -187,7 +202,7 @@ def test_verify_report(report_id):
         print_error(f"Verification test failed: {e}")
         return False
 
-def test_create_edit_request(report_id):
+def run_create_edit_request(report_id):
     """Test 4: Create an edit request"""
     print_section("TEST 4: Create Edit Request")
 
@@ -216,7 +231,7 @@ def test_create_edit_request(report_id):
         print_error(f"Failed to create edit request: {e}")
         return None
 
-def test_approve_edit_request(request_id):
+def run_approve_edit_request(request_id):
     """Test 5: Approve an edit request"""
     print_section("TEST 5: Approve Edit Request")
 
@@ -262,7 +277,7 @@ def test_approve_edit_request(request_id):
         print_error(f"Approval test failed: {e}")
         return False
 
-def test_repository_query():
+def run_repository_query():
     """Test 6: Verify TimesheetRepository can fetch reports with verification status"""
     print_section("TEST 6: TimesheetRepository Query")
 
@@ -299,7 +314,7 @@ def test_repository_query():
         print_error(f"Repository test failed: {e}")
         return False
 
-def test_word_export(report_id):
+def run_word_export(report_id):
     """Test 7: Test Word export functionality"""
     print_section("TEST 7: Word Document Export")
 
@@ -336,7 +351,7 @@ def test_word_export(report_id):
         print_error(f"Word export test failed: {e}")
         return False
 
-def test_cleanup():
+def run_cleanup():
     """Test 8: Clean up test data"""
     print_section("TEST 8: Cleanup Test Data")
 
@@ -379,6 +394,39 @@ def test_cleanup():
         print_error(f"Cleanup failed: {e}")
         return False
 
+
+# ---------------------------------------------------------------------------
+# Pytest entry points: skip when PostgreSQL is unreachable, assert otherwise.
+# The run_* functions above remain usable as a sequential script via main().
+# ---------------------------------------------------------------------------
+
+def test_database_schema():
+    _require_postgres()
+    assert run_database_schema()
+
+
+def test_repository_query():
+    _require_postgres()
+    assert run_repository_query()
+
+
+def test_timesheet_integration_end_to_end():
+    """Full chained flow: create -> verify -> edit request -> approve -> export -> cleanup."""
+    _require_postgres()
+    assert run_database_schema()
+    report_id = run_create_sample_report()
+    assert report_id is not None
+    try:
+        assert run_verify_report(report_id)
+        request_id = run_create_edit_request(report_id)
+        assert request_id is not None
+        assert run_approve_edit_request(request_id)
+        assert run_repository_query()
+        assert run_word_export(report_id)
+    finally:
+        run_cleanup()
+
+
 def main():
     """Run all tests"""
     print(f"\n{Colors.BOLD}{'='*60}")
@@ -391,32 +439,32 @@ def main():
     results = {}
 
     # Test 1: Schema
-    results['Schema'] = test_database_schema()
+    results['Schema'] = run_database_schema()
 
     # Test 2: Create report
-    report_id = test_create_sample_report()
+    report_id = run_create_sample_report()
     results['Create Report'] = report_id is not None
 
     if report_id:
         # Test 3: Verify report
-        results['Verify Report'] = test_verify_report(report_id)
+        results['Verify Report'] = run_verify_report(report_id)
 
         # Test 4: Create edit request
-        request_id = test_create_edit_request(report_id)
+        request_id = run_create_edit_request(report_id)
         results['Create Edit Request'] = request_id is not None
 
         if request_id:
             # Test 5: Approve request
-            results['Approve Request'] = test_approve_edit_request(request_id)
+            results['Approve Request'] = run_approve_edit_request(request_id)
 
         # Test 6: Repository query
-        results['Repository Query'] = test_repository_query()
+        results['Repository Query'] = run_repository_query()
 
         # Test 7: Word export
-        results['Word Export'] = test_word_export(report_id)
+        results['Word Export'] = run_word_export(report_id)
 
         # Test 8: Cleanup
-        results['Cleanup'] = test_cleanup()
+        results['Cleanup'] = run_cleanup()
 
     # Summary
     print_section("TEST SUMMARY")
