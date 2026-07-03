@@ -156,7 +156,10 @@ data/mail_settings.json
 MUSEUM_LOGIN_CREDENTIALS.txt
 *_cookies.txt
 cookies.txt
-certs/
+# certs/ stays private except the public Let's Encrypt roots the RHMZ
+# weather fetch needs at runtime (dashboard_data_support._rhmz_ca_bundle).
+certs/*
+!certs/isrg_gen_y_roots.pem
 
 # --- OS generated ---
 .DS_Store

@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+import certifi
 import requests
 from bs4 import BeautifulSoup
 
@@ -100,6 +101,48 @@ _RHMZ_HEADERS = {
     ),
     'Accept-Language': 'sr,en;q=0.8',
 }
+# RHMZ (hidmet.gov.rs) now serves certificates that chain to Let's Encrypt's
+# new 'ISRG Root YR', which is missing from older system / certifi CA bundles
+# and causes SSLError on every weather fetch. The bundled gen-y roots are merged
+# into the standard trust store so verification succeeds without disabling it.
+_ISRG_GEN_Y_ROOTS_PATH = Path(__file__).resolve().parent / 'certs' / 'isrg_gen_y_roots.pem'
+_rhmz_ca_bundle_lock = threading.Lock()
+_rhmz_ca_bundle_state = {'path': None}
+
+
+def _rhmz_ca_bundle():
+    """Return a CA bundle path that also trusts Let's Encrypt's gen-y roots."""
+    with _rhmz_ca_bundle_lock:
+        cached = _rhmz_ca_bundle_state.get('path')
+        if cached and os.path.exists(cached):
+            return cached
+
+        base_bundle = certifi.where()
+        try:
+            extra_roots = _ISRG_GEN_Y_ROOTS_PATH.read_text()
+        except OSError as exc:
+            logger.warning("ISRG gen-y roots unavailable (%s); using stock CA bundle.", exc)
+            _rhmz_ca_bundle_state['path'] = base_bundle
+            return base_bundle
+
+        try:
+            base_text = Path(base_bundle).read_text()
+        except OSError as exc:
+            logger.warning("Base CA bundle unreadable (%s); using bundled roots only.", exc)
+            base_text = ''
+
+        runtime_root = _WEATHER_FORECAST_CACHE_PATH.parent
+        try:
+            runtime_root.mkdir(parents=True, exist_ok=True)
+            combined_path = runtime_root / 'rhmz_ca_bundle.pem'
+            combined_path.write_text(base_text + '\n' + extra_roots)
+            resolved = str(combined_path)
+        except OSError as exc:
+            logger.warning("Combined CA bundle write failed (%s); using stock CA bundle.", exc)
+            resolved = base_bundle
+
+        _rhmz_ca_bundle_state['path'] = resolved
+        return resolved
 _RHMZ_FORECAST_RULES = [
     (('vedro', 'suncan', 'sunčan', 'ведро', 'сунчан'), 'clear', 'Ведро'),
     (('nepogod', 'grmljav', 'olu', 'непогод', 'грмљав', 'олу'), 'thunderstorm', 'Грмљавина'),
@@ -116,6 +159,32 @@ _RHMZ_FORECAST_RULES = [
         'Облачно',
     ),
 ]
+# RHMZ forecast icons are numeric GIFs (repository/ikonice/prognoza/<N>.gif) and
+# the forecast row carries only a generic alt="Pojava". This legend maps each
+# icon code to (animation condition, Serbian-Cyrillic description); it was
+# harvested from RHMZ's own descriptive alt text across station pages.
+_RHMZ_FORECAST_ICON_CODES = {
+    1: ('clear', 'Ведро'),
+    2: ('clear', 'Сунчано'),
+    3: ('clear', 'Претежно сунчано'),
+    4: ('cloudy', 'Мало и умерено облачно'),
+    5: ('rain', 'Послеподневни пљускови'),
+    6: ('rain', 'Могући пљускови'),
+    7: ('cloudy', 'Облачно'),
+    8: ('rain', 'Слаба киша'),
+    9: ('rain', 'Киша'),
+    10: ('cloudy', 'Променљиво облачно'),
+    11: ('rain', 'Пљусак'),
+    12: ('thunderstorm', 'Пљусак и грмљавина'),
+    13: ('snow', 'Суснежица'),
+    14: ('snow', 'Слаб снег'),
+    15: ('snow', 'Снег'),
+    16: ('rain', 'Киша која се леди'),
+    17: ('fog', 'Магла'),
+    18: ('cloudy', 'Јак ветар'),
+    19: ('rain', 'Могући краткотрајни пљускови'),
+    20: ('thunderstorm', 'Непогоде'),
+}
 
 
 def _normalize_space(value):
@@ -280,6 +349,25 @@ def _rhmz_icon_to_description(img):
     return ''
 
 
+def _rhmz_forecast_icon_snapshot(img):
+    """Resolve an RHMZ forecast icon to {'condition', 'description'} or None."""
+    stem = Path(urlparse(img.get('src') or '').path).stem
+    if stem.isdigit():
+        mapping = _RHMZ_FORECAST_ICON_CODES.get(int(stem))
+        if mapping:
+            return {'condition': mapping[0], 'description': mapping[1]}
+
+    # Fall back to descriptive alt/title text when the numeric code is unknown.
+    description = _rhmz_icon_to_description(img)
+    if description:
+        snapshot = _rhmz_description_to_snapshot(description)
+        return {
+            'condition': snapshot['condition'],
+            'description': snapshot['description'] or description,
+        }
+    return None
+
+
 def _extract_current_weather_payload(data):
     """Normalize current weather payloads from legacy and current Open-Meteo formats."""
     current = data.get('current') or {}
@@ -399,7 +487,7 @@ def _parse_rhmz_forecast_page(html):
 
     max_values = []
     min_values = []
-    condition_descriptions = []
+    condition_snapshots = []
 
     for cells, row in rows:
         row_label = cells[0].lower()
@@ -409,25 +497,27 @@ def _parse_rhmz_forecast_page(html):
             min_values = _extract_numeric_series(cells)
         elif 'pojava' in row_label:
             for img in row.find_all('img'):
-                label = _rhmz_icon_to_description(img)
-                if label:
-                    condition_descriptions.append(label)
+                snapshot = _rhmz_forecast_icon_snapshot(img)
+                if snapshot:
+                    condition_snapshots.append(snapshot)
 
     if not date_tokens or not max_values or not min_values:
         raise ValueError('RHMZ forecast values are incomplete')
 
+    fallback_condition = _weather_fallback_snapshot()['condition']
     forecast_days = []
     limit = min(len(date_tokens), len(max_values), len(min_values), 5)
     for idx in range(limit):
         iso_date = datetime.strptime(date_tokens[idx], '%d.%m.%Y.').strftime('%Y-%m-%d')
-        description = condition_descriptions[idx] if idx < len(condition_descriptions) else ''
-        snapshot = _rhmz_description_to_snapshot(description)
+        snapshot = condition_snapshots[idx] if idx < len(condition_snapshots) else None
+        condition = snapshot['condition'] if snapshot else fallback_condition
+        description = snapshot['description'] if snapshot else ''
         labels = _format_weather_day_label(iso_date)
         forecast_days.append(
             {
                 **labels,
-                'condition': snapshot['condition'],
-                'description': snapshot['description'] or description or 'Без детаљног описа',
+                'condition': condition,
+                'description': description or 'Без детаљног описа',
                 'temp_max': max_values[idx],
                 'temp_min': min_values[idx],
                 'precipitation_probability': None,
@@ -583,11 +673,12 @@ def _fetch_daily_weather_bundle(cache_date):
     forced_current = _forced_weather_snapshot()
 
     try:
-        forecast_response = requests.get(RHMZ_FORECAST_URL, headers=_RHMZ_HEADERS, timeout=10)
+        ca_bundle = _rhmz_ca_bundle()
+        forecast_response = requests.get(RHMZ_FORECAST_URL, headers=_RHMZ_HEADERS, timeout=10, verify=ca_bundle)
         forecast_response.raise_for_status()
         forecast_payload = _parse_rhmz_forecast_page(forecast_response.text)
 
-        observed_response = requests.get(RHMZ_OBSERVED_URL, headers=_RHMZ_HEADERS, timeout=10)
+        observed_response = requests.get(RHMZ_OBSERVED_URL, headers=_RHMZ_HEADERS, timeout=10, verify=ca_bundle)
         observed_response.raise_for_status()
         observed_payload = _parse_rhmz_observed_page(observed_response.text)
 
@@ -724,7 +815,7 @@ def get_rhmz_weather_warnings():
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept-Language': 'sr,en;q=0.8',
         }
-        response = requests.get(RHMZ_WARNING_URL, headers=headers, timeout=10)
+        response = requests.get(RHMZ_WARNING_URL, headers=headers, timeout=10, verify=_rhmz_ca_bundle())
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'lxml')
