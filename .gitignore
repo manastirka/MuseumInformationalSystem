@@ -147,6 +147,7 @@ tmp/
 # --- Configuration with secrets ---
 config.ini
 secrets.json
+.env.qa
 data/.mail_key
 data/api_providers.json
 data/mail_settings.json
@@ -155,6 +156,7 @@ data/mail_settings.json
 MUSEUM_LOGIN_CREDENTIALS.txt
 *_cookies.txt
 cookies.txt
+certs/
 
 # --- OS generated ---
 .DS_Store
