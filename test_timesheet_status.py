@@ -43,18 +43,18 @@ class TestCanSubmitForReview(unittest.TestCase):
         self.assertTrue(can_submit)
 
     @patch('timesheet_postgres.datetime')
-    def test_cannot_submit_february_on_march_8(self, mock_dt):
-        """February report cannot be submitted March 8+."""
-        mock_dt.now.return_value = datetime(2026, 3, 8)
+    def test_cannot_submit_february_on_march_11(self, mock_dt):
+        """February report cannot be submitted March 11+ (deadline is the 10th)."""
+        mock_dt.now.return_value = datetime(2026, 3, 11)
         can_submit, msg = can_submit_for_review(2, 2026)
         self.assertFalse(can_submit)
 
     @patch('timesheet_postgres.datetime')
-    def test_cannot_submit_february_in_february(self, mock_dt):
-        """February report cannot be submitted during February."""
+    def test_can_submit_february_in_february(self, mock_dt):
+        """February report can be submitted already during February."""
         mock_dt.now.return_value = datetime(2026, 2, 15)
         can_submit, msg = can_submit_for_review(2, 2026)
-        self.assertFalse(can_submit)
+        self.assertTrue(can_submit)
 
     @patch('timesheet_postgres.datetime')
     def test_december_submits_in_january_next_year(self, mock_dt):
@@ -64,16 +64,16 @@ class TestCanSubmitForReview(unittest.TestCase):
         self.assertTrue(can_submit)
 
     @patch('timesheet_postgres.datetime')
-    def test_december_cannot_submit_january_8(self, mock_dt):
-        """December report cannot be submitted January 8+."""
-        mock_dt.now.return_value = datetime(2027, 1, 8)
+    def test_december_cannot_submit_january_11(self, mock_dt):
+        """December report cannot be submitted January 11+ (deadline is the 10th)."""
+        mock_dt.now.return_value = datetime(2027, 1, 11)
         can_submit, msg = can_submit_for_review(12, 2026)
         self.assertFalse(can_submit)
 
     @patch('timesheet_postgres.datetime')
-    def test_boundary_day_7(self, mock_dt):
-        """Day 7 is the last day of the submission window."""
-        mock_dt.now.return_value = datetime(2026, 4, 7)
+    def test_boundary_day_10(self, mock_dt):
+        """Day 10 is the last day of the submission window."""
+        mock_dt.now.return_value = datetime(2026, 4, 10)
         can_submit, msg = can_submit_for_review(3, 2026)
         self.assertTrue(can_submit)
 
@@ -115,9 +115,9 @@ class TestCanEditTimesheetByStatus(unittest.TestCase):
         self.assertTrue(can_edit)
 
     @patch('timesheet_postgres.datetime')
-    def test_draft_in_next_month_day_8(self, mock_dt):
-        """DRAFT is not editable after day 7 of next month."""
-        mock_dt.now.return_value = datetime(2026, 4, 8)
+    def test_draft_in_next_month_day_11(self, mock_dt):
+        """DRAFT is not editable after day 10 of next month."""
+        mock_dt.now.return_value = datetime(2026, 4, 11)
         can_edit, msg = can_edit_timesheet_by_status(3, 2026, 'DRAFT')
         self.assertFalse(can_edit)
 

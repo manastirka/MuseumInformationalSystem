@@ -717,6 +717,20 @@ def save_timesheet_to_postgres(
                             "Радна листа је поднета/одобрена и не може се мењати."
                         )
 
+                    # Deadline (rule 1) — skipped while a 24 h post-reject
+                    # window is active: that window overrides the deadline
+                    # for this report only (rule 5).
+                    window_active = (existing.get('editable_until') is not None
+                                     and not existing.get('edit_window_expired'))
+                    if not window_active:
+                        can_edit, edit_message = can_edit_timesheet_by_status(
+                            month, year, existing['status'])
+                        if not can_edit:
+                            return TimesheetResult.fail(
+                                TimesheetErrorType.LOCKED,
+                                edit_message
+                            )
+
                     # Optimistic locking check
                     if expected_version is not None and expected_version != current_version:
                         return TimesheetResult.fail(
@@ -756,6 +770,16 @@ def save_timesheet_to_postgres(
                     """, (report_id,))
 
                 else:
+                    # Deadline (rule 1): a new report has no edit window,
+                    # so the date check always applies.
+                    can_edit, edit_message = can_edit_timesheet_by_status(
+                        month, year, 'DRAFT')
+                    if not can_edit:
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.LOCKED,
+                            edit_message
+                        )
+
                     # Create new report
                     cur.execute("""
                         INSERT INTO timesheet_reports (
@@ -948,7 +972,8 @@ def check_timesheet_lock_status(user_email: str, month: int, year: int) -> Tuple
         with get_pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT is_locked, is_verified
+                    SELECT is_locked, is_verified,
+                           (editable_until IS NOT NULL AND NOW() >= editable_until) AS edit_window_expired
                     FROM timesheet_reports
                     WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
                       AND month = %s
@@ -957,7 +982,10 @@ def check_timesheet_lock_status(user_email: str, month: int, year: int) -> Tuple
 
                 result = cur.fetchone()
                 if result:
-                    return bool(result['is_locked']), bool(result['is_verified'])
+                    # Relocking after window expiry is lazy (done on save), so
+                    # an expired window must already read as locked here.
+                    return (bool(result['is_locked']) or bool(result.get('edit_window_expired')),
+                            bool(result['is_verified']))
 
     except Exception as e:
         logger.error(f"Error checking lock status: {e}")
@@ -1143,46 +1171,48 @@ def get_edit_request_rate_limit_status(user_email: str) -> Dict:
 
 def can_submit_for_review(month: int, year: int) -> Tuple[bool, str]:
     """
-    TEMPORARILY DISABLED — always returns (True, "").
+    Check if a report for the given month can currently be submitted for review.
 
-    The production rule is: reports for month M can only be submitted on
-    days 1-7 of month M+1. It is turned off project-wide so testing and
-    real-use past the 7th both work. To restore the deadline, uncomment
-    the block below and delete the early return.
+    Allowed during the report month itself and on days 1-10 of the following
+    month (December rolls over to January of the next year). Future months
+    match neither window, so they are blocked automatically.
 
     Returns: (can_submit, message)
     """
-    return True, ""
+    today = datetime.now()
 
-    # --- deadline enforcement, disabled ---
-    # today = datetime.now()
-    # if month == 12:
-    #     submit_month, submit_year = 1, year + 1
-    # else:
-    #     submit_month, submit_year = month + 1, year
-    # if today.year == submit_year and today.month == submit_month and 1 <= today.day <= 7:
-    #     return True, ""
-    # return False, (
-    #     f"Подношење радне листе за {month}/{year} је могуће само "
-    #     f"од 1. до 7. у месецу {submit_month}/{submit_year}."
-    # )
+    if today.year == year and today.month == month:
+        return True, ""
+
+    if month == 12:
+        submit_month, submit_year = 1, year + 1
+    else:
+        submit_month, submit_year = month + 1, year
+
+    if today.year == submit_year and today.month == submit_month and 1 <= today.day <= 10:
+        return True, ""
+
+    return False, (
+        f"Подношење радне листе за {month}/{year} је могуће само током тог "
+        f"месеца или од 1. до 10. у месецу {submit_month}/{submit_year}."
+    )
 
 
 def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bool, str]:
     """
     Check if a timesheet can be edited based on its status and the current date.
 
-    Date-window check is TEMPORARILY DISABLED to match can_submit_for_review.
-    Editing is allowed whenever the status is DRAFT or REJECTED; SUBMITTED
-    and APPROVED remain blocked as before.
+    SUBMITTED/APPROVED are never editable. DRAFT/REJECTED are editable during
+    the report month or days 1-10 of the following month. The 24h window after
+    a reject (editable_until) is enforced at the save layer and overrides this
+    deadline.
 
     Returns: (can_edit, message)
     """
     if status in ('SUBMITTED', 'APPROVED'):
         return False, "Радна листа је поднета/одобрена и не може се мењати."
-    return True, ""
 
-    # DRAFT or REJECTED: allow editing during the report month or days 1-7 of next month
+    # DRAFT or REJECTED: allow editing during the report month or days 1-10 of next month
     today = datetime.now()
 
     # Check if today is within the report month
@@ -1197,12 +1227,12 @@ def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bo
         next_month = month + 1
         next_year = year
 
-    if today.year == next_year and today.month == next_month and 1 <= today.day <= 7:
+    if today.year == next_year and today.month == next_month and 1 <= today.day <= 10:
         return True, ""
 
     return False, (
         f"Време за измену радне листе за {month}/{year} је истекло. "
-        f"Измене су могуће током месеца извештаја или од 1. до 7. наредног месеца."
+        f"Измене су могуће током месеца извештаја или од 1. до 10. наредног месеца."
     )
 
 
@@ -1222,7 +1252,9 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
             with conn.cursor() as cur:
                 # Get current report state
                 cur.execute("""
-                    SELECT id, month, year, COALESCE(status, 'DRAFT') as status, employee_email
+                    SELECT id, month, year, COALESCE(status, 'DRAFT') as status, employee_email,
+                           editable_until,
+                           (editable_until IS NOT NULL AND NOW() < editable_until) AS window_active
                     FROM timesheet_reports
                     WHERE id = %s
                     FOR UPDATE
@@ -1251,13 +1283,16 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
                         f"Само листе са статусом DRAFT или REJECTED могу бити поднете."
                     )
 
-                # Validate submission window
-                can_submit, message = can_submit_for_review(report['month'], report['year'])
-                if not can_submit:
-                    return TimesheetResult.fail(
-                        TimesheetErrorType.VALIDATION_ERROR,
-                        message
-                    )
+                # Validate submission window. An active 24 h post-reject
+                # window overrides the deadline for this report (rule 5),
+                # so a returned report can be resubmitted past the 10th.
+                if not report.get('window_active'):
+                    can_submit, message = can_submit_for_review(report['month'], report['year'])
+                    if not can_submit:
+                        return TimesheetResult.fail(
+                            TimesheetErrorType.VALIDATION_ERROR,
+                            message
+                        )
 
                 # Update status. Clear editable_until — the report is back
                 # under review, the temp window from a prior reject/revoke
@@ -1309,13 +1344,15 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
         )
 
 
-def approve_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
+def approve_timesheet(report_id: int, admin_email: str,
+                      verifier_role: Optional[str] = None) -> TimesheetResult:
     """
     Approve a submitted timesheet. Changes status from SUBMITTED to APPROVED.
 
     Args:
         report_id: ID of the timesheet report
         admin_email: Email of the approving admin
+        verifier_role: Optional role recorded in verified_role
 
     Returns:
         TimesheetResult with success status
@@ -1345,16 +1382,22 @@ def approve_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
                         f"Само поднете радне листе могу бити одобрене. Тренутни статус: '{report['status']}'"
                     )
 
-                # Update status
+                # Update status. verified_by/verified_at feed the Word export
+                # and audit; editable_until is cleared so an approved report
+                # cannot retain a stale 24 h edit window.
                 cur.execute("""
                     UPDATE timesheet_reports
                     SET status = 'APPROVED',
                         is_locked = TRUE,
                         is_verified = TRUE,
                         reviewed_at = NOW(),
-                        reviewed_by_email = %s
+                        reviewed_by_email = %s,
+                        verified_by = %s,
+                        verified_at = NOW(),
+                        verified_role = COALESCE(%s, verified_role),
+                        editable_until = NULL
                     WHERE id = %s
-                """, (admin_email, report_id))
+                """, (admin_email, admin_email, verifier_role, report_id))
 
                 # Log to status history
                 cur.execute("""
@@ -1394,11 +1437,17 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
     Args:
         report_id: ID of the timesheet report
         admin_email: Email of the rejecting admin
-        note: Reason for rejection
+        note: Reason for rejection (required)
 
     Returns:
         TimesheetResult with success status
     """
+    if not (note or '').strip():
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR,
+            "Напомена са разлогом враћања је обавезна — запослени мора да зна шта да исправи."
+        )
+
     try:
         with get_pg_connection() as conn:
             with conn.cursor() as cur:

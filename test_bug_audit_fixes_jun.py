@@ -83,6 +83,8 @@ class SaveTimesheetReturningGuardTests(unittest.TestCase):
     """Bug #1: cur.fetchone()['version'] after UPDATE ... RETURNING."""
 
     def test_update_matching_zero_rows_returns_failure_not_typeerror(self):
+        from datetime import datetime as _dt
+
         import timesheet_postgres
 
         cursor = _FakeCursor({
@@ -98,13 +100,16 @@ class SaveTimesheetReturningGuardTests(unittest.TestCase):
             'RETURNING version': None,
         })
 
+        # Tekući mesec — uvek unutar roka za unos, da provera roka ne
+        # presretne put do UPDATE ... RETURNING grane koju test cilja.
+        _today = _dt.now()
         with patch.object(timesheet_postgres, 'get_pg_connection',
                           lambda: _fake_conn_ctx(cursor)):
             result = timesheet_postgres.save_timesheet_to_postgres(
                 user_email='test@nhmbeo.rs',
                 user_name='Тест Тестић',
-                month=5,
-                year=2026,
+                month=_today.month,
+                year=_today.year,
                 daily_data={},
                 work_description='',
                 organization_unit='БИОЛОШКО ОДЕЉЕЊЕ',

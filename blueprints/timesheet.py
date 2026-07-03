@@ -80,9 +80,14 @@ def admin_timesheet_users():
 
 
 @timesheet_bp.route('/admin/timesheet/pending')
-@admin_required
+@admin_or_department_head_required
 def admin_timesheet_pending():
-    """Admin view for pending edit requests."""
+    """Pending edit requests list.
+
+    Admin + director + department heads are allowed (heads approve unlock
+    requests for their own department, so they must see them). The per-role
+    department scoping happens inside the view.
+    """
     import app as museum_app
 
     return timesheet_admin_views.render_admin_timesheet_pending(

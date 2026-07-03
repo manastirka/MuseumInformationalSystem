@@ -641,9 +641,10 @@ def api_load_timesheet():
 def request_approval():
     """Create an approval request for editing a locked timesheet."""
     try:
-        month = request.form.get('month')
-        year = request.form.get('year')
-        reason = request.form.get('reason', '').strip()
+        payload = request.get_json(silent=True) or {}
+        month = payload.get('month') or request.form.get('month')
+        year = payload.get('year') or request.form.get('year')
+        reason = (payload.get('reason') or request.form.get('reason', '') or '').strip()
 
         if not month or not year or not reason:
             return jsonify({'success': False, 'message': 'Месец, година и разлог су обавезни!'})
@@ -659,13 +660,13 @@ def request_approval():
                     """
                     SELECT id, is_verified, is_locked
                     FROM timesheet_reports
-                    WHERE employee_name = %s
+                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
                       AND month = %s
                       AND year = %s
                     ORDER BY id DESC
                     LIMIT 1
                     """,
-                    (user_name, month, year),
+                    (user_email, user_name, month, year),
                 )
                 report = cur.fetchone()
 
@@ -673,11 +674,12 @@ def request_approval():
                     cur.execute(
                         """
                         INSERT INTO timesheet_reports
-                        (employee_name, month, year, organization_unit, position, is_verified, is_locked, created_at)
-                        VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, NOW())
+                        (employee_email, employee_name, month, year, organization_unit, position, is_verified, is_locked, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, FALSE, FALSE, NOW())
                         RETURNING id
                         """,
                         (
+                            user_email,
                             user_name,
                             month,
                             year,
@@ -927,8 +929,36 @@ def api_timesheet_submit(report_id):
 
 
 def api_timesheet_approve(report_id):
-    """Admin approves a submitted timesheet."""
+    """Admin approves a submitted timesheet.
+
+    Per-report verification scope is enforced through the same policy as
+    the primary admin route: the director may not approve a regular
+    employee of a department that has a head (admin passes automatically).
+    """
     from timesheet_postgres import approve_timesheet
+    from timesheet_admin_views import (
+        _get_department_heads,
+        _lookup_report_department,
+        can_user_verify_report_for_department,
+    )
+
+    try:
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                report_department, employee_email = _lookup_report_department(cur, report_id)
+                heads = _get_department_heads(cur)
+    except Exception as exc:
+        logger.error("approve scope lookup failed: %s", exc)
+        return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
+
+    if not can_user_verify_report_for_department(
+        session, report_department,
+        target_employee_email=employee_email,
+        department_heads=heads,
+    ):
+        return jsonify(
+            {'success': False, 'message': 'Немате овлашћење за оверу овог извештаја.'}
+        ), 403
 
     result = approve_timesheet(report_id, session.get('user_email'))
     if result.success:
@@ -1013,6 +1043,15 @@ def api_timesheet_force_edit(report_id):
                 with conn.cursor() as cur:
                     report_department, employee_email = _lookup_report_department(cur, report_id)
                     heads = _get_department_heads(cur)
+                    cur.execute(
+                        """
+                        SELECT id, COALESCE(status, 'DRAFT') AS status
+                        FROM timesheet_reports
+                        WHERE id = %s
+                        """,
+                        (report_id,),
+                    )
+                    status_row = cur.fetchone()
         except Exception as exc:
             logger.error("force_edit scope lookup failed: %s", exc)
             return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
@@ -1023,6 +1062,21 @@ def api_timesheet_force_edit(report_id):
             department_heads=heads,
         ):
             return jsonify({'success': False, 'message': 'Немате дозволу за ову радњу.'}), 403
+
+        # An APPROVED (verified + locked) report must not be reopened by a
+        # department head — that would bypass the unlock-request flow. Only
+        # admin/direktor may return an approved report to entry.
+        report_status = status_row.get('status') if status_row else None
+        if report_status == 'APPROVED' and session.get('user_role') not in ('admin', 'direktor'):
+            return jsonify(
+                {
+                    'success': False,
+                    'message': (
+                        'Оверен извештај може да врати само администратор или '
+                        'директор — поднесите захтев за откључавање.'
+                    ),
+                }
+            ), 403
 
     result = force_edit_timesheet(report_id, session.get('user_email'))
     if result.success:
