@@ -21,7 +21,9 @@ rsync-om. Tajne (`.env`) ne putuju nikako — svako okruženje ima svoj.
 
 **Na DEV mašini** — puna sloboda: pisanje koda, refaktorisanje,
 eksperimenti. Obavezno pri tom:
-- `pytest` mora biti zelen pre svakog commita (suite ima ~365 testova);
+- `pytest test_*.py` mora biti zelen pre svakog commita (suite ima
+  ~1040 testova; puna kolekcija bez argumenata hvata i 2 pokvarena
+  skripta u `PrirodnjackiMuzej/` — ne koristiti);
 - izmene šeme baze isključivo kroz migracije, nikad ručni `ALTER`;
 - nove zavisnosti odmah u `requirements.txt`, sa verzijom;
 - konfiguracija (putanje, kredencijali, SECRET_KEY) samo kroz `.env` /
