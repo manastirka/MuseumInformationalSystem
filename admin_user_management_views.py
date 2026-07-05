@@ -3,10 +3,12 @@
 import logging
 from datetime import datetime
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, session, url_for
 from psycopg.rows import dict_row
 
 import admin_system_views
+import app_ui_support
+import dashboard_config_support
 import mail_client
 from observability import add_sentry_breadcrumb, capture_observability_exception
 from postgres_service import get_postgres_connection
@@ -209,58 +211,72 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
 def customize_dashboard_preferences(
     *,
     load_dashboard_preferences,
-    save_dashboard_preferences,
-    dashboard_preferences,
-    module_access,
+    load_module_access,
     user_has_module_access,
+    load_saved_elements,
+    save_user_elements,
     dashboard_endpoint,
 ):
-    """Customize dashboard widget preferences for the current user."""
-    dashboard_preferences = load_dashboard_preferences()
-
+    """Customize dashboard element preferences for the current user."""
     user_email = session.get('user_email')
     user_role = session.get('user_role')
+
+    module_access = load_module_access() or {}
+
+    available_sections = [
+        {
+            'key': section_key,
+            'name': section_info['name'],
+            'description': section_info['description'],
+            'icon': section_info['icon'],
+        }
+        for section_key, section_info in dashboard_config_support.DASHBOARD_SECTIONS.items()
+    ]
+    available_modules = [
+        {
+            'key': module_key,
+            'name': module_info['name'],
+            'description': module_info['description'],
+            'icon': module_info['icon'],
+        }
+        for module_key, module_info in module_access.items()
+        if user_has_module_access(user_email, user_role, module_key)
+    ]
+    allowed_keys = {element['key'] for element in available_sections + available_modules}
 
     if request.method == 'POST':
         selected_widgets = request.form.getlist('widgets')
 
-        if user_email not in dashboard_preferences:
-            dashboard_preferences[user_email] = {}
+        forbidden = [key for key in selected_widgets if key not in allowed_keys]
+        if forbidden:
+            logger.warning(
+                "Rejected dashboard config save for %s: forbidden elements %s",
+                user_email,
+                forbidden,
+            )
+            abort(403)
 
-        dashboard_preferences[user_email]['enabled_widgets'] = selected_widgets
-
-        if save_dashboard_preferences():
-            flash('Подешавања видгета успешно сачувана!', 'success')
+        if save_user_elements(user_email, selected_widgets):
+            flash('Подешавања табле су успешно сачувана!', 'success')
         else:
             flash('Грешка при чувању подешавања!', 'error')
 
         return redirect(url_for(dashboard_endpoint))
 
-    available_modules = []
-    for module_key, module_info in module_access.items():
-        if user_has_module_access(user_email, user_role, module_key):
-            available_modules.append(
-                {
-                    'key': module_key,
-                    'name': module_info['name'],
-                    'description': module_info['description'],
-                    'icon': module_info['icon'],
-                }
-            )
-
-    available_module_keys = [module['key'] for module in available_modules]
-    saved_widgets = dashboard_preferences.get(user_email, {}).get('enabled_widgets')
-    if saved_widgets is None:
-        if user_role == 'admin':
-            current_prefs = [key for key in ['museum_databases'] if key in available_module_keys]
-        else:
-            current_prefs = available_module_keys
-    else:
-        current_prefs = [key for key in saved_widgets if key in available_module_keys]
+    legacy_preferences = load_dashboard_preferences() or {}
+    current_prefs = dashboard_config_support.resolve_enabled_elements(
+        user_email,
+        user_role,
+        allowed_keys=allowed_keys,
+        saved_elements=load_saved_elements(user_email),
+        legacy_enabled_widgets=legacy_preferences.get(user_email, {}).get('enabled_widgets'),
+        admin_widget_users=app_ui_support.DEFAULT_ADMIN_WIDGET_USERS,
+        module_keys=module_access.keys(),
+    )
 
     return render_template(
         'customize_dashboard.html',
-        available_modules=available_modules,
+        available_modules=available_sections + available_modules,
         enabled_widgets=current_prefs,
     )
 

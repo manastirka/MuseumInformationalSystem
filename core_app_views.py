@@ -278,19 +278,20 @@ def handle_change_password(
     return render_template('change_password.html')
 
 
-def render_dashboard(*, get_user_modules):
+def render_dashboard(*, get_user_dashboard_view):
     """Render the module-based user dashboard."""
     user_role = session.get('user_role')
     user_name = session.get('user_name')
     user_email = session.get('user_email')
-    accessible_modules = get_user_modules(user_email, user_role)
+    dashboard_view = get_user_dashboard_view(user_email, user_role)
     response = make_response(
         render_template(
             'dashboard.html',
             user_role=user_role,
             user_name=user_name,
             user_email=user_email,
-            accessible_modules=accessible_modules,
+            accessible_modules=dashboard_view['modules'],
+            enabled_sections=dashboard_view['sections'],
         )
     )
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'

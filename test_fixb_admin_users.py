@@ -110,43 +110,33 @@ def test_revoke_module_access_persists_change(app):
     )
 
 
-def _make_dashboard_state():
-    import copy
+def test_customize_dashboard_persists_widgets(app):
+    saved = {'value': None}
 
-    cell = {'global': {}}
-    persisted = {'value': None}
-    captured_param = cell['global']
-
-    def loader(force=False):
-        cell['global'] = copy.deepcopy(cell['global'])
-        return cell['global']
-
-    def saver():
-        persisted['value'] = copy.deepcopy(cell['global'])
+    def save_user_elements(user_email, elements):
+        saved['value'] = (user_email, list(elements))
         return True
 
-    return persisted, loader, saver, captured_param, cell
-
-
-def test_customize_dashboard_persists_widgets(app):
-    persisted, loader, saver, captured_param, cell = _make_dashboard_state()
+    module_access = {
+        'museum_databases': {'name': 'Базе', 'description': 'опис', 'icon': 'bi-database'},
+        'maps': {'name': 'Карте', 'description': 'опис', 'icon': 'bi-map'},
+    }
 
     with app.test_request_context(
         '/dashboard/customize', method='POST',
         data={'widgets': ['museum_databases', 'maps']},
-    ) as ctx:
+    ):
         flask.session['user_email'] = 'pera@nhmbeo.rs'
         flask.session['user_role'] = 'employee'
         views.customize_dashboard_preferences(
-            load_dashboard_preferences=loader,
-            save_dashboard_preferences=saver,
-            dashboard_preferences=captured_param,
-            module_access={},
+            load_dashboard_preferences=lambda force=False: {},
+            load_module_access=lambda force=False: module_access,
             user_has_module_access=lambda *a, **k: True,
+            load_saved_elements=lambda email: None,
+            save_user_elements=save_user_elements,
             dashboard_endpoint='dashboard',
         )
 
-    assert persisted['value'] is not None, "save was never called"
-    assert persisted['value'].get('pera@nhmbeo.rs', {}).get('enabled_widgets') == [
-        'museum_databases', 'maps'
-    ], "widget selection was lost: mutated stale param, not the persisted global"
+    assert saved['value'] == (
+        'pera@nhmbeo.rs', ['museum_databases', 'maps']
+    ), "widget selection was not persisted for the user"

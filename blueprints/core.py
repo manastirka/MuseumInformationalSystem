@@ -111,7 +111,7 @@ def dashboard():
     import app as museum_app
 
     return core_app_views.render_dashboard(
-        get_user_modules=museum_app.get_user_modules,
+        get_user_dashboard_view=museum_app.get_user_dashboard_view,
     )
 
 
@@ -122,7 +122,7 @@ def dashboard_classic():
     import app as museum_app
 
     return core_app_views.render_dashboard(
-        get_user_modules=museum_app.get_user_modules,
+        get_user_dashboard_view=museum_app.get_user_dashboard_view,
     )
 
 

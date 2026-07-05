@@ -1159,6 +1159,7 @@
     {% endif %}
 
     <!-- Social Media Feeds Section -->
+    {% if 'social_feeds' in enabled_sections %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="section-header">
@@ -1257,8 +1258,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Website News Section -->
+    {% if 'website_news' in enabled_sections %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="section-header">
@@ -1282,8 +1285,10 @@
             <p class="mt-2 text-muted">Учитавање вести са веб сајта...</p>
         </div>
     </div>
+    {% endif %}
 
     <!-- Quick Actions -->
+    {% if 'quick_actions' in enabled_sections %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="section-header">
@@ -1314,6 +1319,7 @@
             </div>
         </div>
 
+        {% if has_module_access('mineral_database') %}
         <div class="col-lg-3 col-md-6">
             <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('mineral_database_app') }}'">
                 <div class="card-body text-center py-4">
@@ -1322,6 +1328,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <div class="col-lg-3 col-md-6">
             <div class="card border-0 card-glass quick-action icon-pulse" @click="performLogout()">
@@ -1332,6 +1339,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     </div>
 
     <div x-show="showWeatherModal"
@@ -1923,6 +1931,7 @@ function dashboard() {
         // Load website news
         loadWebsiteNews() {
             const container = document.getElementById('website-news-container');
+            if (!container) return;
 
             fetch('/api/website-news?limit=6')
                 .then(response => response.json())

@@ -412,15 +412,18 @@ class DashboardCustomizationPreferenceTests(unittest.TestCase):
             with patch('admin_user_management_views.render_template', return_value='ok') as render_mock:
                 result = admin_user_management_views.customize_dashboard_preferences(
                     load_dashboard_preferences=lambda: {},
-                    save_dashboard_preferences=lambda: True,
-                    dashboard_preferences={},
-                    module_access=module_access,
+                    load_module_access=lambda: module_access,
                     user_has_module_access=lambda email, role, key: True,
+                    load_saved_elements=lambda email: None,
+                    save_user_elements=lambda email, elements: True,
                     dashboard_endpoint='dashboard',
                 )
 
         self.assertEqual(result, 'ok')
-        self.assertEqual(render_mock.call_args.kwargs['enabled_widgets'], ['museum_databases'])
+        self.assertEqual(
+            render_mock.call_args.kwargs['enabled_widgets'],
+            ['social_feeds', 'website_news', 'quick_actions', 'museum_databases'],
+        )
 
     def test_customize_dashboard_filters_saved_widgets_to_available_modules(self):
         app = Flask(__name__)
@@ -443,26 +446,32 @@ class DashboardCustomizationPreferenceTests(unittest.TestCase):
             with patch('admin_user_management_views.render_template', return_value='ok') as render_mock:
                 result = admin_user_management_views.customize_dashboard_preferences(
                     load_dashboard_preferences=lambda: prefs,
-                    save_dashboard_preferences=lambda: True,
-                    dashboard_preferences=prefs,
-                    module_access=module_access,
+                    load_module_access=lambda: module_access,
                     user_has_module_access=lambda email, role, key: key != 'museum_databases',
+                    load_saved_elements=lambda email: None,
+                    save_user_elements=lambda email, elements: True,
                     dashboard_endpoint='dashboard',
                 )
 
         self.assertEqual(result, 'ok')
-        self.assertEqual(render_mock.call_args.kwargs['enabled_widgets'], ['timesheet'])
+        self.assertEqual(
+            render_mock.call_args.kwargs['enabled_widgets'],
+            ['social_feeds', 'website_news', 'quick_actions', 'timesheet'],
+        )
 
-    def test_customize_dashboard_post_mutates_freshly_loaded_preferences(self):
+    def test_customize_dashboard_post_saves_selection_per_user(self):
         app = Flask(__name__)
         app.secret_key = 'test-secret'
 
-        stale_prefs = {}
-        fresh_prefs = {
-            'user@example.com': {
-                'enabled_widgets': ['museum_databases'],
-            }
+        module_access = {
+            'timesheet': {'name': 'Timesheet', 'description': 'desc', 'icon': 'bi-clock'},
+            'news': {'name': 'Vesti', 'description': 'desc', 'icon': 'bi-newspaper'},
         }
+        saved = {}
+
+        def save_user_elements(email, elements):
+            saved[email] = list(elements)
+            return True
 
         with app.test_request_context(
             '/dashboard/customize',
@@ -477,17 +486,16 @@ class DashboardCustomizationPreferenceTests(unittest.TestCase):
                 side_effect=lambda endpoint: f'/{endpoint}',
             ), patch('admin_user_management_views.flash'):
                 result = admin_user_management_views.customize_dashboard_preferences(
-                    load_dashboard_preferences=lambda: fresh_prefs,
-                    save_dashboard_preferences=lambda: True,
-                    dashboard_preferences=stale_prefs,
-                    module_access={},
+                    load_dashboard_preferences=lambda: {},
+                    load_module_access=lambda: module_access,
                     user_has_module_access=lambda email, role, key: True,
+                    load_saved_elements=lambda email: None,
+                    save_user_elements=save_user_elements,
                     dashboard_endpoint='dashboard',
                 )
 
         self.assertEqual(result, '/dashboard')
-        self.assertEqual(fresh_prefs['user@example.com']['enabled_widgets'], ['timesheet', 'news'])
-        self.assertEqual(stale_prefs, {})
+        self.assertEqual(saved, {'user@example.com': ['timesheet', 'news']})
 
 
 class CollectionCuratorDisplayTests(unittest.TestCase):

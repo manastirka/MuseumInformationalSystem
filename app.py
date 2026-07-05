@@ -106,6 +106,7 @@ import collection_bootstrap_support
 import core_app_views
 import chat_views
 import collection_access_support
+import dashboard_config_support
 import dashboard_integration_views
 import depot_science_views
 import employee_admin_views
@@ -1015,6 +1016,25 @@ def get_user_modules(user_email, user_role):
         dashboard_preferences=DASHBOARD_PREFERENCES,
         module_access=MODULE_ACCESS,
         user_has_module_access=user_has_module_access,
+    )
+
+def load_user_dashboard_elements(user_email):
+    """Load the per-user dashboard element selection from PostgreSQL."""
+    return dashboard_config_support.load_user_dashboard_elements(user_email)
+
+def save_user_dashboard_elements(user_email, elements):
+    """Save the per-user dashboard element selection to PostgreSQL."""
+    return dashboard_config_support.save_user_dashboard_elements(user_email, elements)
+
+def get_user_dashboard_view(user_email, user_role):
+    """Get dashboard sections and module cards enabled for the user."""
+    return app_ui_support.get_user_dashboard_view(
+        user_email,
+        user_role,
+        load_module_access=load_module_access,
+        load_dashboard_preferences=load_dashboard_preferences,
+        user_has_module_access=user_has_module_access,
+        load_saved_elements=load_user_dashboard_elements,
     )
 
 def get_fallback_employees():

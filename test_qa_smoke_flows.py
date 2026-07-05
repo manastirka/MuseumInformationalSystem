@@ -114,8 +114,11 @@ class QASmokeFlowTests(unittest.TestCase):
             return_value='dashboard-page',
         ), patch.object(
             museum_app,
-            'get_user_modules',
-            return_value=[{'key': 'timesheet', 'name': 'Timesheet'}],
+            'get_user_dashboard_view',
+            return_value={
+                'modules': [{'key': 'timesheet', 'name': 'Timesheet'}],
+                'sections': [],
+            },
         ):
             login_response = self.client.post(
                 '/login',

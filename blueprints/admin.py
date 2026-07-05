@@ -277,9 +277,9 @@ def customize_dashboard():
 
     return admin_user_management_views.customize_dashboard_preferences(
         load_dashboard_preferences=museum_app.load_dashboard_preferences,
-        save_dashboard_preferences=museum_app.save_dashboard_preferences,
-        dashboard_preferences=museum_app.DASHBOARD_PREFERENCES,
-        module_access=museum_app.MODULE_ACCESS,
+        load_module_access=museum_app.load_module_access,
         user_has_module_access=museum_app.user_has_module_access,
+        load_saved_elements=museum_app.load_user_dashboard_elements,
+        save_user_elements=museum_app.save_user_dashboard_elements,
         dashboard_endpoint='dashboard',
     )

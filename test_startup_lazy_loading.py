@@ -310,7 +310,7 @@ class StartupLazyLoadingTests(unittest.TestCase):
             museum_app.session['user_email'] = 'admin'
 
             response = museum_app.core_app_views.render_dashboard(
-                get_user_modules=lambda user_email, user_role: [],
+                get_user_dashboard_view=lambda user_email, user_role: {'modules': [], 'sections': []},
             )
 
         self.assertEqual(response.headers['Cache-Control'], 'no-cache, no-store, must-revalidate')
