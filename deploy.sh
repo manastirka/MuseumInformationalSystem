@@ -15,8 +15,8 @@ sudo -u mis git -C "$APP" pull --ff-only
 echo "== 3/5 Zavisnosti =="
 sudo -u mis "$VENV/bin/pip" install -r "$APP/requirements.txt" -q
 
-# == Migracije šeme (odkomentarisati ako/kad projekat koristi Flask-Migrate) ==
-# sudo -u mis bash -c "cd $APP && $VENV/bin/flask db upgrade"
+echo "== 3b/5 Migracije šeme (SQL fajlovi iz migration/) =="
+sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply"
 
 echo "== 4/5 Restart aplikacije =="
 systemctl restart mis
