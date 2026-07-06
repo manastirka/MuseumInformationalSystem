@@ -1177,6 +1177,7 @@ def get_vehicle_reservations(vehicle_id: Optional[int] = None, status: Optional[
                 'id': row[0],
                 'vehicle_id': row[1],
                 'reserved_by': row[2],
+                'employee_name': row[2],
                 'purpose': row[3],
                 'start_date': row[4].isoformat() if row[4] else None,
                 'end_date': row[5].isoformat() if row[5] else None,
