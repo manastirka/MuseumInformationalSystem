@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask import flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
@@ -14,11 +14,17 @@ logger = logging.getLogger(__name__)
 
 def render_vehicle_reservations(*, get_museum_vehicles, get_vehicle_reservations):
     """Render the vehicle reservation page."""
-    return render_template(
-        'vehicle_reservations.html',
-        vehicles=get_museum_vehicles(),
-        reservations=get_vehicle_reservations(),
+    response = make_response(
+        render_template(
+            'vehicle_reservations.html',
+            vehicles=get_museum_vehicles(),
+            reservations=get_vehicle_reservations(),
+        )
     )
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservations, save_reservations):
