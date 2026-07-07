@@ -120,6 +120,10 @@ class Config:
     # On server, set IMAGE_STORAGE_PATH to a mount point on the storage drive
     IMAGE_STORAGE_PATH: str = os.environ.get('IMAGE_STORAGE_PATH', './ImagesDatabase')
 
+    # Document library - uploaded document files stored here, references in
+    # PostgreSQL. On server, set DOCUMENTS_STORAGE_PATH under /data/mis.
+    DOCUMENTS_STORAGE_PATH: str = os.environ.get('DOCUMENTS_STORAGE_PATH', './data/dokumenti')
+
     # Redis
     REDIS_URL: str = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     CACHE_TYPE: str = os.environ.get('CACHE_TYPE', 'simple')

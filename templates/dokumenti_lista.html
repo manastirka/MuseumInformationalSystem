@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Документа{% endblock %}
+
+{% block content %}
+<style>
+    .dokumenti-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .dokumenti-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .dokumenti-status-nacrt { background-color: #6c757d; }
+    .dokumenti-status-na_odobrenju { background-color: #b98900; }
+    .dokumenti-status-odobreno { background-color: #24573f; }
+    .dokumenti-status-arhivirano { background-color: #343a40; }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="dokumenti-header">
+        <h2 class="mb-1"><i class="bi bi-folder2-open me-2"></i>Документа</h2>
+        <p class="mb-0">Обрасци, упутства и остала документа музеја — увек актуелна одобрена верзија.</p>
+    </div>
+
+    <div class="dokumenti-card">
+        <form method="get" action="{{ url_for('documents.dokumenti_lista') }}" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label" for="kategorijaFilter">Категорија</label>
+                <select class="form-select" id="kategorijaFilter" name="kategorija">
+                    <option value="">Све категорије</option>
+                    {% for key, label in categories.items() %}
+                    <option value="{{ key }}" {% if key == selected_category %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="pretragaInput">Претрага по наслову</label>
+                <input type="text" class="form-control" id="pretragaInput" name="q" value="{{ search_term }}" placeholder="нпр. годишњи одмор">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-success"><i class="bi bi-search me-1"></i>Прикажи</button>
+                <a href="{{ url_for('documents.dokumenti_lista') }}" class="btn btn-outline-secondary">Поништи</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="dokumenti-card">
+        <h5 class="mb-3"><i class="bi bi-patch-check me-2"></i>Одобрена документа</h5>
+        {% if approved_documents %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Наслов</th>
+                        <th>Категорија</th>
+                        <th>Верзија</th>
+                        <th>Датотека</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in approved_documents %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('documents.dokumenti_detalj', document_id=doc.id) }}">{{ doc.title }}</a>
+                            {% if doc.description %}<div class="text-muted small">{{ doc.description }}</div>{% endif %}
+                        </td>
+                        <td>{{ categories.get(doc.category, doc.category) }}</td>
+                        <td>v{{ doc.version_no }}</td>
+                        <td class="text-break">{{ doc.original_filename }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-success" href="{{ url_for('documents.dokumenti_fajl', version_id=doc.version_id) }}">
+                                <i class="bi bi-download me-1"></i>Преузми
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Нема одобрених докумената за изабрани филтер.</p>
+        {% endif %}
+    </div>
+
+    <div class="dokumenti-card">
+        <h5 class="mb-3"><i class="bi bi-cloud-arrow-up me-2"></i>Отпреми нов документ</h5>
+        <form method="post" action="{{ url_for('documents.dokumenti_upload') }}" enctype="multipart/form-data" class="row g-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="col-md-4">
+                <label class="form-label" for="uploadTitle">Наслов документа</label>
+                <input type="text" class="form-control" id="uploadTitle" name="title" required maxlength="300">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="uploadCategory">Категорија</label>
+                <select class="form-select" id="uploadCategory" name="category" required>
+                    {% for key, label in categories.items() %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="uploadFile">Датотека (највише 25 MB)</label>
+                <input type="file" class="form-control" id="uploadFile" name="file" required
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.rtf,.txt,.jpg,.jpeg,.png">
+            </div>
+            <div class="col-md-8">
+                <label class="form-label" for="uploadDescription">Опис (необавезно)</label>
+                <input type="text" class="form-control" id="uploadDescription" name="description" maxlength="500">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-success"><i class="bi bi-cloud-arrow-up me-1"></i>Отпреми као нацрт</button>
+            </div>
+        </form>
+        <p class="text-muted small mt-2 mb-0">
+            Дозвољени формати: PDF, Word, Excel, PowerPoint, ODT/ODS, RTF, TXT, JPG, PNG.
+            Отпремљена датотека постаје нацрт који се шаље на одобрење.
+        </p>
+    </div>
+
+    {% if my_versions %}
+    <div class="dokumenti-card">
+        <h5 class="mb-3"><i class="bi bi-person-check me-2"></i>Моја документа</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Документ</th>
+                        <th>Верзија</th>
+                        <th>Датотека</th>
+                        <th>Статус</th>
+                        <th>Напомена</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ver in my_versions %}
+                    <tr>
+                        <td><a href="{{ url_for('documents.dokumenti_detalj', document_id=ver.document_id) }}">{{ ver.document_title }}</a></td>
+                        <td>v{{ ver.version_no }}</td>
+                        <td class="text-break">{{ ver.original_filename }}</td>
+                        <td><span class="badge dokumenti-status-{{ ver.status }}">{{ status_labels.get(ver.status, ver.status) }}</span></td>
+                        <td class="text-break">{{ ver.review_comment or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

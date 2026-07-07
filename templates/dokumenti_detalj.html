@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document.title }} — Документа{% endblock %}
+
+{% block content %}
+<style>
+    .dokumenti-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .dokumenti-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .dokumenti-status-nacrt { background-color: #6c757d; }
+    .dokumenti-status-na_odobrenju { background-color: #b98900; }
+    .dokumenti-status-odobreno { background-color: #24573f; }
+    .dokumenti-status-arhivirano { background-color: #343a40; }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="dokumenti-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1"><i class="bi bi-file-earmark-text me-2"></i>{{ document.title }}</h2>
+                <p class="mb-0">
+                    {{ categories.get(document.category, document.category) }}
+                    {% if document.department %} · {{ document.department }}{% endif %}
+                    {% if not document.is_active %} · <span class="badge bg-danger">Деактивиран</span>{% endif %}
+                </p>
+                {% if document.description %}<p class="mb-0 mt-1">{{ document.description }}</p>{% endif %}
+            </div>
+            <a href="{{ url_for('documents.dokumenti_lista') }}" class="btn btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Сва документа
+            </a>
+        </div>
+    </div>
+
+    <div class="dokumenti-card">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Верзије</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Верзија</th>
+                        <th>Датотека</th>
+                        <th>Статус</th>
+                        <th>Отпремио</th>
+                        <th>Одобрио / одбио</th>
+                        <th>Напомена</th>
+                        <th class="text-end">Акције</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ver in versions %}
+                    <tr>
+                        <td>v{{ ver.version_no }}</td>
+                        <td class="text-break">
+                            {{ ver.original_filename }}
+                            {% if ver.file_size %}<div class="text-muted small">{{ (ver.file_size / 1048576) | round(2) }} MB</div>{% endif %}
+                        </td>
+                        <td><span class="badge dokumenti-status-{{ ver.status }}">{{ status_labels.get(ver.status, ver.status) }}</span></td>
+                        <td>
+                            {{ ver.uploaded_by_email }}
+                            {% if ver.uploaded_at %}<div class="text-muted small">{{ ver.uploaded_at.strftime('%d.%m.%Y. %H:%M') }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ ver.reviewed_by_email or '' }}
+                            {% if ver.reviewed_at %}<div class="text-muted small">{{ ver.reviewed_at.strftime('%d.%m.%Y. %H:%M') }}</div>{% endif %}
+                        </td>
+                        <td class="text-break">{{ ver.review_comment or '' }}</td>
+                        <td class="text-end">
+                            <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                <a class="btn btn-sm btn-outline-success" href="{{ url_for('documents.dokumenti_fajl', version_id=ver.id) }}">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                {% if ver.can_submit %}
+                                <form method="post" action="{{ url_for('documents.dokumenti_posalji', version_id=ver.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-send me-1"></i>Пошаљи на одобрење
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% if ver.can_approve %}
+                                <form method="post" action="{{ url_for('documents.dokumenti_odobri', version_id=ver.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="bi bi-check2-circle me-1"></i>Одобри
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#odbij-{{ ver.id }}">
+                                    <i class="bi bi-x-circle me-1"></i>Одбиј
+                                </button>
+                                {% endif %}
+                                {% if ver.status == 'odobreno' and (is_admin() or is_director()) %}
+                                <form method="post" action="{{ url_for('documents.dokumenti_arhiviraj', version_id=ver.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-archive me-1"></i>Архивирај
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% if ver.can_approve %}
+                            <div class="collapse mt-2" id="odbij-{{ ver.id }}">
+                                <form method="post" action="{{ url_for('documents.dokumenti_odbij', version_id=ver.id) }}" class="d-flex gap-1">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="text" class="form-control form-control-sm" name="comment" placeholder="Разлог одбијања" required>
+                                    <button type="submit" class="btn btn-sm btn-danger">Одбиј</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dokumenti-card">
+        <h5 class="mb-3"><i class="bi bi-cloud-arrow-up me-2"></i>Отпреми нову верзију</h5>
+        <form method="post" action="{{ url_for('documents.dokumenti_upload') }}" enctype="multipart/form-data" class="row g-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="document_id" value="{{ document.id }}"/>
+            <div class="col-md-6">
+                <label class="form-label" for="uploadFileNew">Датотека (највише 25 MB)</label>
+                <input type="file" class="form-control" id="uploadFileNew" name="file" required
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.rtf,.txt,.jpg,.jpeg,.png">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <button type="submit" class="btn btn-success"><i class="bi bi-cloud-arrow-up me-1"></i>Отпреми као нацрт</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

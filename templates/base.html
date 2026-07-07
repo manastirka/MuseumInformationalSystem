@@ -1113,6 +1113,12 @@
                         <span>Одобравање</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('documents.dokumenti_odobravanje') }}" aria-label="Одобравање докумената">
+                        <i class="bi bi-file-earmark-check"></i>
+                        <span>Одобравање докумената</span>
+                    </a>
+                </li>
                 <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
                 {% else %}
                 <li class="sidebar-section-title" aria-hidden="true">Оперативни модули</li>
@@ -1209,6 +1215,22 @@
                         <span>Почетна</span>
                     </a>
                 </li>
+                {% if has_module_access('dokumenti') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('documents.dokumenti_lista') }}" aria-label="Документа">
+                        <i class="bi bi-folder2-open"></i>
+                        <span>Документа</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if is_department_head() %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('documents.dokumenti_odobravanje') }}" aria-label="Одобравање докумената">
+                        <i class="bi bi-file-earmark-check"></i>
+                        <span>Одобравање докумената</span>
+                    </a>
+                </li>
+                {% endif %}
                 {% if has_module_access('museum_databases') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('museum_databases') }}" aria-label="Базе података">
