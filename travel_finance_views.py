@@ -508,6 +508,7 @@ def render_procurement_request_page():
 
 def render_field_activity_page():
     activities = []
+    pending_zahtevi = []
     today = datetime.now().date()
 
     if os.environ.get('DATABASE_URL'):
@@ -534,6 +535,15 @@ def render_field_activity_page():
                         else:
                             status = 'Планирана'
                         activities.append({**row, 'computed_status': status})
+
+                    cur.execute("""
+                        SELECT id, title, created_by_name, created_at, status
+                        FROM archive_requests
+                        WHERE request_type = 'terenska_aktivnost'
+                          AND status IN ('pending', 'in_review')
+                        ORDER BY created_at DESC
+                    """)
+                    pending_zahtevi = cur.fetchall()
         except Exception as exc:
             logger.warning("Failed to load activities: %s", exc)
 
@@ -547,6 +557,7 @@ def render_field_activity_page():
         'terenska_aktivnost.html',
         page_title='Теренска активност',
         activities=activities,
+        pending_zahtevi=pending_zahtevi,
         stats=stats,
         today=today,
     )
@@ -569,136 +580,165 @@ def render_business_trip_request_page(*, get_museum_vehicles):
     )
 
 
+def execute_field_trip(data, *, user_name, user_email,
+                       get_vehicle_reservations=None, save_reservations=None):
+    """Reserve the museum vehicle and book timesheet days for a business trip.
+
+    Runs either directly (admin/direktor manual path) or as the deferred
+    side effect once an approved trip request is finalized — `user_name`/
+    `user_email` therefore identify the trip's requester, not the caller."""
+    result = {
+        'success': True,
+        'vehicle_reserved': False,
+        'timesheet_updated': False,
+        'message': 'Захтев за службени пут је креиран',
+    }
+
+    vehicle_id = data.get('vehicle_id')
+    if vehicle_id and str(vehicle_id) != 'sopstveni':
+        try:
+            if os.environ.get('DATABASE_URL'):
+                import psycopg
+                from psycopg.rows import dict_row
+
+                pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
+                with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            INSERT INTO vehicle_reservations (
+                                vehicle_id, reserved_by, purpose, start_date, end_date,
+                                destination, notes, status
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                int(vehicle_id),
+                                user_name or user_email or 'system',
+                                f"Теренски рад: {data.get('purpose', '')}",
+                                data.get('start_date'),
+                                data.get('end_date'),
+                                data.get('location', ''),
+                                f"Службени пут - {data.get('location')}",
+                                'Активна',
+                            ),
+                        )
+                        conn.commit()
+                        result['vehicle_reserved'] = True
+            elif get_vehicle_reservations is not None and save_reservations is not None:
+                reservations = get_vehicle_reservations()
+                existing_ids = [
+                    res.get('id') for res in reservations
+                    if isinstance(res.get('id'), int)
+                ]
+                next_id = (max(existing_ids) + 1) if existing_ids else 1
+                reservations.append(
+                    {
+                        'id': next_id,
+                        'vehicle_id': int(vehicle_id),
+                        'employee_name': user_name,
+                        'start_date': data.get('start_date'),
+                        'end_date': data.get('end_date'),
+                        'purpose': f"Теренски рад: {data.get('purpose', '')}",
+                        'destination': data.get('location', ''),
+                        'created_by': user_email or 'system',
+                        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    }
+                )
+                save_reservations()
+                result['vehicle_reserved'] = True
+            else:
+                result['vehicle_error'] = 'Складиште резервација није доступно'
+        except Exception as exc:
+            logger.error("Vehicle reservation error: %s", exc)
+            result['vehicle_error'] = str(exc)
+
+    if data.get('update_timesheet') and data.get('start_date') and data.get('end_date'):
+        try:
+            start = datetime.strptime(data['start_date'], '%Y-%m-%d')
+            end = datetime.strptime(data['end_date'], '%Y-%m-%d')
+
+            if os.environ.get('DATABASE_URL'):
+                import psycopg
+                from psycopg.rows import dict_row
+
+                pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
+
+                with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+                    with conn.cursor() as cur:
+                        days_recorded = 0
+                        current = start
+                        while current <= end:
+                            # Resolve the report by email first (the canonical
+                            # key); only fall back to an exact name match. Skip
+                            # APPROVED reports so a field trip never overwrites a
+                            # finalized official document, and order
+                            # deterministically so a duplicate can't match the
+                            # wrong row.
+                            cur.execute(
+                                """
+                                SELECT id FROM timesheet_reports
+                                WHERE (
+                                    (employee_email IS NOT NULL AND LOWER(employee_email) = LOWER(%s))
+                                    OR (employee_email IS NULL AND employee_name = %s)
+                                )
+                                  AND month = %s AND year = %s
+                                  AND COALESCE(status, 'DRAFT') <> 'APPROVED'
+                                ORDER BY id DESC
+                                LIMIT 1
+                                """,
+                                (user_email, user_name, current.month, current.year),
+                            )
+                            report = cur.fetchone()
+                            if report:
+                                cur.execute(
+                                    """
+                                    INSERT INTO timesheet_report_days (report_id, day, work_outside)
+                                    VALUES (%s, %s, 8)
+                                    ON CONFLICT (report_id, day)
+                                    DO UPDATE SET work_outside = 8, work_in_museum = 0
+                                    """,
+                                    (report['id'], current.day),
+                                )
+                                days_recorded += 1
+                            current += timedelta(days=1)
+                        conn.commit()
+                        if days_recorded > 0:
+                            result['timesheet_updated'] = True
+                        else:
+                            result['timesheet_skipped'] = True
+        except Exception as exc:
+            logger.error("Timesheet update error: %s", exc)
+            result['timesheet_error'] = str(exc)
+
+    return result
+
+
 def api_field_trip_create(*, get_vehicle_reservations, save_reservations):
-    """Create field trip request with vehicle reservation and timesheet entries."""
+    """Directly create a field trip (reservation + timesheet).
+
+    Ordinary users go through the approval framework instead — the trip is
+    executed by `execute_field_trip` once the request is finally approved —
+    so the direct API stays available only to admin/direktor as a manual
+    operator path."""
     try:
+        if session.get('user_role') not in ('admin', 'direktor'):
+            return jsonify({
+                'success': False,
+                'message': 'Захтев за службени пут се подноси на одобравање — '
+                           'резервација возила настаје тек по коначном одобрењу.',
+            }), 403
+
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'message': 'Нема података'})
 
-        result = {
-            'success': True,
-            'vehicle_reserved': False,
-            'timesheet_updated': False,
-            'message': 'Захтев за службени пут је креиран',
-        }
-
-        vehicle_id = data.get('vehicle_id')
-        if vehicle_id and str(vehicle_id) != 'sopstveni':
-            try:
-                if os.environ.get('DATABASE_URL'):
-                    import psycopg
-                    from psycopg.rows import dict_row
-
-                    pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
-                    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
-                        with conn.cursor() as cur:
-                            cur.execute(
-                                """
-                                INSERT INTO vehicle_reservations (
-                                    vehicle_id, reserved_by, purpose, start_date, end_date,
-                                    destination, notes, status
-                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                                """,
-                                (
-                                    int(vehicle_id),
-                                    session.get('user_name', session.get('user_email', 'system')),
-                                    f"Теренски рад: {data.get('purpose', '')}",
-                                    data.get('start_date'),
-                                    data.get('end_date'),
-                                    data.get('location', ''),
-                                    f"Службени пут - {data.get('location')}",
-                                    'Активна',
-                                ),
-                            )
-                            conn.commit()
-                            result['vehicle_reserved'] = True
-                else:
-                    reservations = get_vehicle_reservations()
-                    existing_ids = [
-                        res.get('id') for res in reservations
-                        if isinstance(res.get('id'), int)
-                    ]
-                    next_id = (max(existing_ids) + 1) if existing_ids else 1
-                    reservations.append(
-                        {
-                            'id': next_id,
-                            'vehicle_id': int(vehicle_id),
-                            'employee_name': session.get('user_name', ''),
-                            'start_date': data.get('start_date'),
-                            'end_date': data.get('end_date'),
-                            'purpose': f"Теренски рад: {data.get('purpose', '')}",
-                            'destination': data.get('location', ''),
-                            'created_by': session.get('user_email', 'system'),
-                            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        }
-                    )
-                    save_reservations()
-                    result['vehicle_reserved'] = True
-            except Exception as exc:
-                logger.error("Vehicle reservation error: %s", exc)
-                result['vehicle_error'] = str(exc)
-
-        if data.get('update_timesheet') and data.get('start_date') and data.get('end_date'):
-            try:
-                start = datetime.strptime(data['start_date'], '%Y-%m-%d')
-                end = datetime.strptime(data['end_date'], '%Y-%m-%d')
-
-                if os.environ.get('DATABASE_URL'):
-                    import psycopg
-                    from psycopg.rows import dict_row
-
-                    pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
-                    user_name = session.get('user_name', '')
-                    user_email = session.get('user_email', '')
-
-                    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
-                        with conn.cursor() as cur:
-                            days_recorded = 0
-                            current = start
-                            while current <= end:
-                                # Resolve the report by email first (the canonical
-                                # key); only fall back to an exact name match. Skip
-                                # APPROVED reports so a field trip never overwrites a
-                                # finalized official document, and order
-                                # deterministically so a duplicate can't match the
-                                # wrong row.
-                                cur.execute(
-                                    """
-                                    SELECT id FROM timesheet_reports
-                                    WHERE (
-                                        (employee_email IS NOT NULL AND LOWER(employee_email) = LOWER(%s))
-                                        OR (employee_email IS NULL AND employee_name = %s)
-                                    )
-                                      AND month = %s AND year = %s
-                                      AND COALESCE(status, 'DRAFT') <> 'APPROVED'
-                                    ORDER BY id DESC
-                                    LIMIT 1
-                                    """,
-                                    (user_email, user_name, current.month, current.year),
-                                )
-                                report = cur.fetchone()
-                                if report:
-                                    cur.execute(
-                                        """
-                                        INSERT INTO timesheet_report_days (report_id, day, work_outside)
-                                        VALUES (%s, %s, 8)
-                                        ON CONFLICT (report_id, day)
-                                        DO UPDATE SET work_outside = 8, work_in_museum = 0
-                                        """,
-                                        (report['id'], current.day),
-                                    )
-                                    days_recorded += 1
-                                current += timedelta(days=1)
-                            conn.commit()
-                            if days_recorded > 0:
-                                result['timesheet_updated'] = True
-                            else:
-                                result['timesheet_skipped'] = True
-            except Exception as exc:
-                logger.error("Timesheet update error: %s", exc)
-                result['timesheet_error'] = str(exc)
-
+        result = execute_field_trip(
+            data,
+            user_name=session.get('user_name', ''),
+            user_email=session.get('user_email', ''),
+            get_vehicle_reservations=get_vehicle_reservations,
+            save_reservations=save_reservations,
+        )
         return jsonify(result)
     except Exception as exc:
         logger.error("Field trip creation error: %s", exc)
@@ -1186,8 +1226,43 @@ def api_nabavka_save():
                     ),
                 )
                 new_id = cur.fetchone()['id']
+
+                # Enroll the procurement into the approval framework: the
+                # procurement row stays the content carrier, the archive
+                # request carries the status and the approval chain.
+                from archive_signature_blueprint import insert_archive_request
+
+                items = data.get('items', [])
+                first = items[0] if isinstance(items, list) and items else None
+                first_desc = first.get('description', '') if isinstance(first, dict) else ''
+                archive_request_id = insert_archive_request(
+                    cur,
+                    request_type='finansije',
+                    subtype='nabavka',
+                    title=f"Захтев за набавку — {data.get('podnosilac', '')} ({data.get('datum', '')})",
+                    description=first_desc,
+                    request_data={
+                        'procurement_request_id': new_id,
+                        'items': items,
+                        'total_estimated': data.get('totalEstimated', 0),
+                        'teret_aktivnosti': data.get('teretAktivnosti'),
+                    },
+                    user_email=session.get('user_email', ''),
+                    user_name=session.get('user_name', ''),
+                    department=session.get('user_department', ''),
+                    creator_role=session.get('user_role', 'employee'),
+                )
+                cur.execute(
+                    "UPDATE procurement_requests SET archive_request_id = %s WHERE id = %s",
+                    (archive_request_id, new_id),
+                )
                 conn.commit()
-        return jsonify({'success': True, 'message': f'Захтев сачуван (ID: {new_id})', 'id': new_id})
+        return jsonify({
+            'success': True,
+            'message': f'Захтев сачуван (ID: {new_id}) и послат на одобравање',
+            'id': new_id,
+            'archive_request_id': archive_request_id,
+        })
     except Exception as exc:
         logger.exception("Error saving procurement request")
         return jsonify({'success': False, 'message': str(exc)})
@@ -1220,40 +1295,60 @@ def api_nabavka_list():
                 if is_admin:
                     cur.execute(
                         """
-                        SELECT id, datum::text, podnosilac, items, total_estimated as procenjeno,
-                               status, created_at
-                        FROM procurement_requests
-                        ORDER BY created_at DESC
+                        SELECT pr.id, pr.datum::text, pr.podnosilac, pr.items,
+                               pr.total_estimated as procenjeno,
+                               COALESCE(ar.status, pr.status) as status,
+                               ar.final_decision, ar.archive_reference, pr.created_at
+                        FROM procurement_requests pr
+                        LEFT JOIN archive_requests ar ON ar.id = pr.archive_request_id
+                        ORDER BY pr.created_at DESC
                         LIMIT 50
                         """
                     )
                 else:
                     cur.execute(
                         """
-                        SELECT id, datum::text, podnosilac, items, total_estimated as procenjeno,
-                               status, created_at
-                        FROM procurement_requests
-                        WHERE user_email = %s
-                        ORDER BY created_at DESC
+                        SELECT pr.id, pr.datum::text, pr.podnosilac, pr.items,
+                               pr.total_estimated as procenjeno,
+                               COALESCE(ar.status, pr.status) as status,
+                               ar.final_decision, ar.archive_reference, pr.created_at
+                        FROM procurement_requests pr
+                        LEFT JOIN archive_requests ar ON ar.id = pr.archive_request_id
+                        WHERE pr.user_email = %s
+                        ORDER BY pr.created_at DESC
                         LIMIT 50
                         """,
                         (user_email,),
                     )
                 requests = cur.fetchall()
 
+        status_labels = {
+            'pending': 'На одобрењу',
+            'in_review': 'У поступку одобравања',
+            'approved': 'Одобрен',
+            'rejected': 'Одбијен',
+            'archived': 'Архивиран',
+        }
         formatted = []
         for req in requests:
             items = req['items'] if isinstance(req['items'], list) else json.loads(req['items'])
             first = items[0] if isinstance(items, list) and items else None
             desc = first.get('description', '') if isinstance(first, dict) else ''
             opis = (str(desc or '')[:50] + '...') if first is not None else 'Без описа'
+            status = req['status']
+            status_label = status_labels.get(status, status)
+            if status == 'archived' and req.get('final_decision'):
+                outcome = 'Одобрен' if req['final_decision'] == 'approved' else 'Одбијен'
+                status_label = f"{outcome} (архивиран)"
             formatted.append(
                 {
                     'id': req['id'],
                     'datum': req['datum'],
                     'opis': opis,
                     'procenjeno': float(req['procenjeno'] or 0),
-                    'status': req['status'],
+                    'status': status,
+                    'status_label': status_label,
+                    'archive_reference': req.get('archive_reference'),
                 }
             )
         return jsonify({'success': True, 'requests': formatted})

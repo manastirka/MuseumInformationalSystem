@@ -2080,51 +2080,17 @@ function submitTrip() {
         return;
     }
 
-    const data = {
-        start_date: odDatuma,
-        end_date: doDatuma,
-        locations: locations,
-        location: lokacija,
-        purpose: cilj,
-        vehicle_id: (document.getElementById('vozilo').value && document.getElementById('vozilo').value !== 'sopstveni')
-            ? document.getElementById('vozilo').value
-            : null,
-        update_timesheet: document.getElementById('updateTimesheet').checked,
-        accommodation: document.getElementById('smestaj').checked ? getManualAccommodationData() : null
-    };
+    // Захтев иде на одобравање (шеф одељења → директор → шеф рачуноводства);
+    // резервација возила и упис у месечни извештај извршавају се тек по
+    // коначном одобрењу захтева.
+    saveRequest();
 
-    secureFetch('/api/field-trip/create', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Update status indicators
-            if (result.vehicle_reserved) {
-                document.getElementById('vehicleStatus').className = 'integration-status success';
-                document.getElementById('vehicleStatus').innerHTML = '<i class="bi bi-check-circle me-2"></i><span>Возило: Резервација успешна</span>';
-            }
-            if (result.timesheet_updated) {
-                document.getElementById('timesheetStatus').className = 'integration-status success';
-                document.getElementById('timesheetStatus').innerHTML = '<i class="bi bi-check-circle me-2"></i><span>Месечни извештај: Ажурирано</span>';
-            }
+    document.getElementById('vehicleStatus').className = 'integration-status';
+    document.getElementById('vehicleStatus').innerHTML = '<i class="bi bi-hourglass-split me-2"></i><span>Возило: резервација по одобрењу захтева</span>';
+    document.getElementById('timesheetStatus').className = 'integration-status';
+    document.getElementById('timesheetStatus').innerHTML = '<i class="bi bi-hourglass-split me-2"></i><span>Месечни извештај: ажурирање по одобрењу захтева</span>';
 
-            alert('Захтев је успешно креиран!\n' +
-                  (result.vehicle_reserved ? '- Возило резервисано\n' : '') +
-                  (result.timesheet_updated ? '- Месечни извештај ажуриран' : ''));
-            persistDraft();
-        } else {
-            alert('Грешка: ' + result.message);
-        }
-    })
-    .catch(error => {
-        alert('Грешка при креирању захтева');
-    });
+    alert('Захтев за службени пут је послат на одобравање.\nРезервација возила и месечни извештај биће ажурирани по коначном одобрењу.');
 }
 
 function printDocument() {
@@ -2430,7 +2396,17 @@ function saveRequest() {
             } : null,
             troskovi: troskovi,
             datum_dokumenta: datumDokumenta,
-            podnosilac: userFullName
+            podnosilac: userFullName,
+            field_trip: {
+                start_date: odDatuma,
+                end_date: doDatuma,
+                locations: locations,
+                location: lokacijaTekst,
+                purpose: cilj,
+                vehicle_id: (vozilo && vozilo !== 'sopstveni') ? vozilo : null,
+                update_timesheet: document.getElementById('updateTimesheet').checked,
+                accommodation: document.getElementById('smestaj').checked ? getManualAccommodationData() : null
+            }
         }
     };
 

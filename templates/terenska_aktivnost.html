@@ -61,6 +61,48 @@
         </div>
     </div>
 
+    {% if pending_zahtevi %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header">
+                    <i class="bi bi-hourglass-split me-2"></i>
+                    Захтеви на одобравању
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Захтев</th>
+                                    <th>Подносилац</th>
+                                    <th>Поднет</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for zahtev in pending_zahtevi %}
+                                <tr>
+                                    <td>{{ zahtev.title or '—' }}</td>
+                                    <td>{{ zahtev.created_by_name }}</td>
+                                    <td>{% if zahtev.created_at %}{{ zahtev.created_at.strftime('%d.%m.%Y.') }}{% endif %}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">
+                                            {% if zahtev.status == 'in_review' %}У поступку одобравања{% else %}На одобрењу{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">Резервација возила и упис у месечни извештај настају тек по коначном одобрењу захтева.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
         <div class="col-12">
             <div class="card">

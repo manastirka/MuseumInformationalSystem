@@ -750,8 +750,9 @@
                             <td>${parseFloat(req.procenjeno).toLocaleString('sr-RS')} РСД</td>
                             <td>
                                 <span class="badge bg-${getStatusColor(req.status)}">
-                                    ${getStatusText(req.status)}
+                                    ${req.status_label || getStatusText(req.status)}
                                 </span>
+                                ${req.archive_reference ? `<div class="small text-muted">${req.archive_reference}</div>` : ''}
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" onclick="viewRequest(${req.id})">
@@ -782,8 +783,10 @@
     function getStatusColor(status) {
         const colors = {
             'pending': 'warning',
+            'in_review': 'info',
             'approved': 'success',
             'rejected': 'danger',
+            'archived': 'secondary',
             'completed': 'info'
         };
         return colors[status] || 'secondary';
@@ -791,9 +794,11 @@
 
     function getStatusText(status) {
         const texts = {
-            'pending': 'На чекању',
+            'pending': 'На одобрењу',
+            'in_review': 'У поступку одобравања',
             'approved': 'Одобрено',
             'rejected': 'Одбијено',
+            'archived': 'Архивирано',
             'completed': 'Реализовано'
         };
         return texts[status] || status;

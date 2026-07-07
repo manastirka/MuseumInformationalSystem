@@ -1119,6 +1119,12 @@
                         <span>Одобравање докумената</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_arhiva') }}" aria-label="Архива захтева">
+                        <i class="bi bi-archive"></i>
+                        <span>Архива захтева</span>
+                    </a>
+                </li>
                 <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
                 {% else %}
                 <li class="sidebar-section-title" aria-hidden="true">Оперативни модули</li>
@@ -1147,6 +1153,20 @@
                                 <a class="nav-link" href="{{ url_for('zahtev_razno') if endpoint_exists('zahtev_razno') else '#' }}">
                                     <i class="bi bi-file-earmark-plus me-2"></i>
                                     <span>Захтев разно</span>
+                                </a>
+                            </li>
+                            {% if is_department_head() %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_odobravanje') }}">
+                                    <i class="bi bi-check2-square me-2"></i>
+                                    <span>Одобравање захтева</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_arhiva') }}">
+                                    <i class="bi bi-archive me-2"></i>
+                                    <span>Архива захтева</span>
                                 </a>
                             </li>
                         </ul>

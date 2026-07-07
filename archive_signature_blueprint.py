@@ -11,7 +11,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from observability import add_sentry_breadcrumb, capture_observability_exception
 from postgres_service import get_postgres_connection
-from security_utils import admin_required, login_required
+from security_utils import admin_or_department_head_required, admin_required, login_required
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,8 @@ APPROVAL_CHAINS = {
         {'role': 'direktor', 'label': 'Директор', 'order': 2},
     ],
     'finansije': [
-        {'role': 'sef_racunovodstva', 'label': 'Шеф рачуноводства', 'order': 1},
-        {'role': 'sef_odeljenja', 'label': 'Шеф одељења', 'order': 2},
+        {'role': 'sef_odeljenja', 'label': 'Шеф одељења', 'order': 1},
+        {'role': 'sef_racunovodstva', 'label': 'Шеф рачуноводства', 'order': 2},
         {'role': 'direktor', 'label': 'Директор', 'order': 3},
     ],
     'terenska_aktivnost': [
@@ -63,6 +63,7 @@ REQUEST_SUBTYPES = {
         {'value': 'ostalo', 'label': 'Остало'},
     ],
     'finansije': [
+        {'value': 'nabavka', 'label': 'Набавка'},
         {'value': 'fakture', 'label': 'Фактуре'},
         {'value': 'isplate', 'label': 'Исплате'},
         {'value': 'budzet', 'label': 'Буџет'},
@@ -81,27 +82,239 @@ REQUEST_SUBTYPES = {
 }
 
 
-def can_approve_request(user_role, request_type, current_step):
-    """Check if user can approve at current step."""
-    chain = APPROVAL_CHAINS.get(request_type, [])
-    if current_step < len(chain):
-        required_role = chain[current_step]['role']
-        if required_role == 'direktor' and user_role in ['admin', 'direktor']:
-            return True
-        if user_role == required_role:
-            return True
-        if user_role == 'admin':
-            return True
-    return False
+REQUEST_TYPE_LABELS = {
+    'zahtev': 'Захтев',
+    'finansije': 'Финансије',
+    'terenska_aktivnost': 'Теренска активност',
+}
+
+FINAL_DECISION_LABELS = {
+    'approved': 'Одобрен',
+    'rejected': 'Одбијен',
+}
 
 
-def can_view_archive_request(created_by_email, user_email, user_role, request_type, current_step):
-    """Allow archive request access to owners, admins/direktor, and current approvers."""
+def _norm_dept(value):
+    """Normalize department names the same way the timesheet/documents modules do."""
+    return (value or '').strip().casefold()
+
+
+def _effective_chain(request_type, stored_chain):
+    """Per-request stored chain when valid (creator's own step may be skipped),
+    otherwise the authoritative APPROVAL_CHAINS constant."""
+    if isinstance(stored_chain, list) and stored_chain and all(
+        isinstance(step, dict) and step.get('role') for step in stored_chain
+    ):
+        return stored_chain
+    return APPROVAL_CHAINS.get(request_type, [])
+
+
+def build_approval_chain(request_type, creator_role):
+    """Chain for a new request: the creator's own approver step is skipped
+    (self-approval is forbidden anyway), but the director step always stays."""
+    full = APPROVAL_CHAINS.get(request_type, [])
+    chain = [
+        step for step in full
+        if step['role'] == 'direktor' or step['role'] != creator_role
+    ]
+    return chain or full
+
+
+def can_approve_request(user_role, request_type, current_step,
+                        chain=None, user_department=None, request_department=None):
+    """Check if user can approve at current step.
+
+    A department head only covers the sef_odeljenja step for requests from
+    their own department; a request without a department stays with
+    admin/direktor (mirrors the documents module)."""
+    effective = chain if chain else APPROVAL_CHAINS.get(request_type, [])
+    if current_step >= len(effective):
+        return False
+    required_role = effective[current_step].get('role')
+    if user_role == 'admin':
+        return True
+    if required_role == 'direktor':
+        return user_role == 'direktor'
+    if user_role != required_role:
+        return False
+    if required_role == 'sef_odeljenja':
+        user_dept = _norm_dept(user_department)
+        return bool(user_dept) and user_dept == _norm_dept(request_department)
+    return True
+
+
+def can_view_archive_request(created_by_email, user_email, user_role, request_type, current_step,
+                             chain=None, user_department=None, request_department=None):
+    """Allow archive request access to owners, admins/direktor, current approvers,
+    and department heads for their own department's requests."""
     if user_role in ['admin', 'direktor']:
         return True
     if created_by_email == user_email:
         return True
-    return can_approve_request(user_role, request_type, current_step)
+    if user_role == 'sef_odeljenja':
+        user_dept = _norm_dept(user_department)
+        if user_dept and user_dept == _norm_dept(request_department):
+            return True
+    return can_approve_request(
+        user_role, request_type, current_step,
+        chain=chain, user_department=user_department, request_department=request_department,
+    )
+
+
+def insert_archive_request(cur, *, request_type, subtype, title, description,
+                           request_data, user_email, user_name, department,
+                           priority='normal', attachments=None, creator_role='employee'):
+    """Insert an archive request with its approval chain, signature slots and
+    history row. Shared by the JSON API and by modules that enroll their
+    records into the approval framework (e.g. procurement)."""
+    approval_chain = build_approval_chain(request_type, creator_role)
+    cur.execute(
+        """
+        INSERT INTO archive_requests (
+            request_type, subtype, title, description, request_data,
+            status, priority, created_by_email, created_by_name,
+            created_by_department, attachments, approval_chain, current_approval_step
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (
+            request_type,
+            subtype,
+            title,
+            description,
+            json.dumps(request_data or {}),
+            'pending',
+            priority,
+            user_email,
+            user_name,
+            department,
+            json.dumps(attachments or []),
+            json.dumps(approval_chain),
+            0,
+        ),
+    )
+    inserted = cur.fetchone()
+    request_id = inserted['id'] if isinstance(inserted, dict) else inserted[0]
+
+    for order, approver in enumerate(approval_chain):
+        cur.execute(
+            """
+            INSERT INTO approval_signatures (
+                request_id, approver_role, decision, signature_order
+            ) VALUES (%s, %s, 'pending', %s)
+            """,
+            (request_id, approver['role'], order),
+        )
+
+    cur.execute(
+        """
+        INSERT INTO request_history (
+            request_id, action, action_by_email, action_by_name, new_values
+        ) VALUES (%s, 'created', %s, %s, %s)
+        """,
+        (request_id, user_email, user_name, json.dumps({
+            'request_type': request_type,
+            'subtype': subtype,
+            'title': title,
+            'request_data': request_data or {},
+        })),
+    )
+    return request_id
+
+
+def _allocate_archive_reference(cur, year):
+    """Mint the next АРХ-{year}-{NNNNN} reference under the per-year advisory lock."""
+    # Serialize reference allocation for this year within the
+    # transaction so concurrent archivings cannot mint duplicates.
+    cur.execute(
+        "SELECT pg_advisory_xact_lock(%s, %s)",
+        (_ARCHIVE_REF_LOCK_NS, year),
+    )
+    # Derive the next sequence from the highest existing reference
+    # for the year (not COUNT(*), which drifts if a row is later
+    # un-archived or deleted).
+    cur.execute(
+        """
+        SELECT COALESCE(MAX(
+            CAST(SUBSTRING(archive_reference FROM '([0-9]+)$') AS INTEGER)
+        ), 0)
+        FROM archive_requests
+        WHERE archive_year = %s AND archive_reference IS NOT NULL
+        """,
+        (year,),
+    )
+    return f"АРХ-{year}-{cur.fetchone()[0] + 1:05d}"
+
+
+def _auto_archive_request(cur, request_id, user_email, user_name, *, assign_reference):
+    """Archive a request right after its final decision (approved requests get
+    an АРХ reference, rejected ones are archived without one)."""
+    year = datetime.now().year
+    archive_ref = None
+    if assign_reference:
+        archive_ref = _allocate_archive_reference(cur, year)
+        cur.execute(
+            """
+            UPDATE archive_requests
+            SET status = 'archived', archived_at = NOW(),
+                archive_reference = %s, archive_year = %s
+            WHERE id = %s
+            """,
+            (archive_ref, year, request_id),
+        )
+        note = f"Аутоматски архивирано под бројем {archive_ref}"
+    else:
+        cur.execute(
+            """
+            UPDATE archive_requests
+            SET status = 'archived', archived_at = NOW(), archive_year = %s
+            WHERE id = %s
+            """,
+            (year, request_id),
+        )
+        note = "Аутоматски архивирано (одбијен захтев)"
+
+    cur.execute(
+        """
+        INSERT INTO request_history (
+            request_id, action, action_by_email, action_by_name, notes
+        ) VALUES (%s, 'archived', %s, %s, %s)
+        """,
+        (request_id, user_email, user_name, note),
+    )
+    return archive_ref
+
+
+def _execute_post_approval_side_effects(request_type, request_data, *, creator_email, creator_name):
+    """Run the deferred actions of a finally approved request (a business trip
+    reserves its vehicle and books timesheet days only at this point)."""
+    field_trip = (request_data or {}).get('field_trip')
+    if request_type != 'terenska_aktivnost' or not isinstance(field_trip, dict):
+        return None
+    try:
+        # Lazy import: travel_finance_views imports this module at load time.
+        import travel_finance_views
+        return travel_finance_views.execute_field_trip(
+            field_trip, user_name=creator_name or '', user_email=creator_email or '',
+        )
+    except Exception as exc:
+        logger.exception("Field trip side effects failed for approved request")
+        return {'error': str(exc)}
+
+
+def _describe_side_effects(side_effects):
+    parts = []
+    if side_effects.get('vehicle_reserved'):
+        parts.append('возило резервисано')
+    if side_effects.get('vehicle_error'):
+        parts.append(f"грешка резервације: {side_effects['vehicle_error']}")
+    if side_effects.get('timesheet_updated'):
+        parts.append('месечни извештај ажуриран')
+    if side_effects.get('timesheet_error'):
+        parts.append(f"грешка извештаја: {side_effects['timesheet_error']}")
+    if side_effects.get('error'):
+        parts.append(f"грешка: {side_effects['error']}")
+    return 'Извршено по одобрењу: ' + (', '.join(parts) if parts else 'нема пропратних акција')
 
 
 def resolve_signature_document_path(raw_path):
@@ -194,10 +407,14 @@ def api_get_archive_requests():
     try:
         user_email = session.get('user_email', '')
         user_role = session.get('user_role', 'employee')
+        user_department = session.get('user_department', '')
+        is_department_head = bool(session.get('is_department_head'))
 
         request_type = request.args.get('type', '')
         status = request.args.get('status', '')
         subtype = request.args.get('subtype', '')
+        year = request.args.get('year', '')
+        submitter = request.args.get('submitter', '')
         try:
             page = int(request.args.get('page', 1))
             per_page = int(request.args.get('per_page', 20))
@@ -223,11 +440,26 @@ def api_get_archive_requests():
                     conditions.append("subtype = %s")
                     params.append(subtype)
 
+                if year:
+                    try:
+                        conditions.append("archive_year = %s")
+                        params.append(int(year))
+                    except (TypeError, ValueError):
+                        return jsonify({'success': False, 'message': 'Неисправна година'}), 400
+
+                if submitter:
+                    conditions.append("(created_by_name ILIKE %s OR created_by_email ILIKE %s)")
+                    like = f"%{submitter}%"
+                    params.extend([like, like])
+
                 if user_role not in ['admin', 'direktor']:
+                    # Owners see their own; current approvers see requests waiting
+                    # on their step (department heads only for their department);
+                    # department heads additionally see their whole department.
                     conditions.append("""(
                         created_by_email = %s
                         OR (
-                            status = 'pending'
+                            status IN ('pending', 'in_review')
                             AND EXISTS (
                                 SELECT 1 FROM approval_signatures
                                 WHERE request_id = archive_requests.id
@@ -235,9 +467,21 @@ def api_get_archive_requests():
                                 AND decision = 'pending'
                                 AND signature_order = archive_requests.current_approval_step
                             )
+                            AND (
+                                %s <> 'sef_odeljenja'
+                                OR LOWER(TRIM(COALESCE(created_by_department, ''))) = LOWER(TRIM(%s))
+                            )
+                        )
+                        OR (
+                            %s
+                            AND LOWER(TRIM(COALESCE(created_by_department, ''))) = LOWER(TRIM(%s))
+                            AND TRIM(%s) <> ''
                         )
                     )""")
-                    params.extend([user_email, user_role])
+                    params.extend([
+                        user_email, user_role, user_role, user_department,
+                        is_department_head, user_department, user_department,
+                    ])
 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
 
@@ -288,7 +532,15 @@ def api_get_archive_requests():
                         'archived_at': row[19].isoformat() if row[19] else None,
                         'archive_reference': row[20],
                         'is_owner': row[8] == user_email,
-                        'can_approve': can_approve_request(user_role, row[1], row[15]),
+                        'can_approve': (
+                            row[8] != user_email
+                            and can_approve_request(
+                                user_role, row[1], row[15],
+                                chain=_effective_chain(row[1], row[14]),
+                                user_department=user_department,
+                                request_department=row[10],
+                            )
+                        ),
                     }
 
                     cur.execute(
@@ -344,7 +596,9 @@ def api_create_archive_request():
 
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
-        approval_chain = APPROVAL_CHAINS.get(request_type, [])
+        # Department comes from the session (set at login), not from the
+        # client payload — the department-head scoping relies on it.
+        department = session.get('user_department', '') or data.get('department', '')
         add_sentry_breadcrumb(
             category='archive',
             message='Archive request creation started',
@@ -353,50 +607,19 @@ def api_create_archive_request():
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO archive_requests (
-                        request_type, subtype, title, description, request_data,
-                        status, priority, created_by_email, created_by_name,
-                        created_by_department, attachments, approval_chain, current_approval_step
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id
-                    """,
-                    (
-                        request_type,
-                        data.get('subtype', ''),
-                        data.get('title', ''),
-                        data.get('description', ''),
-                        json.dumps(data.get('request_data', {})),
-                        'pending',
-                        data.get('priority', 'normal'),
-                        user_email,
-                        user_name,
-                        data.get('department', ''),
-                        json.dumps(data.get('attachments', [])),
-                        json.dumps(approval_chain),
-                        0,
-                    ),
-                )
-                request_id = cur.fetchone()[0]
-
-                for order, approver in enumerate(approval_chain):
-                    cur.execute(
-                        """
-                        INSERT INTO approval_signatures (
-                            request_id, approver_role, decision, signature_order
-                        ) VALUES (%s, %s, 'pending', %s)
-                        """,
-                        (request_id, approver['role'], order),
-                    )
-
-                cur.execute(
-                    """
-                    INSERT INTO request_history (
-                        request_id, action, action_by_email, action_by_name, new_values
-                    ) VALUES (%s, 'created', %s, %s, %s)
-                    """,
-                    (request_id, user_email, user_name, json.dumps(data)),
+                request_id = insert_archive_request(
+                    cur,
+                    request_type=request_type,
+                    subtype=data.get('subtype', ''),
+                    title=data.get('title', ''),
+                    description=data.get('description', ''),
+                    request_data=data.get('request_data', {}),
+                    user_email=user_email,
+                    user_name=user_name,
+                    department=department,
+                    priority=data.get('priority', 'normal'),
+                    attachments=data.get('attachments', []),
+                    creator_role=session.get('user_role', 'employee'),
                 )
                 conn.commit()
 
@@ -450,7 +673,12 @@ def api_get_archive_request(request_id):
                 if not row:
                     return jsonify({'success': False, 'message': 'Захтев није пронађен'}), 404
 
-                if not can_view_archive_request(row[8], user_email, user_role, row[1], row[15]):
+                if not can_view_archive_request(
+                    row[8], user_email, user_role, row[1], row[15],
+                    chain=_effective_chain(row[1], row[14]),
+                    user_department=session.get('user_department', ''),
+                    request_department=row[10],
+                ):
                     return jsonify({'success': False, 'message': 'Немате приступ овом захтеву'}), 403
 
                 req = {
@@ -478,7 +706,15 @@ def api_get_archive_request(request_id):
                     'archived_at': row[21].isoformat() if row[21] else None,
                     'archive_reference': row[22],
                     'is_owner': row[8] == user_email,
-                    'can_approve': can_approve_request(user_role, row[1], row[15]),
+                    'can_approve': (
+                        row[8] != user_email
+                        and can_approve_request(
+                            user_role, row[1], row[15],
+                            chain=_effective_chain(row[1], row[14]),
+                            user_department=session.get('user_department', ''),
+                            request_department=row[10],
+                        )
+                    ),
                 }
 
                 cur.execute(
@@ -560,6 +796,7 @@ def api_approve_archive_request(request_id):
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
         user_role = session.get('user_role', 'employee')
+        user_department = session.get('user_department', '')
         add_sentry_breadcrumb(
             category='archive',
             message='Archive request approval started',
@@ -571,7 +808,8 @@ def api_approve_archive_request(request_id):
                 cur.execute(
                     """
                     SELECT request_type, status, current_approval_step, approval_chain,
-                           created_by_email, title
+                           created_by_email, title, created_by_department, request_data,
+                           created_by_name
                     FROM archive_requests WHERE id = %s
                     FOR UPDATE
                     """,
@@ -587,6 +825,9 @@ def api_approve_archive_request(request_id):
                 current_step = row[2]
                 creator_email = row[4] if len(row) > 4 else None
                 req_title = row[5] if len(row) > 5 else ''
+                request_department = row[6] if len(row) > 6 else None
+                request_data = (row[7] if len(row) > 7 else None) or {}
+                creator_name = row[8] if len(row) > 8 else ''
 
                 if status not in ['pending', 'in_review']:
                     return jsonify({'success': False, 'message': 'Захтев није у статусу чекања'}), 400
@@ -594,14 +835,17 @@ def api_approve_archive_request(request_id):
                 if creator_email and creator_email == user_email:
                     return jsonify({'success': False, 'message': 'Не можете одобрити сопствени захтев'}), 403
 
-                if not can_approve_request(user_role, request_type, current_step):
-                    return jsonify({'success': False, 'message': 'Немате дозволу за одобрење у овој фази'}), 403
+                # Per-request stored chain governs (the creator's own step may be
+                # skipped at creation); an empty/drifted snapshot falls back to the
+                # authoritative APPROVAL_CHAINS constant.
+                chain = _effective_chain(request_type, row[3] if len(row) > 3 else None)
 
-                # Derive the chain from the authoritative APPROVAL_CHAINS constant
-                # (the same source used for authorization) so the finalize/advance
-                # decision and the notification label never drift from the stored,
-                # per-row approval_chain snapshot.
-                chain = APPROVAL_CHAINS.get(request_type, [])
+                if not can_approve_request(
+                    user_role, request_type, current_step,
+                    chain=chain, user_department=user_department,
+                    request_department=request_department,
+                ):
+                    return jsonify({'success': False, 'message': 'Немате дозволу за одобрење у овој фази'}), 403
                 cur.execute(
                     """
                     UPDATE approval_signatures
@@ -613,7 +857,9 @@ def api_approve_archive_request(request_id):
                 )
 
                 next_step = current_step + 1
-                if next_step >= len(chain):
+                is_final = next_step >= len(chain)
+                archive_ref = None
+                if is_final:
                     cur.execute(
                         """
                         UPDATE archive_requests
@@ -624,6 +870,9 @@ def api_approve_archive_request(request_id):
                         WHERE id = %s
                         """,
                         (next_step, user_email, user_name, request_id),
+                    )
+                    archive_ref = _auto_archive_request(
+                        cur, request_id, user_email, user_name, assign_reference=True,
                     )
                 else:
                     cur.execute(
@@ -647,9 +896,11 @@ def api_approve_archive_request(request_id):
                 # Notify request creator about approval
                 if creator_email:
                     step_label = chain[current_step].get('label', '') if current_step < len(chain) else ''
-                    if next_step >= len(chain):
+                    if is_final:
                         notif_title = 'Захтев одобрен'
                         notif_msg = f'Ваш захтев „{req_title or ""}" је потпуно одобрен.'
+                        if archive_ref:
+                            notif_msg += f' Архивиран је под бројем {archive_ref}.'
                         notif_icon = 'bi-check-circle-fill'
                         notif_type = 'success'
                     else:
@@ -667,11 +918,34 @@ def api_approve_archive_request(request_id):
 
                 conn.commit()
 
+                side_effects = None
+                if is_final:
+                    side_effects = _execute_post_approval_side_effects(
+                        request_type, request_data,
+                        creator_email=creator_email, creator_name=creator_name,
+                    )
+                    if side_effects is not None:
+                        cur.execute(
+                            """
+                            INSERT INTO request_history (
+                                request_id, action, action_by_email, action_by_name, notes
+                            ) VALUES (%s, 'executed', %s, %s, %s)
+                            """,
+                            (request_id, user_email, user_name,
+                             _describe_side_effects(side_effects)),
+                        )
+                        conn.commit()
+
+        message = 'Захтев је успешно одобрен'
+        if archive_ref:
+            message += f' и архивиран под бројем {archive_ref}'
         return jsonify(
             {
                 'success': True,
-                'message': 'Захтев је успешно одобрен',
-                'final': next_step >= len(chain),
+                'message': message,
+                'final': is_final,
+                'archive_reference': archive_ref,
+                'side_effects': side_effects,
             }
         )
     except Exception as exc:
@@ -698,13 +972,14 @@ def api_reject_archive_request(request_id):
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
         user_role = session.get('user_role', 'employee')
+        user_department = session.get('user_department', '')
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     SELECT request_type, status, current_approval_step,
-                           approval_chain, created_by_email, title
+                           approval_chain, created_by_email, title, created_by_department
                     FROM archive_requests WHERE id = %s
                     FOR UPDATE
                     """,
@@ -720,6 +995,7 @@ def api_reject_archive_request(request_id):
                 current_step = row[2]
                 creator_email = row[4] if len(row) > 4 else None
                 req_title = row[5] if len(row) > 5 else ''
+                request_department = row[6] if len(row) > 6 else None
 
                 if status not in ['pending', 'in_review']:
                     return jsonify({'success': False, 'message': 'Захтев није у статусу чекања'}), 400
@@ -727,7 +1003,12 @@ def api_reject_archive_request(request_id):
                 if creator_email and creator_email == user_email:
                     return jsonify({'success': False, 'message': 'Не можете одбити сопствени захтев'}), 403
 
-                if not can_approve_request(user_role, request_type, current_step):
+                if not can_approve_request(
+                    user_role, request_type, current_step,
+                    chain=_effective_chain(request_type, row[3] if len(row) > 3 else None),
+                    user_department=user_department,
+                    request_department=request_department,
+                ):
                     return jsonify({'success': False, 'message': 'Немате дозволу за одбијање'}), 403
 
                 cur.execute(
@@ -750,6 +1031,9 @@ def api_reject_archive_request(request_id):
                     """,
                     (user_email, user_name, comments, request_id),
                 )
+                _auto_archive_request(
+                    cur, request_id, user_email, user_name, assign_reference=False,
+                )
 
                 cur.execute(
                     """
@@ -762,7 +1046,7 @@ def api_reject_archive_request(request_id):
 
                 # Notify request creator about rejection
                 if creator_email:
-                    chain = APPROVAL_CHAINS.get(request_type, [])
+                    chain = _effective_chain(request_type, row[3] if len(row) > 3 else None)
                     step_label = chain[current_step].get('label', '') if current_step < len(chain) else ''
                     cur.execute(
                         """
@@ -798,9 +1082,34 @@ def api_add_request_comment(request_id):
 
         user_email = session.get('user_email', '')
         user_name = session.get('user_name', '')
+        user_role = session.get('user_role', 'employee')
+        user_department = session.get('user_department', '')
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT status, created_by_email, request_type, current_approval_step,
+                           approval_chain, created_by_department
+                    FROM archive_requests WHERE id = %s
+                    """,
+                    (request_id,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({'success': False, 'message': 'Захтев није пронађен'}), 404
+
+                if row[0] == 'archived':
+                    return jsonify({'success': False, 'message': 'Захтев је архивиран и закључан за измене'}), 403
+
+                if not can_view_archive_request(
+                    row[1], user_email, user_role, row[2], row[3],
+                    chain=_effective_chain(row[2], row[4] if len(row) > 4 else None),
+                    user_department=user_department,
+                    request_department=row[5] if len(row) > 5 else None,
+                ):
+                    return jsonify({'success': False, 'message': 'Немате приступ овом захтеву'}), 403
+
                 cur.execute(
                     """
                     INSERT INTO request_comments (request_id, author_email, author_name, comment)
@@ -833,53 +1142,76 @@ def api_add_request_comment(request_id):
         return _server_error_response()
 
 
+def _subtype_label(request_type, subtype):
+    for entry in REQUEST_SUBTYPES.get(request_type, []):
+        if entry['value'] == subtype:
+            return entry['label']
+    return subtype or ''
+
+
+def _pending_approvals_for_session(cur):
+    """Requests waiting on the current user's approval step, honoring the
+    per-request chain, the self-approval ban and department scoping."""
+    user_email = session.get('user_email', '')
+    user_role = session.get('user_role', 'employee')
+    user_department = session.get('user_department', '')
+
+    cur.execute(
+        """
+        SELECT id, title, request_type, subtype, created_by_name, created_at,
+               priority, current_approval_step, approval_chain,
+               created_by_department, created_by_email
+        FROM archive_requests
+        WHERE status IN ('pending', 'in_review')
+        ORDER BY
+            CASE priority
+                WHEN 'urgent' THEN 1
+                WHEN 'high' THEN 2
+                WHEN 'normal' THEN 3
+                WHEN 'low' THEN 4
+            END,
+            created_at
+        """
+    )
+
+    pending_requests = []
+    for row in cur.fetchall():
+        if row[10] == user_email:
+            continue
+        chain = _effective_chain(row[2], row[8])
+        step = row[7]
+        if not can_approve_request(
+            user_role, row[2], step,
+            chain=chain, user_department=user_department,
+            request_department=row[9],
+        ):
+            continue
+        pending_requests.append(
+            {
+                'id': row[0],
+                'title': row[1],
+                'request_type': row[2],
+                'request_type_label': REQUEST_TYPE_LABELS.get(row[2], row[2]),
+                'subtype': row[3],
+                'subtype_label': _subtype_label(row[2], row[3]),
+                'created_by_name': row[4],
+                'created_at': row[5].isoformat() if row[5] else None,
+                'priority': row[6],
+                'approval_role': chain[step].get('label', '') if step < len(chain) else '',
+                'department': row[9],
+            }
+        )
+    return pending_requests
+
+
 @archive_signature_bp.route('/api/archive/pending', methods=['GET'])
 @login_required
 def api_get_pending_approvals():
     """Get pending approvals for current user."""
     try:
-        user_role = session.get('user_role', 'employee')
-
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
-                pending_requests = []
-
-                for request_type, chain in APPROVAL_CHAINS.items():
-                    for step_index, approver in enumerate(chain):
-                        if can_approve_request(user_role, request_type, step_index):
-                            cur.execute(
-                                """
-                                SELECT ar.id, ar.title, ar.request_type, ar.subtype,
-                                       ar.created_by_name, ar.created_at, ar.priority
-                                FROM archive_requests ar
-                                WHERE ar.request_type = %s
-                                AND ar.current_approval_step = %s
-                                AND ar.status IN ('pending', 'in_review')
-                                ORDER BY
-                                    CASE ar.priority
-                                        WHEN 'urgent' THEN 1
-                                        WHEN 'high' THEN 2
-                                        WHEN 'normal' THEN 3
-                                        WHEN 'low' THEN 4
-                                    END,
-                                    ar.created_at
-                                """,
-                                (request_type, step_index),
-                            )
-
-                            for row in cur.fetchall():
-                                pending_requests.append(
-                                    {
-                                        'id': row[0],
-                                        'title': row[1],
-                                        'request_type': row[2],
-                                        'subtype': row[3],
-                                        'created_by_name': row[4],
-                                        'created_at': row[5].isoformat() if row[5] else None,
-                                        'priority': row[6],
-                                        'approval_role': approver['label'],
-                                    }
-                                )
+                pending_requests = _pending_approvals_for_session(cur)
 
         return jsonify(
             {
@@ -891,6 +1223,119 @@ def api_get_pending_approvals():
     except Exception:
         logger.exception("Error getting pending approvals")
         return _server_error_response()
+
+
+@archive_signature_bp.route('/zahtevi/odobravanje')
+@login_required
+@admin_or_department_head_required
+def zahtevi_odobravanje():
+    """Approval queue for department heads (and admin/direktor)."""
+    try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                pending_requests = _pending_approvals_for_session(cur)
+        return render_template('zahtevi_odobravanje.html', pending=pending_requests)
+    except Exception:
+        logger.exception("Error rendering approval queue")
+        flash('Дошло је до грешке при учитавању реда за одобравање.', 'danger')
+        return redirect(url_for('dashboard'))
+
+
+@archive_signature_bp.route('/zahtevi/arhiva')
+@login_required
+def zahtevi_arhiva():
+    """Read-only, searchable archive of processed requests.
+
+    Visibility: everyone sees their own, department heads their department,
+    admin/direktor everything."""
+    try:
+        user_email = session.get('user_email', '')
+        user_role = session.get('user_role', 'employee')
+        user_department = session.get('user_department', '')
+        is_department_head = bool(session.get('is_department_head'))
+
+        filter_type = request.args.get('tip', '')
+        filter_year = request.args.get('godina', '')
+        filter_submitter = request.args.get('podnosilac', '')
+
+        conditions = ["status = 'archived'"]
+        params = []
+
+        if filter_type:
+            conditions.append("request_type = %s")
+            params.append(filter_type)
+        if filter_year:
+            try:
+                conditions.append("archive_year = %s")
+                params.append(int(filter_year))
+            except (TypeError, ValueError):
+                filter_year = ''
+        if filter_submitter:
+            conditions.append("(created_by_name ILIKE %s OR created_by_email ILIKE %s)")
+            like = f"%{filter_submitter}%"
+            params.extend([like, like])
+
+        if user_role not in ['admin', 'direktor']:
+            if is_department_head and (user_department or '').strip():
+                conditions.append("""(
+                    created_by_email = %s
+                    OR LOWER(TRIM(COALESCE(created_by_department, ''))) = LOWER(TRIM(%s))
+                )""")
+                params.extend([user_email, user_department])
+            else:
+                conditions.append("created_by_email = %s")
+                params.append(user_email)
+
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, request_type, subtype, title, created_by_name, "
+                    "created_by_department, final_decision, archived_at, "
+                    "archive_reference, archive_year "
+                    "FROM archive_requests "
+                    "WHERE " + " AND ".join(conditions) + " "
+                    "ORDER BY archived_at DESC NULLS LAST "
+                    "LIMIT 200",
+                    params,
+                )
+                archived = [
+                    {
+                        'id': row[0],
+                        'request_type': row[1],
+                        'request_type_label': REQUEST_TYPE_LABELS.get(row[1], row[1]),
+                        'subtype_label': _subtype_label(row[1], row[2]),
+                        'title': row[3],
+                        'created_by_name': row[4],
+                        'department': row[5],
+                        'final_decision': row[6],
+                        'final_decision_label': FINAL_DECISION_LABELS.get(row[6], row[6] or ''),
+                        'archived_at': row[7],
+                        'archive_reference': row[8],
+                        'archive_year': row[9],
+                    }
+                    for row in cur.fetchall()
+                ]
+
+                cur.execute(
+                    "SELECT DISTINCT archive_year FROM archive_requests "
+                    "WHERE status = 'archived' AND archive_year IS NOT NULL "
+                    "ORDER BY archive_year DESC"
+                )
+                years = [row[0] for row in cur.fetchall()]
+
+        return render_template(
+            'zahtevi_arhiva.html',
+            archived=archived,
+            years=years,
+            type_labels=REQUEST_TYPE_LABELS,
+            filter_type=filter_type,
+            filter_year=filter_year,
+            filter_submitter=filter_submitter,
+        )
+    except Exception:
+        logger.exception("Error rendering request archive")
+        flash('Дошло је до грешке при учитавању архиве захтева.', 'danger')
+        return redirect(url_for('dashboard'))
 
 
 @archive_signature_bp.route('/api/archive/statistics', methods=['GET'])

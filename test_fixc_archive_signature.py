@@ -1,8 +1,11 @@
 """Regression tests for archive-signature cluster (Phase C low-severity hardening).
 
 Covers:
-  1. Approve/reject derive step label and finalization decision from the
-     authoritative APPROVAL_CHAINS constant, not the per-row stored chain.
+  1. Approve/reject fall back to the authoritative APPROVAL_CHAINS constant
+     when the per-row stored chain is empty/drifted. (Since the unified
+     approval framework, a VALID stored chain governs — the creator's own
+     step may be intentionally skipped at creation — but an empty snapshot
+     must still behave like the constant.)
   2. Creator who also holds an approver role cannot approve/reject own request.
   3. Concurrent approvals serialize via SELECT ... FOR UPDATE row lock.
   4. Finalization keys off APPROVAL_CHAINS length, so an empty/short stored
@@ -101,17 +104,23 @@ def _insert_params(cursor, table):
 # per-row stored approval_chain.
 # ---------------------------------------------------------------------------
 
+DEPT = 'ГЕОЛОШКО ОДЕЉЕЊЕ'
+
+
 def _run_approve(app, *, request_type, status, current_step, stored_chain,
                  creator_email, user_email='approver@example.com',
-                 user_role='direktor'):
+                 user_role='direktor', user_department=DEPT,
+                 request_department=DEPT):
     # row: request_type, status, current_approval_step, approval_chain,
-    #      created_by_email, title
+    #      created_by_email, title, created_by_department, request_data,
+    #      created_by_name
     request_row = (request_type, status, current_step, stored_chain,
-                   creator_email, 'Тест захтев')
+                   creator_email, 'Тест захтев', request_department, {}, 'Owner')
     cursor = FakeCursor([
         ("FROM archive_requests WHERE id = %s", request_row, None),
         ("UPDATE approval_signatures", None, None),
         ("UPDATE archive_requests", None, None),
+        ("COALESCE(MAX(", (0,), None),
         ("INSERT INTO request_history", None, None),
         ("INSERT INTO user_notifications", None, None),
     ])
@@ -122,6 +131,7 @@ def _run_approve(app, *, request_type, status, current_step, stored_chain,
         flask_session['user_email'] = user_email
         flask_session['user_name'] = 'Approver'
         flask_session['user_role'] = user_role
+        flask_session['user_department'] = user_department
         with patch.object(asb, 'get_postgres_connection', lambda **kw: _conn_cm(cursor)):
             resp = asb.api_approve_archive_request(1)
     return resp, cursor
@@ -221,7 +231,7 @@ def test_creator_cannot_approve_own_request(app):
 
 def test_creator_cannot_reject_own_request(app):
     request_row = ('zahtev', 'pending', 0, APPROVAL_CHAIN_ZAHTEV(),
-                   'self@example.com', 'Тест захтев')
+                   'self@example.com', 'Тест захтев', DEPT)
     cursor = FakeCursor([
         ("FROM archive_requests WHERE id = %s", request_row, None),
         ("UPDATE approval_signatures", None, None),
@@ -236,6 +246,7 @@ def test_creator_cannot_reject_own_request(app):
         flask_session['user_email'] = 'self@example.com'
         flask_session['user_name'] = 'Self'
         flask_session['user_role'] = 'sef_odeljenja'
+        flask_session['user_department'] = DEPT
         with patch.object(asb, 'get_postgres_connection', lambda **kw: _conn_cm(cursor)):
             resp = asb.api_reject_archive_request(1)
     status = resp[1] if isinstance(resp, tuple) else 200
@@ -288,7 +299,7 @@ def test_approve_locks_request_row_for_update(app):
 
 def test_reject_locks_request_row_for_update(app):
     request_row = ('zahtev', 'pending', 0, APPROVAL_CHAIN_ZAHTEV(),
-                   'owner@example.com', 'Тест захтев')
+                   'owner@example.com', 'Тест захтев', DEPT)
     cursor = FakeCursor([
         ("FROM archive_requests WHERE id = %s", request_row, None),
         ("UPDATE approval_signatures", None, None),
@@ -303,6 +314,7 @@ def test_reject_locks_request_row_for_update(app):
         flask_session['user_email'] = 'boss@example.com'
         flask_session['user_name'] = 'Boss'
         flask_session['user_role'] = 'sef_odeljenja'
+        flask_session['user_department'] = DEPT
         with patch.object(asb, 'get_postgres_connection', lambda **kw: _conn_cm(cursor)):
             resp = asb.api_reject_archive_request(1)
     body = (resp[0] if isinstance(resp, tuple) else resp).get_json()

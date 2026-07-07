@@ -1069,6 +1069,9 @@ class BusinessTripSupportTests(unittest.TestCase):
         ):
             session['user_email'] = 'user@example.com'
             session['user_name'] = 'Test User'
+            # Direct field-trip creation is an admin/direktor operator path;
+            # ordinary users go through the approval framework.
+            session['user_role'] = 'direktor'
 
             response = travel_finance_views.api_field_trip_create(
                 get_vehicle_reservations=lambda: saved_reservations,

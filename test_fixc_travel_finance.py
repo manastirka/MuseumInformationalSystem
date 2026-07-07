@@ -28,6 +28,15 @@ def _ctx(json_body):
     )
 
 
+def _login_direktor():
+    """Direct field-trip creation is an admin/direktor operator path since the
+    unified approval framework; ordinary users go through request approval."""
+    from flask import session
+    session['user_role'] = 'direktor'
+    session['user_email'] = 'direktor@example.com'
+    session['user_name'] = 'Директор'
+
+
 # ---------------------------------------------------------------------------
 # Finding 1: timesheet_updated honesty
 # ---------------------------------------------------------------------------
@@ -40,6 +49,7 @@ def test_field_trip_no_database_url_does_not_claim_timesheet_updated(monkeypatch
         'end_date': '2026-05-02',
     }
     with _ctx(body):
+        _login_direktor()
         resp = tfv.api_field_trip_create(
             get_vehicle_reservations=lambda: [],
             save_reservations=lambda: None,
@@ -74,6 +84,7 @@ def test_field_trip_no_monthly_report_marks_skipped_not_updated(monkeypatch):
         'end_date': '2026-05-01',
     }
     with _ctx(body):
+        _login_direktor()
         resp = tfv.api_field_trip_create(
             get_vehicle_reservations=lambda: [],
             save_reservations=lambda: None,
@@ -109,6 +120,7 @@ def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
         'end_date': '2026-05-01',
     }
     with _ctx(body):
+        _login_direktor()
         resp = tfv.api_field_trip_create(
             get_vehicle_reservations=lambda: [],
             save_reservations=lambda: None,
@@ -137,6 +149,7 @@ def test_file_reservation_id_is_stable_after_deletion(monkeypatch):
         'location': 'Niš',
     }
     with _ctx(body):
+        _login_direktor()
         resp = tfv.api_field_trip_create(
             get_vehicle_reservations=lambda: reservations,
             save_reservations=lambda: None,
