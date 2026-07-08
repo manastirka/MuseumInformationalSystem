@@ -403,6 +403,10 @@ app_blueprint_support.register_standard_blueprints(
 app_blueprint_support.apply_blueprint_aliases(app)
 app_blueprint_support.apply_csrf_exemptions(app, csrf)
 
+# CLI: flask reset-test-data (praznjenje probnih podataka pred user testiranje)
+import reset_test_data as reset_test_data_cli
+reset_test_data_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(
