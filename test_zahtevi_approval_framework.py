@@ -564,6 +564,29 @@ class ApprovalQueuePageTests(_ClientTestCase):
         self.assertIn('bi-check-circle-fill', page)
         self.assertIn('Шеф одељења', page)
         self.assertIn('Директор', page)
+        # the confirm modal is told what the decision means for the chain
+        self.assertIn('следећи корак: Директор', page)
+        self.assertIn('последњи корак: захтев ће бити одобрен и архивиран', page)
+        # decision feedback wiring: message slot + sessionStorage handoff
+        self.assertIn('id="oc-poruka"', page)
+        self.assertIn('ocPoruka', page)
+
+    def test_center_pages_disable_caching(self):
+        """Back-navigation must not serve a stale queue (same hardening as
+        the vehicle reservations list); 'no-store' also keeps the pages out
+        of the bfcache."""
+        self.use_db([])
+        self.login(GEOLOGY_HEAD)
+        for url in ('/odobravanje', '/arhiva'):
+            with self.subTest(url=url):
+                response = self.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.headers.get('Cache-Control'),
+                    'no-cache, no-store, must-revalidate',
+                )
+                self.assertEqual(response.headers.get('Pragma'), 'no-cache')
+                self.assertEqual(response.headers.get('Expires'), '0')
 
     def test_pending_api_scopes_by_department(self):
         rows = [

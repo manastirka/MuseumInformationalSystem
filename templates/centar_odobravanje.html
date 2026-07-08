@@ -14,6 +14,8 @@
         <p>Захтеви и документа који чекају Ваше одобрење. Одбијање захтева образложење; свака одлука се потврђује.</p>
     </div>
 
+    <div id="oc-poruka"></div>
+
     <div class="oc-tabs" role="tablist">
         <button type="button" class="oc-tab{% if active_tab == 'zahtevi' %} active{% endif %}" data-pane="pane-zahtevi" role="tab">
             Захтеви <span class="count">{{ zahtevi | length }}</span>
@@ -90,8 +92,18 @@
                             </td>
                             <td>{{ status_badge('na_odobrenju') }}</td>
                             <td class="text-end text-nowrap">
+                                {% set broj_koraka = req.chain_labels | length %}
+                                {% set poslednji = req.approval_step + 1 >= broj_koraka %}
+                                {% if poslednji %}
+                                {% set step_text = 'Одобравате корак ' ~ (req.approval_step + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ ') — последњи корак: захтев ће бити одобрен и архивиран.' %}
+                                {% else %}
+                                {% set step_text = 'Одобравате корак ' ~ (req.approval_step + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ '); следећи корак: ' ~ req.chain_labels[req.approval_step + 1] ~ '.' %}
+                                {% endif %}
                                 <button type="button" class="btn btn-sm btn-oc-approve act-approve"
-                                        data-kind="zahtev" data-id="{{ req.id }}" data-title="{{ req.title or '—' }}">
+                                        data-kind="zahtev" data-id="{{ req.id }}" data-title="{{ req.title or '—' }}"
+                                        data-final="{{ '1' if poslednji else '0' }}"
+                                        data-next="{{ '' if poslednji else req.chain_labels[req.approval_step + 1] }}"
+                                        data-step-text="{{ step_text }}">
                                     Одобри
                                 </button>
                                 <button type="button" class="btn btn-sm btn-oc-reject btn-outline-danger act-reject"
@@ -165,7 +177,8 @@
                                 </a>
                                 {% if ver.can_approve %}
                                 <button type="button" class="btn btn-sm btn-oc-approve act-approve"
-                                        data-kind="dokument" data-form="doc-approve-{{ ver.id }}" data-title="{{ ver.document_title }} (в{{ ver.version_no }})">
+                                        data-kind="dokument" data-form="doc-approve-{{ ver.id }}" data-title="{{ ver.document_title }} (в{{ ver.version_no }})"
+                                        data-step-text="Одобрена верзија постаје важећа; претходна одобрена верзија истог документа аутоматски се архивира.">
                                     Одобри
                                 </button>
                                 <button type="button" class="btn btn-sm btn-oc-reject btn-outline-danger act-reject"
@@ -212,6 +225,7 @@
             </div>
             <div class="modal-body">
                 <p class="mb-2">Одобравате: <strong id="odobri-naslov">—</strong></p>
+                <p class="mb-2" id="odobri-korak" style="font-size:0.88rem"></p>
                 <p class="text-muted mb-0" style="font-size:0.85rem">Одлука се бележи у историји са Вашим именом и временом.</p>
             </div>
             <div class="modal-footer">
@@ -248,6 +262,29 @@
 // base.html учитава bootstrap.bundle.min.js на крају <body>, ПОСЛЕ овог
 // скрипта — приступ `bootstrap` глобалу мора да сачека DOMContentLoaded.
 document.addEventListener('DOMContentLoaded', function () {
+    // Порука о претходној одлуци (сачувана пре reload-а у sessionStorage).
+    try {
+        var sacuvano = sessionStorage.getItem('ocPoruka');
+        if (sacuvano) {
+            sessionStorage.removeItem('ocPoruka');
+            var poruka = JSON.parse(sacuvano);
+            var alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-' + (poruka.type || 'success') + ' alert-dismissible fade show';
+            alertDiv.setAttribute('role', 'status');
+            var ikona = document.createElement('i');
+            ikona.className = poruka.type === 'warning' ? 'bi bi-x-circle me-2' : 'bi bi-check-circle me-2';
+            alertDiv.appendChild(ikona);
+            alertDiv.appendChild(document.createTextNode(poruka.text || ''));
+            var zatvori = document.createElement('button');
+            zatvori.type = 'button';
+            zatvori.className = 'btn-close';
+            zatvori.setAttribute('data-bs-dismiss', 'alert');
+            zatvori.setAttribute('aria-label', 'Затвори');
+            alertDiv.appendChild(zatvori);
+            document.getElementById('oc-poruka').appendChild(alertDiv);
+        }
+    } catch (e) { /* poruka je pogodnost — ne sme da obori stranicu */ }
+
     // Табови: приказ панела + tab параметар у URL-у ради повратка/освежавања.
     document.querySelectorAll('.oc-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
@@ -322,6 +359,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (approveBtn) {
             pending = approveBtn.dataset;
             document.getElementById('odobri-naslov').textContent = pending.title;
+            var korak = document.getElementById('odobri-korak');
+            korak.textContent = pending.stepText || '';
+            korak.classList.toggle('d-none', !pending.stepText);
             modalOdobri.show();
         }
         var rejectBtn = e.target.closest('.act-reject');
@@ -335,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    function apiOdluka(id, action, comments) {
+    function apiOdluka(id, action, comments, meta) {
         var request = window.secureFetch || fetch;
         request('/api/archive/requests/' + id + '/' + action, {
             method: 'POST',
@@ -345,6 +385,18 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.success) {
+                var text, type = 'success';
+                if (action === 'reject') {
+                    text = 'Захтев „' + meta.title + '" је одбијен — подносилац ће добити образложење.';
+                    type = 'warning';
+                } else if (meta.final === '1') {
+                    text = 'Захтев „' + meta.title + '" је коначно одобрен'
+                        + (data.archive_reference ? ' (архивски број: ' + data.archive_reference + ')' : '')
+                        + '.';
+                } else {
+                    text = 'Ваш корак је забележен — захтев „' + meta.title + '" прелази на: ' + meta.next + '.';
+                }
+                try { sessionStorage.setItem('ocPoruka', JSON.stringify({text: text, type: type})); } catch (e) {}
                 window.location.reload();
             } else {
                 alert('Грешка: ' + (data.message || 'Непозната грешка'));
@@ -357,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!pending) return;
         modalOdobri.hide();
         if (pending.kind === 'zahtev') {
-            apiOdluka(pending.id, 'approve', '');
+            apiOdluka(pending.id, 'approve', '', pending);
         } else {
             document.getElementById(pending.form).submit();
         }
@@ -374,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         modalOdbij.hide();
         if (pending.kind === 'zahtev') {
-            apiOdluka(pending.id, 'reject', obrazlozenje);
+            apiOdluka(pending.id, 'reject', obrazlozenje, pending);
         } else {
             var form = document.getElementById(pending.form);
             form.querySelector('input[name="comment"]').value = obrazlozenje;
