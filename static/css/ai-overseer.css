@@ -1,0 +1,368 @@
+/**
+ * AI Overseer Styles
+ * Integrated helper UI for Museum Information System
+ */
+
+/* Floating Help Widget */
+#ai-help-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+.ai-help-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.ai-help-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.ai-status-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.ai-status-dot.available {
+    background: #10b981;
+}
+
+.ai-status-dot.unavailable {
+    background: #ef4444;
+}
+
+/* Help Panel */
+.ai-help-panel {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    width: 350px;
+    max-height: 500px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ai-help-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.ai-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+.ai-close-btn:hover {
+    opacity: 1;
+}
+
+.ai-help-content {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Search Box */
+.ai-search-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.ai-search-box input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.ai-search-box input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.ai-search-box button {
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.ai-search-box button:hover {
+    opacity: 0.9;
+}
+
+/* Response Area */
+#ai-response-area {
+    min-height: 100px;
+    margin-bottom: 16px;
+}
+
+.ai-loading {
+    text-align: center;
+    color: #6b7280;
+    padding: 20px;
+}
+
+.ai-loading::after {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #667eea;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.ai-answer, .ai-search-result, .ai-guidance, .ai-tips, .ai-analysis {
+    background: #f9fafb;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.ai-answer {
+    white-space: pre-wrap;
+}
+
+.ai-error {
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.ai-info {
+    background: #eff6ff;
+    color: #1d4ed8;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.ai-warning {
+    color: #d97706;
+    font-size: 13px;
+    margin: 8px 0;
+}
+
+.ai-tip {
+    color: #059669;
+    font-size: 13px;
+    margin: 8px 0;
+}
+
+.ai-guidance ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.ai-guidance li {
+    margin-bottom: 8px;
+}
+
+/* Quick Actions */
+.ai-quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-quick-actions button {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 12px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-quick-actions button:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+}
+
+/* Suggestions Popup */
+.ai-suggestions-popup {
+    position: absolute;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+}
+
+.ai-suggestions-list {
+    padding: 4px;
+}
+
+.ai-suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.ai-suggestion-item:hover {
+    background: #f3f4f6;
+}
+
+.ai-suggestion-item .ai-icon {
+    font-size: 14px;
+}
+
+/* Field Indicator */
+.ai-field-indicator {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.ai-field-indicator:hover {
+    opacity: 1;
+}
+
+.ai-field-indicator svg {
+    width: 12px;
+    height: 12px;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .ai-help-panel {
+        width: calc(100vw - 40px);
+        right: -10px;
+    }
+
+    .ai-help-btn {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+/* Print: Hide AI Overseer */
+@media print {
+    #ai-help-widget,
+    .ai-suggestions-popup {
+        display: none !important;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .ai-help-panel {
+        background: #1f2937;
+        color: #f9fafb;
+    }
+
+    .ai-search-box input {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+
+    .ai-search-box input::placeholder {
+        color: #9ca3af;
+    }
+
+    .ai-answer, .ai-search-result, .ai-guidance, .ai-tips, .ai-analysis {
+        background: #374151;
+    }
+
+    .ai-quick-actions button {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+
+    .ai-quick-actions button:hover {
+        background: #4b5563;
+    }
+
+    .ai-suggestions-popup {
+        background: #1f2937;
+        border-color: #4b5563;
+    }
+
+    .ai-suggestion-item:hover {
+        background: #374151;
+    }
+}

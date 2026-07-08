@@ -114,8 +114,13 @@ data/space_planner_backups/
 data/migrations/
 localSQLtesting/
 
-# --- Static assets (generated/uploaded, not source) ---
-static/
+# --- Static assets ---
+# Source assets (CSS/JS) are versioned with the code and travel through git.
+# Large binary / generated media (img/, images/, map_tiles/ — the last ~1.9 GB)
+# stay out of git and reach prod via the data/rsync path, not git.
+static/*
+!static/css/
+!static/js/
 
 # --- ML model weights ---
 *.pt
