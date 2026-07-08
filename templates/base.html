@@ -1233,6 +1233,14 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if has_module_access('fototeka') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('fototeka.fototeka_galerija') }}" aria-label="Фототека">
+                        <i class="bi bi-camera"></i>
+                        <span>Фототека</span>
+                    </a>
+                </li>
+                {% endif %}
                 {% if has_module_access('museum_databases') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('museum_databases') }}" aria-label="Базе података">

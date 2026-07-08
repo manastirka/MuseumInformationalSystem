@@ -68,6 +68,7 @@ from blueprints.projects import (
 )
 from blueprints.approval_center import approval_center_bp
 from blueprints.documents import documents_bp
+from blueprints.fototeka import fototeka_bp
 from blueprints.qr import qr_bp
 from blueprints.mail import MAILBOX_ADMIN_FORBIDDEN_MESSAGE, mail_bp
 from blueprints.chat import chat_bp
@@ -382,6 +383,7 @@ app.register_blueprint(image_api)
 app.register_blueprint(archive_signature_bp)
 app.register_blueprint(approval_center_bp)
 app.register_blueprint(documents_bp)
+app.register_blueprint(fototeka_bp)
 app_blueprint_support.register_standard_blueprints(
     app,
     {
@@ -601,6 +603,13 @@ MODULE_ACCESS = {
         'name': 'Документа',
         'description': 'Складиштење, преглед и одобравање докумената',
         'icon': 'bi-folder2-open',
+        'default_access': True,  # Everyone has access by default
+        'restricted_users': []   # No restrictions
+    },
+    'fototeka': {
+        'name': 'Фототека',
+        'description': 'Фотографије музеја — прегледи, тагови и везе',
+        'icon': 'bi-camera',
         'default_access': True,  # Everyone has access by default
         'restricted_users': []   # No restrictions
     },

@@ -1,0 +1,80 @@
+{# Optional-link fieldset shared by the upload form and the photo page.
+   Expects: zbirke, tereni, projekti, izlozbe; prefix for unique element ids. #}
+<div class="row g-2">
+    <div class="col-md-4">
+        <label class="form-label" for="{{ prefix }}VezaTip">Веза (необавезно)</label>
+        <select class="form-select fototeka-veza-tip" id="{{ prefix }}VezaTip" name="veza_tip" data-prefix="{{ prefix }}">
+            <option value="bez">Без везе</option>
+            <option value="predmet">Предмет (инвентарни број)</option>
+            <option value="teren">Терен / акција</option>
+            <option value="projekat">Пројекат</option>
+            <option value="izlozba">Изложба</option>
+        </select>
+    </div>
+    <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaPredmet" hidden>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaZbirka">Збирка</label>
+                <select class="form-select" id="{{ prefix }}VezaZbirka" name="veza_zbirka">
+                    {% for key, label in zbirke.items()|sort(attribute='1') %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaInvBroj">Инвентарни број</label>
+                <input class="form-control" id="{{ prefix }}VezaInvBroj" name="veza_inventarni_broj"
+                       list="{{ prefix }}PredmetiLista" autocomplete="off">
+                <datalist id="{{ prefix }}PredmetiLista"></datalist>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaTeren" hidden>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaTerenId">Постојећи терен</label>
+                <select class="form-select" id="{{ prefix }}VezaTerenId" name="veza_teren_id">
+                    <option value="">— нови терен —</option>
+                    {% for teren in tereni %}
+                    <option value="{{ teren.id }}">{{ teren.godina }} — {{ teren.naziv }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ prefix }}VezaTerenGodina">Година</label>
+                <input class="form-control" id="{{ prefix }}VezaTerenGodina" name="veza_teren_godina"
+                       inputmode="numeric" placeholder="2026">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="{{ prefix }}VezaTerenNaziv">Назив акције</label>
+                <input class="form-control" id="{{ prefix }}VezaTerenNaziv" name="veza_teren_naziv">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaProjekat" hidden>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaProjekatId">Постојећи пројекат</label>
+                <select class="form-select" id="{{ prefix }}VezaProjekatId" name="veza_projekat_id">
+                    <option value="">— нови пројекат —</option>
+                    {% for projekat in projekti %}
+                    <option value="{{ projekat.id }}">{{ projekat.naziv }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaProjekatNaziv">Назив новог пројекта</label>
+                <input class="form-control" id="{{ prefix }}VezaProjekatNaziv" name="veza_projekat_naziv">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaIzlozba" hidden>
+        <label class="form-label" for="{{ prefix }}VezaIzlozbaId">Изложба</label>
+        <select class="form-select" id="{{ prefix }}VezaIzlozbaId" name="veza_izlozba_id">
+            <option value="">— изаберите —</option>
+            {% for izlozba in izlozbe %}
+            <option value="{{ izlozba.id }}">{{ izlozba.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>

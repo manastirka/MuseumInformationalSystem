@@ -1,0 +1,24 @@
+# Фототека derivative/fixity worker — sibling of mis.service.
+# Production install (paths follow /opt/mis conventions):
+#   sudo cp deploy/mis-fototeka-worker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now mis-fototeka-worker
+# On the DEV machine adjust User/WorkingDirectory/ExecStart to the local
+# checkout (like deploy/museum-backup.service does).
+
+[Unit]
+Description=MIS Fototeka worker (derivati + fixity)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=mis
+WorkingDirectory=/opt/mis/app
+ExecStart=/opt/mis/venv/bin/python /opt/mis/app/fototeka_worker.py
+Restart=on-failure
+RestartSec=10
+# The worker reads .env via python-dotenv from WorkingDirectory.
+
+[Install]
+WantedBy=multi-user.target

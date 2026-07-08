@@ -124,6 +124,12 @@ class Config:
     # PostgreSQL. On server, set DOCUMENTS_STORAGE_PATH under /data/mis.
     DOCUMENTS_STORAGE_PATH: str = os.environ.get('DOCUMENTS_STORAGE_PATH', './data/dokumenti')
 
+    # Фототека - RAW originals are write-once (production: /data/arhiva, in
+    # the nightly backup); derivatives are regenerable (production:
+    # /data/mis/media, excluded from backup).
+    FOTOTEKA_ARHIVA_PATH: str = os.environ.get('FOTOTEKA_ARHIVA_PATH', './data/arhiva')
+    FOTOTEKA_MEDIA_PATH: str = os.environ.get('FOTOTEKA_MEDIA_PATH', './data/fototeka_media')
+
     # Redis
     REDIS_URL: str = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     CACHE_TYPE: str = os.environ.get('CACHE_TYPE', 'simple')

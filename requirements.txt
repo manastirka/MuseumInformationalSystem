@@ -20,6 +20,9 @@ psycopg[binary]>=3.1.0
 # Image Processing
 Pillow>=10.0.0
 qrcode[pil]>=7.4.2
+# [binary] bundles libvips (no system package needed) - used only by the
+# fototeka derivative worker, never imported in the web process
+pyvips[binary]>=2.2.0
 
 # Scientific / GIS
 numpy>=1.24.0

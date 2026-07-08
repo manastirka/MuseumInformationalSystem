@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Фототека — фотографија {{ photo.id }}{% endblock %}
+
+{% block content %}
+<style>
+    .fototeka-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .fototeka-slika {
+        max-width: 100%;
+        border-radius: 12px;
+        background: #eee;
+    }
+    .fototeka-status-obrada { background-color: #b98900; }
+    .fototeka-status-greska { background-color: #a33; }
+    .fototeka-status-spremna { background-color: #24573f; }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h2 class="mb-0"><i class="bi bi-camera me-2"></i>{{ photo.opis or photo.original_ime }}</h2>
+        <a class="btn btn-outline-secondary" href="{{ url_for('fototeka.fototeka_galerija') }}">
+            <i class="bi bi-arrow-left me-1"></i>Назад на Фототеку
+        </a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="fototeka-card text-center">
+                {% if photo.status == 'spremna' %}
+                <img class="fototeka-slika"
+                     src="{{ url_for('fototeka.fototeka_media', fotografija_id=photo.id, kind='jpg') }}"
+                     alt="{{ photo.opis or photo.original_ime }}">
+                {% elif photo.status == 'greska' %}
+                <p class="mb-2"><span class="badge fototeka-status-greska">Грешка у обради</span></p>
+                <p class="text-muted">Умањени приказ није направљен. Оригинал је безбедан у архиви.</p>
+                {% if can_edit %}
+                <form method="post" action="{{ url_for('fototeka.fototeka_ponovi_obradu', fotografija_id=photo.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-arrow-repeat me-1"></i>Покушај поново</button>
+                </form>
+                {% endif %}
+                {% else %}
+                <p class="mb-2"><span class="badge fototeka-status-obrada">Обрада у току</span></p>
+                <p class="text-muted mb-0">Умањени приказ ће се појавити када позадинска обрада заврши.</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a class="btn btn-outline-success"
+                       href="{{ url_for('fototeka.fototeka_raw', fotografija_id=photo.id) }}">
+                        <i class="bi bi-download me-1"></i>Преузми оригинал (RAW)
+                    </a>
+                </div>
+            </div>
+
+            <div class="fototeka-card">
+                <h5 class="mb-3"><i class="bi bi-link-45deg me-1"></i>Везе</h5>
+                {% if not (veze_predmeti or veze_tereni or veze_projekti or veze_izlozbe) %}
+                <p class="text-muted">Фотографија тренутно није везана — то је сасвим у реду.</p>
+                {% endif %}
+                <ul class="list-group mb-3">
+                    {% for veza in veze_predmeti %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-box-seam me-1"></i>Предмет: {{ veza.zbirka_label }} — {{ veza.inventarni_broj }}</span>
+                        {% if can_edit %}
+                        <form method="post" action="{{ url_for('fototeka.fototeka_ukloni_vezu', fotografija_id=photo.id, tip='predmet', veza_id=veza.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Уклони везу">×</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    {% for veza in veze_tereni %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-geo-alt me-1"></i>Терен: {{ veza.godina }} — {{ veza.naziv }}</span>
+                        {% if can_edit %}
+                        <form method="post" action="{{ url_for('fototeka.fototeka_ukloni_vezu', fotografija_id=photo.id, tip='teren', veza_id=veza.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Уклони везу">×</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    {% for veza in veze_projekti %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-kanban me-1"></i>Пројекат: {{ veza.naziv }}</span>
+                        {% if can_edit %}
+                        <form method="post" action="{{ url_for('fototeka.fototeka_ukloni_vezu', fotografija_id=photo.id, tip='projekat', veza_id=veza.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Уклони везу">×</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    {% for veza in veze_izlozbe %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-easel me-1"></i>Изложба: {{ veza.title }}</span>
+                        {% if can_edit %}
+                        <form method="post" action="{{ url_for('fototeka.fototeka_ukloni_vezu', fotografija_id=photo.id, tip='izlozba', veza_id=veza.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Уклони везу">×</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if can_edit %}
+                <form method="post" action="{{ url_for('fototeka.fototeka_dodaj_vezu', fotografija_id=photo.id) }}" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="col-12">
+                        {% with prefix = 'foto' %}{% include '_fototeka_veza_form.html' %}{% endwith %}
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i>Додај везу
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="fototeka-card">
+                <h5 class="mb-3"><i class="bi bi-info-circle me-1"></i>Подаци</h5>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><th scope="row">Статус</th>
+                            <td><span class="badge fototeka-status-{{ 'spremna' if photo.status == 'spremna' else ('greska' if photo.status == 'greska' else 'obrada') }}">{{ status_labels.get(photo.status, photo.status) }}</span></td></tr>
+                        <tr><th scope="row">Аутор</th><td>{{ photo.autor_email }}</td></tr>
+                        <tr><th scope="row">Датум снимања</th><td>{{ photo.datum_snimanja or '—' }}</td></tr>
+                        <tr><th scope="row">Датотека</th><td>{{ photo.original_ime }}</td></tr>
+                        <tr><th scope="row">Димензије</th>
+                            <td>{% if photo.width %}{{ photo.width }} × {{ photo.height }}{% else %}—{% endif %}</td></tr>
+                        <tr><th scope="row">Величина</th>
+                            <td>{% if photo.velicina_bajtova %}{{ (photo.velicina_bajtova / 1048576)|round(1) }} MB{% else %}—{% endif %}</td></tr>
+                        <tr><th scope="row">Порекло</th>
+                            <td>{{ 'Отпремање кроз МИС' if photo.poreklo == 'upload' else 'Увоз са дељеног диска' }}</td></tr>
+                        <tr><th scope="row">Примљена</th><td>{{ photo.created_at.strftime('%d.%m.%Y. %H:%M') }}</td></tr>
+                        {% if photo.exif and photo.exif.get('Model') %}
+                        <tr><th scope="row">Апарат</th>
+                            <td>{{ photo.exif.get('Make', '') }} {{ photo.exif.get('Model', '') }}</td></tr>
+                        {% endif %}
+                        {% if photo.fixity_proveren_at %}
+                        <tr><th scope="row">Провера архиве</th>
+                            <td>{% if photo.fixity_ok %}<span class="text-success">исправна</span>{% else %}<span class="text-danger">НЕИСПРАВНА</span>{% endif %}
+                                ({{ photo.fixity_proveren_at.strftime('%d.%m.%Y.') }})</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="fototeka-card">
+                <h5 class="mb-3"><i class="bi bi-tags me-1"></i>Опис и тагови</h5>
+                {% if can_edit %}
+                <form method="post" action="{{ url_for('fototeka.fototeka_azuriraj', fotografija_id=photo.id) }}" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="col-12">
+                        <label class="form-label" for="fotoOpis">Опис</label>
+                        <textarea class="form-control" id="fotoOpis" name="opis" rows="2">{{ photo.opis or '' }}</textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="fotoTagovi">Тагови (раздвојени зарезом)</label>
+                        <input class="form-control" id="fotoTagovi" name="tagovi" value="{{ tags_text }}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="fotoDatum">Датум снимања</label>
+                        <input class="form-control" type="date" id="fotoDatum" name="datum_snimanja"
+                               value="{{ photo.datum_snimanja or '' }}">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-check-lg me-1"></i>Сачувај
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <p>{{ photo.opis or '—' }}</p>
+                <p class="mb-0">
+                    {% for tag in tags %}<span class="badge bg-secondary me-1">{{ tag }}</span>{% else %}—{% endfor %}
+                </p>
+                {% endif %}
+            </div>
+
+            {% if poslovi and (is_admin or photo.status == 'greska') %}
+            <div class="fototeka-card">
+                <h5 class="mb-3"><i class="bi bi-gear me-1"></i>Обрада</h5>
+                <ul class="list-unstyled mb-0 small">
+                    {% for posao in poslovi %}
+                    <li class="mb-1">
+                        {{ posao.tip }} — {{ posao.status }} (покушаја: {{ posao.pokusaji }})
+                        {% if posao.poslednja_greska %}<br><span class="text-danger">{{ posao.poslednja_greska }}</span>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if is_admin %}
+            <div class="fototeka-card">
+                <form method="post" action="{{ url_for('fototeka.fototeka_obrisi', fotografija_id=photo.id) }}"
+                      onsubmit="return confirm('Уклонити фотографију из Фототеке? Оригинал остаје у архиви.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash me-1"></i>Уклони из Фототеке
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/fototeka.js') }}"></script>
+{% endblock %}
