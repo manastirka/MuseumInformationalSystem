@@ -358,19 +358,21 @@ csrf = CSRFProtect(app)
 
 # Flask-Babel configuration
 app.config['BABEL_DEFAULT_LOCALE'] = 'sr_Cyrl'
-app.config['BABEL_SUPPORTED_LOCALES'] = ['sr_Cyrl', 'sr_Latn', 'en']
+# English soft-removed 2026-07-08 — Serbian only (Cyrillic + Latin). A legacy
+# 'en' preference falls back to Cyrillic via the .get default below.
+app.config['BABEL_SUPPORTED_LOCALES'] = ['sr_Cyrl', 'sr_Latn']
 
 def get_locale():
     """Select locale from session, cookie, or Accept-Language header."""
     # Check session first
     lang = session.get('museum_lang')
     if lang:
-        locale_map = {'sr-Cyrl': 'sr_Cyrl', 'sr-Latn': 'sr_Latn', 'en': 'en'}
+        locale_map = {'sr-Cyrl': 'sr_Cyrl', 'sr-Latn': 'sr_Latn'}
         return locale_map.get(lang, 'sr_Cyrl')
     # Check cookie
     lang = request.cookies.get('museum_lang')
     if lang:
-        locale_map = {'sr-Cyrl': 'sr_Cyrl', 'sr-Latn': 'sr_Latn', 'en': 'en'}
+        locale_map = {'sr-Cyrl': 'sr_Cyrl', 'sr-Latn': 'sr_Latn'}
         return locale_map.get(lang, 'sr_Cyrl')
     return 'sr_Cyrl'
 

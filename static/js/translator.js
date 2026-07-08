@@ -39,6 +39,16 @@ const MuseumTranslator = (function() {
         return isCyrLetter(ch) && ch === ch.toUpperCase() && ch !== ch.toLowerCase();
     }
 
+    // Languages offered in the UI. English was soft-removed 2026-07-08 — it is
+    // intentionally NOT listed, so any saved 'en' preference falls back to
+    // Cyrillic (see normalizeLang). The English dictionary (enTranslations) and
+    // translateToEnglish below are kept dormant; to restore English, add 'en'
+    // here and to the picker in base.html / UI_LANGUAGES in core_app_views.py.
+    const ENABLED_LANGS = ['sr-Cyrl', 'sr-Latn'];
+    function normalizeLang(lang) {
+        return ENABLED_LANGS.indexOf(lang) !== -1 ? lang : 'sr-Cyrl';
+    }
+
     // =========================================================================
     // English translations - comprehensive dictionary
     // Keys: Serbian Cyrillic, Values: English
@@ -2346,7 +2356,7 @@ const MuseumTranslator = (function() {
 
     function getLangPreference() {
         var m = document.cookie.match(/museum_lang=([^;]+)/);
-        return m ? m[1] : 'sr-Cyrl';
+        return normalizeLang(m ? m[1] : 'sr-Cyrl');
     }
 
     function updateSwitcherUI(lang) {
@@ -2363,6 +2373,7 @@ const MuseumTranslator = (function() {
     }
 
     function switchLanguage(lang) {
+        lang = normalizeLang(lang);  // a disabled language (e.g. 'en') maps to Cyrillic
         if (lang === currentLang) return;
         var body = document.body;
 

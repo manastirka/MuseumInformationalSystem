@@ -2,20 +2,20 @@
 // Loads the actual shipped file into a blank page (no Flask server needed)
 // and exercises MuseumTranslator directly.
 //
-// Covers two known defects and new-module EN coverage:
-//   Bug A — greedy substring collision: short EN keys (од/Да/Пол/Пон/Ред…)
-//           corrupt ordinary words mid-string ("период"→"периof").
-//   Bug B — sr-Latn all-caps digraph: "ПРИРОДЊАЧКИ"→"PRIRODNjAČKI"
-//           instead of "PRIRODNJAČKI".
-//   Coverage — new approval/archive/documents modules must fully translate.
+// English was soft-removed 2026-07-08: the app is Serbian-only (Cyrillic +
+// Latin). These tests verify that:
+//   - Serbian Latin transliteration still works, incl. all-caps digraphs;
+//   - selecting / restoring English falls back to Cyrillic with no raw keys;
+//   - the English dictionary + translation code stay dormant (re-enablable).
 
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
 const TRANSLATOR = path.resolve(__dirname, '../../static/js/translator.js');
 const CYR = /[Ѐ-ӿ]/;
-// A token that mixes Latin and Cyrillic letters = garbled output.
+// A token mixing Latin and Cyrillic letters = garbled/translated output.
 const MIXED = /[A-Za-zČĆŽŠĐčćžšđ][Ѐ-ӿ]|[Ѐ-ӿ][A-Za-zČĆŽŠĐčćžšđ]/;
+const LATIN_WORD = /[A-Za-z]{2,}/;
 
 async function loadTranslator(page) {
   await page.setContent(
@@ -24,105 +24,103 @@ async function loadTranslator(page) {
   await page.addScriptTag({ path: TRANSLATOR });
 }
 
-// A blank setContent page has an opaque origin where document.cookie throws.
-// The translator persists the chosen language via cookie + fetch; stub both in
-// the page realm so the pure translation logic under test can run.
-const STUB_PERSIST = `
-  Object.defineProperty(Document.prototype, 'cookie', {
-    get() { return ''; }, set() {}, configurable: true,
-  });
-  window.fetch = function () { return Promise.reject(new Error('stubbed')); };
-`;
+// Drive the real engine in the page. A blank setContent page has an opaque
+// origin where document.cookie throws, so we stub cookie (with a chosen value)
+// and fetch, build one <span> per input string, run `action`, and report back.
+async function run(page, { strings = [], cookie = '', action = null }) {
+  return page.evaluate(({ strings, cookie, action }) => {
+    Object.defineProperty(Document.prototype, 'cookie', {
+      get() { return cookie; }, set() {}, configurable: true,
+    });
+    window.fetch = function () { return Promise.reject(new Error('stubbed')); };
 
-// Translate a batch of Cyrillic strings to English through the REAL engine.
-// Each string goes in its own <span> so nodes never interfere.
-async function toEnglish(page, strings) {
-  return page.evaluate((items) => {
-    // eslint-disable-next-line no-eval
-    eval(items.stub);
-    items = items.list;
     const body = document.body;
     body.innerHTML = '';
-    const spans = items.map((t, i) => {
+    const spans = strings.map((t) => {
       const s = document.createElement('span');
-      s.id = 'seg' + i;
       s.textContent = t;
       body.appendChild(s);
       return s;
     });
-    // engine starts at sr-Cyrl baseline; force a clean switch each call
-    MuseumTranslator.switchLanguage('sr-Cyrl');
-    MuseumTranslator.switchLanguage('en');
-    return spans.map((s) => s.textContent);
-  }, { list: strings, stub: STUB_PERSIST });
+
+    const pref = MuseumTranslator.getLangPreference();
+    if (action === 'switch-en') MuseumTranslator.switchLanguage('en');
+    else if (action === 'switch-latn') MuseumTranslator.switchLanguage('sr-Latn');
+    else if (action === 'init') MuseumTranslator.init();
+
+    return {
+      pref,
+      texts: spans.map((s) => s.textContent),
+      htmlLang: document.documentElement.lang,
+    };
+  }, { strings, cookie, action });
 }
 
-test.describe('Bug B — sr-Latn transliteration (all-caps digraphs)', () => {
-  test('uppercase Љ/Њ/Џ become NJ/LJ/DŽ in all-caps words', async ({ page }) => {
+test.describe('Serbian Latin transliteration (active)', () => {
+  test('all-caps digraphs Љ/Њ/Џ become NJ/LJ/DŽ', async ({ page }) => {
     await loadTranslator(page);
-    const cases = await page.evaluate(() => {
-      const T = (t) => MuseumTranslator.transliterate(t, false); // Cyr -> Lat
+    const c = await page.evaluate(() => {
+      const T = (t) => MuseumTranslator.transliterate(t, false);
       return {
         prirodnjacki: T('ПРИРОДЊАЧКИ'),
         njegos_upper: T('ЊЕГОШ'),
         njegos_title: T('Његош'),
         sortiranje_upper: T('СОРТИРАЊЕ'),
-        sortiranje_lower: T('сортирање'),
         ljudska: T('ЉУДСКА'),
       };
     });
-    expect(cases.prirodnjacki).toBe('PRIRODNJAČKI');
-    expect(cases.njegos_upper).toBe('NJEGOŠ');
-    expect(cases.njegos_title).toBe('Njegoš');
-    expect(cases.sortiranje_upper).toBe('SORTIRANJE');
-    expect(cases.sortiranje_lower).toBe('sortiranje');
-    expect(cases.ljudska).toBe('LJUDSKA');
+    expect(c.prirodnjacki).toBe('PRIRODNJAČKI');
+    expect(c.njegos_upper).toBe('NJEGOŠ');
+    expect(c.njegos_title).toBe('Njegoš');
+    expect(c.sortiranje_upper).toBe('SORTIRANJE');
+    expect(c.ljudska).toBe('LJUDSKA');
+  });
+
+  test('switching to sr-Latn transliterates the page', async ({ page }) => {
+    await loadTranslator(page);
+    const { texts } = await run(page, { strings: ['Његош', 'Одобри'], action: 'switch-latn' });
+    expect(texts).toEqual(['Njegoš', 'Odobri']);
   });
 });
 
-test.describe('Bug A — EN translation must not garble words mid-string', () => {
-  test('ordinary words keep their letters (no Latin+Cyrillic mash)', async ({ page }) => {
+test.describe('English is soft-removed', () => {
+  test('selecting English falls back to Cyrillic (no translation, no raw keys)', async ({ page }) => {
     await loadTranslator(page);
-    const inputs = ['период', 'Полица А1-15', 'Хермафродит', 'Историја', 'Средина'];
-    const out = await toEnglish(page, inputs);
-    for (const s of out) {
-      expect(s, `"${s}" must not mix scripts`).not.toMatch(MIXED);
+    // 'Датотека' HAS an English dictionary key ('File'); 'период' has none.
+    // With English disabled, both must stay exactly Cyrillic.
+    const { texts, htmlLang } = await run(page, {
+      strings: ['Датотека', 'период', 'Центар за одобравање'],
+      action: 'switch-en',
+    });
+    expect(texts).toEqual(['Датотека', 'период', 'Центар за одобравање']);
+    for (const t of texts) {
+      expect(t).not.toMatch(MIXED);
+      expect(t).not.toMatch(LATIN_WORD);
     }
-    // These have no dictionary key, so they must stay intact (not partially eaten).
-    expect(out[0]).toBe('период');
-    expect(out[1]).toContain('Полица');
-    expect(out[2]).toBe('Хермафродит');
+    expect(htmlLang).not.toBe('en');
   });
 
-  test('short keys still translate when standalone', async ({ page }) => {
+  test('a saved museum_lang=en preference resolves to Cyrillic', async ({ page }) => {
     await loadTranslator(page);
-    const out = await toEnglish(page, ['Пол', 'Да', 'Не', 'Пон', '5 од 10']);
-    expect(out[0]).toBe('Sex');
-    expect(out[1]).toBe('Yes');
-    expect(out[2]).toBe('No');
-    expect(out[3]).toBe('Mon');
-    expect(out[4]).toBe('5 of 10');
+    const { pref, texts } = await run(page, {
+      strings: ['Датотека', 'Одобравате:'],
+      cookie: 'museum_lang=en; theme=dark',
+      action: 'init',
+    });
+    expect(pref).toBe('sr-Cyrl');
+    // init() with a legacy 'en' cookie must leave the page Cyrillic, untouched.
+    expect(texts).toEqual(['Датотека', 'Одобравате:']);
+    for (const t of texts) expect(t).not.toMatch(LATIN_WORD);
   });
 });
 
-test.describe('Coverage — new modules translate fully to English', () => {
-  test('approval center / archive / documents key strings', async ({ page }) => {
+test.describe('English engine stays dormant (re-enablable)', () => {
+  test('dictionary is preserved so English can be restored', async ({ page }) => {
     await loadTranslator(page);
-    const inputs = [
-      'Центар за одобравање',
-      'Ток одобравања',
-      'Поништи',
-      'Датотека',
-      'Отпремио',
-      'Отпреми као нацрт',
-      'Наслов документа',
-      'Одобрена документа',
-      'Пошаљи на одобрење',
-      'Сва одељења',
-    ];
-    const out = await toEnglish(page, inputs);
-    for (const s of out) {
-      expect(s, `"${s}" should be fully English`).not.toMatch(CYR);
-    }
+    const dict = await page.evaluate(() => MuseumTranslator.translations);
+    expect(Object.keys(dict).length).toBeGreaterThan(1000);
+    // sample keys, including ones added for the new modules, remain intact
+    expect(dict['Датотека']).toBe('File');
+    expect(dict['Центар за одобравање']).toBe('Approval Center');
   });
 });

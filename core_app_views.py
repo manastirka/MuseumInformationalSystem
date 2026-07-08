@@ -17,12 +17,30 @@ DEPARTMENT_HEAD_ROLES = frozenset({
 })
 
 
+# UI languages offered in the picker. English was soft-removed 2026-07-08 —
+# the app is Serbian-only (Cyrillic + Latin). The English dictionary and
+# translation code stay dormant in static/js/translator.js (see ENABLED_LANGS
+# there); re-enabling English means adding 'en' back here and to that list and
+# restoring the picker entry in base.html.
+UI_LANGUAGES = ('sr-Cyrl', 'sr-Latn')
+
+
+def normalize_ui_language(lang):
+    """Map any unsupported or legacy value (e.g. a saved 'en') to the default."""
+    return lang if lang in UI_LANGUAGES else 'sr-Cyrl'
+
+
+def current_ui_language():
+    """Return the user's saved UI language, normalized to a supported value."""
+    saved = session.get('museum_lang', request.cookies.get('museum_lang', 'sr-Cyrl'))
+    return normalize_ui_language(saved)
+
+
 def set_language_preference():
     """Store the user's UI language preference in the session and cookie."""
     data = request.get_json(silent=True) or {}
     lang = data.get('language', 'sr-Cyrl')
-    allowed = {'sr-Cyrl', 'sr-Latn', 'en'}
-    if lang in allowed:
+    if lang in UI_LANGUAGES:
         session['museum_lang'] = lang
         response = jsonify({'status': 'ok', 'language': lang})
         response.set_cookie(

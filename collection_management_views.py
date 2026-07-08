@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import current_app, flash, redirect, render_template, request, session, url_for
+from core_app_views import current_ui_language
 from werkzeug.utils import secure_filename
 from image_storage_engine import get_image_storage
 from collection_registry import get_collection_form_info, get_collection_route_map
@@ -730,7 +731,9 @@ def render_meteorite_collection(
 def render_mineral_collection(*, get_mineral_database, get_image_upload_action_url):
     """Render mineral collection or RRUFF browser view."""
     mineral_db = get_mineral_database()
-    current_lang = session.get('museum_lang', request.cookies.get('museum_lang', 'sr-Cyrl'))
+    current_lang = current_ui_language()
+    # Dormant while English is disabled (always False); kept so re-enabling
+    # English restores the English mineral-column set with no other change.
     is_english = current_lang == 'en'
 
     search_query = request.args.get('search', '').strip()

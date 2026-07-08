@@ -40,7 +40,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
                 mimetype='application/json',
             ),
         ) as mocked_handler:
-            response = self.client.post('/set_language', json={'language': 'en'}, base_url=self.base_url)
+            response = self.client.post('/set_language', json={'language': 'sr-Latn'}, base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()

@@ -71,14 +71,37 @@ def test_language_cookie_secure_under_https(weather_app):
     with weather_app.test_request_context(
         '/set_language',
         method='POST',
-        json={'language': 'en'},
+        json={'language': 'sr-Latn'},
         base_url='https://example.org',
     ):
         response = core_app_views.set_language_preference()
 
     set_cookie = response.headers.get('Set-Cookie', '')
-    assert 'museum_lang=en' in set_cookie
+    assert 'museum_lang=sr-Latn' in set_cookie
     assert 'Secure' in set_cookie
+
+
+def test_set_language_rejects_english(weather_app):
+    """English is soft-removed: a legacy 'en' request must be rejected, not stored."""
+    with weather_app.test_request_context(
+        '/set_language',
+        method='POST',
+        json={'language': 'en'},
+    ):
+        response = core_app_views.set_language_preference()
+
+    status = response[1] if isinstance(response, tuple) else response.status_code
+    assert status == 400
+    body = response[0] if isinstance(response, tuple) else response
+    assert 'museum_lang=en' not in body.headers.get('Set-Cookie', '')
+
+
+def test_current_ui_language_normalizes_legacy_english(weather_app):
+    """A user whose saved preference is 'en' must resolve cleanly to Cyrillic."""
+    with weather_app.test_request_context('/', headers={'Cookie': 'museum_lang=en'}):
+        assert core_app_views.current_ui_language() == 'sr-Cyrl'
+    with weather_app.test_request_context('/', headers={'Cookie': 'museum_lang=sr-Latn'}):
+        assert core_app_views.current_ui_language() == 'sr-Latn'
 
 
 def test_language_cookie_not_secure_under_http(weather_app):

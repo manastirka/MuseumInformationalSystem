@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from flask import current_app, render_template, request, session
+from core_app_views import current_ui_language
 
 
 def register_error_handlers(flask_app) -> None:
@@ -103,7 +104,7 @@ def register_template_context(
             weather_windspeed=weather_data.get('windspeed'),
             weather_description=weather_data.get('description', ''),
             weather_particles_version=weather_script_version,
-            current_lang=session.get('museum_lang', request.cookies.get('museum_lang', 'sr-Cyrl')),
+            current_lang=current_ui_language(),
         )
 
 

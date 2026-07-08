@@ -638,7 +638,7 @@
                                 id="langSwitcherBtn" data-bs-toggle="dropdown" aria-expanded="false"
                                 style="border-radius:20px; padding:4px 12px; font-size:0.85rem; margin-top:6px;">
                             <i class="bi bi-translate me-1"></i>
-                            <span class="lang-label">{% if current_lang == 'en' %}EN{% elif current_lang == 'sr-Latn' %}Lat{% else %}Ћир{% endif %}</span>
+                            <span class="lang-label">{% if current_lang == 'sr-Latn' %}Lat{% else %}Ћир{% endif %}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" style="min-width:180px;">
                             <li><a class="dropdown-item lang-option{% if current_lang == 'sr-Cyrl' %} active{% endif %}"
@@ -648,11 +648,6 @@
                             <li><a class="dropdown-item lang-option{% if current_lang == 'sr-Latn' %} active{% endif %}"
                                    href="#" data-lang="sr-Latn" onclick="MuseumTranslator.switchLanguage('sr-Latn');return false;">
                                 <span class="me-2">🇷🇸</span> Srpski (latinica)
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item lang-option{% if current_lang == 'en' %} active{% endif %}"
-                                   href="#" data-lang="en" onclick="MuseumTranslator.switchLanguage('en');return false;">
-                                <span class="me-2">🇬🇧</span> English
                             </a></li>
                         </ul>
                     </li>
