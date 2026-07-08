@@ -85,12 +85,10 @@ def _build_calendar_data(year, month):
 
 
 def _default_entry_period():
-    current_date = datetime.now()
-    if current_date.day <= 7:
-        if current_date.month == 1:
-            return 12, current_date.year - 1
-        return current_date.month - 1, current_date.year
-    return current_date.month, current_date.year
+    # Delegates to the single source of truth in timesheet_postgres so the
+    # entry default and the day-10 deadline rules can never drift apart.
+    from timesheet_postgres import default_entry_period
+    return default_entry_period()
 
 
 def _load_report_header(employee_name, month, year, header_fields):

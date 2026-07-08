@@ -1169,6 +1169,20 @@ def get_edit_request_rate_limit_status(user_email: str) -> Dict:
 # TIMESHEET STATUS WORKFLOW
 # =============================================================================
 
+def default_entry_period() -> Tuple[int, int]:
+    """Return the (month, year) an employee enters by default right now.
+
+    Business rule: during the current month the report for the PREVIOUS month
+    is filled (deadline the 10th — see can_submit_for_review). January rolls
+    back to December of the previous year. The default is purely date-driven
+    and never depends on existing rows, so it stays correct on an empty table.
+    """
+    today = datetime.now()
+    if today.month == 1:
+        return 12, today.year - 1
+    return today.month - 1, today.year
+
+
 def can_submit_for_review(month: int, year: int) -> Tuple[bool, str]:
     """
     Check if a report for the given month can currently be submitted for review.
