@@ -36,12 +36,28 @@ def fototeka_upload_post():
     return fototeka_views.handle_upload()
 
 
+@fototeka_bp.route('/fototeka/prijemni-red')
+@login_required
+@module_access_required('fototeka')
+def fototeka_prijemni_red():
+    """Curation queue: photos flagged for follow-up (tags/links), oldest first."""
+    return fototeka_views.render_prijemni_red()
+
+
 @fototeka_bp.route('/fototeka/<int:fotografija_id>')
 @login_required
 @module_access_required('fototeka')
 def fototeka_fotografija(fotografija_id):
     """Photo page: metadata, tags, links, processing history."""
     return fototeka_views.render_fotografija(fotografija_id)
+
+
+@fototeka_bp.route('/fototeka/<int:fotografija_id>/skini-sa-reda', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_skini_sa_reda(fotografija_id):
+    """Clear the reception-queue flag without adding a link."""
+    return fototeka_views.handle_skini_sa_reda(fotografija_id)
 
 
 @fototeka_bp.route('/fototeka/<int:fotografija_id>/azuriraj', methods=['POST'])
@@ -114,3 +130,34 @@ def fototeka_api_tagovi():
 @module_access_required('fototeka')
 def fototeka_api_predmeti():
     return fototeka_views.api_predmeti()
+
+
+@fototeka_bp.route('/fototeka/api/entitet/fotografije')
+@login_required
+@module_access_required('fototeka')
+def fototeka_api_entitet_fotografije():
+    """Photos already linked to an entity (reverse-linking widget load)."""
+    return fototeka_views.api_entitet_fotografije()
+
+
+@fototeka_bp.route('/fototeka/api/entitet/pretraga')
+@login_required
+@module_access_required('fototeka')
+def fototeka_api_entitet_pretraga():
+    """Candidate photos to link to an entity."""
+    return fototeka_views.api_entitet_pretraga()
+
+
+@fototeka_bp.route('/fototeka/api/entitet/veza', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_api_entitet_veza():
+    """Link an existing photo to an entity (non-destructive cross-reference)."""
+    return fototeka_views.handle_entitet_veza()
+
+
+@fototeka_bp.route('/fototeka/api/entitet/veza/ukloni', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_api_entitet_ukloni():
+    return fototeka_views.handle_entitet_ukloni()

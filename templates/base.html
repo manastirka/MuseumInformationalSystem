@@ -1240,6 +1240,12 @@
                         <span>Фототека</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('fototeka.fototeka_prijemni_red') }}" aria-label="Пријемни ред">
+                        <i class="bi bi-inboxes"></i>
+                        <span>Пријемни ред</span>
+                    </a>
+                </li>
                 {% endif %}
                 {% if has_module_access('museum_databases') %}
                 <li class="nav-item">

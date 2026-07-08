@@ -1,14 +1,16 @@
 {# Optional-link fieldset shared by the upload form and the photo page.
-   Expects: zbirke, tereni, projekti, izlozbe; prefix for unique element ids. #}
+   Expects: zbirke, tereni, projekti, izlozbe; prefix for unique element ids.
+   Optional `prefill` dict (upload page only) preselects a link. #}
+{% set pf = prefill if prefill is defined else {} %}
 <div class="row g-2">
     <div class="col-md-4">
         <label class="form-label" for="{{ prefix }}VezaTip">Веза (необавезно)</label>
         <select class="form-select fototeka-veza-tip" id="{{ prefix }}VezaTip" name="veza_tip" data-prefix="{{ prefix }}">
             <option value="bez">Без везе</option>
-            <option value="predmet">Предмет (инвентарни број)</option>
-            <option value="teren">Терен / акција</option>
-            <option value="projekat">Пројекат</option>
-            <option value="izlozba">Изложба</option>
+            <option value="predmet" {% if pf.get('veza_tip') == 'predmet' %}selected{% endif %}>Предмет (инвентарни број)</option>
+            <option value="teren" {% if pf.get('veza_tip') == 'teren' %}selected{% endif %}>Терен / акција</option>
+            <option value="projekat" {% if pf.get('veza_tip') == 'projekat' %}selected{% endif %}>Пројекат</option>
+            <option value="izlozba" {% if pf.get('veza_tip') == 'izlozba' %}selected{% endif %}>Изложба</option>
         </select>
     </div>
     <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaPredmet" hidden>
@@ -17,14 +19,14 @@
                 <label class="form-label" for="{{ prefix }}VezaZbirka">Збирка</label>
                 <select class="form-select" id="{{ prefix }}VezaZbirka" name="veza_zbirka">
                     {% for key, label in zbirke.items()|sort(attribute='1') %}
-                    <option value="{{ key }}">{{ label }}</option>
+                    <option value="{{ key }}" {% if pf.get('veza_zbirka') == key %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="{{ prefix }}VezaInvBroj">Инвентарни број</label>
                 <input class="form-control" id="{{ prefix }}VezaInvBroj" name="veza_inventarni_broj"
-                       list="{{ prefix }}PredmetiLista" autocomplete="off">
+                       list="{{ prefix }}PredmetiLista" autocomplete="off" value="{{ pf.get('veza_inventarni_broj', '') }}">
                 <datalist id="{{ prefix }}PredmetiLista"></datalist>
             </div>
         </div>
@@ -36,7 +38,7 @@
                 <select class="form-select" id="{{ prefix }}VezaTerenId" name="veza_teren_id">
                     <option value="">— нови терен —</option>
                     {% for teren in tereni %}
-                    <option value="{{ teren.id }}">{{ teren.godina }} — {{ teren.naziv }}</option>
+                    <option value="{{ teren.id }}" {% if pf.get('veza_teren_id') == teren.id|string %}selected{% endif %}>{{ teren.godina }} — {{ teren.naziv }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -58,7 +60,7 @@
                 <select class="form-select" id="{{ prefix }}VezaProjekatId" name="veza_projekat_id">
                     <option value="">— нови пројекат —</option>
                     {% for projekat in projekti %}
-                    <option value="{{ projekat.id }}">{{ projekat.naziv }}</option>
+                    <option value="{{ projekat.id }}" {% if pf.get('veza_projekat_id') == projekat.id|string %}selected{% endif %}>{{ projekat.naziv }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -73,7 +75,7 @@
         <select class="form-select" id="{{ prefix }}VezaIzlozbaId" name="veza_izlozba_id">
             <option value="">— изаберите —</option>
             {% for izlozba in izlozbe %}
-            <option value="{{ izlozba.id }}">{{ izlozba.title }}</option>
+            <option value="{{ izlozba.id }}" {% if pf.get('veza_izlozba_id') == izlozba.id|string %}selected{% endif %}>{{ izlozba.title }}</option>
             {% endfor %}
         </select>
     </div>

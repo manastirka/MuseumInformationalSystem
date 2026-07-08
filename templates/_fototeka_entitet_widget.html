@@ -1,0 +1,43 @@
+{# Reusable "photos from Фототека" widget for an entity page (reverse linking).
+   Set `fototeka_entitet` in the including template before including, e.g.:
+     {% set fototeka_entitet = {'tip': 'predmet', 'database': 'mineral',
+                                'broj': mineral.inventarni_broj} %}
+     {% include '_fototeka_entitet_widget.html' %}
+   Requires fototeka module access to be useful; the API routes enforce it. #}
+{% if fototeka_entitet is defined and has_module_access('fototeka') %}
+{% set e = fototeka_entitet %}
+<div class="card fototeka-entitet-widget mt-3"
+     data-tip="{{ e.tip }}"
+     data-database="{{ e.get('database', '') }}"
+     data-broj="{{ e.get('broj', '') }}"
+     data-teren-id="{{ e.get('teren_id', '') }}"
+     data-projekat-id="{{ e.get('projekat_id', '') }}"
+     data-izlozba-id="{{ e.get('izlozba_id', '') }}"
+     data-csrf="{{ csrf_token() }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-camera me-2"></i>Фотографије из Фототеке</span>
+        {% if e.tip == 'predmet' %}
+        <a class="btn btn-sm btn-outline-success"
+           href="{{ url_for('fototeka.fototeka_upload', veza_tip='predmet', veza_zbirka=e.database, veza_inventarni_broj=e.broj) }}">
+            <i class="bi bi-plus-lg me-1"></i>Додај фотографију
+        </a>
+        {% else %}
+        <a class="btn btn-sm btn-outline-success" href="{{ url_for('fototeka.fototeka_upload') }}">
+            <i class="bi bi-plus-lg me-1"></i>Додај фотографију
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="fototeka-entitet-linked row g-2 mb-3">
+            <div class="col-12 text-muted small fototeka-entitet-empty">Учитавање…</div>
+        </div>
+        <div class="input-group input-group-sm mb-2">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control fototeka-entitet-pretraga"
+                   placeholder="Повежи постојећу фотографију (број, опис или таг)…">
+        </div>
+        <div class="fototeka-entitet-rezultati row g-2"></div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/fototeka_entitet.js') }}"></script>
+{% endif %}

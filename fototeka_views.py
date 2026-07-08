@@ -438,6 +438,54 @@ def render_galerija():
 
 
 # ---------------------------------------------------------------------------
+# Reception queue (пријемни ред)
+# ---------------------------------------------------------------------------
+
+def render_prijemni_red():
+    """Photos flagged for curation (u_prijemnom_redu) — oldest first, so the
+    backlog is worked front to back. A photo leaves the queue as soon as a
+    link is added (handle_dodaj_vezu) or it is cleared here."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, original_ime, opis, status, autor_email,
+                       datum_snimanja, created_at
+                FROM fotografije
+                WHERE obrisana = FALSE AND u_prijemnom_redu = TRUE
+                ORDER BY created_at ASC, id ASC
+                """,
+            )
+            photos = _rows_to_dicts(cur, cur.fetchall())
+    return render_template(
+        'fototeka_prijemni_red.html',
+        photos=photos,
+        status_labels=PHOTO_STATUS_LABELS,
+    )
+
+
+def handle_skini_sa_reda(fotografija_id):
+    """Mark a queued photo as processed without adding a link (it may simply
+    belong in the free gallery)."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            photo = _fetch_photo(cur, fotografija_id)
+            if not photo:
+                abort(404)
+            if not can_edit_photo(session, photo):
+                abort(403)
+            cur.execute(
+                """
+                UPDATE fotografije SET u_prijemnom_redu = FALSE, updated_at = now()
+                WHERE id = %s
+                """,
+                (fotografija_id,),
+            )
+    flash('Фотографија је скинута са пријемног реда.', 'success')
+    return redirect(url_for('fototeka.fototeka_prijemni_red'))
+
+
+# ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
 
@@ -445,12 +493,22 @@ def render_upload_form():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             tereni, projekti, izlozbe = _reference_lists(cur)
+    # Optional link prefill from an entity page ("add a photo for this item").
+    prefill = {
+        'veza_tip': (request.args.get('veza_tip') or '').strip(),
+        'veza_zbirka': (request.args.get('veza_zbirka') or '').strip(),
+        'veza_inventarni_broj': (request.args.get('veza_inventarni_broj') or '').strip(),
+        'veza_teren_id': (request.args.get('veza_teren_id') or '').strip(),
+        'veza_projekat_id': (request.args.get('veza_projekat_id') or '').strip(),
+        'veza_izlozba_id': (request.args.get('veza_izlozba_id') or '').strip(),
+    }
     return render_template(
         'fototeka_upload.html',
         tereni=tereni,
         projekti=projekti,
         izlozbe=izlozbe,
         zbirke=get_zbirka_labels(),
+        prefill=prefill,
     )
 
 
@@ -467,6 +525,7 @@ def handle_upload():
     opis = (request.form.get('opis') or '').strip() or None
     tags = _parse_tags(request.form.get('tagovi') or '')
     datum_override = _parse_datum(request.form.get('datum_snimanja'))
+    u_prijemnom_redu = bool(request.form.get('u_prijemnom_redu'))
     user_email = _session_email(session)
 
     temp_dir = fototeka_jobs.get_media_path() / 'temp'
@@ -551,13 +610,14 @@ def handle_upload():
                         INSERT INTO fotografije
                             (sha256, raw_putanja, original_ime, ekstenzija,
                              velicina_bajtova, width, height, autor_email,
-                             datum_snimanja, exif, opis, poreklo)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'upload')
+                             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'upload', %s)
                         RETURNING id
                         """,
                         (sha256, raw_rel, original_ime, ext, file_size,
                          exif_info['width'], exif_info['height'], user_email,
-                         datum_snimanja, json.dumps(exif_info['exif']), opis),
+                         datum_snimanja, json.dumps(exif_info['exif']), opis,
+                         u_prijemnom_redu),
                     )
                     fotografija_id = _scalar(cur.fetchone(), 'id')
                     _replace_tags(cur, fotografija_id, tags)
@@ -898,3 +958,174 @@ def api_predmeti():
         {'inventarni_broj': row['inventory_number'], 'naziv': row['item_name']}
         for row in rows
     ])
+
+
+# ---------------------------------------------------------------------------
+# Reverse linking (entitet -> foto): the "other direction" widget on a
+# collection item / field trip / project / exhibition page. Linking is a
+# non-destructive cross-reference, so any user with fototeka module access may
+# add or remove links (the photo and its RAW original are never affected).
+# ---------------------------------------------------------------------------
+
+def _parse_entity_ref(source):
+    """Read an entity reference (the linking target) from request args/form.
+    Returns a dict that doubles as a valid `veza` for `_insert_veza`, or
+    raises ValueError with a user-facing message."""
+    tip = (source.get('tip') or '').strip()
+    if tip == 'predmet':
+        database_name = (source.get('database') or '').strip()
+        inventarni_broj = ' '.join((source.get('broj') or '').split())
+        if database_name not in get_zbirka_labels():
+            raise ValueError('Непозната збирка.')
+        if not inventarni_broj:
+            raise ValueError('Недостаје инвентарни број.')
+        return {'tip': 'predmet', 'database_name': database_name,
+                'inventarni_broj': inventarni_broj}
+    if tip == 'teren':
+        raw = (source.get('teren_id') or '').strip()
+        if not raw.isdigit():
+            raise ValueError('Недостаје терен.')
+        return {'tip': 'teren', 'teren_id': int(raw)}
+    if tip == 'projekat':
+        raw = (source.get('projekat_id') or '').strip()
+        if not raw.isdigit():
+            raise ValueError('Недостаје пројекат.')
+        return {'tip': 'projekat', 'projekat_id': int(raw)}
+    if tip == 'izlozba':
+        raw = (source.get('izlozba_id') or '').strip()
+        if not raw.isdigit():
+            raise ValueError('Недостаје изложба.')
+        return {'tip': 'izlozba', 'izlozba_id': int(raw)}
+    raise ValueError('Непозната врста ентитета.')
+
+
+def _entity_photo_filter(entity):
+    """Return (table, condition, params) selecting the link rows for `entity`.
+    The condition is table-qualified so it works in a JOIN, a NOT EXISTS and a
+    DELETE alike. The table comes from the fixed _VEZA_TABLES whitelist."""
+    tip = entity['tip']
+    table = _VEZA_TABLES[tip]
+    if tip == 'predmet':
+        return (table,
+                f'{table}.database_name = %s AND {table}.inventarni_broj = %s',
+                (entity['database_name'], entity['inventarni_broj']))
+    if tip == 'teren':
+        return (table, f'{table}.teren_id = %s', (entity['teren_id'],))
+    if tip == 'projekat':
+        return (table, f'{table}.projekat_id = %s', (entity['projekat_id'],))
+    return (table, f'{table}.exhibition_id = %s', (entity['izlozba_id'],))
+
+
+def _photo_card(row):
+    return {
+        'id': row['id'],
+        'opis': row['opis'] or row['original_ime'],
+        'status': row['status'],
+        'thumb_url': url_for('fototeka.fototeka_media',
+                             fotografija_id=row['id'], kind='thumb'),
+        'url': url_for('fototeka.fototeka_fotografija', fotografija_id=row['id']),
+    }
+
+
+def api_entitet_fotografije():
+    """Photos already linked to the given entity (widget initial load)."""
+    try:
+        entity = _parse_entity_ref(request.args)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    table, cond, params = _entity_photo_filter(entity)
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT f.id, f.opis, f.original_ime, f.status
+                FROM fotografije f
+                JOIN {table} ON {table}.fotografija_id = f.id
+                WHERE f.obrisana = FALSE AND {cond}
+                ORDER BY f.id DESC
+                """,
+                params,
+            )
+            rows = _rows_to_dicts(cur, cur.fetchall())
+    return jsonify({'ok': True, 'fotografije': [_photo_card(r) for r in rows]})
+
+
+def api_entitet_pretraga():
+    """Candidate photos to link to the entity: search by id, description,
+    filename or tag, excluding photos already linked."""
+    try:
+        entity = _parse_entity_ref(request.args)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    q = (request.args.get('q') or '').strip()
+    table, cond, cond_params = _entity_photo_filter(entity)
+    filters = [
+        'f.obrisana = FALSE',
+        f'NOT EXISTS (SELECT 1 FROM {table} '
+        f'WHERE {table}.fotografija_id = f.id AND {cond})',
+    ]
+    params = list(cond_params)
+    if q.isdigit():
+        filters.append('f.id = %s')
+        params.append(int(q))
+    elif q:
+        filters.append(
+            '(f.opis ILIKE %s OR f.original_ime ILIKE %s OR EXISTS ('
+            'SELECT 1 FROM fotografija_tagovi t '
+            'WHERE t.fotografija_id = f.id AND t.tag ILIKE %s))'
+        )
+        params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT f.id, f.opis, f.original_ime, f.status
+                FROM fotografije f
+                WHERE {' AND '.join(filters)}
+                ORDER BY f.id DESC LIMIT 24
+                """,
+                params,
+            )
+            rows = _rows_to_dicts(cur, cur.fetchall())
+    return jsonify({'ok': True, 'fotografije': [_photo_card(r) for r in rows]})
+
+
+def handle_entitet_veza():
+    """Link an existing photo to the entity (reverse direction). `entity` is
+    already a valid `veza` dict, so it goes straight into `_insert_veza`."""
+    try:
+        entity = _parse_entity_ref(request.form)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    raw_id = (request.form.get('fotografija_id') or '').strip()
+    if not raw_id.isdigit():
+        return jsonify({'ok': False, 'error': 'Недостаје фотографија.'}), 400
+    fotografija_id = int(raw_id)
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            photo = _fetch_photo(cur, fotografija_id)
+            if not photo:
+                return jsonify({'ok': False, 'error': 'Фотографија не постоји.'}), 404
+            _insert_veza(cur, fotografija_id, entity)
+    return jsonify({'ok': True})
+
+
+def handle_entitet_ukloni():
+    """Remove one entity<->photo link (non-destructive)."""
+    try:
+        entity = _parse_entity_ref(request.form)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    raw_id = (request.form.get('fotografija_id') or '').strip()
+    if not raw_id.isdigit():
+        return jsonify({'ok': False, 'error': 'Недостаје фотографија.'}), 400
+    fotografija_id = int(raw_id)
+    table, cond, params = _entity_photo_filter(entity)
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f'DELETE FROM {table} WHERE fotografija_id = %s AND {cond} RETURNING id',
+                (fotografija_id, *params),
+            )
+            deleted = cur.fetchone()
+    return jsonify({'ok': bool(deleted)})

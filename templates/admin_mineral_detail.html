@@ -880,6 +880,9 @@
         </div>
     </div>
 
+    {% set fototeka_entitet = {'tip': 'predmet', 'database': 'mineral', 'broj': mineral.inventarni_broj} %}
+    {% include '_fototeka_entitet_widget.html' %}
+
     <!-- Actions -->
     <div class="d-flex gap-2 mb-4">
         <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-secondary">
