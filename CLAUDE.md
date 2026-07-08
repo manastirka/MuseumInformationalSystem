@@ -50,6 +50,45 @@ eksperimenti. Obavezno pri tom:
 `sudo -u mis git -C /opt/mis/app checkout <prethodni-tag>` +
 `sudo systemctl restart mis`.
 
+## Frontend i18n (језици)
+
+Апликација је **само српска: ћирилица + латиница**. Енглески је *меко
+уклоњен* (2026-07-08) — механизам је ту, али угашен.
+
+**Механизам је client-side у `static/js/translator.js`, НЕ Flask-Babel.**
+(Babel је иницијализован у `app.py`, али нема `translations/`/`.po`.)
+
+- **Извор = ћирилица**, писана директно у Jinja шаблонима.
+- **Латиница = аутоматска транслитерација** (`cyrToLat`). Нема речника —
+  латиница стиже сама.
+- **Додавање/измена текста:** упиши исправну ћирилицу у шаблон; латиница
+  долази бесплатно. За српски **нема кључева** — не дира се `translator.js`.
+  Пази на mixed-script словне грешке типа `изnad` (виде се на обе варијанте).
+- **Динамички садржај (AJAX табеле, JS-рендер календар):** почетни прелаз је
+  једнократан, али `MutationObserver` у `translator.js` наставља да примењује
+  активни језик на накнадно убачене чворове. Нова JS-грађена компонента се
+  покрива сама (осим ако је под `data-no-translate`).
+
+**Енглески (дормантан, за евентуални повратак):**
+- `enTranslations` + `translateToEnglish` остају у `translator.js`, неактивни.
+- Укључени језици су на **два места**: `ENABLED_LANGS` (`translator.js`) и
+  `UI_LANGUAGES` (`core_app_views.py`). Повратак EN = додај `'en'` у оба +
+  врати `<li>` у `templates/base.html`.
+- Сачувани `museum_lang=en` **чисто пада на ћирилицу** (нормализација на
+  клијенту и серверу); `translateToEnglish` поклапа на **граници речи**, па
+  нови EN кључеви морају бити пуне речи/фразе.
+
+## Статички асети
+
+`.gitignore`: `static/*` + `!static/css/` + `!static/js/`.
+
+- **Изворни CSS/JS** (`static/css/`, `static/js/`) **иду кроз git** → стижу на
+  прод обичним `deploy.sh` (`git pull`).
+- **Бинарни/генерисани медиј** (`static/img/`, `static/images/`,
+  `static/map_tiles/` ~1.9 GB) **НЕ иду у git** → путују rsync/data путем.
+- Правило: нов **текстуални извор** → у `static/css`/`static/js` (git); нов
+  **бинарни асет** → ван гита (rsync). `deploy.sh` нема rsync за `static/`.
+
 ## Poznati tehnički dug (popisano 2026-07-03)
 
 Prvi zadaci za DEV sesije — na produkciji trenutno pokriveno
