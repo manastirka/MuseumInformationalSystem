@@ -235,7 +235,9 @@
 </div>
 
 <script>
-(function () {
+// base.html учитава bootstrap.bundle.min.js на крају <body>, ПОСЛЕ овог
+// скрипта — приступ `bootstrap` глобалу мора да сачека DOMContentLoaded.
+document.addEventListener('DOMContentLoaded', function () {
     // Табови: приказ панела + tab параметар у URL-у ради повратка/освежавања.
     document.querySelectorAll('.oc-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
@@ -369,6 +371,6 @@
             form.submit();
         }
     });
-})();
+});
 </script>
 {% endblock %}

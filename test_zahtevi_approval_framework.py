@@ -487,6 +487,32 @@ def _pending_row(req_id, title, department, creator='radnik@nhmbeo.rs',
 
 class ApprovalQueuePageTests(_ClientTestCase):
 
+    def test_inline_scripts_defer_bootstrap_until_dom_ready(self):
+        """base.html loads bootstrap.bundle.min.js at the END of <body>, after
+        the content block. Inline page scripts therefore must not touch the
+        `bootstrap` global at parse time — doing so throws ReferenceError and
+        kills every handler on the page (prod bug: the approve button did
+        nothing). The guard: any inline use of `bootstrap.` has to come after
+        a DOMContentLoaded wrapper has been opened."""
+        rows = [_pending_row(1, 'Захтев Гео', GEOLOGY)]
+        self.use_db([
+            ("WHERE status IN ('pending', 'in_review')", None, rows),
+        ])
+        self.login(GEOLOGY_HEAD)
+        page = self.get('/odobravanje').get_data(as_text=True)
+
+        bootstrap_use = page.find('new bootstrap.')
+        self.assertNotEqual(bootstrap_use, -1, 'approve/reject modals are gone?')
+        dom_ready = page.find("addEventListener('DOMContentLoaded'")
+        self.assertNotEqual(
+            dom_ready, -1,
+            'inline script must defer bootstrap usage until DOMContentLoaded',
+        )
+        self.assertLess(
+            dom_ready, bootstrap_use,
+            'bootstrap.* is used at parse time, before the bundle is loaded',
+        )
+
     def test_employee_is_redirected(self):
         self.login(EMPLOYEE)
         response = self.get('/odobravanje')
