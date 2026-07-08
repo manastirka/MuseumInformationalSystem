@@ -66,6 +66,7 @@ from blueprints.projects import (
     PROJECT_SPACE_PLANNER_RELATIVE_PATH,
     projects_bp,
 )
+from blueprints.approval_center import approval_center_bp
 from blueprints.documents import documents_bp
 from blueprints.qr import qr_bp
 from blueprints.mail import MAILBOX_ADMIN_FORBIDDEN_MESSAGE, mail_bp
@@ -377,6 +378,7 @@ babel = Babel(app, locale_selector=get_locale)
 
 app.register_blueprint(image_api)
 app.register_blueprint(archive_signature_bp)
+app.register_blueprint(approval_center_bp)
 app.register_blueprint(documents_bp)
 app_blueprint_support.register_standard_blueprints(
     app,

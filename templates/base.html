@@ -1108,21 +1108,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_approvals') }}" aria-label="Одобравање архивских захтева">
+                    <a class="nav-link" href="{{ url_for('approval_center.centar_odobravanje') }}" aria-label="Центар за одобравање">
                         <i class="bi bi-check2-square"></i>
-                        <span>Одобравање</span>
+                        <span>Центар за одобравање</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('documents.dokumenti_odobravanje') }}" aria-label="Одобравање докумената">
-                        <i class="bi bi-file-earmark-check"></i>
-                        <span>Одобравање докумената</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_arhiva') }}" aria-label="Архива захтева">
+                    <a class="nav-link" href="{{ url_for('approval_center.arhiva') }}" aria-label="Архива">
                         <i class="bi bi-archive"></i>
-                        <span>Архива захтева</span>
+                        <span>Архива</span>
                     </a>
                 </li>
                 <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
@@ -1153,20 +1147,6 @@
                                 <a class="nav-link" href="{{ url_for('zahtev_razno') if endpoint_exists('zahtev_razno') else '#' }}">
                                     <i class="bi bi-file-earmark-plus me-2"></i>
                                     <span>Захтев разно</span>
-                                </a>
-                            </li>
-                            {% if is_department_head() %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_odobravanje') }}">
-                                    <i class="bi bi-check2-square me-2"></i>
-                                    <span>Одобравање захтева</span>
-                                </a>
-                            </li>
-                            {% endif %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('archive_signature.zahtevi_arhiva') }}">
-                                    <i class="bi bi-archive me-2"></i>
-                                    <span>Архива захтева</span>
                                 </a>
                             </li>
                         </ul>
@@ -1223,6 +1203,21 @@
                     </div>
                 </li>
 
+                {% if is_department_head() %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('approval_center.centar_odobravanje') }}" aria-label="Центар за одобравање">
+                        <i class="bi bi-check2-square"></i>
+                        <span>Центар за одобравање</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('approval_center.arhiva') }}" aria-label="Архива">
+                        <i class="bi bi-archive"></i>
+                        <span>Архива</span>
+                    </a>
+                </li>
+
                 <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
                 {% endif %}
 
@@ -1240,14 +1235,6 @@
                     <a class="nav-link" href="{{ url_for('documents.dokumenti_lista') }}" aria-label="Документа">
                         <i class="bi bi-folder2-open"></i>
                         <span>Документа</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if is_department_head() %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('documents.dokumenti_odobravanje') }}" aria-label="Одобравање докумената">
-                        <i class="bi bi-file-earmark-check"></i>
-                        <span>Одобравање докумената</span>
                     </a>
                 </li>
                 {% endif %}

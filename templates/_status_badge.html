@@ -1,0 +1,13 @@
+{#- Jedinstvena statusna oznaka za module odobravanja (нацрт / на одобрењу /
+    одобрено / одбијено / архивирано). Ključ je kanonski status; boje su u
+    static/css/odobravanje.css. -#}
+{% macro status_badge(key) -%}
+{%- set labels = {
+    'nacrt': 'Нацрт',
+    'na_odobrenju': 'На одобрењу',
+    'odobreno': 'Одобрено',
+    'odbijeno': 'Одбијено',
+    'arhivirano': 'Архивирано',
+} -%}
+<span class="status status--{{ key | replace('_', '-') }}">{{ labels.get(key, key) }}</span>
+{%- endmacro %}

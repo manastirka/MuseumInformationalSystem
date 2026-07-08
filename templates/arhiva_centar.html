@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% from "_status_badge.html" import status_badge %}
+
+{% block title %}Архива{% endblock %}
+
+{% block head_extra %}
+{% include "_odobravanje_style.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="print-header">
+        <div class="org">Природњачки музеј у Београду</div>
+        <div class="doc-title" id="print-naslov">Архива захтева — извод</div>
+        <div class="doc-meta">Одштампано: <span id="print-datum"></span></div>
+    </div>
+
+    <div class="oc-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <h2><i class="bi bi-archive me-2"></i>Архива</h2>
+            <p>Обрађени захтеви и архивиране верзије докумената — само за преглед.</p>
+        </div>
+        <button type="button" class="btn btn-oc-ghost btn-outline-secondary no-print" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Штампај
+        </button>
+    </div>
+
+    <div class="oc-tabs" role="tablist">
+        <button type="button" class="oc-tab{% if active_tab == 'zahtevi' %} active{% endif %}" data-pane="pane-zahtevi" role="tab">
+            Захтеви <span class="count">{{ archived_requests | length }}</span>
+        </button>
+        <button type="button" class="oc-tab{% if active_tab == 'dokumenta' %} active{% endif %}" data-pane="pane-dokumenta" role="tab">
+            Документа <span class="count">{{ archived_documents | length }}</span>
+        </button>
+    </div>
+
+    <!-- ==================== Таб: Захтеви ==================== -->
+    <section id="pane-zahtevi" {% if active_tab != 'zahtevi' %}class="d-none"{% endif %}>
+        <div class="oc-card">
+            {% if zahtevi_error %}
+            <div class="alert alert-warning m-3 mb-0">Није могуће учитати архиву захтева. Покушајте поново касније.</div>
+            {% endif %}
+            <form method="get" class="oc-filters">
+                <input type="hidden" name="tab" value="zahtevi">
+                <div>
+                    <label for="filter-tip">Тип</label>
+                    <select class="form-select form-select-sm" id="filter-tip" name="tip">
+                        <option value="">Сви типови</option>
+                        {% for value, label in type_labels.items() %}
+                        <option value="{{ value }}" {% if filter_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter-godina">Година</label>
+                    <select class="form-select form-select-sm" id="filter-godina" name="godina">
+                        <option value="">Све године</option>
+                        {% for year in years %}
+                        <option value="{{ year }}" {% if filter_year == year|string %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label for="filter-podnosilac">Подносилац</label>
+                    <input type="text" class="form-control form-control-sm" id="filter-podnosilac" name="podnosilac"
+                           value="{{ filter_submitter }}" placeholder="Име или е-пошта">
+                </div>
+                <button type="submit" class="btn btn-sm btn-oc-approve"><i class="bi bi-funnel me-1"></i>Филтрирај</button>
+                <a href="{{ url_for('approval_center.arhiva', tab='zahtevi') }}" class="btn btn-sm btn-oc-ghost btn-outline-secondary">Поништи</a>
+            </form>
+
+            {% if archived_requests %}
+            <div class="table-responsive">
+                <table class="oc-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable sorted-desc">Број</th>
+                            <th class="sortable">Тип</th>
+                            <th class="sortable">Захтев</th>
+                            <th class="sortable">Подносилац</th>
+                            <th class="sortable">Одељење</th>
+                            <th>Исход</th>
+                            <th class="sortable">Архивирано</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in archived_requests %}
+                        <tr>
+                            <td class="ref">{{ req.archive_reference or '—' }}</td>
+                            <td>{{ req.request_type_label }}{% if req.subtype_label %} <span class="muted">({{ req.subtype_label }})</span>{% endif %}</td>
+                            <td>{{ req.title or '—' }}</td>
+                            <td>{{ req.created_by_name }}</td>
+                            <td>{{ req.department or '—' }}</td>
+                            <td>{{ status_badge(req.unified_status) }}</td>
+                            <td data-sort="{{ req.archived_at.isoformat() if req.archived_at else '' }}">
+                                {% if req.archived_at %}{{ req.archived_at.strftime('%d.%m.%Y.') }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="oc-count">
+                <span>Приказано {{ archived_requests | length }} захтева{% if archived_requests | length == 200 %} (најновијих 200 — сузите филтерима){% endif %}</span>
+            </div>
+            {% elif not zahtevi_error %}
+            <div class="oc-empty">
+                <i class="bi bi-archive"></i>
+                <strong>Нема архивираних захтева за задате филтере</strong>
+                Измените или поништите филтере.
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ==================== Таб: Документа ==================== -->
+    <section id="pane-dokumenta" {% if active_tab != 'dokumenta' %}class="d-none"{% endif %}>
+        <div class="oc-card">
+            {% if dokumenta_error %}
+            <div class="alert alert-warning m-3 mb-0">Није могуће учитати архивиране верзије докумената. Покушајте поново касније.</div>
+            {% endif %}
+            {% if archived_documents %}
+            <div class="table-responsive">
+                <table class="oc-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Документ</th>
+                            <th class="sortable">Категорија</th>
+                            <th class="sortable">Одељење</th>
+                            <th>Верзија</th>
+                            <th class="sortable">Отпремио</th>
+                            <th>Статус</th>
+                            <th class="sortable sorted-desc">Архивирано</th>
+                            <th class="text-end no-print">Датотека</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ver in archived_documents %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('documents.dokumenti_detalj', document_id=ver.document_id) }}"><strong>{{ ver.document_title }}</strong></a>
+                                <div class="muted text-break">{{ ver.original_filename }}</div>
+                            </td>
+                            <td>{{ categories.get(ver.category, ver.category) }}</td>
+                            <td>{{ ver.department or '—' }}</td>
+                            <td>в{{ ver.version_no }}</td>
+                            <td>{{ ver.uploaded_by_email }}</td>
+                            <td>{{ status_badge('arhivirano') }}</td>
+                            <td data-sort="{{ ver.reviewed_at.isoformat() if ver.reviewed_at else '' }}">
+                                {% if ver.reviewed_at %}{{ ver.reviewed_at.strftime('%d.%m.%Y.') }}{% endif %}
+                            </td>
+                            <td class="text-end no-print">
+                                <a class="btn btn-sm btn-oc-ghost btn-outline-secondary" title="Преузми"
+                                   href="{{ url_for('documents.dokumenti_fajl', version_id=ver.id) }}">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="oc-count">
+                <span>Приказано {{ archived_documents | length }} архивираних верзија</span>
+            </div>
+            {% elif not dokumenta_error %}
+            <div class="oc-empty">
+                <i class="bi bi-archive"></i>
+                <strong>Нема архивираних верзија докумената</strong>
+                Верзија се архивира када је замени новија одобрена верзија или одлуком директора.
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="print-footer">
+        <div>Извод из електронске архиве Информационог система Природњачког музеја у Београду.</div>
+        <div class="sig"><div class="line">Потпис овлашћеног лица</div></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // Табови: приказ панела, tab параметар у URL-у и наслов за штампу.
+    var printNaslov = document.getElementById('print-naslov');
+    document.querySelectorAll('.oc-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.oc-tab').forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            document.querySelectorAll('section[id^="pane-"]').forEach(function (s) { s.classList.add('d-none'); });
+            document.getElementById(tab.dataset.pane).classList.remove('d-none');
+            var pane = tab.dataset.pane.replace('pane-', '');
+            printNaslov.textContent = pane === 'dokumenta' ? 'Архива докумената — извод' : 'Архива захтева — извод';
+            var url = new URL(window.location);
+            url.searchParams.set('tab', pane);
+            window.history.replaceState(null, '', url);
+        });
+    });
+    {% if active_tab == 'dokumenta' %}
+    printNaslov.textContent = 'Архива докумената — извод';
+    {% endif %}
+
+    document.getElementById('print-datum').textContent =
+        new Date().toLocaleDateString('sr-RS') + ' ' +
+        new Date().toLocaleTimeString('sr-RS', {hour: '2-digit', minute: '2-digit'});
+
+    // Сортирање колона (клик на заглавље).
+    document.querySelectorAll('.oc-table th.sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var table = th.closest('table');
+            var tbody = table.querySelector('tbody');
+            var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
+            var asc = !th.classList.contains('sorted-asc');
+            table.querySelectorAll('th').forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+            th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+            Array.prototype.slice.call(tbody.querySelectorAll('tr'))
+                .sort(function (a, b) {
+                    var ca = a.children[idx], cb = b.children[idx];
+                    var va = ca.dataset.sort || ca.textContent.trim();
+                    var vb = cb.dataset.sort || cb.textContent.trim();
+                    return asc ? va.localeCompare(vb, 'sr') : vb.localeCompare(va, 'sr');
+                })
+                .forEach(function (tr) { tbody.appendChild(tr); });
+        });
+    });
+})();
+</script>
+{% endblock %}

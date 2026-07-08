@@ -1225,117 +1225,111 @@ def api_get_pending_approvals():
         return _server_error_response()
 
 
+def pending_approvals_for_session():
+    """Open a connection and return the caller's approval queue; used by the
+    unified approval center so the query stays in this module."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            return _pending_approvals_for_session(cur)
+
+
+def archived_requests_for_session(filter_type='', filter_year='', filter_submitter=''):
+    """Archived requests the caller may see, with optional filters.
+
+    Visibility: everyone sees their own, department heads their department,
+    admin/direktor everything. Returns (archived, years, filter_year) where
+    filter_year is cleared if it was not a valid integer."""
+    user_email = session.get('user_email', '')
+    user_role = session.get('user_role', 'employee')
+    user_department = session.get('user_department', '')
+    is_department_head = bool(session.get('is_department_head'))
+
+    conditions = ["status = 'archived'"]
+    params = []
+
+    if filter_type:
+        conditions.append("request_type = %s")
+        params.append(filter_type)
+    if filter_year:
+        try:
+            conditions.append("archive_year = %s")
+            params.append(int(filter_year))
+        except (TypeError, ValueError):
+            filter_year = ''
+    if filter_submitter:
+        conditions.append("(created_by_name ILIKE %s OR created_by_email ILIKE %s)")
+        like = f"%{filter_submitter}%"
+        params.extend([like, like])
+
+    if user_role not in ['admin', 'direktor']:
+        if is_department_head and (user_department or '').strip():
+            conditions.append("""(
+                created_by_email = %s
+                OR LOWER(TRIM(COALESCE(created_by_department, ''))) = LOWER(TRIM(%s))
+            )""")
+            params.extend([user_email, user_department])
+        else:
+            conditions.append("created_by_email = %s")
+            params.append(user_email)
+
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, request_type, subtype, title, created_by_name, "
+                "created_by_department, final_decision, archived_at, "
+                "archive_reference, archive_year "
+                "FROM archive_requests "
+                "WHERE " + " AND ".join(conditions) + " "
+                "ORDER BY archived_at DESC NULLS LAST "
+                "LIMIT 200",
+                params,
+            )
+            archived = [
+                {
+                    'id': row[0],
+                    'request_type': row[1],
+                    'request_type_label': REQUEST_TYPE_LABELS.get(row[1], row[1]),
+                    'subtype_label': _subtype_label(row[1], row[2]),
+                    'title': row[3],
+                    'created_by_name': row[4],
+                    'department': row[5],
+                    'final_decision': row[6],
+                    'final_decision_label': FINAL_DECISION_LABELS.get(row[6], row[6] or ''),
+                    'archived_at': row[7],
+                    'archive_reference': row[8],
+                    'archive_year': row[9],
+                }
+                for row in cur.fetchall()
+            ]
+
+            cur.execute(
+                "SELECT DISTINCT archive_year FROM archive_requests "
+                "WHERE status = 'archived' AND archive_year IS NOT NULL "
+                "ORDER BY archive_year DESC"
+            )
+            years = [row[0] for row in cur.fetchall()]
+
+    return archived, years, filter_year
+
+
 @archive_signature_bp.route('/zahtevi/odobravanje')
 @login_required
 @admin_or_department_head_required
 def zahtevi_odobravanje():
-    """Approval queue for department heads (and admin/direktor)."""
-    try:
-        with get_postgres_connection() as conn:
-            with conn.cursor() as cur:
-                pending_requests = _pending_approvals_for_session(cur)
-        return render_template('zahtevi_odobravanje.html', pending=pending_requests)
-    except Exception:
-        logger.exception("Error rendering approval queue")
-        flash('Дошло је до грешке при учитавању реда за одобравање.', 'danger')
-        return redirect(url_for('dashboard'))
+    """Legacy URL: the queue lives in the unified approval center now."""
+    return redirect(url_for('approval_center.centar_odobravanje', tab='zahtevi'))
 
 
 @archive_signature_bp.route('/zahtevi/arhiva')
 @login_required
 def zahtevi_arhiva():
-    """Read-only, searchable archive of processed requests.
-
-    Visibility: everyone sees their own, department heads their department,
-    admin/direktor everything."""
-    try:
-        user_email = session.get('user_email', '')
-        user_role = session.get('user_role', 'employee')
-        user_department = session.get('user_department', '')
-        is_department_head = bool(session.get('is_department_head'))
-
-        filter_type = request.args.get('tip', '')
-        filter_year = request.args.get('godina', '')
-        filter_submitter = request.args.get('podnosilac', '')
-
-        conditions = ["status = 'archived'"]
-        params = []
-
-        if filter_type:
-            conditions.append("request_type = %s")
-            params.append(filter_type)
-        if filter_year:
-            try:
-                conditions.append("archive_year = %s")
-                params.append(int(filter_year))
-            except (TypeError, ValueError):
-                filter_year = ''
-        if filter_submitter:
-            conditions.append("(created_by_name ILIKE %s OR created_by_email ILIKE %s)")
-            like = f"%{filter_submitter}%"
-            params.extend([like, like])
-
-        if user_role not in ['admin', 'direktor']:
-            if is_department_head and (user_department or '').strip():
-                conditions.append("""(
-                    created_by_email = %s
-                    OR LOWER(TRIM(COALESCE(created_by_department, ''))) = LOWER(TRIM(%s))
-                )""")
-                params.extend([user_email, user_department])
-            else:
-                conditions.append("created_by_email = %s")
-                params.append(user_email)
-
-        with get_postgres_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, request_type, subtype, title, created_by_name, "
-                    "created_by_department, final_decision, archived_at, "
-                    "archive_reference, archive_year "
-                    "FROM archive_requests "
-                    "WHERE " + " AND ".join(conditions) + " "
-                    "ORDER BY archived_at DESC NULLS LAST "
-                    "LIMIT 200",
-                    params,
-                )
-                archived = [
-                    {
-                        'id': row[0],
-                        'request_type': row[1],
-                        'request_type_label': REQUEST_TYPE_LABELS.get(row[1], row[1]),
-                        'subtype_label': _subtype_label(row[1], row[2]),
-                        'title': row[3],
-                        'created_by_name': row[4],
-                        'department': row[5],
-                        'final_decision': row[6],
-                        'final_decision_label': FINAL_DECISION_LABELS.get(row[6], row[6] or ''),
-                        'archived_at': row[7],
-                        'archive_reference': row[8],
-                        'archive_year': row[9],
-                    }
-                    for row in cur.fetchall()
-                ]
-
-                cur.execute(
-                    "SELECT DISTINCT archive_year FROM archive_requests "
-                    "WHERE status = 'archived' AND archive_year IS NOT NULL "
-                    "ORDER BY archive_year DESC"
-                )
-                years = [row[0] for row in cur.fetchall()]
-
-        return render_template(
-            'zahtevi_arhiva.html',
-            archived=archived,
-            years=years,
-            type_labels=REQUEST_TYPE_LABELS,
-            filter_type=filter_type,
-            filter_year=filter_year,
-            filter_submitter=filter_submitter,
-        )
-    except Exception:
-        logger.exception("Error rendering request archive")
-        flash('Дошло је до грешке при учитавању архиве захтева.', 'danger')
-        return redirect(url_for('dashboard'))
+    """Legacy URL: the archive lives in the unified archive now."""
+    passthrough = {
+        key: value
+        for key, value in request.args.items()
+        if key in ('tip', 'godina', 'podnosilac') and value
+    }
+    return redirect(url_for('approval_center.arhiva', tab='zahtevi', **passthrough))
 
 
 @archive_signature_bp.route('/api/archive/statistics', methods=['GET'])

@@ -545,7 +545,9 @@ class OperationalModuleDraftStorageTests(unittest.TestCase):
         content = Path('templates/base.html').read_text(encoding='utf-8')
 
         self.assertIn('url_for(\'archive_signature.admin_archive_dashboard\')', content)
-        self.assertIn('url_for(\'archive_signature.admin_archive_approvals\')', content)
+        self.assertIn('url_for(\'approval_center.centar_odobravanje\')', content)
+        self.assertIn('url_for(\'approval_center.arhiva\')', content)
+        self.assertNotIn('url_for(\'archive_signature.admin_archive_approvals\')', content)
         self.assertNotIn('url_for(\'archive_signature.admin_archive_finansije\')', content)
         self.assertNotIn('url_for(\'archive_signature.admin_archive_terenska\')', content)
 

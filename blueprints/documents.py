@@ -1,6 +1,6 @@
 """Document library routes (складиштење, преглед и одобравање докумената)."""
 
-from flask import Blueprint
+from flask import Blueprint, redirect, url_for
 
 import document_library_views
 from security_utils import (
@@ -34,8 +34,8 @@ def dokumenti_detalj(document_id):
 @login_required
 @admin_or_department_head_required
 def dokumenti_odobravanje():
-    """Versions waiting for approval, scoped per department for heads."""
-    return document_library_views.render_approval_queue()
+    """Legacy URL: the queue lives in the unified approval center now."""
+    return redirect(url_for('approval_center.centar_odobravanje', tab='dokumenta'))
 
 
 @documents_bp.route('/dokumenti/upload', methods=['POST'])

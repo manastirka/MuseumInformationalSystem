@@ -21,6 +21,7 @@ os.environ.setdefault('SESSION_TYPE', 'filesystem')
 os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-flask-session')
 
 import app as museum_app
+import archive_signature_blueprint
 import document_library_views
 
 
@@ -279,6 +280,15 @@ class _ClientTestCase(unittest.TestCase):
         )
         db_patch.start()
         self.addCleanup(db_patch.stop)
+        # The unified approval center also queries operational requests; keep
+        # those queries hermetic (and empty) as well.
+        requests_connection = _FakeConnection(_FakeCursor({}))
+        requests_patch = patch.object(
+            archive_signature_blueprint, 'get_postgres_connection',
+            lambda **kwargs: requests_connection,
+        )
+        requests_patch.start()
+        self.addCleanup(requests_patch.stop)
         return cursor
 
 
@@ -637,11 +647,19 @@ class DocumentPageTests(_ClientTestCase):
         )
         self.use_db({"v.status = 'na_odobrenju'": [geo_row, bio_row]})
         self.login(GEOLOGY_HEAD)
-        response = self.get('/dokumenti/odobravanje')
+        response = self.get('/odobravanje')
         self.assertEqual(response.status_code, 200)
         body = response.data.decode('utf-8')
         self.assertIn('Гео образац', body)
         self.assertNotIn('Био образац', body)
+
+    def test_legacy_queue_url_redirects_to_center(self):
+        self.use_db({})
+        self.login(GEOLOGY_HEAD)
+        response = self.get('/dokumenti/odobravanje')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/odobravanje', response.headers['Location'])
+        self.assertIn('tab=dokumenta', response.headers['Location'])
 
     def test_approval_queue_shows_all_to_director(self):
         geo_row = dict(
@@ -654,7 +672,7 @@ class DocumentPageTests(_ClientTestCase):
         )
         self.use_db({"v.status = 'na_odobrenju'": [geo_row, bio_row]})
         self.login(DIRECTOR)
-        response = self.get('/dokumenti/odobravanje')
+        response = self.get('/odobravanje')
         self.assertEqual(response.status_code, 200)
         body = response.data.decode('utf-8')
         self.assertIn('Гео образац', body)
@@ -663,7 +681,7 @@ class DocumentPageTests(_ClientTestCase):
     def test_approval_queue_blocked_for_regular_employee(self):
         self.use_db({})
         self.login(EMPLOYEE)
-        response = self.get('/dokumenti/odobravanje')
+        response = self.get('/odobravanje')
         self.assertEqual(response.status_code, 302)
 
 

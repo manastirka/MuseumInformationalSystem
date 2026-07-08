@@ -22,6 +22,7 @@ os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-zahtevi-approval')
 
 import app as museum_app  # noqa: F401  (registers blueprints/routes)
 import archive_signature_blueprint as asb
+import document_library_views
 import travel_finance_views
 
 
@@ -237,6 +238,15 @@ class _ClientTestCase(unittest.TestCase):
         )
         db_patch.start()
         self.addCleanup(db_patch.stop)
+        # The unified approval center also queries the document library; keep
+        # those queries hermetic (and empty) as well.
+        docs_connection = FakeConnection(FakeCursor([]))
+        docs_patch = patch.object(
+            document_library_views, 'get_postgres_connection',
+            lambda **kwargs: docs_connection,
+        )
+        docs_patch.start()
+        self.addCleanup(docs_patch.stop)
         return cursor
 
 
@@ -479,8 +489,15 @@ class ApprovalQueuePageTests(_ClientTestCase):
 
     def test_employee_is_redirected(self):
         self.login(EMPLOYEE)
+        response = self.get('/odobravanje')
+        self.assertEqual(response.status_code, 302)
+
+    def test_legacy_queue_url_redirects_to_center(self):
+        self.login(GEOLOGY_HEAD)
         response = self.get('/zahtevi/odobravanje')
         self.assertEqual(response.status_code, 302)
+        self.assertIn('/odobravanje', response.headers['Location'])
+        self.assertIn('tab=zahtevi', response.headers['Location'])
 
     def test_department_head_sees_only_own_department(self):
         rows = [
@@ -492,12 +509,13 @@ class ApprovalQueuePageTests(_ClientTestCase):
             ("WHERE status IN ('pending', 'in_review')", None, rows),
         ])
         self.login(GEOLOGY_HEAD)
-        response = self.get('/zahtevi/odobravanje')
+        response = self.get('/odobravanje')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn('Захтев Гео', page)
         self.assertNotIn('Захтев Био', page)
         self.assertNotIn('Сопствени захтев', page)
+        self.assertIn('Центар за одобравање', page)
 
     def test_pending_api_scopes_by_department(self):
         rows = [
@@ -530,11 +548,14 @@ class ArchivePageTests(_ClientTestCase):
     def test_archive_page_renders_for_employee(self):
         cursor = self.use_db(self._script([self.ARCHIVED_ROW]))
         self.login(EMPLOYEE)
-        response = self.get('/zahtevi/arhiva')
+        response = self.get('/arhiva')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn('АРХ-2026-00001', page)
-        self.assertIn('Одобрен', page)
+        self.assertIn('Одобрено', page)
+        # Employees get the archive menu entry but not the approval center.
+        self.assertIn('aria-label="Архива"', page)
+        self.assertNotIn('aria-label="Центар за одобравање"', page)
         main_sql, main_params = next(
             (sql, params) for sql, params in cursor.executed
             if "status = 'archived'" in sql and 'DISTINCT' not in sql
@@ -542,10 +563,20 @@ class ArchivePageTests(_ClientTestCase):
         self.assertIn('created_by_email = %s', main_sql)
         self.assertIn(EMPLOYEE['user_email'], main_params)
 
+    def test_legacy_archive_url_redirects_with_filters(self):
+        self.login(EMPLOYEE)
+        response = self.get('/zahtevi/arhiva?tip=zahtev&godina=2026&podnosilac=Радник')
+        self.assertEqual(response.status_code, 302)
+        location = response.headers['Location']
+        self.assertIn('/arhiva', location)
+        self.assertIn('tab=zahtevi', location)
+        self.assertIn('tip=zahtev', location)
+        self.assertIn('godina=2026', location)
+
     def test_archive_page_filters_by_type_year_and_submitter(self):
         cursor = self.use_db(self._script([]))
         self.login(ADMIN)
-        response = self.get('/zahtevi/arhiva?tip=zahtev&godina=2026&podnosilac=Радник')
+        response = self.get('/arhiva?tip=zahtev&godina=2026&podnosilac=Радник')
         self.assertEqual(response.status_code, 200)
         main_sql, main_params = next(
             (sql, params) for sql, params in cursor.executed
@@ -561,8 +592,11 @@ class ArchivePageTests(_ClientTestCase):
     def test_department_head_sees_department_archive(self):
         cursor = self.use_db(self._script([self.ARCHIVED_ROW]))
         self.login(GEOLOGY_HEAD)
-        response = self.get('/zahtevi/arhiva')
+        response = self.get('/arhiva')
         self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'aria-label="Центар за одобравање"', response.get_data(as_text=True)
+        )
         main_sql, main_params = next(
             (sql, params) for sql, params in cursor.executed
             if "status = 'archived'" in sql and 'DISTINCT' not in sql

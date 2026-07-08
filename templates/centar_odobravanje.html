@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% from "_status_badge.html" import status_badge %}
+
+{% block title %}Центар за одобравање{% endblock %}
+
+{% block head_extra %}
+{% include "_odobravanje_style.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="oc-header">
+        <h2><i class="bi bi-check2-square me-2"></i>Центар за одобравање</h2>
+        <p>Захтеви и документа који чекају Ваше одобрење. Одбијање захтева образложење; свака одлука се потврђује.</p>
+    </div>
+
+    <div class="oc-tabs" role="tablist">
+        <button type="button" class="oc-tab{% if active_tab == 'zahtevi' %} active{% endif %}" data-pane="pane-zahtevi" role="tab">
+            Захтеви <span class="count">{{ zahtevi | length }}</span>
+        </button>
+        <button type="button" class="oc-tab{% if active_tab == 'dokumenta' %} active{% endif %}" data-pane="pane-dokumenta" role="tab">
+            Документа <span class="count">{{ dokumenta | length }}</span>
+        </button>
+    </div>
+
+    <!-- ==================== Таб: Захтеви ==================== -->
+    <section id="pane-zahtevi" {% if active_tab != 'zahtevi' %}class="d-none"{% endif %}>
+        <div class="oc-card">
+            {% if zahtevi_error %}
+            <div class="alert alert-warning m-3 mb-0">Није могуће учитати захтеве. Покушајте поново касније.</div>
+            {% endif %}
+            {% if zahtevi %}
+            <div class="oc-filters">
+                <div>
+                    <label for="filter-tip">Тип</label>
+                    <select id="filter-tip" class="form-select form-select-sm">
+                        <option value="">Сви типови</option>
+                        {% for value, label in request_type_labels.items() %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filter-odeljenje">Одељење</label>
+                    <select id="filter-odeljenje" class="form-select form-select-sm">
+                        <option value="">Сва одељења</option>
+                        {% for dept in zahtevi | map(attribute='department') | select | unique | sort %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label for="filter-pretraga">Претрага</label>
+                    <input id="filter-pretraga" type="search" class="form-control form-control-sm" placeholder="Наслов или подносилац…">
+                </div>
+                <button type="button" class="btn btn-sm btn-oc-ghost btn-outline-secondary" id="filter-reset">Поништи</button>
+            </div>
+            <div class="table-responsive">
+                <table class="oc-table" id="tabela-zahtevi">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Захтев</th>
+                            <th class="sortable">Тип</th>
+                            <th class="sortable">Подносилац</th>
+                            <th class="sortable">Одељење</th>
+                            <th class="sortable sorted-asc">Поднет</th>
+                            <th>Корак</th>
+                            <th>Статус</th>
+                            <th class="text-end">Одлука</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in zahtevi %}
+                        <tr data-tip="{{ req.request_type }}" data-odeljenje="{{ req.department or '' }}">
+                            <td><strong>{{ req.title or '—' }}</strong></td>
+                            <td>{{ req.request_type_label }}{% if req.subtype_label %} <span class="muted">({{ req.subtype_label }})</span>{% endif %}</td>
+                            <td>{{ req.created_by_name }}</td>
+                            <td>{{ req.department or '—' }}</td>
+                            <td data-sort="{{ req.created_at or '' }}">{% if req.created_at %}{{ req.created_at[8:10] }}.{{ req.created_at[5:7] }}.{{ req.created_at[:4] }}.{% endif %}</td>
+                            <td class="muted">{{ req.approval_role }}</td>
+                            <td>{{ status_badge('na_odobrenju') }}</td>
+                            <td class="text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-oc-approve act-approve"
+                                        data-kind="zahtev" data-id="{{ req.id }}" data-title="{{ req.title or '—' }}">
+                                    Одобри
+                                </button>
+                                <button type="button" class="btn btn-sm btn-oc-reject btn-outline-danger act-reject"
+                                        data-kind="zahtev" data-id="{{ req.id }}" data-title="{{ req.title or '—' }}">
+                                    Одбиј
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="oc-empty d-none" id="prazno-filter-zahtevi">
+                <i class="bi bi-funnel"></i>
+                <strong>Нема захтева за задате услове</strong>
+                Измените или поништите филтере.
+            </div>
+            <div class="oc-count">
+                <span>Приказано <span id="broj-zahteva">{{ zahtevi | length }}</span> од {{ zahtevi | length }} захтева</span>
+            </div>
+            {% elif not zahtevi_error %}
+            <div class="oc-empty">
+                <i class="bi bi-inbox"></i>
+                <strong>Нема захтева који чекају Ваше одобрење</strong>
+                Нови захтеви се појављују чим стигну на Ваш корак одобравања.
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ==================== Таб: Документа ==================== -->
+    <section id="pane-dokumenta" {% if active_tab != 'dokumenta' %}class="d-none"{% endif %}>
+        <div class="oc-card">
+            {% if dokumenta_error %}
+            <div class="alert alert-warning m-3 mb-0">Није могуће учитати документа. Покушајте поново касније.</div>
+            {% endif %}
+            {% if dokumenta %}
+            <div class="table-responsive">
+                <table class="oc-table" id="tabela-dokumenta">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Документ</th>
+                            <th class="sortable">Категорија</th>
+                            <th class="sortable">Одељење</th>
+                            <th>Верзија</th>
+                            <th class="sortable">Отпремио</th>
+                            <th class="sortable sorted-asc">Послато</th>
+                            <th>Статус</th>
+                            <th class="text-end">Одлука</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ver in dokumenta %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('documents.dokumenti_detalj', document_id=ver.document_id) }}"><strong>{{ ver.document_title }}</strong></a>
+                                <div class="muted text-break">{{ ver.original_filename }}</div>
+                            </td>
+                            <td>{{ categories.get(ver.category, ver.category) }}</td>
+                            <td>{{ ver.department or '—' }}</td>
+                            <td>в{{ ver.version_no }}</td>
+                            <td>{{ ver.uploaded_by_email }}</td>
+                            <td data-sort="{{ ver.submitted_at.isoformat() if ver.submitted_at else '' }}">
+                                {% if ver.submitted_at %}{{ ver.submitted_at.strftime('%d.%m.%Y. %H:%M') }}{% endif %}
+                            </td>
+                            <td>{{ status_badge('na_odobrenju') }}</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-oc-ghost btn-outline-secondary" title="Преузми"
+                                   href="{{ url_for('documents.dokumenti_fajl', version_id=ver.id) }}">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                {% if ver.can_approve %}
+                                <button type="button" class="btn btn-sm btn-oc-approve act-approve"
+                                        data-kind="dokument" data-form="doc-approve-{{ ver.id }}" data-title="{{ ver.document_title }} (в{{ ver.version_no }})">
+                                    Одобри
+                                </button>
+                                <button type="button" class="btn btn-sm btn-oc-reject btn-outline-danger act-reject"
+                                        data-kind="dokument" data-form="doc-reject-{{ ver.id }}" data-title="{{ ver.document_title }} (в{{ ver.version_no }})">
+                                    Одбиј
+                                </button>
+                                <form method="post" action="{{ url_for('documents.dokumenti_odobri', version_id=ver.id) }}" id="doc-approve-{{ ver.id }}" class="d-none">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                </form>
+                                <form method="post" action="{{ url_for('documents.dokumenti_odbij', version_id=ver.id) }}" id="doc-reject-{{ ver.id }}" class="d-none">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="comment" value=""/>
+                                </form>
+                                {% else %}
+                                <span class="muted"><i class="bi bi-person-lock"></i> Ваша верзија — одобрава други</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="oc-count">
+                <span>Приказано {{ dokumenta | length }} од {{ dokumenta | length }} докумената</span>
+            </div>
+            {% elif not dokumenta_error %}
+            <div class="oc-empty">
+                <i class="bi bi-inbox"></i>
+                <strong>Нема докумената који чекају одобрење</strong>
+                Верзије послате на одобрење појављују се овде.
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<!-- Модал: потврда одобравања -->
+<div class="modal fade" id="modalOdobri" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Потврда одобравања</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Одобравате: <strong id="odobri-naslov">—</strong></p>
+                <p class="text-muted mb-0" style="font-size:0.85rem">Одлука се бележи у историји са Вашим именом и временом.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-oc-ghost btn-outline-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-oc-approve" id="odobri-potvrdi"><i class="bi bi-check2 me-1"></i>Одобри</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модал: одбијање са обавезним образложењем -->
+<div class="modal fade" id="modalOdbij" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Одбијање — обавезно образложење</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Одбијате: <strong id="odbij-naslov">—</strong></p>
+                <label class="form-label" for="odbij-obrazlozenje">Образложење <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="odbij-obrazlozenje" rows="3" placeholder="Наведите разлог одбијања — видеће га подносилац."></textarea>
+                <div class="invalid-feedback">Образложење је обавезно — без њега одбијање није могуће.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-oc-ghost btn-outline-secondary" data-bs-dismiss="modal">Откажи</button>
+                <button type="button" class="btn btn-danger" id="odbij-potvrdi"><i class="bi bi-x-lg me-1"></i>Одбиј</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // Табови: приказ панела + tab параметар у URL-у ради повратка/освежавања.
+    document.querySelectorAll('.oc-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.oc-tab').forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            document.querySelectorAll('section[id^="pane-"]').forEach(function (s) { s.classList.add('d-none'); });
+            document.getElementById(tab.dataset.pane).classList.remove('d-none');
+            var url = new URL(window.location);
+            url.searchParams.set('tab', tab.dataset.pane.replace('pane-', ''));
+            window.history.replaceState(null, '', url);
+        });
+    });
+
+    // Сортирање колона (клик на заглавље).
+    document.querySelectorAll('.oc-table th.sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var table = th.closest('table');
+            var tbody = table.querySelector('tbody');
+            var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
+            var asc = !th.classList.contains('sorted-asc');
+            table.querySelectorAll('th').forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+            th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+            Array.prototype.slice.call(tbody.querySelectorAll('tr'))
+                .sort(function (a, b) {
+                    var ca = a.children[idx], cb = b.children[idx];
+                    var va = ca.dataset.sort || ca.textContent.trim();
+                    var vb = cb.dataset.sort || cb.textContent.trim();
+                    return asc ? va.localeCompare(vb, 'sr') : vb.localeCompare(va, 'sr');
+                })
+                .forEach(function (tr) { tbody.appendChild(tr); });
+        });
+    });
+
+    // Филтери на табу Захтеви.
+    var filterTip = document.getElementById('filter-tip');
+    var filterOdeljenje = document.getElementById('filter-odeljenje');
+    var filterPretraga = document.getElementById('filter-pretraga');
+    function applyFilters() {
+        if (!filterTip) return;
+        var shown = 0;
+        document.querySelectorAll('#tabela-zahtevi tbody tr').forEach(function (tr) {
+            var okTip = !filterTip.value || tr.dataset.tip === filterTip.value;
+            var okOdeljenje = !filterOdeljenje.value || tr.dataset.odeljenje === filterOdeljenje.value;
+            var okPretraga = !filterPretraga.value
+                || tr.textContent.toLowerCase().indexOf(filterPretraga.value.toLowerCase()) !== -1;
+            var show = okTip && okOdeljenje && okPretraga;
+            tr.classList.toggle('d-none', !show);
+            if (show) shown++;
+        });
+        document.getElementById('broj-zahteva').textContent = shown;
+        document.getElementById('prazno-filter-zahtevi').classList.toggle('d-none', shown > 0);
+        document.getElementById('tabela-zahtevi').classList.toggle('d-none', shown === 0);
+    }
+    if (filterTip) {
+        [filterTip, filterOdeljenje].forEach(function (el) { el.addEventListener('change', applyFilters); });
+        filterPretraga.addEventListener('input', applyFilters);
+        document.getElementById('filter-reset').addEventListener('click', function () {
+            filterTip.value = '';
+            filterOdeljenje.value = '';
+            filterPretraga.value = '';
+            applyFilters();
+        });
+    }
+
+    // Потврда пре сваке одлуке; одбијање тражи образложење.
+    var pending = null;
+    var modalOdobri = new bootstrap.Modal(document.getElementById('modalOdobri'));
+    var modalOdbij = new bootstrap.Modal(document.getElementById('modalOdbij'));
+
+    document.addEventListener('click', function (e) {
+        var approveBtn = e.target.closest('.act-approve');
+        if (approveBtn) {
+            pending = approveBtn.dataset;
+            document.getElementById('odobri-naslov').textContent = pending.title;
+            modalOdobri.show();
+        }
+        var rejectBtn = e.target.closest('.act-reject');
+        if (rejectBtn) {
+            pending = rejectBtn.dataset;
+            document.getElementById('odbij-naslov').textContent = pending.title;
+            var textarea = document.getElementById('odbij-obrazlozenje');
+            textarea.value = '';
+            textarea.classList.remove('is-invalid');
+            modalOdbij.show();
+        }
+    });
+
+    function apiOdluka(id, action, comments) {
+        var request = window.secureFetch || fetch;
+        request('/api/archive/requests/' + id + '/' + action, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({comments: comments})
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Грешка: ' + (data.message || 'Непозната грешка'));
+            }
+        })
+        .catch(function () { alert('Дошло је до грешке при обради одлуке.'); });
+    }
+
+    document.getElementById('odobri-potvrdi').addEventListener('click', function () {
+        if (!pending) return;
+        modalOdobri.hide();
+        if (pending.kind === 'zahtev') {
+            apiOdluka(pending.id, 'approve', '');
+        } else {
+            document.getElementById(pending.form).submit();
+        }
+    });
+
+    document.getElementById('odbij-potvrdi').addEventListener('click', function () {
+        if (!pending) return;
+        var textarea = document.getElementById('odbij-obrazlozenje');
+        var obrazlozenje = textarea.value.trim();
+        if (!obrazlozenje) {
+            textarea.classList.add('is-invalid');
+            textarea.focus();
+            return;
+        }
+        modalOdbij.hide();
+        if (pending.kind === 'zahtev') {
+            apiOdluka(pending.id, 'reject', obrazlozenje);
+        } else {
+            var form = document.getElementById(pending.form);
+            form.querySelector('input[name="comment"]').value = obrazlozenje;
+            form.submit();
+        }
+    });
+})();
+</script>
+{% endblock %}

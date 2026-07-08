@@ -311,10 +311,10 @@ def render_document_detail(document_id):
     )
 
 
-def render_approval_queue():
+def get_pending_document_versions():
     """Versions waiting for approval, scoped like timesheet verification:
     admins and the director see everything, a department head only their
-    own department."""
+    own department. Rendered by the unified approval center."""
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -338,12 +338,38 @@ def render_approval_queue():
             {'department': row.get('department')},
             row,
         )
-    return render_template(
-        'dokumenti_odobravanje.html',
-        pending=pending,
-        categories=DOCUMENT_CATEGORIES,
-        status_labels=DOCUMENT_STATUS_LABELS,
-    )
+    return pending
+
+
+def get_archived_document_versions():
+    """Archived versions the caller may see, mirroring
+    can_view_document_version: admins and the director everything, a
+    department head their department plus own uploads, everyone else only
+    versions they uploaded themselves. Rendered by the unified archive."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT {VERSION_COLUMNS}, d.title AS document_title,
+                       d.category, d.department
+                FROM document_versions v
+                JOIN documents d ON d.id = v.document_id
+                WHERE v.status = 'arhivirano'
+                ORDER BY v.reviewed_at DESC NULLS LAST
+                """,
+            )
+            archived = _rows_to_dicts(cur, cur.fetchall())
+
+    if _session_is_admin(session) or _session_is_director(session):
+        return archived
+    user_email = _session_email(session)
+    user_dept = _norm_dept(session.get('user_department'))
+    is_head = _session_is_department_head(session)
+    return [
+        row for row in archived
+        if (row.get('uploaded_by_email') or '').strip().lower() == user_email
+        or (is_head and bool(user_dept) and _norm_dept(row.get('department')) == user_dept)
+    ]
 
 
 def handle_document_upload():
