@@ -407,6 +407,10 @@ app_blueprint_support.apply_csrf_exemptions(app, csrf)
 import reset_test_data as reset_test_data_cli
 reset_test_data_cli.register_cli(app)
 
+# CLI: flask cleanup-empty-july-drafts (ciscenje praznih julskih DRAFT listi)
+import cleanup_empty_july_drafts as cleanup_empty_july_drafts_cli
+cleanup_empty_july_drafts_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(
