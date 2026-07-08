@@ -106,7 +106,66 @@ def _send_placeholder(*placeholder_candidates):
     return "No image available", 404
 
 
+def _fototeka_serving_enabled():
+    """Feature flag for serving legacy specimen images from Фототека instead
+    of the old images store. Off by default — flip on per host only after the
+    migration (migrate_images_to_fototeka.py) is verified."""
+    return os.environ.get('FOTOTEKA_SERVE_LEGACY_IMAGES', '').strip().lower() in (
+        '1', 'true', 'yes', 'on'
+    )
+
+
+def _fototeka_entity_response(database, entity_type, entity_id, size):
+    """When the flag is on, serve a migrated Фототека derivative for this
+    entity (mineral collections only — the migrated set). Returns a Flask
+    response or None to fall back to the legacy store. Any error returns None,
+    so enabling the flag can never break the existing image path."""
+    if not _fototeka_serving_enabled():
+        return None
+    if str(database).lower() not in ('mineral', 'minerals'):
+        return None
+    try:
+        import fototeka_jobs
+        from postgres_service import get_postgres_connection
+
+        mineral_id = int(str(entity_id).strip())
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT f.sha256
+                    FROM fotografije f
+                    JOIN foto_veza_predmet v ON v.fotografija_id = f.id
+                    JOIN minerals m ON m.inventory_number = v.inventarni_broj
+                    WHERE v.database_name = 'mineral' AND m.id = %s
+                      AND f.obrisana = FALSE AND f.status = 'spremna'
+                    ORDER BY f.id
+                    LIMIT 1
+                    """,
+                    (mineral_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        sha256 = (row['sha256'] if isinstance(row, dict) else row[0]).strip()
+        kind = 'thumb' if size in ('small', 'thumb') else 'jpg'
+        media_root = fototeka_jobs.get_media_path().resolve()
+        full_path = (media_root / fototeka_jobs.derivative_relative_path(
+            sha256, kind)).resolve()
+        if not str(full_path).startswith(str(media_root) + os.sep):
+            return None
+        if not full_path.is_file():
+            return None
+        return send_file(full_path, mimetype='image/jpeg')
+    except Exception as exc:  # noqa: BLE001 - never break the legacy path
+        logger.warning('Fototeka image serving fell back to legacy: %s', exc)
+        return None
+
+
 def _send_entity_image(get_image_storage, database, entity_type, entity_id, size):
+    fototeka_response = _fototeka_entity_response(database, entity_type, entity_id, size)
+    if fototeka_response is not None:
+        return fototeka_response
     try:
         image_storage = get_image_storage()
         primary_image_path_getter = getattr(image_storage, 'get_primary_entity_image_path', None)
