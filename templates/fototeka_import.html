@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Фототека — увоз са дељеног диска{% endblock %}
+
+{% block content %}
+<style>
+    .fototeka-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .fototeka-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .badge-predmet { background-color: #24573f; }
+    .badge-teren { background-color: #2d6f8f; }
+    .badge-prijemni_red { background-color: #6c757d; }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="fototeka-header">
+        <h2 class="mb-1"><i class="bi bi-hdd-network me-2"></i>Увоз са дељеног диска</h2>
+        <p class="mb-0">По конвенцији имена: <code>TEREN_&lt;година&gt;_&lt;акција&gt;</code> → терен;
+            инвентарни број у имену → предмет; остало → пријемни ред.
+            Оригинали остају на дељеном диску (копирају се у архиву).</p>
+    </div>
+
+    <div class="fototeka-card">
+        <form method="post" action="{{ url_for('fototeka.fototeka_import_scan') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="col-md-6">
+                <label class="form-label" for="uvozSubdir">Поддиректоријум (у односу на <code>{{ root }}</code>)</label>
+                <input class="form-control" id="uvozSubdir" name="subdir" value="{{ subdir }}"
+                       placeholder="нпр. 2026_jun_teren">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="uvozZbirka">Подразумевана збирка за предмете</label>
+                <select class="form-select" id="uvozZbirka" name="zbirka">
+                    {% for key, label in zbirke.items()|sort(attribute='1') %}
+                    <option value="{{ key }}" {% if key == zbirka %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100"><i class="bi bi-search me-1"></i>Скенирај</button>
+            </div>
+        </form>
+    </div>
+
+    {% if scanned is not none %}
+    <div class="fototeka-card">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 class="mb-0">Преглед ({{ scanned|length }} датотека)</h5>
+            {% if scanned %}
+            <form method="post" action="{{ url_for('fototeka.fototeka_import_confirm') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="subdir" value="{{ subdir }}"/>
+                <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('Увести {{ scanned|length }} датотека?');">
+                    <i class="bi bi-cloud-arrow-down me-1"></i>Увези све
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% if scanned %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th scope="col">Датотека</th><th scope="col">Класификација</th><th scope="col">Веза</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in scanned %}
+                    <tr>
+                        <td>{{ row.ime }}</td>
+                        <td><span class="badge badge-{{ row.klasa }}">
+                            {% if row.klasa == 'predmet' %}Предмет{% elif row.klasa == 'teren' %}Терен{% else %}Пријемни ред{% endif %}
+                        </span></td>
+                        <td class="small text-muted">{{ row.note }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="mb-0">У изабраном директоријуму нема слика за увоз.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

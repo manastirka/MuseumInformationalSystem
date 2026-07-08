@@ -101,6 +101,30 @@ def fototeka_obrisi(fotografija_id):
     return fototeka_views.handle_obrisi(fotografija_id)
 
 
+@fototeka_bp.route('/fototeka/uvoz')
+@login_required
+@admin_required
+def fototeka_import():
+    """Samba-share import screen (admin/director only)."""
+    return fototeka_views.render_import_form()
+
+
+@fototeka_bp.route('/fototeka/uvoz/skeniraj', methods=['POST'])
+@login_required
+@admin_required
+def fototeka_import_scan():
+    """Dry-run preview of the filename-convention classification."""
+    return fototeka_views.handle_import_scan()
+
+
+@fototeka_bp.route('/fototeka/uvoz/potvrdi', methods=['POST'])
+@login_required
+@admin_required
+def fototeka_import_confirm():
+    """Intake every scanned file (poreklo='import')."""
+    return fototeka_views.handle_import_confirm()
+
+
 @fototeka_bp.route('/fototeka/media/<int:fotografija_id>/<kind>')
 @login_required
 @module_access_required('fototeka')

@@ -1,0 +1,19 @@
+# Фототека monthly fixity enqueue (oneshot, driven by fototeka-fixity.timer).
+# Production install (paths follow /opt/mis conventions):
+#   sudo cp deploy/fototeka-fixity.service deploy/fototeka-fixity.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fototeka-fixity.timer
+# The fototeka worker (mis-fototeka-worker) must be running to process the
+# jobs this enqueues. On the DEV machine adjust User/WorkingDirectory/ExecStart.
+
+[Unit]
+Description=MIS Fototeka fixity enqueue (monthly)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=mis
+WorkingDirectory=/opt/mis/app
+ExecStart=/opt/mis/venv/bin/python /opt/mis/app/fototeka_fixity.py
+Nice=10

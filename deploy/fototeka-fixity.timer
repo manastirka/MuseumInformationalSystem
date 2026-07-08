@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Фототека fixity check monthly
+
+[Timer]
+# First day of each month at 03:30. Persistent=true runs a missed check after
+# downtime.
+OnCalendar=*-*-01 03:30:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

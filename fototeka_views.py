@@ -11,6 +11,7 @@ database; the RAW file always stays.
 
 import json
 import os
+import re
 import shutil
 import uuid
 from datetime import date, datetime
@@ -29,6 +30,7 @@ from flask import (
 )
 
 import fototeka_jobs
+import image_matcher
 from collection_registry import iter_collection_list_entries
 from postgres_service import get_postgres_connection
 
@@ -155,6 +157,19 @@ def _extract_exif(pil_image):
     return info
 
 
+def _get_or_create_teren(cur, godina, naziv):
+    cur.execute(
+        """
+        INSERT INTO fototeka_tereni (godina, naziv, created_by_email)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (godina, naziv) DO UPDATE SET naziv = EXCLUDED.naziv
+        RETURNING id
+        """,
+        (godina, naziv, _session_email(session)),
+    )
+    return _scalar(cur.fetchone(), 'id')
+
+
 def _parse_veza_form(form, cur):
     """Read the optional link fields from an upload/link form. Returns a dict
     {'tip': ..., ...} or None; raises ValueError with a user-facing message.
@@ -191,16 +206,7 @@ def _parse_veza_form(form, cur):
         godina = int(godina_raw)
         if not 1850 <= godina <= 2100:
             raise ValueError('Година терена није исправна.')
-        cur.execute(
-            """
-            INSERT INTO fototeka_tereni (godina, naziv, created_by_email)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (godina, naziv) DO UPDATE SET naziv = EXCLUDED.naziv
-            RETURNING id
-            """,
-            (godina, naziv, _session_email(session)),
-        )
-        teren_id = _scalar(cur.fetchone(), 'id')
+        teren_id = _get_or_create_teren(cur, godina, naziv)
         return {'tip': 'teren', 'teren_id': teren_id, 'godina': godina, 'naziv': naziv}
     if tip == 'projekat':
         projekat_id_raw = (form.get('veza_projekat_id') or '').strip()
@@ -512,10 +518,75 @@ def render_upload_form():
     )
 
 
+def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
+                            autor_email, opis, tags, datum_override, veza,
+                            u_prijemnom_redu, poreklo):
+    """Core intake shared by upload and Samba import. Validates the image,
+    dedups by sha256, places the RAW original by origin, inserts the row with
+    tags + link and enqueues the derivative job. Moves temp_path into the
+    archive on success; on dedup/invalid it leaves temp_path for the caller to
+    clean up. Returns (fotografija_id, None) or (None, skip_reason)."""
+    sha256 = fototeka_jobs.sha256_of_file(temp_path)
+    try:
+        from PIL import Image
+        with Image.open(temp_path) as pil_image:
+            pil_image.verify()
+        with Image.open(temp_path) as pil_image:
+            exif_info = _extract_exif(pil_image)
+    except Exception:
+        return None, f'{original_ime}: датотека није исправна слика'
+
+    cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
+    existing = cur.fetchone()
+    if existing:
+        return None, (f'{original_ime}: идентична фотографија већ постоји '
+                      f'(бр. {_scalar(existing, "id")})')
+
+    datum_snimanja = datum_override or exif_info['datum_snimanja']
+    raw_rel = fototeka_jobs.raw_intake_relative_path(
+        veza_predmet=(
+            (veza['database_name'], veza['inventarni_broj'])
+            if veza and veza['tip'] == 'predmet' else None
+        ),
+        veza_teren=(
+            (veza['godina'], veza['naziv'])
+            if veza and veza['tip'] == 'teren' else None
+        ),
+        original_ime=original_ime,
+        sha256=sha256,
+        datum=datum_snimanja,
+    )
+    raw_full = fototeka_jobs.get_arhiva_path() / raw_rel
+    raw_full.parent.mkdir(parents=True, exist_ok=True)
+    # shutil.move survives temp and archive being on different filesystems
+    # (os.replace would raise EXDEV).
+    shutil.move(str(temp_path), str(raw_full))
+
+    cur.execute(
+        """
+        INSERT INTO fotografije
+            (sha256, raw_putanja, original_ime, ekstenzija,
+             velicina_bajtova, width, height, autor_email,
+             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (sha256, raw_rel, original_ime, ext, file_size,
+         exif_info['width'], exif_info['height'], autor_email,
+         datum_snimanja, json.dumps(exif_info['exif']), opis, poreklo,
+         u_prijemnom_redu),
+    )
+    fotografija_id = _scalar(cur.fetchone(), 'id')
+    _replace_tags(cur, fotografija_id, tags)
+    _insert_veza(cur, fotografija_id, veza)
+    fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
+    return fotografija_id, None
+
+
 def handle_upload():
     """Receive one or more photos with shared metadata and an optional link.
-    Each file: validate -> temp -> sha256 dedup -> RAW placement by origin ->
-    DB row + tags + link -> enqueue the derivative job."""
+    Each file goes through _intake_photo_from_path (validate -> dedup -> RAW
+    placement -> row + tags + link -> enqueue)."""
     files = [f for f in request.files.getlist('files')
              if f and (f.filename or '').strip()]
     if not files:
@@ -528,9 +599,18 @@ def handle_upload():
     u_prijemnom_redu = bool(request.form.get('u_prijemnom_redu'))
     user_email = _session_email(session)
 
+    # The optional link is shared by every file; parse (and create any new
+    # teren/projekat) once before the loop.
+    try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                veza = _parse_veza_form(request.form, cur)
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+        return redirect(url_for('fototeka.fototeka_upload'))
+
     temp_dir = fototeka_jobs.get_media_path() / 'temp'
     temp_dir.mkdir(parents=True, exist_ok=True)
-    arhiva_root = fototeka_jobs.get_arhiva_path()
 
     saved, skipped = [], []
     for uploaded in files:
@@ -552,78 +632,18 @@ def handle_upload():
         temp_path = temp_dir / f'{uuid.uuid4().hex}_{ext.lstrip(".")}'
         try:
             uploaded.save(temp_path)
-            sha256 = fototeka_jobs.sha256_of_file(temp_path)
-
-            try:
-                from PIL import Image
-                with Image.open(temp_path) as pil_image:
-                    pil_image.verify()
-                with Image.open(temp_path) as pil_image:
-                    exif_info = _extract_exif(pil_image)
-            except Exception:
-                skipped.append(f'{original_ime}: датотека није исправна слика')
-                continue
-
-            datum_snimanja = datum_override or exif_info['datum_snimanja']
-
             with get_postgres_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        'SELECT id FROM fotografije WHERE sha256 = %s',
-                        (sha256,),
+                    fotografija_id, reason = _intake_photo_from_path(
+                        cur, temp_path, original_ime, file_size, ext,
+                        autor_email=user_email, opis=opis, tags=tags,
+                        datum_override=datum_override, veza=veza,
+                        u_prijemnom_redu=u_prijemnom_redu, poreklo='upload',
                     )
-                    existing = cur.fetchone()
-                    if existing:
-                        skipped.append(
-                            f'{original_ime}: идентична фотографија већ постоји '
-                            f'(бр. {_scalar(existing, "id")})'
-                        )
-                        continue
-
-                    try:
-                        veza = _parse_veza_form(request.form, cur)
-                    except ValueError as exc:
-                        flash(str(exc), 'danger')
-                        return redirect(url_for('fototeka.fototeka_upload'))
-
-                    raw_rel = fototeka_jobs.raw_intake_relative_path(
-                        veza_predmet=(
-                            (veza['database_name'], veza['inventarni_broj'])
-                            if veza and veza['tip'] == 'predmet' else None
-                        ),
-                        veza_teren=(
-                            (veza['godina'], veza['naziv'])
-                            if veza and veza['tip'] == 'teren' else None
-                        ),
-                        original_ime=original_ime,
-                        sha256=sha256,
-                        datum=datum_snimanja,
-                    )
-                    raw_full = arhiva_root / raw_rel
-                    raw_full.parent.mkdir(parents=True, exist_ok=True)
-                    # shutil.move survives temp and archive being on
-                    # different filesystems (os.replace would raise EXDEV)
-                    shutil.move(str(temp_path), str(raw_full))
-
-                    cur.execute(
-                        """
-                        INSERT INTO fotografije
-                            (sha256, raw_putanja, original_ime, ekstenzija,
-                             velicina_bajtova, width, height, autor_email,
-                             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'upload', %s)
-                        RETURNING id
-                        """,
-                        (sha256, raw_rel, original_ime, ext, file_size,
-                         exif_info['width'], exif_info['height'], user_email,
-                         datum_snimanja, json.dumps(exif_info['exif']), opis,
-                         u_prijemnom_redu),
-                    )
-                    fotografija_id = _scalar(cur.fetchone(), 'id')
-                    _replace_tags(cur, fotografija_id, tags)
-                    _insert_veza(cur, fotografija_id, veza)
-                    fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
-                    saved.append(fotografija_id)
+            if fotografija_id:
+                saved.append(fotografija_id)
+            elif reason:
+                skipped.append(reason)
         finally:
             if temp_path.exists():
                 temp_path.unlink()
@@ -1129,3 +1149,191 @@ def handle_entitet_ukloni():
             )
             deleted = cur.fetchone()
     return jsonify({'ok': bool(deleted)})
+
+
+# ---------------------------------------------------------------------------
+# Samba import (admin): scan a mounted share, classify by filename convention,
+# preview, then intake the same way as upload. Reuses image_matcher's per-
+# collection inventory patterns. Admin-only (enforced by the route decorator).
+# ---------------------------------------------------------------------------
+
+IMPORT_BATCH_LIMIT = 500
+
+_YEAR_RE = re.compile(r'(?:18|19|20)\d{2}')
+
+
+def get_import_path() -> Path:
+    return Path(os.environ.get('FOTOTEKA_IMPORT_PATH', './data/fototeka_import'))
+
+
+def _safe_import_dir(subdir):
+    """Resolve `subdir` under FOTOTEKA_IMPORT_PATH, refusing anything that
+    escapes the root (path traversal). Returns a Path or None."""
+    root = get_import_path().resolve()
+    target = (root / (subdir or '')).resolve()
+    if target != root and not str(target).startswith(str(root) + os.sep):
+        return None
+    return target
+
+
+def _scan_import_files(directory):
+    """Top-level image files in `directory`, sorted, capped at the batch limit."""
+    files = sorted(
+        p for p in directory.iterdir()
+        if p.is_file() and p.suffix.lower() in ALLOWED_PHOTO_EXTENSIONS
+    )
+    return files[:IMPORT_BATCH_LIMIT]
+
+
+def _extract_predmet_broj(filename, zbirka):
+    """Reuse image_matcher's per-collection inventory pattern (not the loose
+    generic fallback, so unmatched names fall to the reception queue). Strip
+    the collection-letter prefix to leave the stored identifier (e.g. the
+    mineral filename 'M-123' -> '123', matching the numeric DB value)."""
+    cfg = image_matcher.ImageMatcher.INVENTORY_PATTERNS.get(zbirka)
+    if not cfg:
+        return None
+    match = re.search(cfg['pattern'], Path(filename).stem, re.IGNORECASE)
+    if not match:
+        return None
+    raw = match.group(1).strip().upper()
+    core = re.sub(r'^[A-ZА-Я]+[-_\s]?', '', raw)
+    return core or raw
+
+
+def classify_import_filename(filename, default_zbirka):
+    """Map a filename to an import outcome by convention:
+    `TEREN_<godina>_<akcija>` -> field trip; a collection inventory number ->
+    collection item; anything else -> reception queue for a curator."""
+    stem = Path(filename).stem
+    if stem.upper().startswith('TEREN_'):
+        rest = stem[len('TEREN_'):]
+        year = _YEAR_RE.search(rest)
+        if year:
+            godina = int(year.group(0))
+            naziv = _YEAR_RE.sub(' ', rest)
+            naziv = re.sub(r'[_\-]+', ' ', naziv).strip() or 'Терен'
+            return {'klasa': 'teren',
+                    'veza_meta': {'tip': 'teren', 'godina': godina, 'naziv': naziv},
+                    'u_prijemnom_redu': False,
+                    'note': f'Терен {godina} — {naziv}'}
+        return {'klasa': 'prijemni_red', 'veza_meta': None,
+                'u_prijemnom_redu': True,
+                'note': 'Терен без године — пријемни ред'}
+    broj = _extract_predmet_broj(filename, default_zbirka)
+    if broj:
+        label = get_zbirka_labels().get(default_zbirka, default_zbirka)
+        return {'klasa': 'predmet',
+                'veza_meta': {'tip': 'predmet', 'database_name': default_zbirka,
+                              'inventarni_broj': broj},
+                'u_prijemnom_redu': False,
+                'note': f'Предмет — {label} {broj}'}
+    return {'klasa': 'prijemni_red', 'veza_meta': None,
+            'u_prijemnom_redu': True, 'note': 'Пријемни ред'}
+
+
+def _resolve_import_veza(cur, veza_meta):
+    """Turn a classification's veza_meta into a full `veza` for _insert_veza,
+    creating the field-trip row if needed."""
+    if not veza_meta:
+        return None
+    if veza_meta['tip'] == 'teren':
+        teren_id = _get_or_create_teren(cur, veza_meta['godina'], veza_meta['naziv'])
+        return {'tip': 'teren', 'teren_id': teren_id,
+                'godina': veza_meta['godina'], 'naziv': veza_meta['naziv']}
+    return veza_meta
+
+
+def render_import_form():
+    return render_template(
+        'fototeka_import.html',
+        zbirke=get_zbirka_labels(),
+        root=str(get_import_path()),
+        subdir='',
+        zbirka='mineral',
+        scanned=None,
+    )
+
+
+def handle_import_scan():
+    """Dry run: classify every file under the chosen subdir and show a preview.
+    No files are copied and nothing is written to the database."""
+    subdir = (request.form.get('subdir') or '').strip()
+    zbirka = (request.form.get('zbirka') or 'mineral').strip()
+    if zbirka not in get_zbirka_labels():
+        zbirka = 'mineral'
+    directory = _safe_import_dir(subdir)
+    if directory is None:
+        flash('Неисправна путања за увоз.', 'danger')
+        return redirect(url_for('fototeka.fototeka_import'))
+    if not directory.is_dir():
+        flash('Изабрани директоријум не постоји на дељеном диску.', 'warning')
+        return redirect(url_for('fototeka.fototeka_import'))
+
+    scanned = []
+    for path in _scan_import_files(directory):
+        result = classify_import_filename(path.name, zbirka)
+        scanned.append({'ime': path.name, 'klasa': result['klasa'], 'note': result['note']})
+    return render_template(
+        'fototeka_import.html',
+        zbirke=get_zbirka_labels(),
+        root=str(get_import_path()),
+        subdir=subdir,
+        zbirka=zbirka,
+        scanned=scanned,
+    )
+
+
+def handle_import_confirm():
+    """Intake every file under the chosen subdir using the same pipeline as
+    upload (poreklo='import'), applying the filename-convention link."""
+    subdir = (request.form.get('subdir') or '').strip()
+    zbirka = (request.form.get('zbirka') or 'mineral').strip()
+    if zbirka not in get_zbirka_labels():
+        zbirka = 'mineral'
+    directory = _safe_import_dir(subdir)
+    if directory is None or not directory.is_dir():
+        flash('Неисправна путања за увоз.', 'danger')
+        return redirect(url_for('fototeka.fototeka_import'))
+
+    user_email = _session_email(session)
+    temp_dir = fototeka_jobs.get_media_path() / 'temp'
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    saved, skipped = 0, []
+    for path in _scan_import_files(directory):
+        file_size = path.stat().st_size
+        if file_size <= 0:
+            skipped.append(f'{path.name}: датотека је празна')
+            continue
+        if file_size > MAX_PHOTO_SIZE:
+            skipped.append(f'{path.name}: већа од дозвољених 40 MB')
+            continue
+        result = classify_import_filename(path.name, zbirka)
+        temp_path = temp_dir / f'{uuid.uuid4().hex}_{path.suffix.lstrip(".")}'
+        try:
+            shutil.copy2(path, temp_path)  # copy: the share original stays put
+            with get_postgres_connection() as conn:
+                with conn.cursor() as cur:
+                    veza = _resolve_import_veza(cur, result['veza_meta'])
+                    fotografija_id, reason = _intake_photo_from_path(
+                        cur, temp_path, path.name, file_size, path.suffix.lower(),
+                        autor_email=user_email, opis=None, tags=[],
+                        datum_override=None, veza=veza,
+                        u_prijemnom_redu=result['u_prijemnom_redu'], poreklo='import',
+                    )
+            if fotografija_id:
+                saved += 1
+            elif reason:
+                skipped.append(reason)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+
+    if saved:
+        flash(f'Увезено фотографија: {saved}. Умањени прикази се обрађују у позадини.', 'success')
+    if not saved and not skipped:
+        flash('Нема датотека за увоз у изабраном директоријуму.', 'info')
+    for reason in skipped[:20]:
+        flash(reason, 'warning')
+    return redirect(url_for('fototeka.fototeka_galerija'))

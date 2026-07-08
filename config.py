@@ -129,6 +129,9 @@ class Config:
     # /data/mis/media, excluded from backup).
     FOTOTEKA_ARHIVA_PATH: str = os.environ.get('FOTOTEKA_ARHIVA_PATH', './data/arhiva')
     FOTOTEKA_MEDIA_PATH: str = os.environ.get('FOTOTEKA_MEDIA_PATH', './data/fototeka_media')
+    # Samba share mount that the import screen scans (admin enters a subpath
+    # under this root; the app never reads outside it).
+    FOTOTEKA_IMPORT_PATH: str = os.environ.get('FOTOTEKA_IMPORT_PATH', './data/fototeka_import')
 
     # Redis
     REDIS_URL: str = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
