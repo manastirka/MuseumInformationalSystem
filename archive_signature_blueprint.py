@@ -1198,6 +1198,10 @@ def _pending_approvals_for_session(cur):
                 'created_at': row[5].isoformat() if row[5] else None,
                 'priority': row[6],
                 'approval_role': chain[step].get('label', '') if step < len(chain) else '',
+                'approval_step': step,
+                'chain_labels': [
+                    s.get('label') or s.get('role', '') for s in chain
+                ],
                 'department': row[9],
             }
         )

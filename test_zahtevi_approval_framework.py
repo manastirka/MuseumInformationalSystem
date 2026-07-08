@@ -543,6 +543,28 @@ class ApprovalQueuePageTests(_ClientTestCase):
         self.assertNotIn('Сопствени захтев', page)
         self.assertIn('Центар за одобравање', page)
 
+    def test_queue_shows_chain_progress_per_step(self):
+        """Multi-step chains must be communicated in the queue: an admin sees
+        the same request through both steps, so the row has to say which step
+        is active ('Корак X од Y') and mark completed steps."""
+        rows = [
+            _pending_row(1, 'Тек поднет захтев', GEOLOGY, step=0),
+            _pending_row(2, 'Захтев код директора', GEOLOGY, step=1),
+        ]
+        self.use_db([
+            ("WHERE status IN ('pending', 'in_review')", None, rows),
+        ])
+        self.login(ADMIN)
+        response = self.get('/odobravanje')
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('Корак 1 од 2', page)
+        self.assertIn('Корак 2 од 2', page)
+        # the step-1 row renders the finished šef step with a check mark
+        self.assertIn('bi-check-circle-fill', page)
+        self.assertIn('Шеф одељења', page)
+        self.assertIn('Директор', page)
+
     def test_pending_api_scopes_by_department(self):
         rows = [
             _pending_row(1, 'Захтев Гео', GEOLOGY),

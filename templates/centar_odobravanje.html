@@ -77,7 +77,17 @@
                             <td>{{ req.created_by_name }}</td>
                             <td>{{ req.department or '—' }}</td>
                             <td data-sort="{{ req.created_at or '' }}">{% if req.created_at %}{{ req.created_at[8:10] }}.{{ req.created_at[5:7] }}.{{ req.created_at[:4] }}.{% endif %}</td>
-                            <td class="muted">{{ req.approval_role }}</td>
+                            <td>
+                                <div class="oc-chain" aria-label="Ток одобравања">
+                                    {% for label in req.chain_labels %}
+                                    <span class="oc-chain-step {% if loop.index0 < req.approval_step %}done{% elif loop.index0 == req.approval_step %}current{% endif %}">
+                                        {%- if loop.index0 < req.approval_step %}<i class="bi bi-check-circle-fill"></i> {% elif loop.index0 == req.approval_step %}<i class="bi bi-hourglass-split"></i> {% endif %}{{ label }}
+                                    </span>
+                                    {%- if not loop.last %}<span class="oc-chain-arrow">→</span>{% endif %}
+                                    {% endfor %}
+                                </div>
+                                <div class="muted">Корак {{ req.approval_step + 1 }} од {{ req.chain_labels | length }}</div>
+                            </td>
                             <td>{{ status_badge('na_odobrenju') }}</td>
                             <td class="text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-oc-approve act-approve"

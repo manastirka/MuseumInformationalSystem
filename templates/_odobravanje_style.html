@@ -152,6 +152,20 @@
 }
 .oc-table .muted { color: var(--oc-ink-muted); font-size: 0.82rem; }
 
+/* --- tok odobravanja (Корак X од Y) ------------------------------------------ */
+.oc-chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3em;
+    font-size: 0.8rem;
+    margin-bottom: 0.15rem;
+}
+.oc-chain-step { color: var(--oc-ink-muted); white-space: nowrap; }
+.oc-chain-step.done { color: var(--st-odobreno-fg); }
+.oc-chain-step.current { color: var(--st-cekanje-fg); font-weight: 600; }
+.oc-chain-arrow { color: var(--oc-line); }
+
 /* --- filteri ---------------------------------------------------------------- */
 .oc-filters {
     display: flex;
