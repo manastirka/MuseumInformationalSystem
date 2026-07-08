@@ -2342,6 +2342,66 @@ const MuseumTranslator = (function() {
         }
     }
 
+    // ----- Dynamic content ----------------------------------------------------
+    // The passes above run once. Content injected later by page scripts (AJAX
+    // tables on the Archive pages, the rebuilt reservations calendar) would stay
+    // in the Cyrillic source while the user is on Latin (or English). A single
+    // MutationObserver re-applies the active language to newly added / changed
+    // nodes so every language stays consistent, no matter how the DOM is built.
+    var domObserver = null;
+    var translating = false;  // true while we mutate the DOM ourselves
+
+    function activeLangFn() {
+        if (currentLang === 'sr-Latn') {
+            return function (t) { return transliterateCyrLat(t, false); };
+        }
+        if (currentLang === 'en') return translateToEnglish;
+        return null;  // sr-Cyrl is the baseline — nothing to do
+    }
+
+    function applyActiveLangToNode(node) {
+        var fn = activeLangFn();
+        if (!fn) return;
+        if (node.nodeType === 3) {  // text node
+            var p = node.parentElement;
+            if (!p) return;
+            if (['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'NOSCRIPT'].indexOf(p.tagName) !== -1) return;
+            if (p.closest('[data-no-translate]')) return;
+            if (!node.textContent.trim()) return;
+            var nv = fn(node.textContent);
+            if (nv !== node.textContent) node.textContent = nv;
+        } else if (node.nodeType === 1) {  // element
+            if (node.closest && node.closest('[data-no-translate]')) return;
+            if (currentLang === 'en') storeOriginals(node);
+            applyToTextNodes(node, fn);
+            applyToAttributes(node, fn);
+        }
+    }
+
+    function startDomObserver() {
+        if (domObserver || typeof MutationObserver === 'undefined' || !document.body) return;
+        domObserver = new MutationObserver(function (mutations) {
+            if (translating || currentLang === 'sr-Cyrl') return;
+            translating = true;
+            try {
+                for (var i = 0; i < mutations.length; i++) {
+                    var m = mutations[i];
+                    if (m.type === 'characterData') {
+                        applyActiveLangToNode(m.target);
+                    } else {
+                        for (var j = 0; j < m.addedNodes.length; j++) {
+                            applyActiveLangToNode(m.addedNodes[j]);
+                        }
+                    }
+                }
+            } finally {
+                domObserver.takeRecords();  // drop the records our own writes just made
+                translating = false;
+            }
+        });
+        domObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+
     function saveLangPreference(lang) {
         document.cookie = 'museum_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
         fetch('/set_language', {
@@ -2377,6 +2437,7 @@ const MuseumTranslator = (function() {
         if (lang === currentLang) return;
         var body = document.body;
 
+        translating = true;
         // Restore to Cyrillic baseline first
         if (currentLang === 'sr-Latn') {
             applyToTextNodes(body, function(t) { return transliterateCyrLat(t, true); });
@@ -2397,12 +2458,17 @@ const MuseumTranslator = (function() {
         // sr-Cyrl: already restored above
 
         currentLang = lang;
+        if (domObserver) domObserver.takeRecords();  // ignore our own bulk writes
+        translating = false;
+
         saveLangPreference(lang);
         updateSwitcherUI(lang);
+        startDomObserver();  // keep dynamically-injected content in sync
     }
 
     function init() {
         currentLang = getLangPreference();
+        translating = true;
         if (currentLang === 'sr-Latn') {
             applyToTextNodes(document.body, function(t) { return transliterateCyrLat(t, false); });
             applyToAttributes(document.body, function(t) { return transliterateCyrLat(t, false); });
@@ -2411,7 +2477,9 @@ const MuseumTranslator = (function() {
             applyToTextNodes(document.body, translateToEnglish);
             applyToAttributes(document.body, translateToEnglish);
         }
+        translating = false;
         updateSwitcherUI(currentLang);
+        startDomObserver();  // keep dynamically-injected content in sync
     }
 
     return {

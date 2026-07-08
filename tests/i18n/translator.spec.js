@@ -114,6 +114,66 @@ test.describe('English is soft-removed', () => {
   });
 });
 
+// Content injected by JS after the translator's initial pass (AJAX tables on
+// the Archive pages, the rebuilt reservations calendar) must still follow the
+// active language. Regression: in Latin mode such content stayed Cyrillic.
+async function switchLatnThenMutate(page, mutation) {
+  return page.evaluate(async ({ mutation }) => {
+    Object.defineProperty(Document.prototype, 'cookie', {
+      get() { return ''; }, set() {}, configurable: true,
+    });
+    window.fetch = function () { return Promise.reject(new Error('stubbed')); };
+
+    document.body.innerHTML = '<span id="anchor">Одобрено</span>';
+    MuseumTranslator.switchLanguage('sr-Latn'); // transliterates existing DOM
+
+    // eslint-disable-next-line no-eval
+    eval(mutation); // inject / update DOM the way page scripts do
+
+    await new Promise((r) => setTimeout(r, 40)); // let MutationObserver flush
+    return {
+      anchor: document.getElementById('anchor').textContent,
+      body: document.body.textContent,
+    };
+  }, { mutation });
+}
+
+test.describe('Latin mode transliterates dynamically-injected content', () => {
+  const CYRILLIC = /[Ѐ-ӿ]/;
+
+  test('Arhiva: rows injected after switch are transliterated', async ({ page }) => {
+    await loadTranslator(page);
+    // Mimic an AJAX archive render (Alpine/innerHTML) building Cyrillic rows.
+    const { anchor, body } = await switchLatnThenMutate(page, `
+      var host = document.createElement('table');
+      host.innerHTML =
+        '<tbody><tr><td>Захтев за годишњи одмор</td><td>Одобрено</td>' +
+        '<td>Архивирано</td><td>08.07.2026.</td></tr></tbody>';
+      document.body.appendChild(host);
+    `);
+    expect(anchor).toBe('Odobreno');
+    expect(body).not.toMatch(CYRILLIC);
+    expect(body).toContain('Zahtev za godišnji odmor');
+    expect(body).toContain('Arhivirano');
+  });
+
+  test('Rezervacije: JS-updated calendar text is transliterated', async ({ page }) => {
+    await loadTranslator(page);
+    // Mimic renderCalendar(): textContent set to a Cyrillic month + a label.
+    const { body } = await switchLatnThenMutate(page, `
+      var m = document.createElement('div'); m.id = 'currentMonth';
+      document.body.appendChild(m);
+      m.textContent = 'Јул 2026';
+      var cell = document.createElement('div');
+      document.body.appendChild(cell);
+      cell.textContent = 'Резервисано — Теренско истраживање';
+    `);
+    expect(body).not.toMatch(CYRILLIC);
+    expect(body).toContain('Jul 2026');
+    expect(body).toContain('Rezervisano');
+  });
+});
+
 test.describe('English engine stays dormant (re-enablable)', () => {
   test('dictionary is preserved so English can be restored', async ({ page }) => {
     await loadTranslator(page);
