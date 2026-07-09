@@ -13,13 +13,16 @@ const path = require('path');
 const GALLERY_JS = path.resolve(__dirname, '../../static/js/fototeka_galerija.js');
 
 // The selection CSS shipped in templates/fototeka_galerija.html, kept in sync.
+// The indicator is the checkbox itself (blue check inside the white box, top
+// left over the thumbnail), not a detached corner badge.
 const FIXTURE = `<!doctype html><html><head><meta charset="utf-8"><style>
-  .foto-item { position: relative; }
-  .foto-item.selected { outline: 3px solid rgb(13, 110, 253); outline-offset: -3px; }
-  .foto-item.selected::after {
-    content: "\\2713"; position: absolute; top: 6px; right: 6px;
-    width: 26px; height: 26px; line-height: 26px; text-align: center;
-    background: rgb(13, 110, 253); color: #fff; border-radius: 50%; z-index: 3;
+  .view-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .foto-item { position: relative; min-height: 120px; border: 1px solid #ccc; }
+  .foto-item.selected { outline: 3px solid rgb(45, 106, 79); outline-offset: -3px; }
+  .foto-check { position: absolute; top: 8px; left: 8px; width: 1.2rem; height: 1.2rem; appearance: none; border: 1px solid #888; background: #fff; }
+  .foto-check:checked {
+    border-color: rgb(45, 106, 79);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%232d6a4f' stroke-width='3' d='M6 10l3 3 6-6'/%3e%3c/svg%3e");
   }
 </style></head><body>
   <div class="btn-group">
@@ -66,11 +69,15 @@ test('selecting a thumbnail marks it and updates the counter', async ({ page }) 
   await expect(counter).toHaveText('1');
   await expect(secondItem).not.toHaveClass(/selected/);
 
-  // the checkmark is actually rendered (selection CSS present + visible)
-  const checkmark = await firstItem.evaluate(
-    (el) => getComputedStyle(el, '::after').content
-  );
-  expect(checkmark.replace(/["']/g, '')).toBe('✓');
+  // the check is rendered INSIDE the checkbox at the top-left over the
+  // thumbnail (not a detached corner badge): the checkbox is checked and its
+  // computed background shows the check image.
+  const box = firstItem.locator('input[name="ids"]');
+  await expect(box).toBeChecked();
+  const bgImage = await box.evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(bgImage).toContain('svg');
+  const pos = await box.evaluate((el) => getComputedStyle(el).left);
+  expect(pos).toBe('8px');  // anchored to the checkbox corner, not the right edge
 
   // deselecting clears both the class and the counter
   await firstItem.locator('input[name="ids"]').uncheck();

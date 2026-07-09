@@ -2,116 +2,118 @@
 
 {% block title %}Фототека{% endblock %}
 
-{% block content %}
+{% block head_extra %}
+{% include "_odobravanje_style.html" %}
 <style>
-    .fototeka-header {
-        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
-        color: #fff;
-        border-radius: 18px;
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-    }
-    .fototeka-card {
-        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
-        border: 1px solid rgba(26, 71, 42, 0.12);
-        border-radius: 18px;
-        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .fototeka-status-obrada { background-color: #b98900; }
-    .fototeka-status-greska { background-color: #a33; }
+/* --- Фототека галерија: специфично за приказ (шире дели дизајн Центра за
+   одобравање из _odobravanje_style.html) --- */
 
-    /* --- selection feedback: kept in sync with the checkbox by JS --- */
-    .foto-item { position: relative; }
-    .foto-item.selected { outline: 3px solid #0d6efd; outline-offset: -3px; border-radius: 12px; }
-    .foto-item.selected::after {
-        content: "\2713";
-        position: absolute; top: 6px; right: 6px;
-        width: 26px; height: 26px; line-height: 26px; text-align: center;
-        background: #0d6efd; color: #fff; border-radius: 50%;
-        font-weight: 700; z-index: 3; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-    }
-    .view-grid .foto-item.selected .foto-thumb img { filter: brightness(0.82); }
-    .view-list .foto-item.selected, .view-compact .foto-item.selected { background: rgba(13, 110, 253, 0.08); }
+/* traka iznad galerije: ukupno + prekidač prikaza + selekcija + preuzimanje */
+.fototeka-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.8rem; padding: 0.7rem 1.1rem;
+    border-bottom: 1px solid var(--oc-line-soft); flex-wrap: wrap;
+}
+.fototeka-toolbar .left, .fototeka-toolbar .right { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.fototeka-total { font-size: 0.84rem; color: var(--oc-ink-muted); }
+.fototeka-sel { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.84rem; color: var(--oc-ink-soft); margin: 0; }
 
-    /* --- three view modes; JS toggles the container class --- */
-    .view-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem;
-    }
-    .view-grid .foto-item {
-        position: relative;
-        border: 1px solid rgba(26, 71, 42, 0.15);
-        border-radius: 12px;
-        overflow: hidden;
-        background: #fff;
-    }
-    .view-grid .foto-thumb img { width: 100%; height: 150px; object-fit: cover; display: block; background: #eee; }
-    .view-grid .foto-meta { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
-    .view-grid .foto-check { position: absolute; top: 6px; left: 6px; z-index: 2; background: #fff; }
+/* segmentirani prekidač prikaza (мрежа / листа / компактно) */
+.fototeka-seg { display: inline-flex; border: 1px solid var(--oc-line); border-radius: 8px; overflow: hidden; background: #fff; }
+.fototeka-seg .fototeka-view-btn {
+    border: none; background: #fff; color: var(--oc-ink-muted);
+    padding: 0.35rem 0.7rem; cursor: pointer; font-size: 0.95rem;
+    border-right: 1px solid var(--oc-line); display: inline-flex; align-items: center;
+}
+.fototeka-seg .fototeka-view-btn:last-child { border-right: none; }
+.fototeka-seg .fototeka-view-btn:hover { color: var(--oc-green-800); background: #f7f6f1; }
+.fototeka-seg .fototeka-view-btn.active { background: var(--oc-green-700); color: #fff; }
 
-    .view-list { display: flex; flex-direction: column; gap: 0.5rem; }
-    .view-list .foto-item {
-        display: flex; align-items: center; gap: 0.75rem;
-        border: 1px solid rgba(26, 71, 42, 0.15); border-radius: 10px;
-        padding: 0.5rem; background: #fff;
-    }
-    .view-list .foto-thumb img { width: 90px; height: 68px; object-fit: cover; border-radius: 8px; display: block; background: #eee; }
-    .view-list .foto-meta { flex: 1; min-width: 0; }
+/* --- selekcija (ZELENA, унутар белог квадрата, горе лево над сликом) --- */
+.foto-item { position: relative; }
+.foto-item.selected { outline: 3px solid var(--oc-green-700); outline-offset: -3px; border-radius: 12px; }
+.view-grid .foto-item.selected .foto-thumb img { filter: brightness(0.85); }
+.view-list .foto-item.selected, .view-compact .foto-item.selected { background: var(--oc-green-050); }
+.foto-check {
+    width: 1.2rem; height: 1.2rem; margin: 0; cursor: pointer;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.foto-check:checked {
+    background-color: #fff;
+    border-color: var(--oc-green-700);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%232d6a4f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M6 10l3 3 6-6'/%3e%3c/svg%3e");
+}
 
-    .view-compact { display: flex; flex-direction: column; }
-    .view-compact .foto-item {
-        display: flex; align-items: center; gap: 0.5rem;
-        padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(26, 71, 42, 0.1);
-    }
-    .view-compact .foto-thumb { display: none; }
-    .view-compact .foto-meta { flex: 1; min-width: 0; }
-    .view-compact .foto-sub { display: none; }
+/* --- три режима приказа; JS toggluje класу контејнера --- */
+.view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; padding: 1.1rem; }
+.view-grid .foto-item { border: 1px solid var(--oc-line-soft); border-radius: 12px; overflow: hidden; background: #fff; }
+.view-grid .foto-thumb img { width: 100%; height: 150px; object-fit: cover; display: block; background: #eee; }
+.view-grid .foto-meta { padding: 0.5rem 0.7rem; font-size: 0.83rem; }
+.view-grid .foto-check { position: absolute; top: 8px; left: 8px; z-index: 3; }
+
+.view-list { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.1rem; }
+.view-list .foto-item { display: flex; align-items: center; gap: 0.75rem; border: 1px solid var(--oc-line-soft); border-radius: 10px; padding: 0.5rem; background: #fff; }
+.view-list .foto-thumb img { width: 90px; height: 68px; object-fit: cover; border-radius: 8px; display: block; background: #eee; }
+.view-list .foto-meta { flex: 1; min-width: 0; }
+
+.view-compact { display: flex; flex-direction: column; padding: 0.4rem 1.1rem 1rem; }
+.view-compact .foto-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--oc-line-soft); }
+.view-compact .foto-thumb { display: none; }
+.view-compact .foto-meta { flex: 1; min-width: 0; }
+.view-compact .foto-sub { display: none; }
+
+.foto-meta .foto-title { color: #1f2937; }
+.foto-meta .foto-sub { color: var(--oc-ink-muted); font-size: 0.76rem; }
+
+/* paginacija u kartici */
+.fototeka-pager { padding: 0.9rem 1.1rem; border-top: 1px solid var(--oc-line-soft); }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid py-3">
-    <div class="fototeka-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div class="oc-header">
         <div>
-            <h2 class="mb-1"><i class="bi bi-camera me-2"></i>Фототека</h2>
-            <p class="mb-0">Фотографије музеја — самосталне или везане за предмете, терене, пројекте и изложбе.</p>
+            <h2><i class="bi bi-camera me-2"></i>Фототека</h2>
+            <p>Фотографије музеја — самосталне или везане за предмете, терене, пројекте и изложбе.</p>
         </div>
-        <a class="btn btn-light" href="{{ url_for('fototeka.fototeka_upload') }}">
+        <a class="btn btn-oc-approve" href="{{ url_for('fototeka.fototeka_upload') }}">
             <i class="bi bi-plus-lg me-1"></i>Додај фотографије
         </a>
     </div>
 
-    <div class="fototeka-card">
-        <form method="get" action="{{ url_for('fototeka.fototeka_galerija') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label" for="fototekaQ">Претрага</label>
-                <input class="form-control" id="fototekaQ" name="q" value="{{ q }}"
+    <div class="oc-card">
+        <!-- ФИЛТЕРИ + СОРТИРАЊЕ -->
+        <form method="get" action="{{ url_for('fototeka.fototeka_galerija') }}" class="oc-filters">
+            <div class="flex-grow-1">
+                <label for="fototekaQ">Претрага</label>
+                <input class="form-control form-control-sm" id="fototekaQ" name="q" value="{{ q }}"
                        placeholder="опис или назив датотеке">
             </div>
-            <div class="col-md-2">
-                <label class="form-label" for="fototekaTag">Таг</label>
-                <input class="form-control" id="fototekaTag" name="tag" value="{{ tag }}" list="fototekaTagovi">
+            <div>
+                <label for="fototekaTag">Таг</label>
+                <input class="form-control form-control-sm" id="fototekaTag" name="tag" value="{{ tag }}" list="fototekaTagovi">
                 <datalist id="fototekaTagovi">
                     {% for t in tagovi %}<option value="{{ t }}">{% endfor %}
                 </datalist>
             </div>
-            <div class="col-md-2">
-                <label class="form-label" for="fototekaAutor">Аутор</label>
-                <select class="form-select" id="fototekaAutor" name="autor">
+            <div>
+                <label for="fototekaAutor">Аутор</label>
+                <select class="form-select form-select-sm" id="fototekaAutor" name="autor">
                     <option value="">Сви аутори</option>
                     {% for a in autori %}
                     <option value="{{ a }}" {% if a == autor %}selected{% endif %}>{{ a }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-1">
-                <label class="form-label" for="fototekaGodina">Година</label>
-                <input class="form-control" id="fototekaGodina" name="godina" value="{{ godina }}" inputmode="numeric">
+            <div>
+                <label for="fototekaGodina">Година</label>
+                <input class="form-control form-control-sm" id="fototekaGodina" name="godina" value="{{ godina }}"
+                       inputmode="numeric" style="min-width: 6rem;">
             </div>
-            <div class="col-md-2">
-                <label class="form-label" for="fototekaVeza">Везе</label>
-                <select class="form-select" id="fototekaVeza" name="veza">
+            <div>
+                <label for="fototekaVeza">Везе</label>
+                <select class="form-select form-select-sm" id="fototekaVeza" name="veza">
                     <option value="">Све фотографије</option>
                     <option value="predmet" {% if veza == 'predmet' %}selected{% endif %}>Везане за предмет</option>
                     <option value="teren" {% if veza == 'teren' %}selected{% endif %}>Везане за терен</option>
@@ -121,49 +123,47 @@
                     <option value="prijemni_red" {% if veza == 'prijemni_red' %}selected{% endif %}>Пријемни ред</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label" for="fototekaSort">Сортирање</label>
-                <select class="form-select" id="fototekaSort" name="sort" onchange="this.form.submit()">
+            <div>
+                <label for="fototekaSort">Сортирање</label>
+                <select class="form-select form-select-sm" id="fototekaSort" name="sort" onchange="this.form.submit()">
                     <option value="snimak" {% if sort == 'snimak' %}selected{% endif %}>Датум снимка</option>
                     <option value="upload" {% if sort == 'upload' %}selected{% endif %}>Датум отпремања</option>
                     <option value="naziv" {% if sort == 'naziv' %}selected{% endif %}>Назив</option>
                     <option value="autor" {% if sort == 'autor' %}selected{% endif %}>Аутор</option>
                 </select>
             </div>
-            <div class="col-md-1">
-                <label class="form-label" for="fototekaSmer">Смер</label>
-                <select class="form-select" id="fototekaSmer" name="smer" onchange="this.form.submit()">
+            <div>
+                <label for="fototekaSmer">Смер</label>
+                <select class="form-select form-select-sm" id="fototekaSmer" name="smer" onchange="this.form.submit()" style="min-width: 7.5rem;">
                     <option value="desc" {% if smer == 'desc' %}selected{% endif %}>Опадајуће</option>
                     <option value="asc" {% if smer == 'asc' %}selected{% endif %}>Растуће</option>
                 </select>
             </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-success w-100"><i class="bi bi-funnel"></i></button>
-            </div>
+            <button type="submit" class="btn btn-sm btn-oc-ghost btn-outline-secondary">
+                <i class="bi bi-funnel me-1"></i>Примени
+            </button>
         </form>
-    </div>
 
-    <div class="fototeka-card">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <div class="d-flex align-items-center gap-2">
-                <span class="text-muted">Укупно: {{ total }}</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Начин приказа">
-                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="grid" title="Мрежа"><i class="bi bi-grid-3x3-gap-fill"></i></button>
-                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="list" title="Листа"><i class="bi bi-list-ul"></i></button>
-                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="compact" title="Компактно"><i class="bi bi-text-paragraph"></i></button>
-                </div>
+        <!-- ТРАКА: приказ + селекција + преузимање -->
+        <div class="fototeka-toolbar">
+            <div class="left">
+                <span class="fototeka-total">Укупно: <strong>{{ total }}</strong></span>
+                <span class="fototeka-seg" role="group" aria-label="Начин приказа">
+                    <button type="button" class="fototeka-view-btn" data-view="grid" title="Мрежа"><i class="bi bi-grid-3x3-gap-fill"></i></button>
+                    <button type="button" class="fototeka-view-btn" data-view="list" title="Листа"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="fototeka-view-btn" data-view="compact" title="Компактно"><i class="bi bi-text-paragraph"></i></button>
+                </span>
             </div>
             {% if photos %}
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <div class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" id="fototekaSelectAll">
-                    <label class="form-check-label small" for="fototekaSelectAll">Изабери све</label>
-                </div>
+            <div class="right">
+                <label class="fototeka-sel">
+                    <input class="form-check-input mt-0" type="checkbox" id="fototekaSelectAll"> Изабери све
+                </label>
                 <select class="form-select form-select-sm" name="sloj" form="fototekaZipForm" style="width: auto;">
                     <option value="jpg">JPG преглед</option>
                     <option value="original">Оригинали</option>
                 </select>
-                <button type="submit" class="btn btn-sm btn-success" form="fototekaZipForm">
+                <button type="submit" class="btn btn-sm btn-oc-approve" form="fototekaZipForm">
                     <i class="bi bi-download me-1"></i>Преузми изабрано (<span id="fototekaSelCount">0</span>)
                 </button>
             </div>
@@ -183,25 +183,25 @@
                              alt="{{ photo.opis or photo.original_ime }}" loading="lazy">
                     </a>
                     <div class="foto-meta">
-                        <div class="text-truncate">
+                        <div class="foto-title text-truncate">
                             <a class="text-reset text-decoration-none"
                                href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
                                 {{ photo.opis or photo.original_ime }}
                             </a>
                         </div>
-                        <div class="foto-sub text-muted small">
+                        <div class="foto-sub">
                             {{ photo.datum_snimanja or photo.created_at.date() }} · {{ photo.autor_email }}
                         </div>
                         <div class="foto-sub">
                             {% if photo.status == 'obrada' or photo.status == 'primljena' %}
-                            <span class="badge fototeka-status-obrada">Обрада у току</span>
+                            <span class="status status--na-odobrenju">Обрада у току</span>
                             {% elif photo.status == 'greska' %}
-                            <span class="badge fototeka-status-greska">Грешка у обради</span>
+                            <span class="status status--odbijeno">Грешка у обради</span>
                             {% elif photo.status == 'bez_derivata' %}
-                            <span class="badge bg-secondary">Без прегледа</span>
+                            <span class="status status--arhivirano">Без прегледа</span>
                             {% endif %}
                             {% if photo.u_prijemnom_redu %}
-                            <span class="badge bg-secondary">Пријемни ред</span>
+                            <span class="status status--nacrt">Пријемни ред</span>
                             {% endif %}
                         </div>
                     </div>
@@ -210,11 +210,15 @@
             </div>
         </form>
         {% else %}
-        <p class="mb-0">Нема фотографија за изабране филтере.</p>
+        <div class="oc-empty">
+            <i class="bi bi-camera"></i>
+            <strong>Нема фотографија</strong>
+            за изабране филтере.
+        </div>
         {% endif %}
 
         {% if total_pages > 1 %}
-        <nav class="mt-3" aria-label="Странице">
+        <nav class="fototeka-pager" aria-label="Странице">
             <ul class="pagination mb-0">
                 {% for p in range(1, total_pages + 1) %}
                 {% if p == page %}
