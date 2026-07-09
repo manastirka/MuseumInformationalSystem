@@ -13,12 +13,15 @@ import json
 import os
 import re
 import shutil
+import tempfile
 import uuid
+import zipfile
 from datetime import date, datetime
 from pathlib import Path
 
 from flask import (
     abort,
+    after_this_request,
     flash,
     jsonify,
     redirect,
@@ -364,12 +367,24 @@ def _reference_lists(cur):
 # Gallery
 # ---------------------------------------------------------------------------
 
+GALLERY_SORT_COLUMNS = {
+    'upload': 'f.created_at',
+    'snimak': 'COALESCE(f.datum_snimanja, f.created_at::date)',
+    'naziv': 'lower(f.original_ime)',
+    'autor': 'lower(f.autor_email)',
+}
+
+
 def render_galerija():
     q = (request.args.get('q') or '').strip()
     tag = (request.args.get('tag') or '').strip()
     autor = (request.args.get('autor') or '').strip().lower()
     godina_raw = (request.args.get('godina') or '').strip()
     veza = (request.args.get('veza') or '').strip()
+    sort = (request.args.get('sort') or 'snimak').strip()
+    if sort not in GALLERY_SORT_COLUMNS:
+        sort = 'snimak'
+    smer = 'asc' if (request.args.get('smer') or 'desc').strip().lower() == 'asc' else 'desc'
     try:
         page = max(1, int(request.args.get('strana', '1')))
     except ValueError:
@@ -420,13 +435,15 @@ def render_galerija():
                 params,
             )
             total = _scalar(cur.fetchone(), 'total') or 0
+            # sort/smer come from a fixed whitelist, never interpolated raw.
+            order_sql = f'{GALLERY_SORT_COLUMNS[sort]} {smer.upper()} NULLS LAST, f.id DESC'
             cur.execute(
                 f"""
                 SELECT f.id, f.original_ime, f.opis, f.status, f.autor_email,
                        f.datum_snimanja, f.u_prijemnom_redu, f.created_at
                 FROM fotografije f
                 WHERE {where_sql}
-                ORDER BY COALESCE(f.datum_snimanja, f.created_at::date) DESC, f.id DESC
+                ORDER BY {order_sql}
                 LIMIT %s OFFSET %s
                 """,
                 params + [GALLERY_PAGE_SIZE, offset],
@@ -460,6 +477,7 @@ def render_galerija():
         page=page,
         total_pages=total_pages,
         q=q, tag=tag, autor=autor, godina=godina_raw, veza=veza,
+        sort=sort, smer=smer,
         autori=autori,
         tagovi=tagovi,
         tereni=tereni,
@@ -882,6 +900,10 @@ def render_fotografija(fotografija_id):
     zbirke = get_zbirka_labels()
     for veza in veze_predmeti:
         veza['zbirka_label'] = zbirke.get(veza['database_name'], veza['database_name'])
+    # Only offer the original download when the archival file genuinely exists;
+    # label it "RAW" only for actual camera RAW originals.
+    ima_original = _archival_original_path(photo) is not None
+    original_je_raw = (photo.get('ekstenzija') or '').lower() in ARCHIVAL_RAW_EXTENSIONS
     return render_template(
         'fototeka_fotografija.html',
         photo=photo,
@@ -898,6 +920,8 @@ def render_fotografija(fotografija_id):
         zbirke=zbirke,
         status_labels=PHOTO_STATUS_LABELS,
         can_edit=can_edit_photo(session, photo),
+        ima_original=ima_original,
+        original_je_raw=original_je_raw,
     )
 
 
@@ -1050,6 +1074,31 @@ def _send_placeholder(kind):
     abort(404)
 
 
+def _archival_original_path(photo):
+    """Resolved path to the archival original IF it really exists under the
+    archive root, else None. Never assume the file is there — check disk."""
+    if not photo or not photo.get('raw_putanja'):
+        return None
+    arhiva_root = fototeka_jobs.get_arhiva_path().resolve()
+    full_path = (arhiva_root / photo['raw_putanja']).resolve()
+    if not str(full_path).startswith(str(arhiva_root) + os.sep):
+        return None
+    return full_path if full_path.is_file() else None
+
+
+def _derivative_path(photo, kind):
+    """Resolved path to a derivative IF the photo is ready and the file exists,
+    else None."""
+    if not photo or photo.get('status') != 'spremna':
+        return None
+    media_root = fototeka_jobs.get_media_path().resolve()
+    full_path = (media_root / fototeka_jobs.derivative_relative_path(
+        (photo['sha256'] or '').strip(), kind)).resolve()
+    if not str(full_path).startswith(str(media_root) + os.sep):
+        return None
+    return full_path if full_path.is_file() else None
+
+
 def serve_derivat(fotografija_id, kind):
     if kind not in ('jpg', 'thumb'):
         abort(404)
@@ -1076,16 +1125,107 @@ def serve_raw(fotografija_id):
             photo = _fetch_photo(cur, fotografija_id)
     if not photo:
         abort(404)
-    arhiva_root = fototeka_jobs.get_arhiva_path().resolve()
-    full_path = (arhiva_root / photo['raw_putanja']).resolve()
-    if not str(full_path).startswith(str(arhiva_root) + os.sep):
-        abort(404)
-    if not full_path.is_file():
+    full_path = _archival_original_path(photo)
+    if full_path is None:
         abort(404)
     return send_file(
         full_path,
         as_attachment=True,
         download_name=photo['original_ime'] or full_path.name,
+        max_age=0,
+    )
+
+
+DOWNLOAD_ZIP_MAX = 300
+
+
+def _unique_zip_name(base, photo_id, used):
+    base = Path(base or '').name or f'foto_{photo_id}'
+    if base not in used:
+        used.add(base)
+        return base
+    name = f'{Path(base).stem}_{photo_id}{Path(base).suffix}'
+    used.add(name)
+    return name
+
+
+def handle_preuzmi_zip():
+    """Stream a ZIP of the selected photos, either the derivative JPG (default)
+    or the archival original. The archive is built to a temp file on disk (not
+    memory), so large originals never blow up RAM."""
+    raw_ids = request.form.getlist('ids') or (request.form.get('ids') or '').split(',')
+    ids, seen = [], set()
+    for value in raw_ids:
+        value = str(value).strip()
+        if value.isdigit() and int(value) not in seen:
+            seen.add(int(value))
+            ids.append(int(value))
+    if not ids:
+        flash('Изаберите бар једну фотографију.', 'warning')
+        return redirect(url_for('fototeka.fototeka_galerija'))
+    capped = len(ids) > DOWNLOAD_ZIP_MAX
+    ids = ids[:DOWNLOAD_ZIP_MAX]
+    sloj = 'original' if (request.form.get('sloj') or 'jpg').strip() == 'original' else 'jpg'
+
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, sha256, raw_putanja, original_ime, ekstenzija, status
+                FROM fotografije
+                WHERE obrisana = FALSE AND id = ANY(%s)
+                """,
+                (ids,),
+            )
+            photos = _rows_to_dicts(cur, cur.fetchall())
+
+    tmp = tempfile.NamedTemporaryFile(prefix='fototeka_', suffix='.zip', delete=False)
+    tmp_path = Path(tmp.name)
+    tmp.close()
+    used_names, added = set(), 0
+    try:
+        with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_STORED, allowZip64=True) as zf:
+            for photo in photos:
+                if sloj == 'original':
+                    src = _archival_original_path(photo)
+                    base = photo['original_ime'] or f"foto_{photo['id']}{photo.get('ekstenzija') or ''}"
+                else:
+                    src = _derivative_path(photo, 'jpg')
+                    if src is not None:
+                        base = f"{Path(photo['original_ime'] or ('foto_' + str(photo['id']))).stem}.jpg"
+                    else:
+                        # no derivative (RAW/bez_derivata) — fall back to the original
+                        src = _archival_original_path(photo)
+                        base = photo['original_ime'] or f"foto_{photo['id']}{photo.get('ekstenzija') or ''}"
+                if src is None:
+                    continue
+                zf.write(src, arcname=_unique_zip_name(base, photo['id'], used_names))
+                added += 1
+            if capped:
+                zf.writestr(
+                    'NAPOMENA.txt',
+                    f'Изабрано је више од {DOWNLOAD_ZIP_MAX} фотографија; '
+                    f'преузето је првих {DOWNLOAD_ZIP_MAX}.\n'.encode('utf-8'),
+                )
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+    if added == 0:
+        tmp_path.unlink(missing_ok=True)
+        flash('Изабране фотографије немају датотеке за преузимање.', 'warning')
+        return redirect(url_for('fototeka.fototeka_galerija'))
+
+    @after_this_request
+    def _cleanup(response):
+        tmp_path.unlink(missing_ok=True)
+        return response
+
+    return send_file(
+        tmp_path,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='fototeka.zip',
         max_age=0,
     )
 

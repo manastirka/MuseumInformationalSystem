@@ -159,6 +159,14 @@ def fototeka_raw(fotografija_id):
     return fototeka_views.serve_raw(fotografija_id)
 
 
+@fototeka_bp.route('/fototeka/preuzmi-zip', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_preuzmi_zip():
+    """Download the selected photos as a ZIP (JPG derivative or original)."""
+    return fototeka_views.handle_preuzmi_zip()
+
+
 @fototeka_bp.route('/fototeka/api/tagovi')
 @login_required
 @module_access_required('fototeka')

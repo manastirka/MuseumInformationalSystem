@@ -19,31 +19,43 @@
         padding: 1.5rem;
         margin-bottom: 1.5rem;
     }
-    .fototeka-grid {
+    .fototeka-status-obrada { background-color: #b98900; }
+    .fototeka-status-greska { background-color: #a33; }
+
+    /* --- three view modes; JS toggles the container class --- */
+    .view-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 1rem;
     }
-    .fototeka-thumb-card {
+    .view-grid .foto-item {
+        position: relative;
         border: 1px solid rgba(26, 71, 42, 0.15);
         border-radius: 12px;
         overflow: hidden;
         background: #fff;
-        display: block;
-        color: inherit;
-        text-decoration: none;
     }
-    .fototeka-thumb-card:hover { box-shadow: 0 8px 20px rgba(24, 43, 29, 0.18); }
-    .fototeka-thumb-card img {
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-        display: block;
-        background: #eee;
+    .view-grid .foto-thumb img { width: 100%; height: 150px; object-fit: cover; display: block; background: #eee; }
+    .view-grid .foto-meta { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+    .view-grid .foto-check { position: absolute; top: 6px; left: 6px; z-index: 2; background: #fff; }
+
+    .view-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .view-list .foto-item {
+        display: flex; align-items: center; gap: 0.75rem;
+        border: 1px solid rgba(26, 71, 42, 0.15); border-radius: 10px;
+        padding: 0.5rem; background: #fff;
     }
-    .fototeka-thumb-meta { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
-    .fototeka-status-obrada { background-color: #b98900; }
-    .fototeka-status-greska { background-color: #a33; }
+    .view-list .foto-thumb img { width: 90px; height: 68px; object-fit: cover; border-radius: 8px; display: block; background: #eee; }
+    .view-list .foto-meta { flex: 1; min-width: 0; }
+
+    .view-compact { display: flex; flex-direction: column; }
+    .view-compact .foto-item {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(26, 71, 42, 0.1);
+    }
+    .view-compact .foto-thumb { display: none; }
+    .view-compact .foto-meta { flex: 1; min-width: 0; }
+    .view-compact .foto-sub { display: none; }
 </style>
 
 <div class="container-fluid py-3">
@@ -71,7 +83,7 @@
                     {% for t in tagovi %}<option value="{{ t }}">{% endfor %}
                 </datalist>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label" for="fototekaAutor">Аутор</label>
                 <select class="form-select" id="fototekaAutor" name="autor">
                     <option value="">Сви аутори</option>
@@ -82,8 +94,7 @@
             </div>
             <div class="col-md-1">
                 <label class="form-label" for="fototekaGodina">Година</label>
-                <input class="form-control" id="fototekaGodina" name="godina" value="{{ godina }}"
-                       inputmode="numeric">
+                <input class="form-control" id="fototekaGodina" name="godina" value="{{ godina }}" inputmode="numeric">
             </div>
             <div class="col-md-2">
                 <label class="form-label" for="fototekaVeza">Везе</label>
@@ -97,6 +108,22 @@
                     <option value="prijemni_red" {% if veza == 'prijemni_red' %}selected{% endif %}>Пријемни ред</option>
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label" for="fototekaSort">Сортирање</label>
+                <select class="form-select" id="fototekaSort" name="sort" onchange="this.form.submit()">
+                    <option value="snimak" {% if sort == 'snimak' %}selected{% endif %}>Датум снимка</option>
+                    <option value="upload" {% if sort == 'upload' %}selected{% endif %}>Датум отпремања</option>
+                    <option value="naziv" {% if sort == 'naziv' %}selected{% endif %}>Назив</option>
+                    <option value="autor" {% if sort == 'autor' %}selected{% endif %}>Аутор</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" for="fototekaSmer">Смер</label>
+                <select class="form-select" id="fototekaSmer" name="smer" onchange="this.form.submit()">
+                    <option value="desc" {% if smer == 'desc' %}selected{% endif %}>Опадајуће</option>
+                    <option value="asc" {% if smer == 'asc' %}selected{% endif %}>Растуће</option>
+                </select>
+            </div>
             <div class="col-md-1">
                 <button type="submit" class="btn btn-success w-100"><i class="bi bi-funnel"></i></button>
             </div>
@@ -104,31 +131,71 @@
     </div>
 
     <div class="fototeka-card">
-        <p class="text-muted mb-3">Укупно: {{ total }}</p>
-        {% if photos %}
-        <div class="fototeka-grid">
-            {% for photo in photos %}
-            <a class="fototeka-thumb-card"
-               href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
-                <img src="{{ url_for('fototeka.fototeka_media', fotografija_id=photo.id, kind='thumb') }}"
-                     alt="{{ photo.opis or photo.original_ime }}" loading="lazy">
-                <div class="fototeka-thumb-meta">
-                    <div class="text-truncate">{{ photo.opis or photo.original_ime }}</div>
-                    <div class="text-muted small">
-                        {{ photo.datum_snimanja or photo.created_at.date() }}
-                    </div>
-                    {% if photo.status == 'obrada' or photo.status == 'primljena' %}
-                    <span class="badge fototeka-status-obrada">Обрада у току</span>
-                    {% elif photo.status == 'greska' %}
-                    <span class="badge fototeka-status-greska">Грешка у обради</span>
-                    {% endif %}
-                    {% if photo.u_prijemnom_redu %}
-                    <span class="badge bg-secondary">Пријемни ред</span>
-                    {% endif %}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted">Укупно: {{ total }}</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Начин приказа">
+                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="grid" title="Мрежа"><i class="bi bi-grid-3x3-gap-fill"></i></button>
+                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="list" title="Листа"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="btn btn-outline-secondary fototeka-view-btn" data-view="compact" title="Компактно"><i class="bi bi-text-paragraph"></i></button>
                 </div>
-            </a>
-            {% endfor %}
+            </div>
+            {% if photos %}
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="fototekaSelectAll">
+                    <label class="form-check-label small" for="fototekaSelectAll">Изабери све</label>
+                </div>
+                <select class="form-select form-select-sm" name="sloj" form="fototekaZipForm" style="width: auto;">
+                    <option value="jpg">JPG преглед</option>
+                    <option value="original">Оригинали</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-success" form="fototekaZipForm">
+                    <i class="bi bi-download me-1"></i>Преузми изабрано (<span id="fototekaSelCount">0</span>)
+                </button>
+            </div>
+            {% endif %}
         </div>
+
+        {% if photos %}
+        <form id="fototekaZipForm" method="post" action="{{ url_for('fototeka.fototeka_preuzmi_zip') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div id="fototekaItems" class="view-grid">
+                {% for photo in photos %}
+                <div class="foto-item">
+                    <input class="foto-check form-check-input" type="checkbox" name="ids" value="{{ photo.id }}"
+                           aria-label="Изабери фотографију {{ photo.id }}">
+                    <a class="foto-thumb" href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
+                        <img src="{{ url_for('fototeka.fototeka_media', fotografija_id=photo.id, kind='thumb') }}"
+                             alt="{{ photo.opis or photo.original_ime }}" loading="lazy">
+                    </a>
+                    <div class="foto-meta">
+                        <div class="text-truncate">
+                            <a class="text-reset text-decoration-none"
+                               href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
+                                {{ photo.opis or photo.original_ime }}
+                            </a>
+                        </div>
+                        <div class="foto-sub text-muted small">
+                            {{ photo.datum_snimanja or photo.created_at.date() }} · {{ photo.autor_email }}
+                        </div>
+                        <div class="foto-sub">
+                            {% if photo.status == 'obrada' or photo.status == 'primljena' %}
+                            <span class="badge fototeka-status-obrada">Обрада у току</span>
+                            {% elif photo.status == 'greska' %}
+                            <span class="badge fototeka-status-greska">Грешка у обради</span>
+                            {% elif photo.status == 'bez_derivata' %}
+                            <span class="badge bg-secondary">Без прегледа</span>
+                            {% endif %}
+                            {% if photo.u_prijemnom_redu %}
+                            <span class="badge bg-secondary">Пријемни ред</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
         {% else %}
         <p class="mb-0">Нема фотографија за изабране филтере.</p>
         {% endif %}
@@ -142,7 +209,7 @@
                 {% elif p <= 2 or p > total_pages - 2 or (p - page)|abs <= 2 %}
                 <li class="page-item">
                     <a class="page-link"
-                       href="{{ url_for('fototeka.fototeka_galerija', q=q, tag=tag, autor=autor, godina=godina, veza=veza, strana=p) }}">{{ p }}</a>
+                       href="{{ url_for('fototeka.fototeka_galerija', q=q, tag=tag, autor=autor, godina=godina, veza=veza, sort=sort, smer=smer, strana=p) }}">{{ p }}</a>
                 </li>
                 {% elif (p - page)|abs == 3 %}
                 <li class="page-item disabled"><span class="page-link">…</span></li>
@@ -153,4 +220,5 @@
         {% endif %}
     </div>
 </div>
+<script src="{{ url_for('static', filename='js/fototeka_galerija.js') }}"></script>
 {% endblock %}

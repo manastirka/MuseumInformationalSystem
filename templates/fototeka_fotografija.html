@@ -65,12 +65,15 @@
                     </button>
                 </form>
                 {% endif %}
+                {% if ima_original %}
                 <div class="mt-3">
                     <a class="btn btn-outline-success"
                        href="{{ url_for('fototeka.fototeka_raw', fotografija_id=photo.id) }}">
-                        <i class="bi bi-download me-1"></i>Преузми оригинал (RAW)
+                        <i class="bi bi-download me-1"></i>
+                        {% if original_je_raw %}Преузми RAW оригинал{% else %}Преузми оригинал{% endif %}
                     </a>
                 </div>
+                {% endif %}
             </div>
 
             <div class="fototeka-card">
