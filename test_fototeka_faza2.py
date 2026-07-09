@@ -231,8 +231,9 @@ class ReceptionQueueTests(_RouteTestCase):
         )
         self.assertEqual(response.status_code, 302)
         insert = [p for sql, p in cursor.executed if 'INSERT INTO fotografije' in sql][0]
-        # last positional param is u_prijemnom_redu -> True
-        self.assertIs(insert[-1], True)
+        # u_prijemnom_redu is the second-to-last param (vidljivost is last)
+        self.assertIs(insert[-2], True)
+        self.assertEqual(insert[-1], 'javno')
 
     def test_reception_queue_screen_lists_flagged(self):
         self.use_db({'u_prijemnom_redu = TRUE': []})

@@ -110,6 +110,40 @@ def can_edit_photo(session_data, photo) -> bool:
     return bool(user_email) and user_email == autor
 
 
+def can_view_photo(session_data, photo) -> bool:
+    """Access control: 'javno' photos are visible to every logged-in employee;
+    'privatno' only to the author, plus admins and the director (supervision).
+    A missing value is treated as 'javno' (legacy-safe)."""
+    if (photo.get('vidljivost') or 'javno') == 'javno':
+        return True
+    if _session_is_admin(session_data) or _session_is_director(session_data):
+        return True
+    autor = (photo.get('autor_email') or '').strip().lower()
+    user_email = _session_email(session_data)
+    return bool(user_email) and user_email == autor
+
+
+def can_change_visibility(session_data, photo) -> bool:
+    """Only the author and admins/the director may change a photo's visibility
+    (department heads may edit metadata but not flip visibility)."""
+    if _session_is_admin(session_data) or _session_is_director(session_data):
+        return True
+    autor = (photo.get('autor_email') or '').strip().lower()
+    user_email = _session_email(session_data)
+    return bool(user_email) and user_email == autor
+
+
+def _visibility_filter(session_data, alias='f'):
+    """Return (sql_clause, params) restricting a list query to photos the
+    caller may see. Admins/the director see everything (no restriction)."""
+    if _session_is_admin(session_data) or _session_is_director(session_data):
+        return None, []
+    return (
+        f"({alias}.vidljivost = %s OR LOWER({alias}.autor_email) = %s)",
+        ['javno', _session_email(session_data)],
+    )
+
+
 def _row_to_dict(cursor, row):
     if row is None:
         return None
@@ -136,6 +170,12 @@ def _parse_tags(raw: str):
         if tag and tag.casefold() not in {t.casefold() for t in tags}:
             tags.append(tag)
     return tags[:30]
+
+
+def _parse_vidljivost(form):
+    """Read the visibility choice; anything but an explicit 'privatno' is
+    treated as the default 'javno'."""
+    return 'privatno' if (form.get('vidljivost') or 'javno').strip() == 'privatno' else 'javno'
 
 
 def _parse_datum(raw: str):
@@ -337,7 +377,7 @@ def _fetch_photo(cur, fotografija_id, include_deleted=False):
         SELECT id, sha256, raw_putanja, original_ime, ekstenzija,
                velicina_bajtova, width, height, autor_email, datum_snimanja,
                exif, opis, poreklo, status, u_prijemnom_redu, obrisana,
-               fixity_proveren_at, fixity_ok, created_at, updated_at
+               vidljivost, fixity_proveren_at, fixity_ok, created_at, updated_at
         FROM fotografije WHERE id = %s
         """,
         (fotografija_id,),
@@ -425,6 +465,12 @@ def render_galerija():
     elif veza == 'prijemni_red':
         filters.append('f.u_prijemnom_redu = TRUE')
 
+    # server-side access control: hide others' private photos
+    vis_clause, vis_params = _visibility_filter(session, 'f')
+    if vis_clause:
+        filters.append(vis_clause)
+        params.extend(vis_params)
+
     where_sql = ' AND '.join(filters)
     offset = (page - 1) * GALLERY_PAGE_SIZE
 
@@ -496,16 +542,19 @@ def render_prijemni_red():
     """Photos flagged for curation (u_prijemnom_redu) — oldest first, so the
     backlog is worked front to back. A photo leaves the queue as soon as a
     link is added (handle_dodaj_vezu) or it is cleared here."""
+    vis_clause, vis_params = _visibility_filter(session, 'fotografije')
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT id, original_ime, opis, status, autor_email,
                        datum_snimanja, created_at
                 FROM fotografije
                 WHERE obrisana = FALSE AND u_prijemnom_redu = TRUE
+                  {('AND ' + vis_clause) if vis_clause else ''}
                 ORDER BY created_at ASC, id ASC
                 """,
+                vis_params,
             )
             photos = _rows_to_dicts(cur, cur.fetchall())
     return render_template(
@@ -565,7 +614,7 @@ def render_upload_form():
 
 def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
                             autor_email, opis, tags, datum_override, veza,
-                            u_prijemnom_redu, poreklo):
+                            u_prijemnom_redu, poreklo, vidljivost='javno'):
     """Core intake shared by upload and Samba import. Validates the image,
     dedups by sha256, places the RAW original by origin, inserts the row with
     tags + link and enqueues the derivative job. Moves temp_path into the
@@ -618,14 +667,14 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         INSERT INTO fotografije
             (sha256, raw_putanja, original_ime, ekstenzija,
              velicina_bajtova, width, height, autor_email,
-             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu, vidljivost)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
         """,
         (sha256, raw_rel, original_ime, ext, file_size,
          exif_info['width'], exif_info['height'], autor_email,
          datum_snimanja, json.dumps(exif_info['exif']), opis, poreklo,
-         u_prijemnom_redu),
+         u_prijemnom_redu, vidljivost),
     )
     fotografija_id = _scalar(cur.fetchone(), 'id')
     _replace_tags(cur, fotografija_id, tags)
@@ -690,6 +739,7 @@ def handle_upload():
                         autor_email=user_email, opis=opis, tags=tags,
                         datum_override=datum_override, veza=veza,
                         u_prijemnom_redu=u_prijemnom_redu, poreklo='upload',
+                        vidljivost=_parse_vidljivost(request.form),
                     )
             if fotografija_id:
                 saved.append(fotografija_id)
@@ -843,6 +893,8 @@ def render_fotografija(fotografija_id):
             photo = _fetch_photo(cur, fotografija_id)
             if not photo:
                 abort(404)
+            if not can_view_photo(session, photo):
+                abort(403)
             cur.execute(
                 """
                 SELECT tag FROM fotografija_tagovi
@@ -920,6 +972,7 @@ def render_fotografija(fotografija_id):
         zbirke=zbirke,
         status_labels=PHOTO_STATUS_LABELS,
         can_edit=can_edit_photo(session, photo),
+        moze_menjati_vidljivost=can_change_visibility(session, photo),
         ima_original=ima_original,
         original_je_raw=original_je_raw,
     )
@@ -946,6 +999,28 @@ def handle_azuriraj(fotografija_id):
             )
             _replace_tags(cur, fotografija_id, _parse_tags(request.form.get('tagovi') or ''))
     flash('Подаци о фотографији су сачувани.', 'success')
+    return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
+
+
+def handle_promeni_vidljivost(fotografija_id):
+    """Flip a photo between 'javno' and 'privatno'. The author and admins/the
+    director may do this (department heads may not)."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            photo = _fetch_photo(cur, fotografija_id)
+            if not photo:
+                abort(404)
+            if not can_change_visibility(session, photo):
+                abort(403)
+            vidljivost = _parse_vidljivost(request.form)
+            cur.execute(
+                """
+                UPDATE fotografije SET vidljivost = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (vidljivost, fotografija_id),
+            )
+    flash('Видљивост фотографије је ажурирана.', 'success')
     return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
 
 
@@ -1107,6 +1182,10 @@ def serve_derivat(fotografija_id, kind):
             photo = _fetch_photo(cur, fotografija_id)
     if not photo:
         abort(404)
+    # server-side access control on the file route itself — a direct URL to
+    # someone else's private photo is 403, not merely hidden in the UI
+    if not can_view_photo(session, photo):
+        abort(403)
     if photo['status'] != 'spremna':
         return _send_placeholder(kind)
     media_root = fototeka_jobs.get_media_path().resolve()
@@ -1125,6 +1204,8 @@ def serve_raw(fotografija_id):
             photo = _fetch_photo(cur, fotografija_id)
     if not photo:
         abort(404)
+    if not can_view_photo(session, photo):
+        abort(403)
     full_path = _archival_original_path(photo)
     if full_path is None:
         abort(404)
@@ -1171,13 +1252,21 @@ def handle_preuzmi_zip():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, sha256, raw_putanja, original_ime, ekstenzija, status
+                SELECT id, sha256, raw_putanja, original_ime, ekstenzija, status,
+                       vidljivost, autor_email
                 FROM fotografije
                 WHERE obrisana = FALSE AND id = ANY(%s)
                 """,
                 (ids,),
             )
             photos = _rows_to_dicts(cur, cur.fetchall())
+
+    # server-side access control: refuse the whole request if any selected
+    # photo is another user's private one (a forged/direct request, since the
+    # UI never shows those to this user)
+    for photo in photos:
+        if not can_view_photo(session, photo):
+            abort(403)
 
     tmp = tempfile.NamedTemporaryFile(prefix='fototeka_', suffix='.zip', delete=False)
     tmp_path = Path(tmp.name)
@@ -1348,6 +1437,7 @@ def api_entitet_fotografije():
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
     table, cond, params = _entity_photo_filter(entity)
+    vis_clause, vis_params = _visibility_filter(session, 'f')
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -1356,9 +1446,10 @@ def api_entitet_fotografije():
                 FROM fotografije f
                 JOIN {table} ON {table}.fotografija_id = f.id
                 WHERE f.obrisana = FALSE AND {cond}
+                  {('AND ' + vis_clause) if vis_clause else ''}
                 ORDER BY f.id DESC
                 """,
-                params,
+                list(params) + vis_params,
             )
             rows = _rows_to_dicts(cur, cur.fetchall())
     return jsonify({'ok': True, 'fotografije': [_photo_card(r) for r in rows]})
@@ -1389,6 +1480,10 @@ def api_entitet_pretraga():
             'WHERE t.fotografija_id = f.id AND t.tag ILIKE %s))'
         )
         params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
+    vis_clause, vis_params = _visibility_filter(session, 'f')
+    if vis_clause:
+        filters.append(vis_clause)
+        params.extend(vis_params)
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

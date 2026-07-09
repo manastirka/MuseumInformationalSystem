@@ -84,6 +84,14 @@ def fototeka_dodaj_vezu(fotografija_id):
     return fototeka_views.handle_dodaj_vezu(fotografija_id)
 
 
+@fototeka_bp.route('/fototeka/<int:fotografija_id>/vidljivost', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_vidljivost(fotografija_id):
+    """Change visibility (javno/privatno); author + admin/director only."""
+    return fototeka_views.handle_promeni_vidljivost(fotografija_id)
+
+
 @fototeka_bp.route(
     '/fototeka/<int:fotografija_id>/veza/<tip>/<int:veza_id>/ukloni',
     methods=['POST'],
