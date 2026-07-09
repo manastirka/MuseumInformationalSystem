@@ -22,6 +22,19 @@
     .fototeka-status-obrada { background-color: #b98900; }
     .fototeka-status-greska { background-color: #a33; }
 
+    /* --- selection feedback: kept in sync with the checkbox by JS --- */
+    .foto-item { position: relative; }
+    .foto-item.selected { outline: 3px solid #0d6efd; outline-offset: -3px; border-radius: 12px; }
+    .foto-item.selected::after {
+        content: "\2713";
+        position: absolute; top: 6px; right: 6px;
+        width: 26px; height: 26px; line-height: 26px; text-align: center;
+        background: #0d6efd; color: #fff; border-radius: 50%;
+        font-weight: 700; z-index: 3; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    }
+    .view-grid .foto-item.selected .foto-thumb img { filter: brightness(0.82); }
+    .view-list .foto-item.selected, .view-compact .foto-item.selected { background: rgba(13, 110, 253, 0.08); }
+
     /* --- three view modes; JS toggles the container class --- */
     .view-grid {
         display: grid;

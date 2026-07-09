@@ -38,7 +38,14 @@
         var boxes = Array.prototype.slice.call(form.querySelectorAll('input[name=ids]'));
 
         function refresh() {
-            var n = boxes.filter(function (b) { return b.checked; }).length;
+            var n = 0;
+            boxes.forEach(function (b) {
+                // keep the visual state (blue check + highlight) in lock-step
+                // with the checkbox and the counter
+                var item = b.closest('.foto-item');
+                if (item) { item.classList.toggle('selected', b.checked); }
+                if (b.checked) { n += 1; }
+            });
             if (count) { count.textContent = String(n); }
             if (selectAll) {
                 selectAll.checked = n > 0 && n === boxes.length;
