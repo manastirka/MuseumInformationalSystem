@@ -29,14 +29,14 @@
     </div>
 
     <div class="fototeka-card">
-        <form method="post" action="{{ url_for('fototeka.fototeka_upload_post') }}"
+        <form id="fototekaUploadForm" method="post" action="{{ url_for('fototeka.fototeka_upload_post') }}"
               enctype="multipart/form-data" class="row g-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="col-12">
                 <label class="form-label" for="fototekaFajlovi">Фотографије (може више одједном)</label>
                 <input class="form-control" type="file" id="fototekaFajlovi" name="files" multiple required
-                       accept=".jpg,.jpeg,.png,.tif,.tiff,.webp,.bmp">
-                <div class="form-text">Дозвољени формати: JPG, PNG, TIFF, WebP, BMP — највише 40 MB по датотеци.</div>
+                       accept=".jpg,.jpeg,.png,.tif,.tiff,.webp,.bmp,.gif,.cr2,.cr3,.nef,.arw,.dng,.raf,.orf,.rw2,.pef,.srw">
+                <div class="form-text">JPG, PNG, TIFF, WebP, BMP и камера RAW (CR2/NEF/ARW/DNG…) — до 200 MB по датотеци. Датотеке се шаљу једна по једна.</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="fototekaOpis">Опис</label>
@@ -70,8 +70,15 @@
                 </button>
                 <a class="btn btn-outline-secondary" href="{{ url_for('fototeka.fototeka_galerija') }}">Назад на Фототеку</a>
             </div>
+            <div class="col-12" id="fototekaUploadProgress" hidden>
+                <div class="progress" role="progressbar" aria-label="Напредак отпремања">
+                    <div class="progress-bar bg-success" id="fototekaUploadBar" style="width: 0%;">0</div>
+                </div>
+                <ul class="list-unstyled mt-2 mb-0" id="fototekaUploadReport"></ul>
+            </div>
         </form>
     </div>
 </div>
 <script src="{{ url_for('static', filename='js/fototeka.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fototeka_upload.js') }}"></script>
 {% endblock %}

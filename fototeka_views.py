@@ -35,15 +35,29 @@ from collection_registry import iter_collection_list_entries
 from postgres_service import get_postgres_connection
 
 
-ALLOWED_PHOTO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp'}
+# Formats PIL can open — validated and EXIF-read at intake.
+PIL_DECODABLE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp', '.gif'}
 
-MAX_PHOTO_SIZE = 40 * 1024 * 1024  # 40MB, under the global MAX_CONTENT_LENGTH
+# Camera RAW / archival originals accepted as-is (PIL/libvips can't open them,
+# so no intake validation and no auto-derivative — see fototeka_jobs).
+ARCHIVAL_RAW_EXTENSIONS = {
+    '.cr2', '.cr3', '.nef', '.nrw', '.arw', '.srf', '.sr2', '.dng', '.raf',
+    '.orf', '.rw2', '.pef', '.srw', '.raw', '.3fr', '.iiq', '.rwl', '.x3f',
+}
+
+ALLOWED_PHOTO_EXTENSIONS = PIL_DECODABLE_EXTENSIONS | ARCHIVAL_RAW_EXTENSIONS
+
+# Preview formats accepted when attaching a derivative to a 'bez_derivata' photo.
+PREVIEW_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
+
+MAX_PHOTO_SIZE = 200 * 1024 * 1024  # 200MB — RAW files are large; matches nginx client_max_body_size
 
 PHOTO_STATUS_LABELS = {
     'primljena': 'Примљена',
     'obrada': 'Обрада у току',
     'spremna': 'Спремна',
     'greska': 'Грешка у обради',
+    'bez_derivata': 'Без умањеног приказа',
 }
 
 VEZA_TIP_LABELS = {
@@ -234,13 +248,26 @@ def _parse_veza_form(form, cur):
         return {'tip': 'projekat', 'projekat_id': _scalar(cur.fetchone(), 'id')}
     if tip == 'izlozba':
         izlozba_id_raw = (form.get('veza_izlozba_id') or '').strip()
-        if not izlozba_id_raw:
-            raise ValueError('Изаберите изложбу.')
-        cur.execute('SELECT id FROM exhibitions WHERE id = %s', (int(izlozba_id_raw),))
-        row = cur.fetchone()
-        if not row:
-            raise ValueError('Изабрана изложба не постоји.')
-        return {'tip': 'izlozba', 'izlozba_id': _scalar(row, 'id')}
+        if izlozba_id_raw:
+            cur.execute('SELECT id FROM exhibitions WHERE id = %s', (int(izlozba_id_raw),))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError('Изабрана изложба не постоји.')
+            return {'tip': 'izlozba', 'izlozba_id': _scalar(row, 'id')}
+        naziv = ' '.join((form.get('veza_izlozba_naziv') or '').split())
+        if not naziv:
+            raise ValueError('Изаберите изложбу или унесите назив нове.')
+        # Create a new exhibition — same bar as the exhibition planner
+        # (login only); provenance from the session.
+        cur.execute(
+            """
+            INSERT INTO exhibitions (title, created_by_email, created_by_name)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (naziv, _session_email(session), session.get('user_name', '')),
+        )
+        return {'tip': 'izlozba', 'izlozba_id': _scalar(cur.fetchone(), 'id')}
     raise ValueError('Непозната врста везе.')
 
 
@@ -527,14 +554,20 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
     archive on success; on dedup/invalid it leaves temp_path for the caller to
     clean up. Returns (fotografija_id, None) or (None, skip_reason)."""
     sha256 = fototeka_jobs.sha256_of_file(temp_path)
-    try:
-        from PIL import Image
-        with Image.open(temp_path) as pil_image:
-            pil_image.verify()
-        with Image.open(temp_path) as pil_image:
-            exif_info = _extract_exif(pil_image)
-    except Exception:
-        return None, f'{original_ime}: датотека није исправна слика'
+    if ext in PIL_DECODABLE_EXTENSIONS:
+        try:
+            from PIL import Image
+            with Image.open(temp_path) as pil_image:
+                pil_image.verify()
+            with Image.open(temp_path) as pil_image:
+                exif_info = _extract_exif(pil_image)
+        except Exception:
+            return None, f'{original_ime}: датотека није исправна слика'
+    else:
+        # Camera RAW / archival original: PIL can't open it, so accept as-is
+        # without validation or EXIF. The worker will mark it 'bez_derivata'
+        # if libvips also can't decode it.
+        exif_info = {'width': None, 'height': None, 'datum_snimanja': None, 'exif': {}}
 
     cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
     existing = cur.fetchone()
@@ -626,7 +659,7 @@ def handle_upload():
             skipped.append(f'{original_ime}: датотека је празна')
             continue
         if file_size > MAX_PHOTO_SIZE:
-            skipped.append(f'{original_ime}: већа од дозвољених 40 MB')
+            skipped.append(f'{original_ime}: већа од дозвољених 200 MB')
             continue
 
         temp_path = temp_dir / f'{uuid.uuid4().hex}_{ext.lstrip(".")}'
@@ -658,6 +691,128 @@ def handle_upload():
     if len(saved) == 1 and not skipped:
         return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=saved[0]))
     return redirect(url_for('fototeka.fototeka_galerija'))
+
+
+def handle_upload_jedan():
+    """Intake exactly ONE file and return JSON. The browser sends the selected
+    files one at a time (each request stays small, well under nginx's limit),
+    so many/large files no longer fail as a single oversized multipart POST."""
+    uploaded = request.files.get('file')
+    if uploaded is None or not (uploaded.filename or '').strip():
+        return jsonify({'ok': False, 'error': 'Недостаје датотека.'}), 400
+    original_ime = Path(uploaded.filename).name
+    ext = Path(original_ime).suffix.lower()
+    if ext not in ALLOWED_PHOTO_EXTENSIONS:
+        return jsonify({'ok': False, 'ime': original_ime,
+                        'error': 'тип датотеке није дозвољен'}), 200
+    uploaded.stream.seek(0, os.SEEK_END)
+    file_size = uploaded.stream.tell()
+    uploaded.stream.seek(0)
+    if file_size <= 0:
+        return jsonify({'ok': False, 'ime': original_ime, 'error': 'датотека је празна'}), 200
+    if file_size > MAX_PHOTO_SIZE:
+        return jsonify({'ok': False, 'ime': original_ime,
+                        'error': 'већа од дозвољених 200 MB'}), 200
+
+    opis = (request.form.get('opis') or '').strip() or None
+    tags = _parse_tags(request.form.get('tagovi') or '')
+    datum_override = _parse_datum(request.form.get('datum_snimanja'))
+    u_prijemnom_redu = bool(request.form.get('u_prijemnom_redu'))
+    user_email = _session_email(session)
+
+    temp_dir = fototeka_jobs.get_media_path() / 'temp'
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = temp_dir / f'{uuid.uuid4().hex}_{ext.lstrip(".")}'
+    try:
+        uploaded.save(temp_path)
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    veza = _parse_veza_form(request.form, cur)
+                except ValueError as exc:
+                    return jsonify({'ok': False, 'ime': original_ime,
+                                    'error': str(exc)}), 200
+                fotografija_id, reason = _intake_photo_from_path(
+                    cur, temp_path, original_ime, file_size, ext,
+                    autor_email=user_email, opis=opis, tags=tags,
+                    datum_override=datum_override, veza=veza,
+                    u_prijemnom_redu=u_prijemnom_redu, poreklo='upload',
+                )
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    if fotografija_id:
+        return jsonify({'ok': True, 'ime': original_ime, 'id': fotografija_id})
+    return jsonify({'ok': False, 'ime': original_ime, 'error': reason or 'неуспешно'}), 200
+
+
+def _make_preview_derivatives(source_path, sha256):
+    """Build both derivatives from an attached preview using PIL — never pyvips,
+    so the web process stays libvips-free. Mirrors the worker's sizes/quality."""
+    from PIL import Image
+
+    media_root = fototeka_jobs.get_media_path()
+    dims = {}
+    for kind, size in (('jpg', 2500), ('thumb', 300)):
+        final_path = media_root / fototeka_jobs.derivative_relative_path(sha256, kind)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(source_path) as img:
+            img = img.convert('RGB')
+            dims = {'width': img.width, 'height': img.height}
+            img.thumbnail((size, size), Image.Resampling.LANCZOS)
+            temp_out = final_path.with_name(f'.tmp_{final_path.name}')
+            img.save(temp_out, format='JPEG', quality=85, optimize=True)
+        os.replace(temp_out, final_path)
+    return dims
+
+
+def handle_prilozi_derivat(fotografija_id):
+    """Attach a JPG/PNG preview to a photo that has no auto-derivative (camera
+    RAW / undecodable). Generates the derivatives with PIL and flips the photo
+    to 'spremna'."""
+    uploaded = request.files.get('preview')
+    if uploaded is None or not (uploaded.filename or '').strip():
+        flash('Изаберите JPG/PNG за преглед.', 'warning')
+        return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
+    ext = Path(uploaded.filename).suffix.lower()
+    if ext not in PREVIEW_EXTENSIONS:
+        flash('Преглед мора бити JPG или PNG.', 'danger')
+        return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
+
+    temp_dir = fototeka_jobs.get_media_path() / 'temp'
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = temp_dir / f'{uuid.uuid4().hex}_{ext.lstrip(".")}'
+    try:
+        uploaded.save(temp_path)
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                photo = _fetch_photo(cur, fotografija_id)
+                if not photo:
+                    abort(404)
+                if not can_edit_photo(session, photo):
+                    abort(403)
+                try:
+                    dims = _make_preview_derivatives(temp_path, photo['sha256'].strip())
+                except Exception:
+                    flash('Приложени преглед није исправна слика.', 'danger')
+                    return redirect(url_for('fototeka.fototeka_fotografija',
+                                            fotografija_id=fotografija_id))
+                cur.execute(
+                    """
+                    UPDATE fotografije
+                    SET status = 'spremna',
+                        width = COALESCE(width, %s), height = COALESCE(height, %s),
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (dims.get('width'), dims.get('height'), fotografija_id),
+                )
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+    flash('Преглед је приложен.', 'success')
+    return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
 
 
 # ---------------------------------------------------------------------------
@@ -1306,7 +1461,7 @@ def handle_import_confirm():
             skipped.append(f'{path.name}: датотека је празна')
             continue
         if file_size > MAX_PHOTO_SIZE:
-            skipped.append(f'{path.name}: већа од дозвољених 40 MB')
+            skipped.append(f'{path.name}: већа од дозвољених 200 MB')
             continue
         result = classify_import_filename(path.name, zbirka)
         temp_path = temp_dir / f'{uuid.uuid4().hex}_{path.suffix.lstrip(".")}'

@@ -275,7 +275,7 @@ class WorkerRetryTests(unittest.TestCase):
              patch.object(fototeka_jobs, '_finish_job') as finish, \
              patch.object(fototeka_jobs, '_fail_job') as fail:
             job = {'id': 1, 'fotografija_id': 5, 'tip': 'derivati',
-                   'pokusaji': 0, 'sha256': SHA, 'raw_putanja': 'razno/2026/x.jpg'}
+                   'pokusaji': 0, 'sha256': SHA, 'raw_putanja': 'razno/2026/x.jpg', 'ekstenzija': '.jpg'}
             self.assertTrue(fototeka_jobs.process_job(job))
             mk.assert_called_once()
             finish.assert_called_once()
@@ -286,7 +286,7 @@ class WorkerRetryTests(unittest.TestCase):
              patch.object(fototeka_jobs, '_fail_job') as fail, \
              patch.object(fototeka_jobs, '_finish_job') as finish:
             job = {'id': 1, 'fotografija_id': 5, 'tip': 'derivati',
-                   'pokusaji': 0, 'sha256': SHA, 'raw_putanja': 'razno/2026/x.jpg'}
+                   'pokusaji': 0, 'sha256': SHA, 'raw_putanja': 'razno/2026/x.jpg', 'ekstenzija': '.jpg'}
             self.assertFalse(fototeka_jobs.process_job(job))
             fail.assert_called_once()
             finish.assert_not_called()

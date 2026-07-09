@@ -112,7 +112,7 @@ class Config:
     WORKERS: int = int(os.environ.get('WORKERS', '1'))
 
     # File Upload
-    MAX_CONTENT_LENGTH: int = int(os.environ.get('MAX_CONTENT_LENGTH', '52428800'))  # 50MB
+    MAX_CONTENT_LENGTH: int = int(os.environ.get('MAX_CONTENT_LENGTH', '209715200'))  # 200MB, matches nginx client_max_body_size (large camera RAW)
     UPLOAD_FOLDER: str = os.environ.get('UPLOAD_FOLDER', 'storage/uploads')
     ALLOWED_EXTENSIONS: set = set(os.environ.get('ALLOWED_EXTENSIONS', 'jpg,jpeg,png,gif,pdf,xlsx,csv').split(','))
 

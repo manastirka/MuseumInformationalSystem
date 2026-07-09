@@ -28,6 +28,14 @@ MAX_ATTEMPTS = 5
 BACKOFF_MINUTES = [1, 5, 30, 60]
 STALE_LOCK_MINUTES = 15
 
+# Extensions the bundled libvips can decode into a derivative. Anything else
+# (camera RAW: CR2/NEF/ARW/DNG..., and BMP) is archived as-is but gets no
+# auto-derivative — status 'bez_derivata' instead of an endless retry.
+DERIVABLE_EXTENSIONS = {
+    '.jpg', '.jpeg', '.jpe', '.jfif', '.png', '.tif', '.tiff',
+    '.webp', '.gif', '.heic', '.heif', '.avif',
+}
+
 
 def get_arhiva_path() -> Path:
     return Path(os.environ.get('FOTOTEKA_ARHIVA_PATH', './data/arhiva'))
@@ -125,7 +133,7 @@ def claim_next_job():
             cur.execute(
                 """
                 SELECT p.id, p.fotografija_id, p.tip, p.pokusaji,
-                       f.sha256, f.raw_putanja
+                       f.sha256, f.raw_putanja, f.ekstenzija
                 FROM foto_poslovi p
                 JOIN fotografije f ON f.id = p.fotografija_id
                 WHERE p.id = %s
@@ -242,6 +250,32 @@ def _process_fixity(fotografija_id: int, sha256: str, raw_full_path: Path) -> No
             )
 
 
+def _mark_no_derivative(job_id: int, fotografija_id: int, reason: str) -> None:
+    """The archival original cannot be decoded (camera RAW, BMP, ...). The
+    photo stays valid with status 'bez_derivata'; a curator may attach a JPG
+    preview later. The job succeeds — no retry storm."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE foto_poslovi
+                SET status = 'uspeh', poslednja_greska = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (f'bez derivata: {reason}', job_id),
+            )
+            cur.execute(
+                """
+                UPDATE fotografije SET status = 'bez_derivata', updated_at = now()
+                WHERE id = %s
+                """,
+                (fotografija_id,),
+            )
+    logger.info(
+        "Fototeka photo %s archived without derivative (%s)", fotografija_id, reason,
+    )
+
+
 def process_job(job) -> bool:
     """Run one claimed job to completion, recording success or retry/failure.
     Returns True on success."""
@@ -253,7 +287,13 @@ def process_job(job) -> bool:
             _process_fixity(job['fotografija_id'], job['sha256'], raw_full_path)
         else:
             raise ValueError(f"Unknown job type: {job['tip']}")
-    except Exception as exc:  # noqa: BLE001 - every failure goes to the retry path
+    except Exception as exc:  # noqa: BLE001
+        ext = (job.get('ekstenzija') or '').lower()
+        # A format libvips can't decode is a permanent condition, not a
+        # transient failure — mark 'bez_derivata' instead of retrying.
+        if job['tip'] == 'derivati' and ext not in DERIVABLE_EXTENSIONS:
+            _mark_no_derivative(job['id'], job['fotografija_id'], str(exc))
+            return True
         _fail_job(job['id'], job['fotografija_id'], job['tip'], job['pokusaji'], str(exc))
         return False
     _finish_job(job['id'], job['fotografija_id'], job['tip'])

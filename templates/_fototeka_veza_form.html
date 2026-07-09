@@ -71,12 +71,21 @@
         </div>
     </div>
     <div class="col-md-8 fototeka-veza-sekcija" id="{{ prefix }}VezaIzlozba" hidden>
-        <label class="form-label" for="{{ prefix }}VezaIzlozbaId">Изложба</label>
-        <select class="form-select" id="{{ prefix }}VezaIzlozbaId" name="veza_izlozba_id">
-            <option value="">— изаберите —</option>
-            {% for izlozba in izlozbe %}
-            <option value="{{ izlozba.id }}" {% if pf.get('veza_izlozba_id') == izlozba.id|string %}selected{% endif %}>{{ izlozba.title }}</option>
-            {% endfor %}
-        </select>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaIzlozbaId">Постојећа изложба</label>
+                <select class="form-select" id="{{ prefix }}VezaIzlozbaId" name="veza_izlozba_id">
+                    <option value="">— нова изложба —</option>
+                    {% for izlozba in izlozbe %}
+                    <option value="{{ izlozba.id }}" {% if pf.get('veza_izlozba_id') == izlozba.id|string %}selected{% endif %}>{{ izlozba.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="{{ prefix }}VezaIzlozbaNaziv">Назив нове изложбе</label>
+                <input class="form-control" id="{{ prefix }}VezaIzlozbaNaziv" name="veza_izlozba_naziv"
+                       placeholder="ако није на списку">
+            </div>
+        </div>
     </div>
 </div>

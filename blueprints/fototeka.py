@@ -36,6 +36,15 @@ def fototeka_upload_post():
     return fototeka_views.handle_upload()
 
 
+@fototeka_bp.route('/fototeka/upload/jedan', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_upload_jedan():
+    """One file at a time (JSON) — the browser sends a multi-select set
+    sequentially so no request exceeds the size limit."""
+    return fototeka_views.handle_upload_jedan()
+
+
 @fototeka_bp.route('/fototeka/prijemni-red')
 @login_required
 @module_access_required('fototeka')
@@ -91,6 +100,14 @@ def fototeka_ukloni_vezu(fotografija_id, tip, veza_id):
 def fototeka_ponovi_obradu(fotografija_id):
     """Re-enqueue derivative processing after a failure."""
     return fototeka_views.handle_ponovi_obradu(fotografija_id)
+
+
+@fototeka_bp.route('/fototeka/<int:fotografija_id>/derivat', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_prilozi_derivat(fotografija_id):
+    """Attach a JPG/PNG preview for a photo with no auto-derivative (RAW)."""
+    return fototeka_views.handle_prilozi_derivat(fotografija_id)
 
 
 @fototeka_bp.route('/fototeka/<int:fotografija_id>/obrisi', methods=['POST'])
