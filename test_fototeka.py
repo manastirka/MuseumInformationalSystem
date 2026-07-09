@@ -13,7 +13,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -446,6 +446,30 @@ class ServeGuardTests(_RouteTestCase):
         self.login(AUTHOR)
         response = self.get('/fototeka/media/5/original')
         self.assertEqual(response.status_code, 404)
+
+
+class PhotoPageRenderTests(_RouteTestCase):
+    """Render the photo page through the REAL base.html. Guards against a
+    render_template kwarg (e.g. is_admin=<bool>) shadowing a context-processor
+    global callable, which made base.html's `{% if not is_admin() %}` raise
+    'bool object is not callable' -> HTTP 500 on the very first prod upload."""
+
+    def _full_photo(self, **over):
+        photo = _photo(created_at=datetime(2026, 7, 9, 8, 30), status='spremna')
+        photo.update(over)
+        return photo
+
+    def test_photo_page_renders_for_non_admin(self):
+        self.use_db({'FROM fotografije WHERE id': self._full_photo()})
+        self.login(AUTHOR)
+        response = self.get('/fototeka/5')
+        self.assertEqual(response.status_code, 200)
+
+    def test_photo_page_renders_for_admin(self):
+        self.use_db({'FROM fotografije WHERE id': self._full_photo()})
+        self.login(ADMIN)
+        response = self.get('/fototeka/5')
+        self.assertEqual(response.status_code, 200)
 
 
 class SoftDeleteTests(_RouteTestCase):

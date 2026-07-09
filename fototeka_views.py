@@ -743,7 +743,6 @@ def render_fotografija(fotografija_id):
         zbirke=zbirke,
         status_labels=PHOTO_STATUS_LABELS,
         can_edit=can_edit_photo(session, photo),
-        is_admin=_session_is_admin(session),
     )
 
 

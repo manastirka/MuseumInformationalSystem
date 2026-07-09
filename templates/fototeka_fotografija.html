@@ -187,7 +187,7 @@
                 {% endif %}
             </div>
 
-            {% if poslovi and (is_admin or photo.status == 'greska') %}
+            {% if poslovi and (is_admin() or photo.status == 'greska') %}
             <div class="fototeka-card">
                 <h5 class="mb-3"><i class="bi bi-gear me-1"></i>Обрада</h5>
                 <ul class="list-unstyled mb-0 small">
@@ -201,7 +201,7 @@
             </div>
             {% endif %}
 
-            {% if is_admin %}
+            {% if is_admin() %}
             <div class="fototeka-card">
                 <form method="post" action="{{ url_for('fototeka.fototeka_obrisi', fotografija_id=photo.id) }}"
                       onsubmit="return confirm('Уклонити фотографију из Фототеке? Оригинал остаје у архиви.');">
