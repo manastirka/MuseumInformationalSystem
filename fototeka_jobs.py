@@ -335,7 +335,10 @@ def raw_intake_relative_path(*, veza_predmet=None, veza_teren=None,
     safe_name = Path(original_ime or 'fotografija').name
     stem = Path(safe_name).stem or 'fotografija'
     ext = Path(safe_name).suffix.lower() or '.jpg'
-    filename = f"{stem}__{sha256[:8]}{ext}"
+    # Full sha256 (not a truncated prefix): the intake path must be unique per
+    # exact content so two different files can never collide onto the same
+    # archive path and overwrite each other's write-once original.
+    filename = f"{stem}__{sha256}{ext}"
     if veza_predmet:
         database_name, inventarni_broj = veza_predmet
         return f"zbirke/{_safe_segment(database_name)}/{_safe_segment(inventarni_broj)}/{filename}"

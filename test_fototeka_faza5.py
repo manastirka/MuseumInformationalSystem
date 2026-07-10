@@ -13,6 +13,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -161,6 +162,61 @@ class RawIntakeTests(unittest.TestCase):
         self.assertEqual(fid, 9)
         self.assertIsNone(reason)
         self.assertTrue(list(self.arhiva.rglob('*.cr2')))  # archived
+
+    def test_full_sha_in_path_avoids_prefix_collision(self):
+        # B1: two different files sharing the first 8 sha hex must NOT map to
+        # the same archive path (the old sha[:8] scheme let them collide).
+        sha_a = 'a' * 64
+        sha_b = 'a' * 8 + 'b' * 56
+        path_a = fototeka_jobs.raw_intake_relative_path(
+            original_ime='x.cr2', sha256=sha_a, datum=date(2026, 1, 1))
+        path_b = fototeka_jobs.raw_intake_relative_path(
+            original_ime='x.cr2', sha256=sha_b, datum=date(2026, 1, 1))
+        self.assertNotEqual(path_a, path_b)
+        self.assertIn(sha_a, path_a)  # full sha, not a truncated prefix
+
+    def test_intake_refuses_to_overwrite_existing_raw(self):
+        # B1: if the target archive path is already occupied, intake must skip
+        # and leave the existing original byte-for-byte intact (write-once).
+        raw = Path(self.tmp, 'src.cr2')
+        raw.write_bytes(b'NEWDATA' * 50)
+        sha = fototeka_jobs.sha256_of_file(raw)
+        raw_rel = fototeka_jobs.raw_intake_relative_path(
+            original_ime='photo.cr2', sha256=sha, datum=date(2026, 1, 1))
+        raw_full = self.arhiva / raw_rel
+        raw_full.parent.mkdir(parents=True, exist_ok=True)
+        raw_full.write_bytes(b'ORIGINAL-KEEP-ME')  # a pre-existing occupant
+        cursor = _FakeCursor({'INSERT INTO fotografije': {'id': 9}})
+        fid, reason = fototeka_views._intake_photo_from_path(
+            cursor, raw, 'photo.cr2', raw.stat().st_size, '.cr2',
+            autor_email='a@b.rs', opis=None, tags=[],
+            datum_override=date(2026, 1, 1),
+            veza=None, u_prijemnom_redu=False, poreklo='upload')
+        self.assertIsNone(fid)
+        self.assertIsNotNone(reason)
+        self.assertEqual(raw_full.read_bytes(), b'ORIGINAL-KEEP-ME')  # not overwritten
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO fotografije', joined)
+
+    def test_intake_removes_raw_when_db_insert_fails(self):
+        # B1: a DB failure after the file is placed must leave NO orphan in the
+        # write-once archive (compensating unlink of exactly the placed file).
+        class _FailingInsertCursor(_FakeCursor):
+            def execute(self, sql, params=None):
+                if 'INSERT INTO fotografije' in sql:
+                    raise RuntimeError('DB boom')
+                return super().execute(sql, params)
+
+        raw = Path(self.tmp, 'boom.cr2')
+        raw.write_bytes(b'RAWCONTENT' * 20)
+        with self.assertRaises(RuntimeError):
+            fototeka_views._intake_photo_from_path(
+                _FailingInsertCursor(), raw, 'boom.cr2', raw.stat().st_size, '.cr2',
+                autor_email='a@b.rs', opis=None, tags=[],
+                datum_override=date(2026, 1, 1),
+                veza=None, u_prijemnom_redu=False, poreklo='upload')
+        orphans = [p for p in self.arhiva.rglob('*') if p.is_file()]
+        self.assertEqual(orphans, [])
 
 
 # ---------------------------------------------------------------------------

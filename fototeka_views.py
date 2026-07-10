@@ -617,14 +617,39 @@ def render_upload_form():
     )
 
 
+def _place_raw_exclusive(temp_path, raw_full):
+    """Install temp_path at raw_full WITHOUT ever overwriting an existing file.
+
+    O_EXCL claims the archive path atomically; if anything is already there (a
+    hash collision, or a leftover from an earlier crashed attempt) it raises
+    FileExistsError instead of silently replacing a write-once original. The
+    bytes are streamed in (works even when temp and archive live on different
+    filesystems, unlike os.rename), fsynced, and only then is the temp file
+    removed. On any write error the partial file we just created is removed."""
+    raw_full.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(raw_full), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with os.fdopen(fd, 'wb') as dst, open(temp_path, 'rb') as src:
+            shutil.copyfileobj(src, dst, length=1024 * 1024)
+            dst.flush()
+            os.fsync(dst.fileno())
+    except BaseException:
+        Path(raw_full).unlink(missing_ok=True)
+        raise
+    os.unlink(temp_path)
+
+
 def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
                             autor_email, opis, tags, datum_override, veza,
                             u_prijemnom_redu, poreklo, vidljivost='javno'):
     """Core intake shared by upload and Samba import. Validates the image,
-    dedups by sha256, places the RAW original by origin, inserts the row with
-    tags + link and enqueues the derivative job. Moves temp_path into the
-    archive on success; on dedup/invalid it leaves temp_path for the caller to
-    clean up. Returns (fotografija_id, None) or (None, skip_reason)."""
+    dedups by sha256, places the RAW original by origin (write-once, exclusive
+    create — a collision is refused, never an overwrite), inserts the row with
+    tags + link and enqueues the derivative job. On success temp_path is
+    consumed; on dedup/invalid it is left for the caller to clean up. If any DB
+    step fails after the file is placed, exactly that file is removed so a
+    rolled-back transaction leaves no orphan. Returns (fotografija_id, None) or
+    (None, skip_reason)."""
     sha256 = fototeka_jobs.sha256_of_file(temp_path)
     if ext in PIL_DECODABLE_EXTENSIONS:
         try:
@@ -662,29 +687,38 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         datum=datum_snimanja,
     )
     raw_full = fototeka_jobs.get_arhiva_path() / raw_rel
-    raw_full.parent.mkdir(parents=True, exist_ok=True)
-    # shutil.move survives temp and archive being on different filesystems
-    # (os.replace would raise EXDEV).
-    shutil.move(str(temp_path), str(raw_full))
+    # Place the RAW first, exclusively: a collision (leftover orphan or a
+    # concurrent upload of the same content) is refused here, never overwritten.
+    try:
+        _place_raw_exclusive(temp_path, raw_full)
+    except FileExistsError:
+        return None, (f'{original_ime}: идентична датотека већ постоји у '
+                      f'архиви (није преписана)')
 
-    cur.execute(
-        """
-        INSERT INTO fotografije
-            (sha256, raw_putanja, original_ime, ekstenzija,
-             velicina_bajtova, width, height, autor_email,
-             datum_snimanja, exif, opis, poreklo, u_prijemnom_redu, vidljivost)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-        """,
-        (sha256, raw_rel, original_ime, ext, file_size,
-         exif_info['width'], exif_info['height'], autor_email,
-         datum_snimanja, json.dumps(exif_info['exif']), opis, poreklo,
-         u_prijemnom_redu, vidljivost),
-    )
-    fotografija_id = _scalar(cur.fetchone(), 'id')
-    _replace_tags(cur, fotografija_id, tags)
-    _insert_veza(cur, fotografija_id, veza)
-    fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
+    # The RAW is now ours. If any DB step fails, remove exactly this file so the
+    # rolled-back transaction leaves no orphan in the write-once archive.
+    try:
+        cur.execute(
+            """
+            INSERT INTO fotografije
+                (sha256, raw_putanja, original_ime, ekstenzija,
+                 velicina_bajtova, width, height, autor_email,
+                 datum_snimanja, exif, opis, poreklo, u_prijemnom_redu, vidljivost)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (sha256, raw_rel, original_ime, ext, file_size,
+             exif_info['width'], exif_info['height'], autor_email,
+             datum_snimanja, json.dumps(exif_info['exif']), opis, poreklo,
+             u_prijemnom_redu, vidljivost),
+        )
+        fotografija_id = _scalar(cur.fetchone(), 'id')
+        _replace_tags(cur, fotografija_id, tags)
+        _insert_veza(cur, fotografija_id, veza)
+        fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
+    except BaseException:
+        Path(raw_full).unlink(missing_ok=True)
+        raise
     return fotografija_id, None
 
 
