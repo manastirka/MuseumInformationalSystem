@@ -232,11 +232,37 @@ def _fail_job(job_id: int, fotografija_id: int, tip: str, attempts_before: int, 
     )
 
 
-def _process_fixity(fotografija_id: int, sha256: str, raw_full_path: Path) -> None:
-    ok = raw_full_path.is_file() and sha256_of_file(raw_full_path) == sha256
+def _process_fixity(fotografija_id: int, sha256: str, raw_full_path: Path) -> dict:
+    """Verify one archival original and return a machine-readable report.
+
+    A mismatch also emits one structured ERROR line suitable for journald and
+    log alerts. It distinguishes a missing original from changed bytes and
+    includes both hashes so an operator has enough information to investigate.
+    """
+    file_exists = raw_full_path.is_file()
+    actual_sha256 = sha256_of_file(raw_full_path) if file_exists else None
+    ok = file_exists and actual_sha256 == sha256
+    if ok:
+        status = 'ok'
+    elif not file_exists:
+        status = 'missing_file'
+    else:
+        status = 'checksum_mismatch'
+
+    report = {
+        'ok': ok,
+        'fotografija_id': fotografija_id,
+        'status': status,
+        'raw_putanja': str(raw_full_path),
+        'expected_sha256': sha256,
+        'actual_sha256': actual_sha256,
+    }
     if not ok:
         logger.error(
-            "FIXITY MISMATCH for photo %s: %s", fotografija_id, raw_full_path,
+            "FOTOTEKA_FIXITY_MISMATCH photo_id=%s reason=%s path=%s "
+            "expected_sha256=%s actual_sha256=%s",
+            fotografija_id, status, raw_full_path, sha256,
+            actual_sha256 or '<missing>',
         )
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
@@ -248,6 +274,7 @@ def _process_fixity(fotografija_id: int, sha256: str, raw_full_path: Path) -> No
                 """,
                 (ok, fotografija_id),
             )
+    return report
 
 
 def _mark_no_derivative(job_id: int, fotografija_id: int, reason: str) -> None:
