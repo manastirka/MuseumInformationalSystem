@@ -328,6 +328,34 @@ class UploadVisibilityTests(_RouteTestCase):
         self.assertEqual(_insert_vidljivost(cur), 'javno')
 
 
+class HeadBlindWriteTests(_RouteTestCase):
+    """A3: a department head may read+edit public photos, but a direct POST
+    must not mutate a private photo of another author (GET is already 403)."""
+
+    def test_head_cannot_azuriraj_others_private(self):
+        cur = self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='privatno')})
+        self.login(HEAD)
+        r = self.post('/fototeka/5/azuriraj', data={'opis': 'провала'})
+        self.assertEqual(r.status_code, 403)
+        joined = ' '.join(sql for sql, _ in cur.executed)
+        self.assertNotIn('UPDATE fotografije SET opis', joined)
+
+    def test_head_cannot_add_veza_to_others_private(self):
+        self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='privatno')})
+        self.login(HEAD)
+        r = self.post('/fototeka/5/veza',
+                      data={'veza_tip': 'projekat', 'veza_projekat_naziv': 'X'})
+        self.assertEqual(r.status_code, 403)
+
+    def test_head_may_azuriraj_public(self):
+        cur = self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='javno')})
+        self.login(HEAD)
+        r = self.post('/fototeka/5/azuriraj', data={'opis': 'легитимно'})
+        self.assertEqual(r.status_code, 302)
+        joined = ' '.join(sql for sql, _ in cur.executed)
+        self.assertIn('UPDATE fotografije SET opis', joined)
+
+
 class GalleryFilterTests(_RouteTestCase):
 
     def test_regular_user_gallery_query_filters_visibility(self):

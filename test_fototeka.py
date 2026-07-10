@@ -219,6 +219,17 @@ class PhotoPermissionTests(unittest.TestCase):
     def test_unrelated_employee_may_not_edit(self):
         self.assertFalse(fototeka_views.can_edit_photo(OTHER, _photo()))
 
+    def test_head_may_edit_public_but_not_others_private(self):
+        # A3: a department head edits public photos (view-allowed) but must not
+        # be able to mutate a private photo of another author it cannot see.
+        self.assertTrue(
+            fototeka_views.can_edit_photo(HEAD, _photo(vidljivost='javno')))
+        self.assertFalse(
+            fototeka_views.can_edit_photo(HEAD, _photo(vidljivost='privatno')))
+        # its own author still edits their private photo
+        self.assertTrue(
+            fototeka_views.can_edit_photo(AUTHOR, _photo(vidljivost='privatno')))
+
 
 # ---------------------------------------------------------------------------
 # Worker: derivatives, retry/backoff, fixity, queue claiming

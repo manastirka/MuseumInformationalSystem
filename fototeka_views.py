@@ -100,14 +100,19 @@ def _session_is_director(session_data) -> bool:
 
 
 def can_edit_photo(session_data, photo) -> bool:
-    """Metadata/links: the author, admins, the director and department heads."""
+    """Metadata/links: the author, admins, the director and department heads.
+    A department head may edit only photos they are allowed to *see* — a
+    private photo of another author stays off-limits (its GET page is 403, and
+    a direct POST must not be able to mutate it either)."""
     if _session_is_admin(session_data) or _session_is_director(session_data):
-        return True
-    if bool(session_data.get('is_department_head', False)):
         return True
     autor = (photo.get('autor_email') or '').strip().lower()
     user_email = _session_email(session_data)
-    return bool(user_email) and user_email == autor
+    if bool(user_email) and user_email == autor:
+        return True
+    if bool(session_data.get('is_department_head', False)):
+        return can_view_photo(session_data, photo)
+    return False
 
 
 def can_view_photo(session_data, photo) -> bool:
