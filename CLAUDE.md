@@ -17,6 +17,12 @@ izložbe). U produkciji radi iza gunicorn + nginx na Fedora Serveru.
 **Kod putuje isključivo kroz git** (dev → GitHub → prod). Podaci putuju
 rsync-om. Tajne (`.env`) ne putuju nikako — svako okruženje ima svoj.
 
+**Grane (konsolidovano 2026-07-10):** `main` je JEDINA radna grana — i DEV
+i PROD je prate; feature rad ide kratkoživućim granama koje se brišu posle
+merge-a. `sol/rad` je radna grana codex worktree-a. Stare grane
+(`fix/bug-audit-2026-05-29`, `feat/*`) su ugašene; istorija je sačuvana u
+tagovima `arhiva/*` i snimku `~/grane-pre-konsolidacije.txt`.
+
 ## Pravila za Claude Code sesije
 
 **Na DEV mašini** — puna sloboda: pisanje koda, refaktorisanje,
