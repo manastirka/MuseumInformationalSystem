@@ -22,8 +22,26 @@ os.environ.setdefault('REDIS_URL', '')
 os.environ.setdefault('SESSION_TYPE', 'filesystem')
 os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-flask-session')
 
+from PIL import Image
+
 import app as museum_app
 import fototeka_views
+
+
+def _jpeg_bytes(size=(64, 48)):
+    buf = io.BytesIO()
+    Image.new('RGB', size, (10, 20, 30)).save(buf, format='JPEG')
+    buf.seek(0)
+    return buf
+
+
+def _insert_vidljivost(cur):
+    """The vidljivost value carried by the INSERT INTO fotografije (it is the
+    last positional parameter), or a sentinel if no insert happened."""
+    for sql, params in cur.executed:
+        if 'INSERT INTO fotografije' in sql and params:
+            return params[-1]
+    return '<no-insert>'
 
 
 AUTHOR = {'user_id': 10, 'user_email': 'autor@nhmbeo.rs', 'user_name': 'Аутор',
@@ -270,6 +288,44 @@ class VisibilityChangeTests(_RouteTestCase):
         self.login(HEAD)
         self.assertEqual(self.post('/fototeka/5/vidljivost',
                                    data={'vidljivost': 'privatno'}).status_code, 403)
+
+
+class UploadVisibilityTests(_RouteTestCase):
+    """Regression for K1: the 'privatno' choice must survive BOTH upload paths.
+
+    The classic multi-POST (handle_upload) is only the no-JS fallback; the
+    per-file JSON endpoint (handle_upload_jedan) is the path the browser
+    actually uses, so a regression there silently makes every 'privatno'
+    upload public."""
+
+    def test_classic_multipost_private_stays_private(self):
+        cur = self.use_db({'INSERT INTO fotografije': {'id': 21}})
+        self.login(AUTHOR)
+        r = self.post('/fototeka/upload',
+                      data={'files': (_jpeg_bytes(), 'a.jpg'),
+                            'veza_tip': 'bez', 'vidljivost': 'privatno'},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(_insert_vidljivost(cur), 'privatno')
+
+    def test_sequential_single_private_stays_private(self):
+        cur = self.use_db({'INSERT INTO fotografije': {'id': 22}})
+        self.login(AUTHOR)
+        r = self.post('/fototeka/upload/jedan',
+                      data={'file': (_jpeg_bytes(), 'a.jpg'),
+                            'veza_tip': 'bez', 'vidljivost': 'privatno'},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.get_json()['ok'])
+        self.assertEqual(_insert_vidljivost(cur), 'privatno')
+
+    def test_sequential_single_default_is_public(self):
+        cur = self.use_db({'INSERT INTO fotografije': {'id': 23}})
+        self.login(AUTHOR)
+        self.post('/fototeka/upload/jedan',
+                  data={'file': (_jpeg_bytes(), 'a.jpg'), 'veza_tip': 'bez'},
+                  content_type='multipart/form-data')
+        self.assertEqual(_insert_vidljivost(cur), 'javno')
 
 
 class GalleryFilterTests(_RouteTestCase):

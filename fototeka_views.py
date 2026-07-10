@@ -805,6 +805,7 @@ def handle_upload_jedan():
                     autor_email=user_email, opis=opis, tags=tags,
                     datum_override=datum_override, veza=veza,
                     u_prijemnom_redu=u_prijemnom_redu, poreklo='upload',
+                    vidljivost=_parse_vidljivost(request.form),
                 )
     finally:
         if temp_path.exists():
