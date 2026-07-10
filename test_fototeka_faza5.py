@@ -235,6 +235,37 @@ class AttachPreviewTests(_RouteTestCase):
         # no derivative was written for a rejected extension
         self.assertEqual(list(Path(self.media).rglob('*.jpg')), [])
 
+    def test_attach_rejected_for_spremna_photo(self):
+        # A5: a 'spremna' photo's derivative (built from the RAW original) must
+        # not be silently overwritten by an unrelated preview upload.
+        cursor = self.use_db({'FROM fotografije WHERE id': _photo(status='spremna')})
+        self.login(AUTHOR)
+        response = self.post(
+            '/fototeka/5/derivat',
+            data={'preview': (_jpeg_bytes(), 'preview.jpg')},
+            content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 302)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn("status = 'spremna'", joined)
+        # nothing was written/overwritten under the media root
+        self.assertEqual(list(Path(self.media).rglob('*.jpg')), [])
+
+    def test_reprocess_rejected_for_spremna_photo(self):
+        cursor = self.use_db({'FROM fotografije WHERE id': _photo(status='spremna')})
+        self.login(AUTHOR)
+        response = self.post('/fototeka/5/ponovi-obradu', data={})
+        self.assertEqual(response.status_code, 302)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO foto_poslovi', joined)
+
+    def test_reprocess_allowed_for_greska(self):
+        cursor = self.use_db({'FROM fotografije WHERE id': _photo(status='greska')})
+        self.login(AUTHOR)
+        response = self.post('/fototeka/5/ponovi-obradu', data={})
+        self.assertEqual(response.status_code, 302)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertIn('INSERT INTO foto_poslovi', joined)
+
 
 class SingleUploadEndpointTests(_RouteTestCase):
 

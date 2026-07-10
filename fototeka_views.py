@@ -841,6 +841,13 @@ def _make_preview_derivatives(source_path, sha256):
     return dims
 
 
+# A preview may be attached only to a photo that has no valid auto-derivative;
+# never to a 'spremna' one (that would silently overwrite the derivative built
+# from the RAW original with unrelated content, which fixity of the RAW cannot
+# detect).
+PREVIEW_ATTACHABLE_STATUSES = {'bez_derivata', 'greska'}
+
+
 def handle_prilozi_derivat(fotografija_id):
     """Attach a JPG/PNG preview to a photo that has no auto-derivative (camera
     RAW / undecodable). Generates the derivatives with PIL and flips the photo
@@ -866,6 +873,11 @@ def handle_prilozi_derivat(fotografija_id):
                     abort(404)
                 if not can_edit_photo(session, photo):
                     abort(403)
+                if photo['status'] not in PREVIEW_ATTACHABLE_STATUSES:
+                    flash('Преглед се може приложити само фотографији без '
+                          'умањеног приказа.', 'warning')
+                    return redirect(url_for('fototeka.fototeka_fotografija',
+                                            fotografija_id=fotografija_id))
                 try:
                     dims = _make_preview_derivatives(temp_path, photo['sha256'].strip())
                 except Exception:
@@ -1091,7 +1103,9 @@ def handle_ukloni_vezu(fotografija_id, tip, veza_id):
 
 
 def handle_ponovi_obradu(fotografija_id):
-    """Re-enqueue the derivative job after a failed processing run."""
+    """Re-enqueue the derivative job after a failed processing run. Only a photo
+    that actually needs (re)processing qualifies — reprocessing a 'spremna' one
+    is not an offered action and would needlessly rebuild a good derivative."""
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             photo = _fetch_photo(cur, fotografija_id)
@@ -1099,6 +1113,11 @@ def handle_ponovi_obradu(fotografija_id):
                 abort(404)
             if not can_edit_photo(session, photo):
                 abort(403)
+            if photo['status'] not in ('greska', 'bez_derivata'):
+                flash('Обрада се може поновити само за фотографију у грешци '
+                      'или без умањеног приказа.', 'warning')
+                return redirect(url_for('fototeka.fototeka_fotografija',
+                                        fotografija_id=fotografija_id))
             cur.execute(
                 """
                 SELECT 1 FROM foto_poslovi
