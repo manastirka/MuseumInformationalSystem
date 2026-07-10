@@ -1507,7 +1507,10 @@ def api_entitet_pretraga():
 
 def handle_entitet_veza():
     """Link an existing photo to the entity (reverse direction). `entity` is
-    already a valid `veza` dict, so it goes straight into `_insert_veza`."""
+    already a valid `veza` dict, so it goes straight into `_insert_veza`.
+    Requires that the caller may actually *see* the photo — otherwise a forged
+    POST with a guessed id could link (and thereby confirm the existence of)
+    another user's private photo. A 404 (not 403) avoids leaking existence."""
     try:
         entity = _parse_entity_ref(request.form)
     except ValueError as exc:
@@ -1519,14 +1522,26 @@ def handle_entitet_veza():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             photo = _fetch_photo(cur, fotografija_id)
-            if not photo:
+            if not photo or not can_view_photo(session, photo):
                 return jsonify({'ok': False, 'error': 'Фотографија не постоји.'}), 404
             _insert_veza(cur, fotografija_id, entity)
+            # linking is a curation step: a queued photo leaves the reception
+            # queue here too, mirroring handle_dodaj_vezu.
+            if photo['u_prijemnom_redu']:
+                cur.execute(
+                    """
+                    UPDATE fotografije SET u_prijemnom_redu = FALSE, updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (fotografija_id,),
+                )
     return jsonify({'ok': True})
 
 
 def handle_entitet_ukloni():
-    """Remove one entity<->photo link (non-destructive)."""
+    """Remove one entity<->photo link (non-destructive). Loads the photo first
+    and requires view access, so a guessed id cannot touch another user's
+    private photo (a 404, not 403, avoids leaking existence)."""
     try:
         entity = _parse_entity_ref(request.form)
     except ValueError as exc:
@@ -1538,6 +1553,9 @@ def handle_entitet_ukloni():
     table, cond, params = _entity_photo_filter(entity)
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
+            photo = _fetch_photo(cur, fotografija_id)
+            if not photo or not can_view_photo(session, photo):
+                return jsonify({'ok': False, 'error': 'Фотографија не постоји.'}), 404
             cur.execute(
                 f'DELETE FROM {table} WHERE fotografija_id = %s AND {cond} RETURNING id',
                 (fotografija_id, *params),

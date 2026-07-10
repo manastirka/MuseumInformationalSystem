@@ -36,6 +36,11 @@ ADMIN = {
     'user_role': 'admin', 'is_admin': True,
     'user_department': None, 'is_department_head': False,
 }
+OTHER = {
+    'user_id': 11, 'user_email': 'drugi@nhmbeo.rs', 'user_name': 'Други',
+    'user_role': 'employee', 'is_admin': False,
+    'user_department': 'ГЕОЛОГИЈА', 'is_department_head': False,
+}
 
 SHA = 'b' * 64
 
@@ -288,7 +293,8 @@ class ReverseLinkingTests(_RouteTestCase):
         self.assertIn('INSERT INTO foto_veza_predmet', joined)
 
     def test_unlink_deletes(self):
-        cursor = self.use_db({'DELETE FROM foto_veza_predmet': {'id': 1}})
+        cursor = self.use_db({'FROM fotografije WHERE id': _photo(),
+                              'DELETE FROM foto_veza_predmet': {'id': 1}})
         self.login(AUTHOR)
         response = self.post(
             '/fototeka/api/entitet/veza/ukloni',
@@ -297,6 +303,50 @@ class ReverseLinkingTests(_RouteTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
+
+    def test_link_others_private_is_404_no_insert(self):
+        # A4/IDOR: another curator guesses a private photo's id and POSTs a
+        # link — it must 404 (no existence leak) and perform no INSERT.
+        cursor = self.use_db({'FROM fotografije WHERE id':
+                              _photo(vidljivost='privatno')})
+        self.login(OTHER)
+        response = self.post(
+            '/fototeka/api/entitet/veza',
+            data={'tip': 'predmet', 'database': 'mineral', 'broj': '123',
+                  'fotografija_id': '5'},
+        )
+        self.assertEqual(response.status_code, 404)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO foto_veza_predmet', joined)
+
+    def test_unlink_others_private_is_404_no_delete(self):
+        cursor = self.use_db({'FROM fotografije WHERE id':
+                              _photo(vidljivost='privatno'),
+                              'DELETE FROM foto_veza_predmet': {'id': 1}})
+        self.login(OTHER)
+        response = self.post(
+            '/fototeka/api/entitet/veza/ukloni',
+            data={'tip': 'predmet', 'database': 'mineral', 'broj': '123',
+                  'fotografija_id': '5'},
+        )
+        self.assertEqual(response.status_code, 404)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('DELETE FROM foto_veza_predmet', joined)
+
+    def test_link_clears_reception_queue(self):
+        # A4/D1: linking from the entity side also clears the reception queue,
+        # mirroring the photo-page link handler.
+        cursor = self.use_db({'FROM fotografije WHERE id':
+                              _photo(u_prijemnom_redu=True)})
+        self.login(AUTHOR)
+        response = self.post(
+            '/fototeka/api/entitet/veza',
+            data={'tip': 'predmet', 'database': 'mineral', 'broj': '123',
+                  'fotografija_id': '5'},
+        )
+        self.assertEqual(response.status_code, 200)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertIn('SET u_prijemnom_redu = FALSE', joined)
 
     def test_bad_entity_ref_is_400(self):
         self.use_db({})
