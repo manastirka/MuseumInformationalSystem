@@ -117,9 +117,12 @@ def _fototeka_serving_enabled():
 
 def _fototeka_entity_response(database, entity_type, entity_id, size):
     """When the flag is on, serve a migrated Фототека derivative for this
-    entity (mineral collections only — the migrated set). Returns a Flask
-    response or None to fall back to the legacy store. Any error returns None,
-    so enabling the flag can never break the existing image path."""
+    entity (mineral collections only — the migrated set). Only 'javno' photos
+    are served here: this route authorizes on collection access, not photo
+    authorship, so it must never expose a photo the author flipped to
+    'privatno'. Returns a Flask response or None to fall back to the legacy
+    store. Any error returns None, so enabling the flag can never break the
+    existing image path."""
     if not _fototeka_serving_enabled():
         return None
     if str(database).lower() not in ('mineral', 'minerals'):
@@ -139,6 +142,7 @@ def _fototeka_entity_response(database, entity_type, entity_id, size):
                     JOIN minerals m ON m.inventory_number = v.inventarni_broj
                     WHERE v.database_name = 'mineral' AND m.id = %s
                       AND f.obrisana = FALSE AND f.status = 'spremna'
+                      AND f.vidljivost = 'javno'
                     ORDER BY f.id
                     LIMIT 1
                     """,

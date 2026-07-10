@@ -235,6 +235,23 @@ class LegacyServingRedirectTests(unittest.TestCase):
             self.assertIsNone(collection_media_views._fototeka_entity_response(
                 'botany', 'collection_item', '5', 'medium'))
 
+    def test_flag_on_query_restricts_to_public_only(self):
+        # A2: the legacy specimen route authorizes on collection access, not
+        # photo authorship — so it must select only 'javno' photos, never a
+        # private one the author flipped after migration.
+        sha = 'c' * 64
+        self._make_derivative(sha)
+        cursor = _FakeCursor({'FROM fotografije f': {'sha256': sha}})
+        conn = _FakeConnection(cursor)
+        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'true'}), \
+             patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
+             museum_app.app.test_request_context('/'):
+            collection_media_views._fototeka_entity_response(
+                'minerals', 'mineral', '5', 'medium')
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertIn('vidljivost', joined)
+        self.assertIn("'javno'", joined)
+
 
 if __name__ == '__main__':
     unittest.main()
