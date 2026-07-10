@@ -30,11 +30,21 @@
             .catch(function () { return { ok: false, ime: file.name, error: 'мрежна грешка' }; });
     }
 
+    function isDuplicate(result) {
+        return !result.ok && typeof result.error === 'string'
+            && result.error.indexOf('већ постоји') !== -1;
+    }
+
     function row(result) {
+        var duplicate = isDuplicate(result);
         var li = document.createElement('li');
-        li.className = 'small ' + (result.ok ? 'text-success' : 'text-danger');
-        li.textContent = (result.ok ? '✓ ' : '✗ ') + (result.ime || '')
-            + (result.ok ? '' : ' — ' + (result.error || 'неуспешно'));
+        li.className = 'small ' + (result.ok ? 'text-success'
+            : (duplicate ? 'text-warning' : 'text-danger'));
+        li.textContent = (result.ok ? '✓ ' : (duplicate ? '↺ ' : '✗ '))
+            + (result.ime || '')
+            + (result.ok ? '' : ' — ' + (duplicate
+                ? 'фотографија са истим садржајем већ постоји у Фототеци; ова датотека није поново сачувана'
+                : (result.error || 'неуспешно')));
         return li;
     }
 
