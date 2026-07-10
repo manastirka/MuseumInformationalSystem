@@ -321,19 +321,55 @@ class FixityTests(unittest.TestCase):
         cursor = _FakeCursor()
         conn = _FakeConnection(cursor)
         with patch.object(fototeka_jobs, 'get_postgres_connection', lambda **k: conn):
-            fototeka_jobs._process_fixity(5, real_sha, target)
+            report = fototeka_jobs._process_fixity(5, real_sha, target)
         # the UPDATE writes fixity_ok = True as the first param
         update = [p for sql, p in cursor.executed if 'fixity_ok' in sql][0]
         self.assertEqual(update[0], True)
+        self.assertEqual(report, {
+            'ok': True,
+            'fotografija_id': 5,
+            'status': 'ok',
+            'raw_putanja': str(target),
+            'expected_sha256': real_sha,
+            'actual_sha256': real_sha,
+        })
 
-    def test_fixity_mismatch_flagged(self):
+    def test_fixity_missing_file_reports_reason_and_expected_hash(self):
         target = Path(self.tmp, 'missing.jpg')
         cursor = _FakeCursor()
         conn = _FakeConnection(cursor)
-        with patch.object(fototeka_jobs, 'get_postgres_connection', lambda **k: conn):
-            fototeka_jobs._process_fixity(5, SHA, target)
+        with patch.object(fototeka_jobs, 'get_postgres_connection', lambda **k: conn), \
+             self.assertLogs(fototeka_jobs.logger, level='ERROR') as captured:
+            report = fototeka_jobs._process_fixity(5, SHA, target)
         update = [p for sql, p in cursor.executed if 'fixity_ok' in sql][0]
         self.assertEqual(update[0], False)
+        self.assertEqual(report['status'], 'missing_file')
+        self.assertIsNone(report['actual_sha256'])
+        log = '\n'.join(captured.output)
+        self.assertIn('FOTOTEKA_FIXITY_MISMATCH photo_id=5', log)
+        self.assertIn('reason=missing_file', log)
+        self.assertIn(f'path={target}', log)
+        self.assertIn(f'expected_sha256={SHA}', log)
+        self.assertIn('actual_sha256=<missing>', log)
+
+    def test_fixity_changed_file_reports_both_hashes(self):
+        target = Path(self.tmp, 'changed.jpg')
+        target.write_bytes(b'changed archival bytes')
+        actual_sha = fototeka_jobs.sha256_of_file(target)
+        cursor = _FakeCursor()
+        conn = _FakeConnection(cursor)
+        with patch.object(fototeka_jobs, 'get_postgres_connection', lambda **k: conn), \
+             self.assertLogs(fototeka_jobs.logger, level='ERROR') as captured:
+            report = fototeka_jobs._process_fixity(5, SHA, target)
+
+        self.assertFalse(report['ok'])
+        self.assertEqual(report['status'], 'checksum_mismatch')
+        self.assertEqual(report['expected_sha256'], SHA)
+        self.assertEqual(report['actual_sha256'], actual_sha)
+        log = '\n'.join(captured.output)
+        self.assertIn('reason=checksum_mismatch', log)
+        self.assertIn(f'expected_sha256={SHA}', log)
+        self.assertIn(f'actual_sha256={actual_sha}', log)
 
 
 class QueueTests(unittest.TestCase):
