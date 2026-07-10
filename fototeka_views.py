@@ -1277,6 +1277,11 @@ def serve_raw(fotografija_id):
 
 
 DOWNLOAD_ZIP_MAX = 300
+# Cap the whole archive by bytes, not just by file count: 300 archival
+# originals of up to 200 MB each would be ~58 GB, enough to fill the temp disk
+# and hang the (single, sync) gunicorn worker. The build stops once this budget
+# would be exceeded and notes the truncation.
+ZIP_MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
 
 
 def _unique_zip_name(base, photo_id, used):
@@ -1327,10 +1332,16 @@ def handle_preuzmi_zip():
         if not can_view_photo(session, photo):
             abort(403)
 
-    tmp = tempfile.NamedTemporaryFile(prefix='fototeka_', suffix='.zip', delete=False)
+    # Build to a temp file on the data partition (media/temp), never the
+    # default /tmp — on this host /tmp is tmpfs (RAM), so a big archive there
+    # would eat memory rather than disk.
+    temp_root = fototeka_jobs.get_media_path() / 'temp'
+    temp_root.mkdir(parents=True, exist_ok=True)
+    tmp = tempfile.NamedTemporaryFile(prefix='fototeka_', suffix='.zip',
+                                      delete=False, dir=str(temp_root))
     tmp_path = Path(tmp.name)
     tmp.close()
-    used_names, added = set(), 0
+    used_names, added, total_bytes, byte_capped = set(), 0, 0, False
     try:
         with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_STORED, allowZip64=True) as zf:
             for photo in photos:
@@ -1347,14 +1358,30 @@ def handle_preuzmi_zip():
                         base = photo['original_ime'] or f"foto_{photo['id']}{photo.get('ekstenzija') or ''}"
                 if src is None:
                     continue
+                try:
+                    size = os.path.getsize(src)
+                except OSError:
+                    continue
+                # keep at least one file, then stop before the running total
+                # would exceed the archive byte budget
+                if added > 0 and total_bytes + size > ZIP_MAX_TOTAL_BYTES:
+                    byte_capped = True
+                    break
                 zf.write(src, arcname=_unique_zip_name(base, photo['id'], used_names))
+                total_bytes += size
                 added += 1
+            notes = []
             if capped:
-                zf.writestr(
-                    'NAPOMENA.txt',
+                notes.append(
                     f'Изабрано је више од {DOWNLOAD_ZIP_MAX} фотографија; '
-                    f'преузето је првих {DOWNLOAD_ZIP_MAX}.\n'.encode('utf-8'),
-                )
+                    f'преузето је првих {DOWNLOAD_ZIP_MAX}.')
+            if byte_capped:
+                notes.append(
+                    f'Укупна величина је премашила лимит преузимања '
+                    f'({ZIP_MAX_TOTAL_BYTES // (1024 * 1024)} MB); '
+                    f'архива садржи првих {added} датотека.')
+            if notes:
+                zf.writestr('NAPOMENA.txt', ('\n'.join(notes) + '\n').encode('utf-8'))
     except Exception:
         tmp_path.unlink(missing_ok=True)
         raise

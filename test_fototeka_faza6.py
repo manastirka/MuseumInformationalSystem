@@ -283,6 +283,45 @@ class ZipDownloadTests(_RouteTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/login', response.headers['Location'])
 
+    def test_zip_stops_at_total_byte_cap(self):
+        # B2: a selection whose running size exceeds the archive byte budget is
+        # truncated (keeps one file + a note) instead of building an unbounded
+        # archive that could fill the disk / hang the worker.
+        p5 = _photo(id=5, raw_putanja='razno/2026/a__dddddddd.jpg', original_ime='a.jpg')
+        p6 = _photo(id=6, raw_putanja='razno/2026/b__dddddddd.jpg', original_ime='b.jpg')
+        for p in (p5, p6):
+            self._raw_file(p)
+        self.use_db({'FROM fotografije WHERE obrisana = FALSE AND id': [p5, p6]})
+        self.login(AUTHOR)
+        with patch.object(fototeka_views, 'ZIP_MAX_TOTAL_BYTES', 1):
+            response = self.post('/fototeka/preuzmi-zip',
+                                 data={'ids': ['5', '6'], 'sloj': 'original'})
+        self.assertEqual(response.status_code, 200)
+        names = zipfile.ZipFile(io.BytesIO(response.data)).namelist()
+        self.assertIn('NAPOMENA.txt', names)
+        self.assertEqual(len([n for n in names if n != 'NAPOMENA.txt']), 1)
+
+    def test_zip_temp_built_on_data_partition_not_tmp(self):
+        # B2: the archive is built under the media temp dir (data partition),
+        # not the default /tmp (tmpfs/RAM on this host).
+        photo = _photo()
+        self._raw_file(photo)
+        self.use_db({'FROM fotografije WHERE obrisana = FALSE AND id': [photo]})
+        self.login(AUTHOR)
+        seen = {}
+        real_ntf = tempfile.NamedTemporaryFile
+
+        def _spy(*a, **k):
+            seen['dir'] = k.get('dir')
+            return real_ntf(*a, **k)
+
+        with patch.object(tempfile, 'NamedTemporaryFile', _spy):
+            response = self.post('/fototeka/preuzmi-zip',
+                                 data={'ids': ['5'], 'sloj': 'original'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(seen.get('dir'))
+        self.assertTrue(str(seen['dir']).startswith(self.media))
+
 
 if __name__ == '__main__':
     unittest.main()
