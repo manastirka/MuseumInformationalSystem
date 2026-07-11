@@ -344,9 +344,13 @@ def process_job(job) -> bool:
             raise ValueError(f"Unknown job type: {job['tip']}")
     except Exception as exc:  # noqa: BLE001
         ext = (job.get('ekstenzija') or '').lower()
-        # A format libvips can't decode is a permanent condition, not a
-        # transient failure — mark 'bez_derivata' instead of retrying.
-        if job['tip'] == 'derivati' and ext not in DERIVABLE_EXTENSIONS:
+        # A format libvips genuinely can't decode is a permanent condition —
+        # mark 'bez_derivata' (no retry storm). But a transient OS-level
+        # failure (disk full, I/O error, out of memory) must RETRY, not be
+        # frozen as permanent just because the extension is non-derivable.
+        transient = isinstance(exc, (OSError, MemoryError))
+        if (job['tip'] == 'derivati' and ext not in DERIVABLE_EXTENSIONS
+                and not transient):
             _mark_no_derivative(job['id'], job['fotografija_id'], str(exc))
             return True
         _fail_job(job['id'], job['fotografija_id'], job['tip'], job['pokusaji'], str(exc))

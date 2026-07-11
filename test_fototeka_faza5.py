@@ -138,6 +138,19 @@ class NoDerivativeWorkerTests(unittest.TestCase):
             fail.assert_called_once()
             mark.assert_not_called()
 
+    def test_transient_oserror_on_undecodable_retries_not_permanent(self):
+        # B6: a transient OS failure (e.g. disk full) on a non-derivable
+        # extension must retry, not be frozen permanently as 'bez_derivata'.
+        with patch.object(fototeka_jobs, 'make_derivatives',
+                          side_effect=OSError('No space left on device')), \
+             patch.object(fototeka_jobs, '_mark_no_derivative') as mark, \
+             patch.object(fototeka_jobs, '_fail_job') as fail:
+            job = {'id': 1, 'fotografija_id': 5, 'tip': 'derivati', 'pokusaji': 0,
+                   'sha256': SHA, 'raw_putanja': 'razno/2026/x.cr2', 'ekstenzija': '.cr2'}
+            self.assertFalse(fototeka_jobs.process_job(job))
+            fail.assert_called_once()
+            mark.assert_not_called()
+
 
 class RawIntakeTests(unittest.TestCase):
 
