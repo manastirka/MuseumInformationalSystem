@@ -529,7 +529,7 @@ def render_galerija():
                 f"""
                 SELECT f.id, f.original_ime, f.opis, f.status, f.autor_email,
                        f.datum_snimanja, f.u_prijemnom_redu, f.created_at,
-                       f.ekstenzija
+                       f.ekstenzija, f.velicina_bajtova
                 FROM fotografije f
                 WHERE {where_sql}
                 ORDER BY {order_sql}
@@ -586,6 +586,8 @@ def render_galerija():
         izlozbe=izlozbe,
         zbirke=get_zbirka_labels(),
         status_labels=PHOTO_STATUS_LABELS,
+        zip_max_bytes=ZIP_MAX_TOTAL_BYTES,
+        zip_max_count=DOWNLOAD_ZIP_MAX,
     )
 
 
