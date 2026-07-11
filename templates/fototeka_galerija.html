@@ -65,8 +65,51 @@
 .foto-meta .foto-title { color: #1f2937; }
 .foto-meta .foto-sub { color: var(--oc-ink-muted); font-size: 0.76rem; }
 
+/* --- ознака формата (доле десно над thumbnail-ом; чита се и на светлим и
+   на тамним сликама захваљујући тамној полупрозирној подлози + светлом ободу) --- */
+.foto-thumb { position: relative; display: block; }
+.foto-format {
+    position: absolute; right: 6px; bottom: 6px;
+    padding: 2px 5px; border-radius: 5px;
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em; line-height: 1;
+    color: #fff; background: rgba(17, 24, 39, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    pointer-events: none; user-select: none;
+}
+/* компактни режим нема thumbnail — нема ни ознаке */
+.view-compact .foto-format { display: none; }
+
 /* paginacija u kartici */
 .fototeka-pager { padding: 0.9rem 1.1rem; border-top: 1px solid var(--oc-line-soft); }
+
+/* --- модал за преузимање (избор JPG/оригинал, величина, упозорење) --- */
+.foto-modal-backdrop {
+    position: fixed; inset: 0; z-index: 1080;
+    background: rgba(17, 24, 39, 0.5);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.foto-modal-backdrop[hidden] { display: none; }
+.foto-modal {
+    background: #fff; border-radius: 14px; max-width: 460px; width: 100%;
+    box-shadow: 0 24px 60px rgba(24, 43, 29, 0.28);
+    padding: 1.25rem 1.35rem;
+}
+.foto-modal-title { color: var(--oc-green-700); margin: 0 0 0.85rem; font-size: 1.05rem; }
+.foto-modal-stats { color: var(--oc-ink-muted); font-size: 0.88rem; margin-bottom: 0.85rem; }
+.foto-modal-choice { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+.foto-radio {
+    display: flex; gap: 0.55rem; align-items: flex-start;
+    border: 1px solid var(--oc-line-soft); border-radius: 10px;
+    padding: 0.6rem 0.7rem; cursor: pointer; font-size: 0.85rem;
+}
+.foto-radio input { margin-top: 0.15rem; }
+.foto-modal-warn {
+    background: #fff8e6; border: 1px solid #f0d68a; color: #7a5a00;
+    border-radius: 8px; padding: 0.55rem 0.7rem; font-size: 0.82rem; margin-bottom: 0.4rem;
+}
+.foto-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
 </style>
 {% endblock %}
 
@@ -159,11 +202,7 @@
                 <label class="fototeka-sel">
                     <input class="form-check-input mt-0" type="checkbox" id="fototekaSelectAll"> Изабери све
                 </label>
-                <select class="form-select form-select-sm" name="sloj" form="fototekaZipForm" style="width: auto;">
-                    <option value="jpg">JPG преглед</option>
-                    <option value="original">Оригинали</option>
-                </select>
-                <button type="submit" class="btn btn-sm btn-oc-approve" form="fototekaZipForm">
+                <button type="button" class="btn btn-sm btn-oc-approve" id="fototekaDownloadOpen">
                     <i class="bi bi-download me-1"></i>Преузми изабрано (<span id="fototekaSelCount">0</span>)
                 </button>
             </div>
@@ -171,16 +210,20 @@
         </div>
 
         {% if photos %}
-        <form id="fototekaZipForm" method="post" action="{{ url_for('fototeka.fototeka_preuzmi_zip') }}">
+        <form id="fototekaZipForm" method="post" action="{{ url_for('fototeka.fototeka_preuzmi_zip') }}"
+              data-zip-max-bytes="{{ zip_max_bytes }}" data-zip-max-count="{{ zip_max_count }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="sloj" id="fototekaSloj" value="jpg"/>
             <div id="fototekaItems" class="view-grid">
                 {% for photo in photos %}
                 <div class="foto-item">
                     <input class="foto-check form-check-input" type="checkbox" name="ids" value="{{ photo.id }}"
+                           data-bytes="{{ photo.velicina_bajtova or 0 }}"
                            aria-label="Изабери фотографију {{ photo.id }}">
                     <a class="foto-thumb" href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
                         <img src="{{ url_for('fototeka.fototeka_media', fotografija_id=photo.id, kind='thumb') }}"
                              alt="{{ photo.opis or photo.original_ime }}" loading="lazy">
+                        <span class="foto-format" data-no-translate title="Формат: {{ photo.format_label }}">{{ photo.format_label }}</span>
                     </a>
                     <div class="foto-meta">
                         <div class="foto-title text-truncate">
@@ -237,5 +280,39 @@
         {% endif %}
     </div>
 </div>
+
+{% if photos %}
+<div class="foto-modal-backdrop" id="fototekaDownloadModal" hidden>
+    <div class="foto-modal" role="dialog" aria-modal="true" aria-labelledby="fototekaModalTitle">
+        <h5 class="foto-modal-title" id="fototekaModalTitle">
+            <i class="bi bi-download me-2"></i>Преузимање изабраних
+        </h5>
+        <div class="foto-modal-body">
+            <div class="foto-modal-stats">
+                Изабрано: <strong id="fototekaModalCount">0</strong> ·
+                оригинали укупно: <strong id="fototekaModalSize">0 B</strong>
+            </div>
+            <div class="foto-modal-choice">
+                <label class="foto-radio">
+                    <input type="radio" name="fototekaSlojChoice" value="jpg" checked>
+                    <span><strong>JPG преглед</strong> — умањени прикази (~2500px), мали фајлови</span>
+                </label>
+                <label class="foto-radio">
+                    <input type="radio" name="fototekaSlojChoice" value="original">
+                    <span><strong>Оригинали</strong> — пуне архивске датотеке (RAW/TIFF), веће</span>
+                </label>
+            </div>
+            <div class="foto-modal-warn" id="fototekaModalWarn" hidden></div>
+        </div>
+        <div class="foto-modal-actions">
+            <button type="button" class="btn btn-sm btn-light" id="fototekaModalCancel">Одустани</button>
+            <button type="button" class="btn btn-sm btn-oc-approve" id="fototekaModalConfirm">
+                <i class="bi bi-download me-1"></i>Преузми
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script src="{{ url_for('static', filename='js/fototeka_galerija.js') }}"></script>
 {% endblock %}

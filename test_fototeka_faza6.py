@@ -196,6 +196,73 @@ class SortTests(_RouteTestCase):
         self.assertIn('DESC', order)              # smer fallback
 
 
+class FormatBadgeTests(_RouteTestCase):
+    """Each thumbnail carries a small format badge (JPG/TIFF/CR2/NEF...)."""
+
+    def _gallery_with(self, photos):
+        # 'f.ekstenzija' uniquely matches the photo-list SELECT (not the facet
+        # queries), so facets stay empty while the list returns these photos.
+        return self.use_db({'SELECT COUNT(*)': {'total': len(photos)},
+                            'f.ekstenzija': photos})
+
+    def test_format_badge_shows_uppercase_label(self):
+        self._gallery_with([_photo(id=5, ekstenzija='.cr2'),
+                            _photo(id=6, ekstenzija='.tiff'),
+                            _photo(id=7, ekstenzija='.jpeg')])
+        self.login(AUTHOR)
+        r = self.get('/fototeka')
+        self.assertEqual(r.status_code, 200)
+        html = r.data.decode('utf-8')
+        self.assertIn('class="foto-format"', html)
+        self.assertIn('>CR2</span>', html)     # RAW kept as-is
+        self.assertIn('>TIFF</span>', html)    # .tiff normalized
+        self.assertIn('>JPG</span>', html)     # .jpeg normalized to JPG
+
+    def test_format_label_helper(self):
+        self.assertEqual(fototeka_views._format_label('.NEF'), 'NEF')
+        self.assertEqual(fototeka_views._format_label('.jpeg'), 'JPG')
+        self.assertEqual(fototeka_views._format_label('.tif'), 'TIFF')
+        self.assertEqual(fototeka_views._format_label(None), '—')
+
+
+class DownloadModalTests(_RouteTestCase):
+    """The jpg/original choice moved out of the toolbar into a modal opened by
+    the download button; the modal carries the size/warning wiring."""
+
+    def _render(self):
+        self.use_db({'SELECT COUNT(*)': {'total': 1},
+                     'f.ekstenzija': [_photo(id=5, ekstenzija='.cr2',
+                                             velicina_bajtova=1234)]})
+        self.login(AUTHOR)
+        r = self.get('/fototeka')
+        self.assertEqual(r.status_code, 200)
+        return r.data.decode('utf-8')
+
+    def test_modal_and_radios_present(self):
+        html = self._render()
+        self.assertIn('id="fototekaDownloadModal"', html)
+        self.assertIn('name="fototekaSlojChoice"', html)
+        self.assertIn('value="jpg"', html)
+        self.assertIn('value="original"', html)
+        self.assertIn('id="fototekaDownloadOpen"', html)
+
+    def test_old_inline_layer_select_removed(self):
+        html = self._render()
+        # the old toolbar <select name="sloj"> is gone; sloj is now a hidden input
+        self.assertNotIn('<option value="jpg">JPG преглед</option>', html)
+        self.assertIn('id="fototekaSloj"', html)
+        self.assertIn('name="sloj"', html)
+
+    def test_zip_limits_and_byte_data_present(self):
+        html = self._render()
+        # JS needs the ZIP limits and per-photo bytes to compute size + warning
+        self.assertIn('data-zip-max-bytes="{}"'.format(
+            fototeka_views.ZIP_MAX_TOTAL_BYTES), html)
+        self.assertIn('data-zip-max-count="{}"'.format(
+            fototeka_views.DOWNLOAD_ZIP_MAX), html)
+        self.assertIn('data-bytes="1234"', html)
+
+
 # ---------------------------------------------------------------------------
 # 4. Conditional original/RAW button
 # ---------------------------------------------------------------------------

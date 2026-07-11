@@ -76,6 +76,21 @@ VEZA_TIP_LABELS = {
 
 GALLERY_PAGE_SIZE = 60
 
+# Short, uppercase format labels for the gallery thumbnail badge. RAW and any
+# other extension fall through to a bare uppercase of the extension.
+_FORMAT_LABELS = {
+    '.jpg': 'JPG', '.jpeg': 'JPG', '.jpe': 'JPG', '.jfif': 'JPG',
+    '.tif': 'TIFF', '.tiff': 'TIFF',
+    '.png': 'PNG', '.webp': 'WEBP', '.bmp': 'BMP', '.gif': 'GIF',
+}
+
+
+def _format_label(ekstenzija) -> str:
+    ext = (ekstenzija or '').strip().lower()
+    if ext in _FORMAT_LABELS:
+        return _FORMAT_LABELS[ext]
+    return ext.lstrip('.').upper() or '—'
+
 _EXIF_DATETIME_ORIGINAL = 36867
 _EXIF_MAKE = 271
 _EXIF_MODEL = 272
@@ -513,7 +528,8 @@ def render_galerija():
             cur.execute(
                 f"""
                 SELECT f.id, f.original_ime, f.opis, f.status, f.autor_email,
-                       f.datum_snimanja, f.u_prijemnom_redu, f.created_at
+                       f.datum_snimanja, f.u_prijemnom_redu, f.created_at,
+                       f.ekstenzija, f.velicina_bajtova
                 FROM fotografije f
                 WHERE {where_sql}
                 ORDER BY {order_sql}
@@ -522,6 +538,8 @@ def render_galerija():
                 params + [GALLERY_PAGE_SIZE, offset],
             )
             photos = _rows_to_dicts(cur, cur.fetchall())
+            for photo in photos:
+                photo['format_label'] = _format_label(photo.get('ekstenzija'))
 
             # Facets must be drawn from the SAME visible set as the list, or a
             # private photo's author/tag leaks to users who can't see the photo.
@@ -568,6 +586,8 @@ def render_galerija():
         izlozbe=izlozbe,
         zbirke=get_zbirka_labels(),
         status_labels=PHOTO_STATUS_LABELS,
+        zip_max_bytes=ZIP_MAX_TOTAL_BYTES,
+        zip_max_count=DOWNLOAD_ZIP_MAX,
     )
 
 
