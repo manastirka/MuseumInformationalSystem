@@ -252,6 +252,8 @@ def _parse_veza_form(form, cur):
     if tip == 'teren':
         teren_id_raw = (form.get('veza_teren_id') or '').strip()
         if teren_id_raw:
+            if not teren_id_raw.isdigit():
+                raise ValueError('Изабрани терен није исправан.')
             cur.execute(
                 'SELECT id, godina, naziv FROM fototeka_tereni WHERE id = %s',
                 (int(teren_id_raw),),
@@ -273,6 +275,8 @@ def _parse_veza_form(form, cur):
     if tip == 'projekat':
         projekat_id_raw = (form.get('veza_projekat_id') or '').strip()
         if projekat_id_raw:
+            if not projekat_id_raw.isdigit():
+                raise ValueError('Изабрани пројекат није исправан.')
             cur.execute(
                 'SELECT id FROM fototeka_projekti WHERE id = %s',
                 (int(projekat_id_raw),),
@@ -297,6 +301,8 @@ def _parse_veza_form(form, cur):
     if tip == 'izlozba':
         izlozba_id_raw = (form.get('veza_izlozba_id') or '').strip()
         if izlozba_id_raw:
+            if not izlozba_id_raw.isdigit():
+                raise ValueError('Изабрана изложба није исправна.')
             cur.execute('SELECT id FROM exhibitions WHERE id = %s', (int(izlozba_id_raw),))
             row = cur.fetchone()
             if not row:

@@ -424,6 +424,21 @@ class ExhibitionCreateTests(_RouteTestCase):
                 with self.assertRaises(ValueError):
                     fototeka_views._parse_veza_form(request.form, cursor)
 
+    def test_nonnumeric_veza_id_raises_friendly_error(self):
+        # D3: a non-numeric id must give a user-facing message, not the raw
+        # "invalid literal for int()" ValueError text.
+        cursor = _FakeCursor()
+        for tip, field in (('teren', 'veza_teren_id'),
+                           ('projekat', 'veza_projekat_id'),
+                           ('izlozba', 'veza_izlozba_id')):
+            with museum_app.app.test_request_context(
+                    '/', method='POST', data={'veza_tip': tip, field: 'abc'}):
+                from flask import request
+                with self.assertRaises(ValueError) as ctx:
+                    fototeka_views._parse_veza_form(request.form, cursor)
+                self.assertNotIn('invalid literal', str(ctx.exception))
+                self.assertNotIn('int()', str(ctx.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
