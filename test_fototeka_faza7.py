@@ -402,6 +402,24 @@ class GalleryFilterTests(_RouteTestCase):
         self.assertFalse(any('vidljivost' in sql for sql, _ in cur.executed))
 
 
+class RequestTooLargeTests(_RouteTestCase):
+    """C1: a request over MAX_CONTENT_LENGTH must give the JSON uploader a
+    clean message, not an HTML page it would surface as 'server error'."""
+
+    def test_oversized_upload_jedan_returns_json_413(self):
+        prev = museum_app.app.config.get('MAX_CONTENT_LENGTH')
+        museum_app.app.config['MAX_CONTENT_LENGTH'] = 64
+        self.addCleanup(museum_app.app.config.__setitem__, 'MAX_CONTENT_LENGTH', prev)
+        self.login(AUTHOR)
+        r = self.post('/fototeka/upload/jedan',
+                      data={'file': (io.BytesIO(b'x' * 4096), 'big.jpg')},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 413)
+        body = r.get_json()
+        self.assertIsNotNone(body)
+        self.assertFalse(body['ok'])
+
+
 class FacetLeakTests(_RouteTestCase):
     """A7: author dropdown, tag list and the tag autocomplete must be drawn
     from the same visible set as the gallery — a private photo's author/tag

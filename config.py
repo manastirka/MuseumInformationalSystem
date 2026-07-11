@@ -111,8 +111,11 @@ class Config:
     PORT: int = int(os.environ.get('PORT', '5555'))
     WORKERS: int = int(os.environ.get('WORKERS', '1'))
 
-    # File Upload
-    MAX_CONTENT_LENGTH: int = int(os.environ.get('MAX_CONTENT_LENGTH', '209715200'))  # 200MB, matches nginx client_max_body_size (large camera RAW)
+    # File Upload — whole-request cap. Kept a step ABOVE the 200MB per-file
+    # photo limit (fototeka MAX_PHOTO_SIZE) so a 200MB RAW plus multipart
+    # boundary/headers is not rejected by this raw limit before the handler can
+    # return a clean per-file message. nginx client_max_body_size must be >= this.
+    MAX_CONTENT_LENGTH: int = int(os.environ.get('MAX_CONTENT_LENGTH', '230686720'))  # 220MB (200MB per-file + multipart headroom)
     UPLOAD_FOLDER: str = os.environ.get('UPLOAD_FOLDER', 'storage/uploads')
     ALLOWED_EXTENSIONS: set = set(os.environ.get('ALLOWED_EXTENSIONS', 'jpg,jpeg,png,gif,pdf,xlsx,csv').split(','))
 
