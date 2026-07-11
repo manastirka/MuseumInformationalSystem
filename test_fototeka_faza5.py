@@ -151,9 +151,9 @@ class RawIntakeTests(unittest.TestCase):
         self.addCleanup(env.stop)
 
     def test_raw_accepted_without_pil_validation(self):
-        # a .cr2 with arbitrary (non-image) bytes must still be archived
+        # a .cr2 with a valid RAW/TIFF signature is archived without PIL
         raw = Path(self.tmp, 'src.cr2')
-        raw.write_bytes(b'\x00\x01RAWDATA' * 100)
+        raw.write_bytes(b'II\x2a\x00' + b'\x00\x01RAWDATA' * 100)
         cursor = _FakeCursor({'INSERT INTO fotografije': {'id': 9}})
         fid, reason = fototeka_views._intake_photo_from_path(
             cursor, raw, 'photo.cr2', raw.stat().st_size, '.cr2',
@@ -162,6 +162,22 @@ class RawIntakeTests(unittest.TestCase):
         self.assertEqual(fid, 9)
         self.assertIsNone(reason)
         self.assertTrue(list(self.arhiva.rglob('*.cr2')))  # archived
+
+    def test_raw_with_bogus_signature_is_refused(self):
+        # B3: arbitrary content merely renamed to .cr2 must be refused, not
+        # silently archived forever (deletes are soft, the RAW stays).
+        raw = Path(self.tmp, 'fake.cr2')
+        raw.write_bytes(b'this is definitely not a raw image ' * 20)
+        cursor = _FakeCursor({'INSERT INTO fotografije': {'id': 9}})
+        fid, reason = fototeka_views._intake_photo_from_path(
+            cursor, raw, 'fake.cr2', raw.stat().st_size, '.cr2',
+            autor_email='a@b.rs', opis=None, tags=[], datum_override=None,
+            veza=None, u_prijemnom_redu=False, poreklo='upload')
+        self.assertIsNone(fid)
+        self.assertIsNotNone(reason)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO fotografije', joined)
+        self.assertEqual(list(self.arhiva.rglob('*.cr2')), [])  # not archived
 
     def test_full_sha_in_path_avoids_prefix_collision(self):
         # B1: two different files sharing the first 8 sha hex must NOT map to
@@ -179,7 +195,7 @@ class RawIntakeTests(unittest.TestCase):
         # B1: if the target archive path is already occupied, intake must skip
         # and leave the existing original byte-for-byte intact (write-once).
         raw = Path(self.tmp, 'src.cr2')
-        raw.write_bytes(b'NEWDATA' * 50)
+        raw.write_bytes(b'II\x2a\x00' + b'NEWDATA' * 50)
         sha = fototeka_jobs.sha256_of_file(raw)
         raw_rel = fototeka_jobs.raw_intake_relative_path(
             original_ime='photo.cr2', sha256=sha, datum=date(2026, 1, 1))
@@ -208,7 +224,7 @@ class RawIntakeTests(unittest.TestCase):
                 return super().execute(sql, params)
 
         raw = Path(self.tmp, 'boom.cr2')
-        raw.write_bytes(b'RAWCONTENT' * 20)
+        raw.write_bytes(b'II\x2a\x00' + b'RAWCONTENT' * 20)
         with self.assertRaises(RuntimeError):
             fototeka_views._intake_photo_from_path(
                 _FailingInsertCursor(), raw, 'boom.cr2', raw.stat().st_size, '.cr2',

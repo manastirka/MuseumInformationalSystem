@@ -639,6 +639,33 @@ def render_upload_form():
     )
 
 
+def _has_raw_container_signature(head: bytes) -> bool:
+    """True if the leading bytes look like an accepted archival RAW / TIFF /
+    ISO-BMFF container. Camera RAW is mostly TIFF-based (II*\\0 / MM\\0*); a few
+    vendors use their own magic. A file matching none of these is not a valid
+    archival original and must not be archived as-is (arbitrary content renamed
+    to .cr2). This is a signature gate, not a full RAW parse."""
+    tiff_or_raw = (
+        b'II\x2a\x00',   # little-endian TIFF: CR2/NEF/NRW/ARW/SR2/SRF/DNG/PEF/SRW/3FR/IIQ/RWL
+        b'MM\x00\x2a',   # big-endian TIFF
+        b'II\x55\x00',   # Panasonic RW2 / .RAW
+        b'IIRO', b'IIRS', b'MMOR',  # Olympus ORF variants
+        b'FUJIFILM',     # Fujifilm RAF
+        b'FOVb',         # Sigma X3F (Foveon)
+    )
+    if any(head.startswith(sig) for sig in tiff_or_raw):
+        return True
+    # ISO base media file format (Canon CR3): size(4 bytes) + 'ftyp' + brand
+    if len(head) >= 12 and head[4:8] == b'ftyp':
+        return True
+    return False
+
+
+def _read_file_head(path, n: int = 16) -> bytes:
+    with open(path, 'rb') as handle:
+        return handle.read(n)
+
+
 def _place_raw_exclusive(temp_path, raw_full):
     """Install temp_path at raw_full WITHOUT ever overwriting an existing file.
 
@@ -683,9 +710,14 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         except Exception:
             return None, f'{original_ime}: датотека није исправна слика'
     else:
-        # Camera RAW / archival original: PIL can't open it, so accept as-is
-        # without validation or EXIF. The worker will mark it 'bez_derivata'
-        # if libvips also can't decode it.
+        # Camera RAW / archival original: PIL can't open it. Validate the
+        # container signature so arbitrary content merely renamed to a RAW
+        # extension is refused rather than silently archived forever (deletes
+        # are soft — the RAW file always stays). The worker still marks it
+        # 'bez_derivata' if libvips can't build a preview.
+        if not _has_raw_container_signature(_read_file_head(temp_path)):
+            return None, (f'{original_ime}: садржај није препознат као исправан '
+                          f'RAW/архивски формат')
         exif_info = {'width': None, 'height': None, 'datum_snimanja': None, 'exif': {}}
 
     cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
