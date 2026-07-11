@@ -190,7 +190,7 @@
                             </a>
                         </div>
                         <div class="foto-sub">
-                            {{ photo.datum_snimanja or photo.created_at.date() }} · {{ photo.autor_email }}
+                            {{ photo.datum_snimanja or photo.created_at.date() }} · <span data-no-translate>{{ photo.autor_email }}</span>
                         </div>
                         <div class="foto-sub">
                             {% if photo.status == 'obrada' or photo.status == 'primljena' %}
