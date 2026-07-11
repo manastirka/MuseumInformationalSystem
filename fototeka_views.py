@@ -501,20 +501,30 @@ def render_galerija():
             )
             photos = _rows_to_dicts(cur, cur.fetchall())
 
+            # Facets must be drawn from the SAME visible set as the list, or a
+            # private photo's author/tag leaks to users who can't see the photo.
+            vis_autor_clause, vis_autor_params = _visibility_filter(session, 'fotografije')
             cur.execute(
-                """
+                f"""
                 SELECT DISTINCT autor_email FROM fotografije
-                WHERE obrisana = FALSE ORDER BY autor_email
+                WHERE obrisana = FALSE
+                  {('AND ' + vis_autor_clause) if vis_autor_clause else ''}
+                ORDER BY autor_email
                 """,
+                vis_autor_params,
             )
             autori = [_scalar(row, 'autor_email') for row in
                       _rows_to_dicts(cur, cur.fetchall())]
+            vis_tag_clause, vis_tag_params = _visibility_filter(session, 'f')
             cur.execute(
-                """
+                f"""
                 SELECT DISTINCT t.tag FROM fotografija_tagovi t
                 JOIN fotografije f ON f.id = t.fotografija_id
-                WHERE f.obrisana = FALSE ORDER BY t.tag LIMIT 200
+                WHERE f.obrisana = FALSE
+                  {('AND ' + vis_tag_clause) if vis_tag_clause else ''}
+                ORDER BY t.tag LIMIT 200
                 """,
+                vis_tag_params,
             )
             tagovi = [_scalar(row, 'tag') for row in
                       _rows_to_dicts(cur, cur.fetchall())]
@@ -1428,14 +1438,20 @@ def handle_preuzmi_zip():
 
 def api_tagovi():
     q = (request.args.get('q') or '').strip()
+    # Only suggest tags that live on photos the caller may see and that are not
+    # deleted — otherwise a private photo's tag leaks through autocomplete.
+    vis_clause, vis_params = _visibility_filter(session, 'f')
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT DISTINCT tag FROM fotografija_tagovi
-                WHERE tag ILIKE %s ORDER BY tag LIMIT 15
+                f"""
+                SELECT DISTINCT t.tag FROM fotografija_tagovi t
+                JOIN fotografije f ON f.id = t.fotografija_id
+                WHERE f.obrisana = FALSE AND t.tag ILIKE %s
+                  {('AND ' + vis_clause) if vis_clause else ''}
+                ORDER BY t.tag LIMIT 15
                 """,
-                (f'%{q}%',),
+                [f'%{q}%', *vis_params],
             )
             tags = [_scalar(row, 'tag') for row in _rows_to_dicts(cur, cur.fetchall())]
     return jsonify(tags)

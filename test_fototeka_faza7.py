@@ -402,5 +402,40 @@ class GalleryFilterTests(_RouteTestCase):
         self.assertFalse(any('vidljivost' in sql for sql, _ in cur.executed))
 
 
+class FacetLeakTests(_RouteTestCase):
+    """A7: author dropdown, tag list and the tag autocomplete must be drawn
+    from the same visible set as the gallery — a private photo's author/tag
+    must not leak to users who cannot see the photo."""
+
+    def _facet_sqls(self, cur):
+        return [sql for sql, _ in cur.executed
+                if 'DISTINCT autor_email' in sql or 'DISTINCT t.tag' in sql]
+
+    def test_gallery_facets_filter_visibility_for_regular_user(self):
+        cur = self.use_db({'SELECT COUNT(*)': {'total': 0}, 'ORDER BY': []})
+        self.login(OTHER)
+        self.get('/fototeka')
+        facets = self._facet_sqls(cur)
+        self.assertEqual(len(facets), 2)  # autori + tagovi
+        for sql in facets:
+            self.assertIn('vidljivost', sql)
+
+    def test_gallery_facets_unrestricted_for_admin(self):
+        cur = self.use_db({'SELECT COUNT(*)': {'total': 0}, 'ORDER BY': []})
+        self.login(ADMIN)
+        self.get('/fototeka')
+        for sql in self._facet_sqls(cur):
+            self.assertNotIn('vidljivost', sql)
+
+    def test_api_tagovi_joins_photos_and_filters_visibility(self):
+        cur = self.use_db({'fotografija_tagovi': []})
+        self.login(OTHER)
+        self.get('/fototeka/api/tagovi?q=a')
+        sql = [s for s, _ in cur.executed if 'fotografija_tagovi' in s][0]
+        self.assertIn('JOIN fotografije', sql)
+        self.assertIn('obrisana = FALSE', sql)
+        self.assertIn('vidljivost', sql)
+
+
 if __name__ == '__main__':
     unittest.main()
