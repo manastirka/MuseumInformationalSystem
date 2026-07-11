@@ -150,7 +150,7 @@
                     <tbody>
                         <tr><th scope="row">Статус</th>
                             <td><span class="badge fototeka-status-{{ 'spremna' if photo.status == 'spremna' else ('greska' if photo.status == 'greska' else 'obrada') }}">{{ status_labels.get(photo.status, photo.status) }}</span></td></tr>
-                        <tr><th scope="row">Аутор</th><td>{{ photo.autor_email }}</td></tr>
+                        <tr><th scope="row">Аутор</th><td data-no-translate>{{ photo.autor_email }}</td></tr>
                         <tr><th scope="row">Видљивост</th>
                             <td>
                                 {% if photo.vidljivost == 'privatno' %}
@@ -160,7 +160,7 @@
                                 {% endif %}
                             </td></tr>
                         <tr><th scope="row">Датум снимања</th><td>{{ photo.datum_snimanja or '—' }}</td></tr>
-                        <tr><th scope="row">Датотека</th><td>{{ photo.original_ime }}</td></tr>
+                        <tr><th scope="row">Датотека</th><td data-no-translate>{{ photo.original_ime }}</td></tr>
                         <tr><th scope="row">Димензије</th>
                             <td>{% if photo.width %}{{ photo.width }} × {{ photo.height }}{% else %}—{% endif %}</td></tr>
                         <tr><th scope="row">Величина</th>

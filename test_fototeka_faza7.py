@@ -249,6 +249,37 @@ class FileServeAccessTests(_RouteTestCase):
         # public: not 403 (serves placeholder while processing)
         self.assertNotEqual(self.get('/fototeka/media/5/jpg').status_code, 403)
 
+    def _write_derivative(self, sha, kind='jpg'):
+        import fototeka_jobs
+        rel = fototeka_jobs.derivative_relative_path(sha, kind)
+        path = os.path.join(self.media, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        Image.new('RGB', (40, 30), (10, 20, 30)).save(path, format='JPEG')
+        return path
+
+    def test_private_derivat_is_not_shared_cacheable(self):
+        # A6: a private photo's derivative must never carry `public` cache and
+        # must be `no-store` so a javno->privatno flip is effective immediately.
+        self._write_derivative(SHA, 'jpg')
+        self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='privatno')})
+        self.login(AUTHOR)
+        r = self.get('/fototeka/media/5/jpg')
+        self.assertEqual(r.status_code, 200)
+        cc = r.headers.get('Cache-Control', '')
+        self.assertNotIn('public', cc)
+        self.assertIn('no-store', cc)
+        self.assertIn('Cookie', r.headers.get('Vary', ''))
+
+    def test_public_derivat_is_private_not_public_cache(self):
+        self._write_derivative(SHA, 'jpg')
+        self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='javno')})
+        self.login(OTHER)
+        r = self.get('/fototeka/media/5/jpg')
+        self.assertEqual(r.status_code, 200)
+        cc = r.headers.get('Cache-Control', '')
+        self.assertNotIn('public', cc)  # behind login → never a shared cache
+        self.assertIn('private', cc)
+
 
 class ZipAccessTests(_RouteTestCase):
 
@@ -369,6 +400,98 @@ class GalleryFilterTests(_RouteTestCase):
         self.login(ADMIN)
         self.get('/fototeka')
         self.assertFalse(any('vidljivost' in sql for sql, _ in cur.executed))
+
+
+class LinkAuditTests(_RouteTestCase):
+    """D2: removing a link is non-destructive to the file but is lost curation
+    work, so it must leave an audit line naming who did it."""
+
+    def test_unlink_logs_audit_with_email(self):
+        self.use_db({'FROM fotografije WHERE id': _photo(),
+                     'DELETE FROM foto_veza': {'id': 1}})
+        self.login(AUTHOR)
+        with self.assertLogs('fototeka_views', level='INFO') as cm:
+            r = self.post('/fototeka/5/veza/predmet/1/ukloni')
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(any(AUTHOR['user_email'] in line for line in cm.output))
+
+
+class ApiPredmetiAccessTests(_RouteTestCase):
+    """D4: mineral inventory autocomplete must honour the mineral database's
+    own (narrower) access control, not just Фototeka module access."""
+
+    def test_denied_without_mineral_access_returns_empty(self):
+        # fototeka module allowed (route passes), mineral_database denied
+        with patch.object(museum_app.app, 'user_has_module_access',
+                          lambda email, role, key: key != 'mineral_database'):
+            self.login(AUTHOR)
+            r = self.get('/fototeka/api/predmeti?zbirka=mineral&q=12')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.get_json(), [])
+
+    def test_allowed_with_mineral_access_queries(self):
+        cur = self.use_db({'FROM minerals':
+                           [{'inventory_number': '123', 'item_name': 'Кварц'}]})
+        with patch.object(museum_app.app, 'user_has_module_access',
+                          lambda *a, **k: True):
+            self.login(AUTHOR)
+            r = self.get('/fototeka/api/predmeti?zbirka=mineral&q=12')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(len(r.get_json()), 1)
+        self.assertTrue(any('FROM minerals' in sql for sql, _ in cur.executed))
+
+
+class RequestTooLargeTests(_RouteTestCase):
+    """C1: a request over MAX_CONTENT_LENGTH must give the JSON uploader a
+    clean message, not an HTML page it would surface as 'server error'."""
+
+    def test_oversized_upload_jedan_returns_json_413(self):
+        prev = museum_app.app.config.get('MAX_CONTENT_LENGTH')
+        museum_app.app.config['MAX_CONTENT_LENGTH'] = 64
+        self.addCleanup(museum_app.app.config.__setitem__, 'MAX_CONTENT_LENGTH', prev)
+        self.login(AUTHOR)
+        r = self.post('/fototeka/upload/jedan',
+                      data={'file': (io.BytesIO(b'x' * 4096), 'big.jpg')},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 413)
+        body = r.get_json()
+        self.assertIsNotNone(body)
+        self.assertFalse(body['ok'])
+
+
+class FacetLeakTests(_RouteTestCase):
+    """A7: author dropdown, tag list and the tag autocomplete must be drawn
+    from the same visible set as the gallery — a private photo's author/tag
+    must not leak to users who cannot see the photo."""
+
+    def _facet_sqls(self, cur):
+        return [sql for sql, _ in cur.executed
+                if 'DISTINCT autor_email' in sql or 'DISTINCT t.tag' in sql]
+
+    def test_gallery_facets_filter_visibility_for_regular_user(self):
+        cur = self.use_db({'SELECT COUNT(*)': {'total': 0}, 'ORDER BY': []})
+        self.login(OTHER)
+        self.get('/fototeka')
+        facets = self._facet_sqls(cur)
+        self.assertEqual(len(facets), 2)  # autori + tagovi
+        for sql in facets:
+            self.assertIn('vidljivost', sql)
+
+    def test_gallery_facets_unrestricted_for_admin(self):
+        cur = self.use_db({'SELECT COUNT(*)': {'total': 0}, 'ORDER BY': []})
+        self.login(ADMIN)
+        self.get('/fototeka')
+        for sql in self._facet_sqls(cur):
+            self.assertNotIn('vidljivost', sql)
+
+    def test_api_tagovi_joins_photos_and_filters_visibility(self):
+        cur = self.use_db({'fotografija_tagovi': []})
+        self.login(OTHER)
+        self.get('/fototeka/api/tagovi?q=a')
+        sql = [s for s, _ in cur.executed if 'fotografija_tagovi' in s][0]
+        self.assertIn('JOIN fotografije', sql)
+        self.assertIn('obrisana = FALSE', sql)
+        self.assertIn('vidljivost', sql)
 
 
 if __name__ == '__main__':

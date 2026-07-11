@@ -233,6 +233,18 @@ class OriginalButtonTests(_RouteTestCase):
             self.assertIsNone(fototeka_views._archival_original_path(
                 _photo(raw_putanja='../secret.jpg')))
 
+    def test_filename_and_email_marked_no_translate(self):
+        # D5: naturally-Latin identifiers (filename, author email) must be
+        # marked data-no-translate so the Latin<->Cyrillic transliterator does
+        # not corrupt them in the display.
+        self.use_db({'FROM fotografije WHERE id': _photo()})
+        self.login(AUTHOR)
+        response = self.get('/fototeka/5')
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode('utf-8')
+        self.assertIn('<td data-no-translate>autor@nhmbeo.rs</td>', html)
+        self.assertIn('<td data-no-translate>x.jpg</td>', html)
+
 
 # ---------------------------------------------------------------------------
 # 3. ZIP download

@@ -303,6 +303,84 @@ class WorkerRetryTests(unittest.TestCase):
             finish.assert_not_called()
 
 
+class DeployWorkerRestartTests(unittest.TestCase):
+    """C4: the deploy script must restart AND health-check the Фototeka worker,
+    or it keeps running the previous code after a deploy."""
+
+    def test_deploy_restarts_and_checks_worker(self):
+        script = Path(__file__).resolve().parent / 'deploy.sh'
+        text = script.read_text(encoding='utf-8')
+        self.assertIn('systemctl restart mis-fototeka-worker', text)
+        self.assertIn('is-active', text)
+        self.assertIn('mis-fototeka-worker', text)
+
+
+class WorkerCrashReclaimTests(unittest.TestCase):
+    """B4: a stale 'radi' job (worker died mid-job, possibly a native crash
+    that skipped _fail_job) must count as an attempt and eventually
+    dead-letter, so a crash-inducing file can't loop forever."""
+
+    def _reclaim(self, reclaimed_rows):
+        cursor = _FakeCursor({'UPDATE foto_poslovi': reclaimed_rows})
+        conn = _FakeConnection(cursor)
+        with patch.object(fototeka_jobs, 'get_postgres_connection', lambda **k: conn):
+            n = fototeka_jobs.reclaim_stale_jobs()
+        return cursor, n
+
+    def test_reclaim_counts_crash_as_attempt(self):
+        cur, n = self._reclaim(
+            [{'id': 1, 'fotografija_id': 5, 'tip': 'derivati', 'status': 'ceka'}])
+        joined = ' '.join(sql for sql, _ in cur.executed)
+        self.assertIn('pokusaji = pokusaji + 1', joined)
+        # a job returned to 'ceka' does NOT flip the photo to greska
+        self.assertNotIn("UPDATE fotografije SET status = 'greska'", joined)
+        self.assertEqual(n, 1)
+
+    def test_reclaim_dead_letters_after_max_and_marks_photo(self):
+        cur, n = self._reclaim(
+            [{'id': 1, 'fotografija_id': 5, 'tip': 'derivati', 'status': 'greska'}])
+        joined = ' '.join(sql for sql, _ in cur.executed)
+        self.assertIn("UPDATE fotografije SET status = 'greska'", joined)
+        self.assertEqual(n, 1)
+
+
+class MakeDerivativesTempTests(unittest.TestCase):
+    """B4/B7: derivative temp files are per-process (no shared .tmp_<sha>
+    collision) and never left behind."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='fototeka-tmp-')
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        env = patch.dict(os.environ, {'FOTOTEKA_MEDIA_PATH': self.tmp + '/media'})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_temp_name_is_process_unique_and_cleaned(self):
+        import sys
+        import types
+        seen = []
+
+        class _FakeImg:
+            @staticmethod
+            def thumbnail(path, width, height=None, size=None, **kw):
+                return _FakeImg()
+
+            def write_to_file(self, path, **kw):
+                seen.append(os.path.basename(path))
+                with open(path, 'wb') as fh:
+                    fh.write(b'JPEGDATA')
+
+        fake = types.ModuleType('pyvips')
+        fake.Image = _FakeImg
+        with patch.dict(sys.modules, {'pyvips': fake}):
+            fototeka_jobs.make_derivatives(Path(self.tmp, 'raw.cr2'), SHA)
+
+        media = Path(self.tmp, 'media')
+        self.assertEqual([p for p in media.rglob('.tmp_*')], [])  # no leftovers
+        self.assertTrue((media / fototeka_jobs.derivative_relative_path(SHA, 'jpg')).is_file())
+        self.assertTrue(seen and all(str(os.getpid()) in name for name in seen))
+
+
 class FixityTests(unittest.TestCase):
 
     def setUp(self):

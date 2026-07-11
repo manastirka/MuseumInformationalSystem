@@ -10,6 +10,7 @@ database; the RAW file always stays.
 """
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -36,6 +37,9 @@ import fototeka_jobs
 import image_matcher
 from collection_registry import iter_collection_list_entries
 from postgres_service import get_postgres_connection
+
+
+logger = logging.getLogger(__name__)
 
 
 # Formats PIL can open — validated and EXIF-read at intake.
@@ -252,6 +256,8 @@ def _parse_veza_form(form, cur):
     if tip == 'teren':
         teren_id_raw = (form.get('veza_teren_id') or '').strip()
         if teren_id_raw:
+            if not teren_id_raw.isdigit():
+                raise ValueError('Изабрани терен није исправан.')
             cur.execute(
                 'SELECT id, godina, naziv FROM fototeka_tereni WHERE id = %s',
                 (int(teren_id_raw),),
@@ -273,6 +279,8 @@ def _parse_veza_form(form, cur):
     if tip == 'projekat':
         projekat_id_raw = (form.get('veza_projekat_id') or '').strip()
         if projekat_id_raw:
+            if not projekat_id_raw.isdigit():
+                raise ValueError('Изабрани пројекат није исправан.')
             cur.execute(
                 'SELECT id FROM fototeka_projekti WHERE id = %s',
                 (int(projekat_id_raw),),
@@ -297,6 +305,8 @@ def _parse_veza_form(form, cur):
     if tip == 'izlozba':
         izlozba_id_raw = (form.get('veza_izlozba_id') or '').strip()
         if izlozba_id_raw:
+            if not izlozba_id_raw.isdigit():
+                raise ValueError('Изабрана изложба није исправна.')
             cur.execute('SELECT id FROM exhibitions WHERE id = %s', (int(izlozba_id_raw),))
             row = cur.fetchone()
             if not row:
@@ -305,6 +315,18 @@ def _parse_veza_form(form, cur):
         naziv = ' '.join((form.get('veza_izlozba_naziv') or '').split())
         if not naziv:
             raise ValueError('Изаберите изложбу или унесите назив нове.')
+        # Get-or-create by title. The sequential upload sends N per-file
+        # requests carrying the same new-exhibition name; without this, each
+        # request would INSERT its own row (exhibitions.title has no UNIQUE),
+        # leaving N duplicate exhibitions. Reusing an existing same-titled row
+        # keeps one exhibition per name. (teren/projekat already get-or-create.)
+        cur.execute(
+            'SELECT id FROM exhibitions WHERE title = %s ORDER BY id LIMIT 1',
+            (naziv,),
+        )
+        existing = cur.fetchone()
+        if existing:
+            return {'tip': 'izlozba', 'izlozba_id': _scalar(existing, 'id')}
         # Create a new exhibition — same bar as the exhibition planner
         # (login only); provenance from the session.
         cur.execute(
@@ -501,20 +523,30 @@ def render_galerija():
             )
             photos = _rows_to_dicts(cur, cur.fetchall())
 
+            # Facets must be drawn from the SAME visible set as the list, or a
+            # private photo's author/tag leaks to users who can't see the photo.
+            vis_autor_clause, vis_autor_params = _visibility_filter(session, 'fotografije')
             cur.execute(
-                """
+                f"""
                 SELECT DISTINCT autor_email FROM fotografije
-                WHERE obrisana = FALSE ORDER BY autor_email
+                WHERE obrisana = FALSE
+                  {('AND ' + vis_autor_clause) if vis_autor_clause else ''}
+                ORDER BY autor_email
                 """,
+                vis_autor_params,
             )
             autori = [_scalar(row, 'autor_email') for row in
                       _rows_to_dicts(cur, cur.fetchall())]
+            vis_tag_clause, vis_tag_params = _visibility_filter(session, 'f')
             cur.execute(
-                """
+                f"""
                 SELECT DISTINCT t.tag FROM fotografija_tagovi t
                 JOIN fotografije f ON f.id = t.fotografija_id
-                WHERE f.obrisana = FALSE ORDER BY t.tag LIMIT 200
+                WHERE f.obrisana = FALSE
+                  {('AND ' + vis_tag_clause) if vis_tag_clause else ''}
+                ORDER BY t.tag LIMIT 200
                 """,
+                vis_tag_params,
             )
             tagovi = [_scalar(row, 'tag') for row in
                       _rows_to_dicts(cur, cur.fetchall())]
@@ -617,6 +649,33 @@ def render_upload_form():
     )
 
 
+def _has_raw_container_signature(head: bytes) -> bool:
+    """True if the leading bytes look like an accepted archival RAW / TIFF /
+    ISO-BMFF container. Camera RAW is mostly TIFF-based (II*\\0 / MM\\0*); a few
+    vendors use their own magic. A file matching none of these is not a valid
+    archival original and must not be archived as-is (arbitrary content renamed
+    to .cr2). This is a signature gate, not a full RAW parse."""
+    tiff_or_raw = (
+        b'II\x2a\x00',   # little-endian TIFF: CR2/NEF/NRW/ARW/SR2/SRF/DNG/PEF/SRW/3FR/IIQ/RWL
+        b'MM\x00\x2a',   # big-endian TIFF
+        b'II\x55\x00',   # Panasonic RW2 / .RAW
+        b'IIRO', b'IIRS', b'MMOR',  # Olympus ORF variants
+        b'FUJIFILM',     # Fujifilm RAF
+        b'FOVb',         # Sigma X3F (Foveon)
+    )
+    if any(head.startswith(sig) for sig in tiff_or_raw):
+        return True
+    # ISO base media file format (Canon CR3): size(4 bytes) + 'ftyp' + brand
+    if len(head) >= 12 and head[4:8] == b'ftyp':
+        return True
+    return False
+
+
+def _read_file_head(path, n: int = 16) -> bytes:
+    with open(path, 'rb') as handle:
+        return handle.read(n)
+
+
 def _place_raw_exclusive(temp_path, raw_full):
     """Install temp_path at raw_full WITHOUT ever overwriting an existing file.
 
@@ -661,9 +720,14 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         except Exception:
             return None, f'{original_ime}: датотека није исправна слика'
     else:
-        # Camera RAW / archival original: PIL can't open it, so accept as-is
-        # without validation or EXIF. The worker will mark it 'bez_derivata'
-        # if libvips also can't decode it.
+        # Camera RAW / archival original: PIL can't open it. Validate the
+        # container signature so arbitrary content merely renamed to a RAW
+        # extension is refused rather than silently archived forever (deletes
+        # are soft — the RAW file always stays). The worker still marks it
+        # 'bez_derivata' if libvips can't build a preview.
+        if not _has_raw_container_signature(_read_file_head(temp_path)):
+            return None, (f'{original_ime}: садржај није препознат као исправан '
+                          f'RAW/архивски формат')
         exif_info = {'width': None, 'height': None, 'datum_snimanja': None, 'exif': {}}
 
     cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
@@ -865,13 +929,19 @@ def _make_preview_derivatives(source_path, sha256):
     for kind, size in (('jpg', 2500), ('thumb', 300)):
         final_path = media_root / fototeka_jobs.derivative_relative_path(sha256, kind)
         final_path.parent.mkdir(parents=True, exist_ok=True)
-        with Image.open(source_path) as img:
-            img = img.convert('RGB')
-            dims = {'width': img.width, 'height': img.height}
-            img.thumbnail((size, size), Image.Resampling.LANCZOS)
-            temp_out = final_path.with_name(f'.tmp_{final_path.name}')
-            img.save(temp_out, format='JPEG', quality=85, optimize=True)
-        os.replace(temp_out, final_path)
+        # per-process temp name + guaranteed cleanup (same rationale as the
+        # worker's make_derivatives — no shared .tmp_<sha> collision/leftover)
+        temp_out = final_path.with_name(f'.tmp_{os.getpid()}_{final_path.name}')
+        try:
+            with Image.open(source_path) as img:
+                img = img.convert('RGB')
+                dims = {'width': img.width, 'height': img.height}
+                img.thumbnail((size, size), Image.Resampling.LANCZOS)
+                img.save(temp_out, format='JPEG', quality=85, optimize=True)
+            os.replace(temp_out, final_path)
+        finally:
+            if temp_out.exists():
+                temp_out.unlink()
     return dims
 
 
@@ -1132,6 +1202,10 @@ def handle_ukloni_vezu(fotografija_id, tip, veza_id):
             )
             if not cur.fetchone():
                 abort(404)
+    # Audit trail: removing a link is non-destructive to the file but is lost
+    # curation work, so record who did it.
+    logger.info('Fototeka veza uklonjena: foto=%s tip=%s veza_id=%s by=%s',
+                fotografija_id, tip, veza_id, _session_email(session))
     flash('Веза је уклоњена.', 'success')
     return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
 
@@ -1254,7 +1328,22 @@ def serve_derivat(fotografija_id, kind):
         abort(404)
     if not full_path.is_file():
         return _send_placeholder(kind)
-    return send_file(full_path, mimetype='image/jpeg', max_age=3600)
+    response = send_file(full_path, mimetype='image/jpeg')
+    _apply_private_cache_headers(response, photo)
+    return response
+
+
+def _apply_private_cache_headers(response, photo):
+    """These files sit behind login + per-photo access control, so a shared
+    cache must NEVER store them. A private photo additionally gets `no-store`
+    so a later javno→privatno flip takes effect immediately (the URL is a pure
+    function of sha256 and never changes)."""
+    is_private = (photo.get('vidljivost') or 'javno') == 'privatno'
+    response.headers['Cache-Control'] = (
+        'private, no-store' if is_private else 'private, max-age=3600'
+    )
+    response.headers['Vary'] = 'Cookie'
+    return response
 
 
 def serve_raw(fotografija_id):
@@ -1268,12 +1357,14 @@ def serve_raw(fotografija_id):
     full_path = _archival_original_path(photo)
     if full_path is None:
         abort(404)
-    return send_file(
+    response = send_file(
         full_path,
         as_attachment=True,
         download_name=photo['original_ime'] or full_path.name,
         max_age=0,
     )
+    _apply_private_cache_headers(response, photo)
+    return response
 
 
 DOWNLOAD_ZIP_MAX = 300
@@ -1411,14 +1502,20 @@ def handle_preuzmi_zip():
 
 def api_tagovi():
     q = (request.args.get('q') or '').strip()
+    # Only suggest tags that live on photos the caller may see and that are not
+    # deleted — otherwise a private photo's tag leaks through autocomplete.
+    vis_clause, vis_params = _visibility_filter(session, 'f')
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT DISTINCT tag FROM fotografija_tagovi
-                WHERE tag ILIKE %s ORDER BY tag LIMIT 15
+                f"""
+                SELECT DISTINCT t.tag FROM fotografija_tagovi t
+                JOIN fotografije f ON f.id = t.fotografija_id
+                WHERE f.obrisana = FALSE AND t.tag ILIKE %s
+                  {('AND ' + vis_clause) if vis_clause else ''}
+                ORDER BY t.tag LIMIT 15
                 """,
-                (f'%{q}%',),
+                [f'%{q}%', *vis_params],
             )
             tags = [_scalar(row, 'tag') for row in _rows_to_dicts(cur, cur.fetchall())]
     return jsonify(tags)
@@ -1428,9 +1525,19 @@ def api_predmeti():
     """Inventory-number autocomplete. Phase 1 covers the mineral collection
     (the only one whose items live in PostgreSQL); for other collections the
     inventory number is typed in freely."""
+    from flask import current_app
+
     zbirka = (request.args.get('zbirka') or '').strip()
     q = (request.args.get('q') or '').strip()
     if zbirka != 'mineral' or len(q) < 1:
+        return jsonify([])
+    # The mineral database has its own, narrower access control than the
+    # Фototeka module (which every employee has). Don't let this autocomplete
+    # enumerate mineral inventory numbers/names for users who may not open it.
+    access_checker = getattr(current_app, 'user_has_module_access', None)
+    if access_checker is not None and not access_checker(
+            session.get('user_email', ''), session.get('user_role', ''),
+            'mineral_database'):
         return jsonify([])
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
@@ -1641,6 +1748,9 @@ def handle_entitet_ukloni():
                 (fotografija_id, *params),
             )
             deleted = cur.fetchone()
+    if deleted:
+        logger.info('Fototeka entitet-veza uklonjena: foto=%s entitet=%s by=%s',
+                    fotografija_id, entity.get('tip'), _session_email(session))
     return jsonify({'ok': bool(deleted)})
 
 
@@ -1669,13 +1779,24 @@ def _safe_import_dir(subdir):
     return target
 
 
-def _scan_import_files(directory):
-    """Top-level image files in `directory`, sorted, capped at the batch limit."""
+def _scan_import_files(directory, offset=0):
+    """Sorted top-level image files in `directory`, returned as
+    (total_count, page) where page is the slice [offset : offset+BATCH]. The
+    import copies files (it never moves them off the share), so without an
+    advancing offset a directory holding more than one batch could never be
+    fully imported — every run would re-scan the same first N and dedup them.
+    The caller advances `offset` batch by batch."""
     files = sorted(
         p for p in directory.iterdir()
         if p.is_file() and p.suffix.lower() in ALLOWED_PHOTO_EXTENSIONS
     )
-    return files[:IMPORT_BATCH_LIMIT]
+    offset = max(0, offset)
+    return len(files), files[offset:offset + IMPORT_BATCH_LIMIT]
+
+
+def _parse_offset(form):
+    raw = (form.get('offset') or '0').strip()
+    return int(raw) if raw.isdigit() else 0
 
 
 def _extract_predmet_broj(filename, zbirka):
@@ -1745,14 +1866,20 @@ def render_import_form():
         subdir='',
         zbirka='mineral',
         scanned=None,
+        offset=0,
+        total=0,
+        next_offset=None,
     )
 
 
 def handle_import_scan():
-    """Dry run: classify every file under the chosen subdir and show a preview.
-    No files are copied and nothing is written to the database."""
+    """Dry run: classify the current batch under the chosen subdir and show a
+    preview. No files are copied and nothing is written to the database. The
+    directory is paginated by IMPORT_BATCH_LIMIT so a folder larger than one
+    batch can be worked through with the 'next batch' control."""
     subdir = (request.form.get('subdir') or '').strip()
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
+    offset = _parse_offset(request.form)
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
     directory = _safe_import_dir(subdir)
@@ -1763,10 +1890,12 @@ def handle_import_scan():
         flash('Изабрани директоријум не постоји на дељеном диску.', 'warning')
         return redirect(url_for('fototeka.fototeka_import'))
 
+    total, page = _scan_import_files(directory, offset)
     scanned = []
-    for path in _scan_import_files(directory):
+    for path in page:
         result = classify_import_filename(path.name, zbirka)
         scanned.append({'ime': path.name, 'klasa': result['klasa'], 'note': result['note']})
+    next_offset = offset + IMPORT_BATCH_LIMIT if offset + len(page) < total else None
     return render_template(
         'fototeka_import.html',
         zbirke=get_zbirka_labels(),
@@ -1774,6 +1903,9 @@ def handle_import_scan():
         subdir=subdir,
         zbirka=zbirka,
         scanned=scanned,
+        offset=offset,
+        total=total,
+        next_offset=next_offset,
     )
 
 
@@ -1784,6 +1916,7 @@ def handle_import_confirm():
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
+    offset = _parse_offset(request.form)
     directory = _safe_import_dir(subdir)
     if directory is None or not directory.is_dir():
         flash('Неисправна путања за увоз.', 'danger')
@@ -1793,8 +1926,9 @@ def handle_import_confirm():
     temp_dir = fototeka_jobs.get_media_path() / 'temp'
     temp_dir.mkdir(parents=True, exist_ok=True)
 
+    total, page = _scan_import_files(directory, offset)
     saved, skipped = 0, []
-    for path in _scan_import_files(directory):
+    for path in page:
         file_size = path.stat().st_size
         if file_size <= 0:
             skipped.append(f'{path.name}: датотека је празна')
@@ -1826,7 +1960,16 @@ def handle_import_confirm():
     if saved:
         flash(f'Увезено фотографија: {saved}. Умањени прикази се обрађују у позадини.', 'success')
     if not saved and not skipped:
-        flash('Нема датотека за увоз у изабраном директоријуму.', 'info')
+        flash('Нема датотека за увоз у изабраном батчу.', 'info')
     for reason in skipped[:20]:
         flash(reason, 'warning')
+    # If the directory holds more than this batch, tell the user how much is
+    # left and re-scan the next batch so a >BATCH folder is fully importable.
+    processed_upto = offset + len(page)
+    if processed_upto < total:
+        flash(
+            f'Обрађено {processed_upto} од {total}. Скенирајте следећи батч '
+            f'(датотеке од {processed_upto + 1}).', 'info',
+        )
+        return redirect(url_for('fototeka.fototeka_import'))
     return redirect(url_for('fototeka.fototeka_galerija'))

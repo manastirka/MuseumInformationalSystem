@@ -407,6 +407,19 @@ app_blueprint_support.register_standard_blueprints(
 app_blueprint_support.apply_blueprint_aliases(app)
 app_blueprint_support.apply_csrf_exemptions(app, csrf)
 
+
+@app.errorhandler(413)
+def handle_request_entity_too_large(error):
+    """A request over MAX_CONTENT_LENGTH (or nginx client_max_body_size) is
+    rejected before the view runs. The Фototeka uploader posts one file at a
+    time to /fototeka/upload/jedan and expects JSON, so return a clean message
+    instead of the default HTML page it would surface as a generic 'server
+    error'."""
+    if request.path.rstrip('/').endswith('/upload/jedan') or request.path.startswith('/api/'):
+        return jsonify({'ok': False, 'error': 'Датотека је превелика за отпремање.'}), 413
+    flash('Датотека је превелика за отпремање.', 'danger')
+    return redirect(request.referrer or url_for('dashboard'))
+
 # CLI: flask reset-test-data (praznjenje probnih podataka pred user testiranje)
 import reset_test_data as reset_test_data_cli
 reset_test_data_cli.register_cli(app)

@@ -138,6 +138,19 @@ class NoDerivativeWorkerTests(unittest.TestCase):
             fail.assert_called_once()
             mark.assert_not_called()
 
+    def test_transient_oserror_on_undecodable_retries_not_permanent(self):
+        # B6: a transient OS failure (e.g. disk full) on a non-derivable
+        # extension must retry, not be frozen permanently as 'bez_derivata'.
+        with patch.object(fototeka_jobs, 'make_derivatives',
+                          side_effect=OSError('No space left on device')), \
+             patch.object(fototeka_jobs, '_mark_no_derivative') as mark, \
+             patch.object(fototeka_jobs, '_fail_job') as fail:
+            job = {'id': 1, 'fotografija_id': 5, 'tip': 'derivati', 'pokusaji': 0,
+                   'sha256': SHA, 'raw_putanja': 'razno/2026/x.cr2', 'ekstenzija': '.cr2'}
+            self.assertFalse(fototeka_jobs.process_job(job))
+            fail.assert_called_once()
+            mark.assert_not_called()
+
 
 class RawIntakeTests(unittest.TestCase):
 
@@ -151,9 +164,9 @@ class RawIntakeTests(unittest.TestCase):
         self.addCleanup(env.stop)
 
     def test_raw_accepted_without_pil_validation(self):
-        # a .cr2 with arbitrary (non-image) bytes must still be archived
+        # a .cr2 with a valid RAW/TIFF signature is archived without PIL
         raw = Path(self.tmp, 'src.cr2')
-        raw.write_bytes(b'\x00\x01RAWDATA' * 100)
+        raw.write_bytes(b'II\x2a\x00' + b'\x00\x01RAWDATA' * 100)
         cursor = _FakeCursor({'INSERT INTO fotografije': {'id': 9}})
         fid, reason = fototeka_views._intake_photo_from_path(
             cursor, raw, 'photo.cr2', raw.stat().st_size, '.cr2',
@@ -162,6 +175,22 @@ class RawIntakeTests(unittest.TestCase):
         self.assertEqual(fid, 9)
         self.assertIsNone(reason)
         self.assertTrue(list(self.arhiva.rglob('*.cr2')))  # archived
+
+    def test_raw_with_bogus_signature_is_refused(self):
+        # B3: arbitrary content merely renamed to .cr2 must be refused, not
+        # silently archived forever (deletes are soft, the RAW stays).
+        raw = Path(self.tmp, 'fake.cr2')
+        raw.write_bytes(b'this is definitely not a raw image ' * 20)
+        cursor = _FakeCursor({'INSERT INTO fotografije': {'id': 9}})
+        fid, reason = fototeka_views._intake_photo_from_path(
+            cursor, raw, 'fake.cr2', raw.stat().st_size, '.cr2',
+            autor_email='a@b.rs', opis=None, tags=[], datum_override=None,
+            veza=None, u_prijemnom_redu=False, poreklo='upload')
+        self.assertIsNone(fid)
+        self.assertIsNotNone(reason)
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO fotografije', joined)
+        self.assertEqual(list(self.arhiva.rglob('*.cr2')), [])  # not archived
 
     def test_full_sha_in_path_avoids_prefix_collision(self):
         # B1: two different files sharing the first 8 sha hex must NOT map to
@@ -179,7 +208,7 @@ class RawIntakeTests(unittest.TestCase):
         # B1: if the target archive path is already occupied, intake must skip
         # and leave the existing original byte-for-byte intact (write-once).
         raw = Path(self.tmp, 'src.cr2')
-        raw.write_bytes(b'NEWDATA' * 50)
+        raw.write_bytes(b'II\x2a\x00' + b'NEWDATA' * 50)
         sha = fototeka_jobs.sha256_of_file(raw)
         raw_rel = fototeka_jobs.raw_intake_relative_path(
             original_ime='photo.cr2', sha256=sha, datum=date(2026, 1, 1))
@@ -208,7 +237,7 @@ class RawIntakeTests(unittest.TestCase):
                 return super().execute(sql, params)
 
         raw = Path(self.tmp, 'boom.cr2')
-        raw.write_bytes(b'RAWCONTENT' * 20)
+        raw.write_bytes(b'II\x2a\x00' + b'RAWCONTENT' * 20)
         with self.assertRaises(RuntimeError):
             fototeka_views._intake_photo_from_path(
                 _FailingInsertCursor(), raw, 'boom.cr2', raw.stat().st_size, '.cr2',
@@ -372,6 +401,30 @@ class ExhibitionCreateTests(_RouteTestCase):
         self.assertIn('INSERT INTO exhibitions', joined)
         self.assertIn('INSERT INTO foto_veza_izlozba', joined)
 
+    def test_existing_title_reused_not_duplicated(self):
+        # C3 (#18): the sequential upload sends the same new-exhibition name in
+        # N per-file requests; a same-titled exhibition must be reused, not
+        # re-inserted, so N files do not create N duplicate exhibitions.
+        cursor = self.use_db({
+            'INSERT INTO fotografije': {'id': 4},
+            'exhibitions WHERE title': {'id': 55},
+        })
+        self.login(AUTHOR)
+        response = self.post(
+            '/fototeka/upload/jedan',
+            data={'file': (_jpeg_bytes(), 'b.jpg'),
+                  'veza_tip': 'izlozba', 'veza_izlozba_id': '',
+                  'veza_izlozba_naziv': 'Постојећа изложба'},
+            content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO exhibitions', joined)  # reused, not duplicated
+        veza_params = [p for sql, p in cursor.executed
+                       if 'INSERT INTO foto_veza_izlozba' in sql]
+        self.assertTrue(veza_params)
+        self.assertIn(55, veza_params[0])
+
     def test_missing_exhibition_selection_errors(self):
         cursor = _FakeCursor()
         with patch.object(fototeka_views, 'get_postgres_connection',
@@ -383,6 +436,21 @@ class ExhibitionCreateTests(_RouteTestCase):
                 from flask import request
                 with self.assertRaises(ValueError):
                     fototeka_views._parse_veza_form(request.form, cursor)
+
+    def test_nonnumeric_veza_id_raises_friendly_error(self):
+        # D3: a non-numeric id must give a user-facing message, not the raw
+        # "invalid literal for int()" ValueError text.
+        cursor = _FakeCursor()
+        for tip, field in (('teren', 'veza_teren_id'),
+                           ('projekat', 'veza_projekat_id'),
+                           ('izlozba', 'veza_izlozba_id')):
+            with museum_app.app.test_request_context(
+                    '/', method='POST', data={'veza_tip': tip, field: 'abc'}):
+                from flask import request
+                with self.assertRaises(ValueError) as ctx:
+                    fototeka_views._parse_veza_form(request.form, cursor)
+                self.assertNotIn('invalid literal', str(ctx.exception))
+                self.assertNotIn('int()', str(ctx.exception))
 
 
 if __name__ == '__main__':

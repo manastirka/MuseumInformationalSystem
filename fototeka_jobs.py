@@ -82,21 +82,42 @@ def enqueue_job(cursor, fotografija_id: int, tip: str) -> None:
 
 
 def reclaim_stale_jobs() -> int:
-    """Return jobs stuck in 'radi' (worker died mid-job) to the queue."""
+    """Return jobs stuck in 'radi' (worker died mid-job) to the queue.
+
+    A stale 'radi' job means the worker died mid-job — possibly a native
+    libvips crash / OOM kill that never ran _fail_job. Count that as an attempt
+    so a file that reliably kills the worker eventually dead-letters to 'greska'
+    instead of looping forever and taking the service down with it."""
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE foto_poslovi
-                SET status = 'ceka', zakljucan_at = NULL, zakljucao = NULL,
-                    updated_at = now()
+                SET pokusaji = pokusaji + 1,
+                    status = CASE WHEN pokusaji + 1 >= %s THEN 'greska' ELSE 'ceka' END,
+                    poslednja_greska = CASE WHEN pokusaji + 1 >= %s
+                        THEN 'worker прекинут (могуће crash/OOM) — исцрпљени покушаји'
+                        ELSE 'worker прекинут усред посла — враћено у ред' END,
+                    sledeci_pokusaj_at = NULL,
+                    zakljucan_at = NULL, zakljucao = NULL, updated_at = now()
                 WHERE status = 'radi'
                   AND zakljucan_at < now() - make_interval(mins => %s)
-                RETURNING id
+                RETURNING id, fotografija_id, tip, status
                 """,
-                (STALE_LOCK_MINUTES,),
+                (MAX_ATTEMPTS, MAX_ATTEMPTS, STALE_LOCK_MINUTES),
             )
-            reclaimed = cur.fetchall()
+            reclaimed = [_row_to_dict(cur, row) for row in cur.fetchall()]
+            # A dead-lettered derivative job must flip its photo to 'greska'
+            # (mirrors _fail_job) so the UI stops showing "obrada u toku".
+            for job in reclaimed:
+                if job['status'] == 'greska' and job['tip'] == 'derivati':
+                    cur.execute(
+                        """
+                        UPDATE fotografije SET status = 'greska', updated_at = now()
+                        WHERE id = %s
+                        """,
+                        (job['fotografija_id'],),
+                    )
     if reclaimed:
         logger.warning("Reclaimed %d stale fototeka job(s)", len(reclaimed))
     return len(reclaimed)
@@ -154,19 +175,26 @@ def claim_next_job():
 
 def make_derivatives(raw_full_path: Path, sha256: str) -> None:
     """Generate both derivatives with pyvips; write via temp + os.replace so a
-    crash never leaves a half-written file at the final path."""
+    crash never leaves a half-written file at the final path. The temp name is
+    per-process so a stale-reclaim retry or a second worker handling the same
+    sha never write the same temp file and corrupt each other's output; a
+    leftover temp is always cleaned up."""
     import pyvips
 
     media_root = get_media_path()
     for kind, size in DERIVATIVE_SIZES.items():
         final_path = media_root / derivative_relative_path(sha256, kind)
         final_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = final_path.with_name(f".tmp_{final_path.name}")
-        image = pyvips.Image.thumbnail(
-            str(raw_full_path), size, height=size, size='down',
-        )
-        image.write_to_file(str(temp_path), Q=JPEG_QUALITY)
-        os.replace(temp_path, final_path)
+        temp_path = final_path.with_name(f".tmp_{os.getpid()}_{final_path.name}")
+        try:
+            image = pyvips.Image.thumbnail(
+                str(raw_full_path), size, height=size, size='down',
+            )
+            image.write_to_file(str(temp_path), Q=JPEG_QUALITY)
+            os.replace(temp_path, final_path)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
 
 
 def _finish_job(job_id: int, fotografija_id: int, tip: str) -> None:
@@ -316,9 +344,13 @@ def process_job(job) -> bool:
             raise ValueError(f"Unknown job type: {job['tip']}")
     except Exception as exc:  # noqa: BLE001
         ext = (job.get('ekstenzija') or '').lower()
-        # A format libvips can't decode is a permanent condition, not a
-        # transient failure — mark 'bez_derivata' instead of retrying.
-        if job['tip'] == 'derivati' and ext not in DERIVABLE_EXTENSIONS:
+        # A format libvips genuinely can't decode is a permanent condition —
+        # mark 'bez_derivata' (no retry storm). But a transient OS-level
+        # failure (disk full, I/O error, out of memory) must RETRY, not be
+        # frozen as permanent just because the extension is non-derivable.
+        transient = isinstance(exc, (OSError, MemoryError))
+        if (job['tip'] == 'derivati' and ext not in DERIVABLE_EXTENSIONS
+                and not transient):
             _mark_no_derivative(job['id'], job['fotografija_id'], str(exc))
             return True
         _fail_job(job['id'], job['fotografija_id'], job['tip'], job['pokusaji'], str(exc))
