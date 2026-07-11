@@ -1752,13 +1752,24 @@ def _safe_import_dir(subdir):
     return target
 
 
-def _scan_import_files(directory):
-    """Top-level image files in `directory`, sorted, capped at the batch limit."""
+def _scan_import_files(directory, offset=0):
+    """Sorted top-level image files in `directory`, returned as
+    (total_count, page) where page is the slice [offset : offset+BATCH]. The
+    import copies files (it never moves them off the share), so without an
+    advancing offset a directory holding more than one batch could never be
+    fully imported — every run would re-scan the same first N and dedup them.
+    The caller advances `offset` batch by batch."""
     files = sorted(
         p for p in directory.iterdir()
         if p.is_file() and p.suffix.lower() in ALLOWED_PHOTO_EXTENSIONS
     )
-    return files[:IMPORT_BATCH_LIMIT]
+    offset = max(0, offset)
+    return len(files), files[offset:offset + IMPORT_BATCH_LIMIT]
+
+
+def _parse_offset(form):
+    raw = (form.get('offset') or '0').strip()
+    return int(raw) if raw.isdigit() else 0
 
 
 def _extract_predmet_broj(filename, zbirka):
@@ -1828,14 +1839,20 @@ def render_import_form():
         subdir='',
         zbirka='mineral',
         scanned=None,
+        offset=0,
+        total=0,
+        next_offset=None,
     )
 
 
 def handle_import_scan():
-    """Dry run: classify every file under the chosen subdir and show a preview.
-    No files are copied and nothing is written to the database."""
+    """Dry run: classify the current batch under the chosen subdir and show a
+    preview. No files are copied and nothing is written to the database. The
+    directory is paginated by IMPORT_BATCH_LIMIT so a folder larger than one
+    batch can be worked through with the 'next batch' control."""
     subdir = (request.form.get('subdir') or '').strip()
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
+    offset = _parse_offset(request.form)
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
     directory = _safe_import_dir(subdir)
@@ -1846,10 +1863,12 @@ def handle_import_scan():
         flash('Изабрани директоријум не постоји на дељеном диску.', 'warning')
         return redirect(url_for('fototeka.fototeka_import'))
 
+    total, page = _scan_import_files(directory, offset)
     scanned = []
-    for path in _scan_import_files(directory):
+    for path in page:
         result = classify_import_filename(path.name, zbirka)
         scanned.append({'ime': path.name, 'klasa': result['klasa'], 'note': result['note']})
+    next_offset = offset + IMPORT_BATCH_LIMIT if offset + len(page) < total else None
     return render_template(
         'fototeka_import.html',
         zbirke=get_zbirka_labels(),
@@ -1857,6 +1876,9 @@ def handle_import_scan():
         subdir=subdir,
         zbirka=zbirka,
         scanned=scanned,
+        offset=offset,
+        total=total,
+        next_offset=next_offset,
     )
 
 
@@ -1867,6 +1889,7 @@ def handle_import_confirm():
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
+    offset = _parse_offset(request.form)
     directory = _safe_import_dir(subdir)
     if directory is None or not directory.is_dir():
         flash('Неисправна путања за увоз.', 'danger')
@@ -1876,8 +1899,9 @@ def handle_import_confirm():
     temp_dir = fototeka_jobs.get_media_path() / 'temp'
     temp_dir.mkdir(parents=True, exist_ok=True)
 
+    total, page = _scan_import_files(directory, offset)
     saved, skipped = 0, []
-    for path in _scan_import_files(directory):
+    for path in page:
         file_size = path.stat().st_size
         if file_size <= 0:
             skipped.append(f'{path.name}: датотека је празна')
@@ -1909,7 +1933,16 @@ def handle_import_confirm():
     if saved:
         flash(f'Увезено фотографија: {saved}. Умањени прикази се обрађују у позадини.', 'success')
     if not saved and not skipped:
-        flash('Нема датотека за увоз у изабраном директоријуму.', 'info')
+        flash('Нема датотека за увоз у изабраном батчу.', 'info')
     for reason in skipped[:20]:
         flash(reason, 'warning')
+    # If the directory holds more than this batch, tell the user how much is
+    # left and re-scan the next batch so a >BATCH folder is fully importable.
+    processed_upto = offset + len(page)
+    if processed_upto < total:
+        flash(
+            f'Обрађено {processed_upto} од {total}. Скенирајте следећи батч '
+            f'(датотеке од {processed_upto + 1}).', 'info',
+        )
+        return redirect(url_for('fototeka.fototeka_import'))
     return redirect(url_for('fototeka.fototeka_galerija'))

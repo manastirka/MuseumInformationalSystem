@@ -266,6 +266,42 @@ class ImportRouteTests(_RouteTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/fototeka/uvoz', response.headers['Location'])
 
+    def test_scan_reports_true_total_beyond_batch(self):
+        # C2: a directory larger than one batch must report the true total (so
+        # the user knows there is more), not just the page size.
+        for name in ('a1.jpg', 'a2.jpg', 'a3.jpg'):
+            self._make_image(name)
+        self.login(ADMIN)
+        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
+            r = self.post('/fototeka/uvoz/skeniraj',
+                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '0'})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('од 3'.encode('utf-8'), r.data)
+
+    def test_confirm_first_batch_redirects_back_when_more_remain(self):
+        # C2: after importing a batch that does not exhaust the directory, the
+        # user is sent back to the import screen to continue (not to the gallery).
+        for name in ('b1.jpg', 'b2.jpg', 'b3.jpg'):
+            self._make_image(name)
+        self.use_db({'INSERT INTO fotografije': {'id': 1}})
+        self.login(ADMIN)
+        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
+            r = self.post('/fototeka/uvoz/potvrdi',
+                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '0'})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/fototeka/uvoz', r.headers['Location'])
+
+    def test_confirm_last_batch_goes_to_gallery(self):
+        for name in ('c1.jpg', 'c2.jpg', 'c3.jpg'):
+            self._make_image(name)
+        self.use_db({'INSERT INTO fotografije': {'id': 1}})
+        self.login(ADMIN)
+        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
+            r = self.post('/fototeka/uvoz/potvrdi',
+                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '2'})
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn('/fototeka/uvoz', r.headers['Location'])
+
 
 if __name__ == '__main__':
     unittest.main()

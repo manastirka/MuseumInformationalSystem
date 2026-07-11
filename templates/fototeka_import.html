@@ -35,6 +35,7 @@
     <div class="fototeka-card">
         <form method="post" action="{{ url_for('fototeka.fototeka_import_scan') }}" class="row g-2 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="offset" value="0"/>
             <div class="col-md-6">
                 <label class="form-label" for="uvozSubdir">Поддиректоријум (у односу на <code>{{ root }}</code>)</label>
                 <input class="form-control" id="uvozSubdir" name="subdir" value="{{ subdir }}"
@@ -57,18 +58,39 @@
     {% if scanned is not none %}
     <div class="fototeka-card">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 class="mb-0">Преглед ({{ scanned|length }} датотека)</h5>
+            <h5 class="mb-0">
+                Преглед
+                {% if total > scanned|length %}
+                (датотеке {{ offset + 1 }}–{{ offset + scanned|length }} од {{ total }})
+                {% else %}
+                ({{ scanned|length }} датотека)
+                {% endif %}
+            </h5>
+            <div class="d-flex gap-2 flex-wrap">
             {% if scanned %}
             <form method="post" action="{{ url_for('fototeka.fototeka_import_confirm') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="subdir" value="{{ subdir }}"/>
                 <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
+                <input type="hidden" name="offset" value="{{ offset }}"/>
                 <button type="submit" class="btn btn-primary"
-                        onclick="return confirm('Увести {{ scanned|length }} датотека?');">
-                    <i class="bi bi-cloud-arrow-down me-1"></i>Увези све
+                        onclick="return confirm('Увести {{ scanned|length }} датотека овог батча?');">
+                    <i class="bi bi-cloud-arrow-down me-1"></i>Увези овај батч
                 </button>
             </form>
             {% endif %}
+            {% if next_offset is not none %}
+            <form method="post" action="{{ url_for('fototeka.fototeka_import_scan') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="subdir" value="{{ subdir }}"/>
+                <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
+                <input type="hidden" name="offset" value="{{ next_offset }}"/>
+                <button type="submit" class="btn btn-outline-secondary">
+                    Следећи батч <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </form>
+            {% endif %}
+            </div>
         </div>
         {% if scanned %}
         <div class="table-responsive">
