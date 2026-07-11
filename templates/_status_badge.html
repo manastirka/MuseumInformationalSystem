@@ -1,6 +1,6 @@
 {#- Jedinstvena statusna oznaka za module odobravanja (нацрт / на одобрењу /
     одобрено / одбијено / архивирано). Ključ je kanonski status; boje su u
-    static/css/odobravanje.css. -#}
+    templates/_odobravanje_style.html (tokeni --st-*). -#}
 {% macro status_badge(key) -%}
 {%- set labels = {
     'nacrt': 'Нацрт',

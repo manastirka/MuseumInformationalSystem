@@ -8,23 +8,28 @@
    ========================================================================== */
 
 :root {
+    /* Vezano na globalne dizajn tokene iz main.css gde su vrednosti identične.
+       PAŽNJA: body.heritage-shell redefiniše --primary/--bg-card/--text-*, a
+       ovaj modul namerno zadržava svoj formalni izgled nezavisno od heritage
+       teme — zato zelene/mastilo/kartice ostaju literali; vezuju se tek u
+       Fazi 2 preko sopstvenih dark vrednosti. */
     --oc-green-900: #12312a;
     --oc-green-800: #1b4332;
     --oc-green-700: #2d6a4f;
     --oc-green-050: #eef4f1;
-    --oc-gold: #c9a15f;
-    --oc-ink-soft: #4b5563;
+    --oc-gold: var(--sidebar-gold-strong, #c9a15f);
+    --oc-ink-soft: var(--gray-600, #4b5563);
     --oc-ink-muted: #6b7280;
     --oc-line: #d9d4c8;
     --oc-line-soft: #e7e3d8;
 
     /* JEDAN sistem statusnih boja — нацрт / на одобрењу / одобрено /
        одбијено / архивирано */
-    --st-nacrt-fg: #4b5563;      --st-nacrt-bg: #f3f4f6;    --st-nacrt-bd: #d1d5db;
+    --st-nacrt-fg: var(--gray-600, #4b5563);  --st-nacrt-bg: var(--gray-100, #f3f4f6);  --st-nacrt-bd: var(--gray-300, #d1d5db);
     --st-cekanje-fg: #92600a;    --st-cekanje-bg: #fdf6e7;  --st-cekanje-bd: #e4c477;
     --st-odobreno-fg: #1b5e3b;   --st-odobreno-bg: #eaf4ee; --st-odobreno-bd: #9dc4ab;
     --st-odbijeno-fg: #9b1c1c;   --st-odbijeno-bg: #fbeeee; --st-odbijeno-bd: #dfa1a1;
-    --st-arhiva-fg: #374151;     --st-arhiva-bg: #eceef1;   --st-arhiva-bd: #b8bfc9;
+    --st-arhiva-fg: var(--gray-700, #374151); --st-arhiva-bg: #eceef1;   --st-arhiva-bd: #b8bfc9;
 }
 
 /* --- zaglavlje stranice ---------------------------------------------------- */
@@ -89,7 +94,7 @@
     font-size: 0.76rem;
     font-weight: 600;
 }
-.oc-tab.active .count { background: var(--oc-green-700); color: #fff; }
+.oc-tab.active .count { background: var(--oc-green-700); color: var(--on-accent, #fff); }
 
 /* --- jedinstvene statusne oznake -------------------------------------------- */
 .status {
@@ -192,15 +197,15 @@
     --bs-btn-border-color: var(--oc-green-700);
     --bs-btn-hover-bg: var(--oc-green-800);
     --bs-btn-hover-border-color: var(--oc-green-800);
-    --bs-btn-color: #fff;
-    --bs-btn-hover-color: #fff;
+    --bs-btn-color: var(--on-accent, #fff);
+    --bs-btn-hover-color: var(--on-accent, #fff);
 }
 .btn-oc-reject {
     --bs-btn-color: #9b1c1c;
     --bs-btn-border-color: #dfa1a1;
     --bs-btn-hover-bg: #9b1c1c;
     --bs-btn-hover-border-color: #9b1c1c;
-    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-color: var(--on-accent, #fff);
 }
 .btn-oc-ghost {
     --bs-btn-color: var(--oc-ink-soft);
