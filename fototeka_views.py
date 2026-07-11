@@ -10,6 +10,7 @@ database; the RAW file always stays.
 """
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -36,6 +37,9 @@ import fototeka_jobs
 import image_matcher
 from collection_registry import iter_collection_list_entries
 from postgres_service import get_postgres_connection
+
+
+logger = logging.getLogger(__name__)
 
 
 # Formats PIL can open — validated and EXIF-read at intake.
@@ -1198,6 +1202,10 @@ def handle_ukloni_vezu(fotografija_id, tip, veza_id):
             )
             if not cur.fetchone():
                 abort(404)
+    # Audit trail: removing a link is non-destructive to the file but is lost
+    # curation work, so record who did it.
+    logger.info('Fototeka veza uklonjena: foto=%s tip=%s veza_id=%s by=%s',
+                fotografija_id, tip, veza_id, _session_email(session))
     flash('Веза је уклоњена.', 'success')
     return redirect(url_for('fototeka.fototeka_fotografija', fotografija_id=fotografija_id))
 
@@ -1740,6 +1748,9 @@ def handle_entitet_ukloni():
                 (fotografija_id, *params),
             )
             deleted = cur.fetchone()
+    if deleted:
+        logger.info('Fototeka entitet-veza uklonjena: foto=%s entitet=%s by=%s',
+                    fotografija_id, entity.get('tip'), _session_email(session))
     return jsonify({'ok': bool(deleted)})
 
 

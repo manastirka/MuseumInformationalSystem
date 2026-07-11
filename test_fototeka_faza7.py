@@ -402,6 +402,20 @@ class GalleryFilterTests(_RouteTestCase):
         self.assertFalse(any('vidljivost' in sql for sql, _ in cur.executed))
 
 
+class LinkAuditTests(_RouteTestCase):
+    """D2: removing a link is non-destructive to the file but is lost curation
+    work, so it must leave an audit line naming who did it."""
+
+    def test_unlink_logs_audit_with_email(self):
+        self.use_db({'FROM fotografije WHERE id': _photo(),
+                     'DELETE FROM foto_veza': {'id': 1}})
+        self.login(AUTHOR)
+        with self.assertLogs('fototeka_views', level='INFO') as cm:
+            r = self.post('/fototeka/5/veza/predmet/1/ukloni')
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(any(AUTHOR['user_email'] in line for line in cm.output))
+
+
 class ApiPredmetiAccessTests(_RouteTestCase):
     """D4: mineral inventory autocomplete must honour the mineral database's
     own (narrower) access control, not just Фototeka module access."""
