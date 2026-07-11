@@ -196,6 +196,35 @@ class SortTests(_RouteTestCase):
         self.assertIn('DESC', order)              # smer fallback
 
 
+class FormatBadgeTests(_RouteTestCase):
+    """Each thumbnail carries a small format badge (JPG/TIFF/CR2/NEF...)."""
+
+    def _gallery_with(self, photos):
+        # 'f.ekstenzija' uniquely matches the photo-list SELECT (not the facet
+        # queries), so facets stay empty while the list returns these photos.
+        return self.use_db({'SELECT COUNT(*)': {'total': len(photos)},
+                            'f.ekstenzija': photos})
+
+    def test_format_badge_shows_uppercase_label(self):
+        self._gallery_with([_photo(id=5, ekstenzija='.cr2'),
+                            _photo(id=6, ekstenzija='.tiff'),
+                            _photo(id=7, ekstenzija='.jpeg')])
+        self.login(AUTHOR)
+        r = self.get('/fototeka')
+        self.assertEqual(r.status_code, 200)
+        html = r.data.decode('utf-8')
+        self.assertIn('class="foto-format"', html)
+        self.assertIn('>CR2</span>', html)     # RAW kept as-is
+        self.assertIn('>TIFF</span>', html)    # .tiff normalized
+        self.assertIn('>JPG</span>', html)     # .jpeg normalized to JPG
+
+    def test_format_label_helper(self):
+        self.assertEqual(fototeka_views._format_label('.NEF'), 'NEF')
+        self.assertEqual(fototeka_views._format_label('.jpeg'), 'JPG')
+        self.assertEqual(fototeka_views._format_label('.tif'), 'TIFF')
+        self.assertEqual(fototeka_views._format_label(None), '—')
+
+
 # ---------------------------------------------------------------------------
 # 4. Conditional original/RAW button
 # ---------------------------------------------------------------------------

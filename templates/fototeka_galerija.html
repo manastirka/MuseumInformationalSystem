@@ -65,6 +65,22 @@
 .foto-meta .foto-title { color: #1f2937; }
 .foto-meta .foto-sub { color: var(--oc-ink-muted); font-size: 0.76rem; }
 
+/* --- ознака формата (доле десно над thumbnail-ом; чита се и на светлим и
+   на тамним сликама захваљујући тамној полупрозирној подлози + светлом ободу) --- */
+.foto-thumb { position: relative; display: block; }
+.foto-format {
+    position: absolute; right: 6px; bottom: 6px;
+    padding: 2px 5px; border-radius: 5px;
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em; line-height: 1;
+    color: #fff; background: rgba(17, 24, 39, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    pointer-events: none; user-select: none;
+}
+/* компактни режим нема thumbnail — нема ни ознаке */
+.view-compact .foto-format { display: none; }
+
 /* paginacija u kartici */
 .fototeka-pager { padding: 0.9rem 1.1rem; border-top: 1px solid var(--oc-line-soft); }
 </style>
@@ -181,6 +197,7 @@
                     <a class="foto-thumb" href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=photo.id) }}">
                         <img src="{{ url_for('fototeka.fototeka_media', fotografija_id=photo.id, kind='thumb') }}"
                              alt="{{ photo.opis or photo.original_ime }}" loading="lazy">
+                        <span class="foto-format" data-no-translate title="Формат: {{ photo.format_label }}">{{ photo.format_label }}</span>
                     </a>
                     <div class="foto-meta">
                         <div class="foto-title text-truncate">
