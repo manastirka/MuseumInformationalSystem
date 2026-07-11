@@ -1254,7 +1254,22 @@ def serve_derivat(fotografija_id, kind):
         abort(404)
     if not full_path.is_file():
         return _send_placeholder(kind)
-    return send_file(full_path, mimetype='image/jpeg', max_age=3600)
+    response = send_file(full_path, mimetype='image/jpeg')
+    _apply_private_cache_headers(response, photo)
+    return response
+
+
+def _apply_private_cache_headers(response, photo):
+    """These files sit behind login + per-photo access control, so a shared
+    cache must NEVER store them. A private photo additionally gets `no-store`
+    so a later javno→privatno flip takes effect immediately (the URL is a pure
+    function of sha256 and never changes)."""
+    is_private = (photo.get('vidljivost') or 'javno') == 'privatno'
+    response.headers['Cache-Control'] = (
+        'private, no-store' if is_private else 'private, max-age=3600'
+    )
+    response.headers['Vary'] = 'Cookie'
+    return response
 
 
 def serve_raw(fotografija_id):
@@ -1268,12 +1283,14 @@ def serve_raw(fotografija_id):
     full_path = _archival_original_path(photo)
     if full_path is None:
         abort(404)
-    return send_file(
+    response = send_file(
         full_path,
         as_attachment=True,
         download_name=photo['original_ime'] or full_path.name,
         max_age=0,
     )
+    _apply_private_cache_headers(response, photo)
+    return response
 
 
 DOWNLOAD_ZIP_MAX = 300

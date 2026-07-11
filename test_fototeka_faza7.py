@@ -249,6 +249,37 @@ class FileServeAccessTests(_RouteTestCase):
         # public: not 403 (serves placeholder while processing)
         self.assertNotEqual(self.get('/fototeka/media/5/jpg').status_code, 403)
 
+    def _write_derivative(self, sha, kind='jpg'):
+        import fototeka_jobs
+        rel = fototeka_jobs.derivative_relative_path(sha, kind)
+        path = os.path.join(self.media, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        Image.new('RGB', (40, 30), (10, 20, 30)).save(path, format='JPEG')
+        return path
+
+    def test_private_derivat_is_not_shared_cacheable(self):
+        # A6: a private photo's derivative must never carry `public` cache and
+        # must be `no-store` so a javno->privatno flip is effective immediately.
+        self._write_derivative(SHA, 'jpg')
+        self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='privatno')})
+        self.login(AUTHOR)
+        r = self.get('/fototeka/media/5/jpg')
+        self.assertEqual(r.status_code, 200)
+        cc = r.headers.get('Cache-Control', '')
+        self.assertNotIn('public', cc)
+        self.assertIn('no-store', cc)
+        self.assertIn('Cookie', r.headers.get('Vary', ''))
+
+    def test_public_derivat_is_private_not_public_cache(self):
+        self._write_derivative(SHA, 'jpg')
+        self.use_db({'FROM fotografije WHERE id': _photo(vidljivost='javno')})
+        self.login(OTHER)
+        r = self.get('/fototeka/media/5/jpg')
+        self.assertEqual(r.status_code, 200)
+        cc = r.headers.get('Cache-Control', '')
+        self.assertNotIn('public', cc)  # behind login → never a shared cache
+        self.assertIn('private', cc)
+
 
 class ZipAccessTests(_RouteTestCase):
 
