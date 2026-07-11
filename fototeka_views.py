@@ -919,13 +919,19 @@ def _make_preview_derivatives(source_path, sha256):
     for kind, size in (('jpg', 2500), ('thumb', 300)):
         final_path = media_root / fototeka_jobs.derivative_relative_path(sha256, kind)
         final_path.parent.mkdir(parents=True, exist_ok=True)
-        with Image.open(source_path) as img:
-            img = img.convert('RGB')
-            dims = {'width': img.width, 'height': img.height}
-            img.thumbnail((size, size), Image.Resampling.LANCZOS)
-            temp_out = final_path.with_name(f'.tmp_{final_path.name}')
-            img.save(temp_out, format='JPEG', quality=85, optimize=True)
-        os.replace(temp_out, final_path)
+        # per-process temp name + guaranteed cleanup (same rationale as the
+        # worker's make_derivatives — no shared .tmp_<sha> collision/leftover)
+        temp_out = final_path.with_name(f'.tmp_{os.getpid()}_{final_path.name}')
+        try:
+            with Image.open(source_path) as img:
+                img = img.convert('RGB')
+                dims = {'width': img.width, 'height': img.height}
+                img.thumbnail((size, size), Image.Resampling.LANCZOS)
+                img.save(temp_out, format='JPEG', quality=85, optimize=True)
+            os.replace(temp_out, final_path)
+        finally:
+            if temp_out.exists():
+                temp_out.unlink()
     return dims
 
 
