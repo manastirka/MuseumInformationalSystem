@@ -402,6 +402,31 @@ class GalleryFilterTests(_RouteTestCase):
         self.assertFalse(any('vidljivost' in sql for sql, _ in cur.executed))
 
 
+class ApiPredmetiAccessTests(_RouteTestCase):
+    """D4: mineral inventory autocomplete must honour the mineral database's
+    own (narrower) access control, not just Фototeka module access."""
+
+    def test_denied_without_mineral_access_returns_empty(self):
+        # fototeka module allowed (route passes), mineral_database denied
+        with patch.object(museum_app.app, 'user_has_module_access',
+                          lambda email, role, key: key != 'mineral_database'):
+            self.login(AUTHOR)
+            r = self.get('/fototeka/api/predmeti?zbirka=mineral&q=12')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.get_json(), [])
+
+    def test_allowed_with_mineral_access_queries(self):
+        cur = self.use_db({'FROM minerals':
+                           [{'inventory_number': '123', 'item_name': 'Кварц'}]})
+        with patch.object(museum_app.app, 'user_has_module_access',
+                          lambda *a, **k: True):
+            self.login(AUTHOR)
+            r = self.get('/fototeka/api/predmeti?zbirka=mineral&q=12')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(len(r.get_json()), 1)
+        self.assertTrue(any('FROM minerals' in sql for sql, _ in cur.executed))
+
+
 class RequestTooLargeTests(_RouteTestCase):
     """C1: a request over MAX_CONTENT_LENGTH must give the JSON uploader a
     clean message, not an HTML page it would surface as 'server error'."""

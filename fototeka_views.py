@@ -1517,9 +1517,19 @@ def api_predmeti():
     """Inventory-number autocomplete. Phase 1 covers the mineral collection
     (the only one whose items live in PostgreSQL); for other collections the
     inventory number is typed in freely."""
+    from flask import current_app
+
     zbirka = (request.args.get('zbirka') or '').strip()
     q = (request.args.get('q') or '').strip()
     if zbirka != 'mineral' or len(q) < 1:
+        return jsonify([])
+    # The mineral database has its own, narrower access control than the
+    # Фototeka module (which every employee has). Don't let this autocomplete
+    # enumerate mineral inventory numbers/names for users who may not open it.
+    access_checker = getattr(current_app, 'user_has_module_access', None)
+    if access_checker is not None and not access_checker(
+            session.get('user_email', ''), session.get('user_role', ''),
+            'mineral_database'):
         return jsonify([])
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
