@@ -303,6 +303,18 @@ class WorkerRetryTests(unittest.TestCase):
             finish.assert_not_called()
 
 
+class DeployWorkerRestartTests(unittest.TestCase):
+    """C4: the deploy script must restart AND health-check the Фototeka worker,
+    or it keeps running the previous code after a deploy."""
+
+    def test_deploy_restarts_and_checks_worker(self):
+        script = Path(__file__).resolve().parent / 'deploy.sh'
+        text = script.read_text(encoding='utf-8')
+        self.assertIn('systemctl restart mis-fototeka-worker', text)
+        self.assertIn('is-active', text)
+        self.assertIn('mis-fototeka-worker', text)
+
+
 class WorkerCrashReclaimTests(unittest.TestCase):
     """B4: a stale 'radi' job (worker died mid-job, possibly a native crash
     that skipped _fail_job) must count as an attempt and eventually
