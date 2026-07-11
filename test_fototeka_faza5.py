@@ -372,6 +372,30 @@ class ExhibitionCreateTests(_RouteTestCase):
         self.assertIn('INSERT INTO exhibitions', joined)
         self.assertIn('INSERT INTO foto_veza_izlozba', joined)
 
+    def test_existing_title_reused_not_duplicated(self):
+        # C3 (#18): the sequential upload sends the same new-exhibition name in
+        # N per-file requests; a same-titled exhibition must be reused, not
+        # re-inserted, so N files do not create N duplicate exhibitions.
+        cursor = self.use_db({
+            'INSERT INTO fotografije': {'id': 4},
+            'exhibitions WHERE title': {'id': 55},
+        })
+        self.login(AUTHOR)
+        response = self.post(
+            '/fototeka/upload/jedan',
+            data={'file': (_jpeg_bytes(), 'b.jpg'),
+                  'veza_tip': 'izlozba', 'veza_izlozba_id': '',
+                  'veza_izlozba_naziv': 'Постојећа изложба'},
+            content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertNotIn('INSERT INTO exhibitions', joined)  # reused, not duplicated
+        veza_params = [p for sql, p in cursor.executed
+                       if 'INSERT INTO foto_veza_izlozba' in sql]
+        self.assertTrue(veza_params)
+        self.assertIn(55, veza_params[0])
+
     def test_missing_exhibition_selection_errors(self):
         cursor = _FakeCursor()
         with patch.object(fototeka_views, 'get_postgres_connection',

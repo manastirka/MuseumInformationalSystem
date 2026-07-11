@@ -305,6 +305,18 @@ def _parse_veza_form(form, cur):
         naziv = ' '.join((form.get('veza_izlozba_naziv') or '').split())
         if not naziv:
             raise ValueError('Изаберите изложбу или унесите назив нове.')
+        # Get-or-create by title. The sequential upload sends N per-file
+        # requests carrying the same new-exhibition name; without this, each
+        # request would INSERT its own row (exhibitions.title has no UNIQUE),
+        # leaving N duplicate exhibitions. Reusing an existing same-titled row
+        # keeps one exhibition per name. (teren/projekat already get-or-create.)
+        cur.execute(
+            'SELECT id FROM exhibitions WHERE title = %s ORDER BY id LIMIT 1',
+            (naziv,),
+        )
+        existing = cur.fetchone()
+        if existing:
+            return {'tip': 'izlozba', 'izlozba_id': _scalar(existing, 'id')}
         # Create a new exhibition — same bar as the exhibition planner
         # (login only); provenance from the session.
         cur.execute(
