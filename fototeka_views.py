@@ -238,7 +238,11 @@ def _extract_exif(pil_image):
     return info
 
 
-def _get_or_create_teren(cur, godina, naziv):
+def _get_or_create_teren(cur, godina, naziv, created_by_email=None):
+    """created_by_email=None -> iz sesije (UI tok); headless uvoz ga prosleđuje
+    eksplicitno jer van HTTP zahteva nema sesije."""
+    if created_by_email is None:
+        created_by_email = _session_email(session)
     cur.execute(
         """
         INSERT INTO fototeka_tereni (godina, naziv, created_by_email)
@@ -246,7 +250,7 @@ def _get_or_create_teren(cur, godina, naziv):
         ON CONFLICT (godina, naziv) DO UPDATE SET naziv = EXCLUDED.naziv
         RETURNING id
         """,
-        (godina, naziv, _session_email(session)),
+        (godina, naziv, created_by_email),
     )
     return _scalar(cur.fetchone(), 'id')
 
@@ -1866,130 +1870,338 @@ def classify_import_filename(filename, default_zbirka):
             'u_prijemnom_redu': True, 'note': 'Пријемни ред'}
 
 
-def _resolve_import_veza(cur, veza_meta):
+def _resolve_import_veza(cur, veza_meta, created_by_email=None):
     """Turn a classification's veza_meta into a full `veza` for _insert_veza,
     creating the field-trip row if needed."""
     if not veza_meta:
         return None
     if veza_meta['tip'] == 'teren':
-        teren_id = _get_or_create_teren(cur, veza_meta['godina'], veza_meta['naziv'])
+        teren_id = _get_or_create_teren(
+            cur, veza_meta['godina'], veza_meta['naziv'],
+            created_by_email=created_by_email)
         return {'tip': 'teren', 'teren_id': teren_id,
                 'godina': veza_meta['godina'], 'naziv': veza_meta['naziv']}
     return veza_meta
 
 
-def render_import_form():
+def _uvoz_istorija(limit=10):
+    """Poslednji batch uvozi (za istoriju na ekranu)."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, pokrenut_at, izvor, pokrenuo_email, ukupno,
+                       uvezeno, duplikata, neuspesno, u_prijemni_red
+                FROM fototeka_uvoz_run
+                ORDER BY id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cur.fetchall()
+    polja = ('id', 'pokrenut_at', 'izvor', 'pokrenuo_email', 'ukupno',
+             'uvezeno', 'duplikata', 'neuspesno', 'u_prijemni_red')
+    rezultat = []
+    for row in rows:
+        if isinstance(row, dict):
+            rezultat.append({polje: row.get(polje) for polje in polja})
+        else:
+            rezultat.append(dict(zip(polja, row)))
+    return rezultat
+
+
+def render_import_form(rezime=None, zbirka='mineral'):
     return render_template(
         'fototeka_import.html',
         zbirke=get_zbirka_labels(),
         root=str(get_import_path()),
-        subdir='',
-        zbirka='mineral',
-        scanned=None,
-        offset=0,
-        total=0,
-        next_offset=None,
+        zbirka=zbirka,
+        rezime=rezime,
+        istorija=_uvoz_istorija(),
     )
 
 
 def handle_import_scan():
-    """Dry run: classify the current batch under the chosen subdir and show a
-    preview. No files are copied and nothing is written to the database. The
-    directory is paginated by IMPORT_BATCH_LIMIT so a folder larger than one
-    batch can be worked through with the 'next batch' control."""
-    subdir = (request.form.get('subdir') or '').strip()
+    """Podrazumevani korak: dry-run preko CELOG ulaza — klasifikacija i
+    predikcija ishoda po fajlu, bez ijednog upisa. Kustos vidi brojeve pa
+    tek onda potvrđuje."""
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
-    offset = _parse_offset(request.form)
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
-    directory = _safe_import_dir(subdir)
-    if directory is None:
-        flash('Неисправна путања за увоз.', 'danger')
-        return redirect(url_for('fototeka.fototeka_import'))
-    if not directory.is_dir():
-        flash('Изабрани директоријум не постоји на дељеном диску.', 'warning')
-        return redirect(url_for('fototeka.fototeka_import'))
-
-    total, page = _scan_import_files(directory, offset)
-    scanned = []
-    for path in page:
-        result = classify_import_filename(path.name, zbirka)
-        scanned.append({'ime': path.name, 'klasa': result['klasa'], 'note': result['note']})
-    next_offset = offset + IMPORT_BATCH_LIMIT if offset + len(page) < total else None
-    return render_template(
-        'fototeka_import.html',
-        zbirke=get_zbirka_labels(),
-        root=str(get_import_path()),
-        subdir=subdir,
-        zbirka=zbirka,
-        scanned=scanned,
-        offset=offset,
-        total=total,
-        next_offset=next_offset,
-    )
+    rezime = run_batch_import(dry_run=True, default_zbirka=zbirka)
+    return render_import_form(rezime=rezime, zbirka=zbirka)
 
 
 def handle_import_confirm():
-    """Intake every file under the chosen subdir using the same pipeline as
-    upload (poreklo='import'), applying the filename-convention link."""
-    subdir = (request.form.get('subdir') or '').strip()
+    """Stvarni uvoz celog ulaza (posle dry-run pregleda): intake kroz isti
+    tok kao upload (poreklo='import'), premeštanje originala po ishodu i
+    trajni zapis u fototeka_uvoz_run/stavka."""
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
-    offset = _parse_offset(request.form)
-    directory = _safe_import_dir(subdir)
-    if directory is None or not directory.is_dir():
-        flash('Неисправна путања за увоз.', 'danger')
-        return redirect(url_for('fototeka.fototeka_import'))
+    rezime = run_batch_import(
+        dry_run=False, default_zbirka=zbirka,
+        izvor='ui', pokrenuo_email=_session_email(session),
+    )
+    if rezime['uvezeno']:
+        flash(
+            f"Увезено фотографија: {rezime['uvezeno']} "
+            f"(у пријемни ред: {rezime['u_prijemni_red']}). "
+            f"Умањени прикази се обрађују у позадини.", 'success')
+    if rezime['duplikata']:
+        flash(f"Прескочено дупликата: {rezime['duplikata']} "
+              f"(премештени у obradjeno/duplikati).", 'info')
+    if rezime['neuspesno']:
+        flash(f"Неуспешно: {rezime['neuspesno']} (premešteno u neuspesno/).", 'warning')
+    if not rezime['ukupno']:
+        flash('Улазни фолдер је празан — нема датотека за увоз.', 'info')
+    return redirect(url_for('fototeka.fototeka_import'))
 
-    user_email = _session_email(session)
+
+
+# ---------------------------------------------------------------------------
+# Batch uvoz sa mrežnog (Samba) foldera — headless engine.
+#
+# Raspored na share-u: /<ulaz>/<korisnicki-folder>/*.tif — ime foldera je
+# lokalni deo email adrese kustosa (autorstvo). Fajl se posle uspešnog uvoza
+# PREMEŠTA u obradjeno/<YYYY-MM>/ unutar korisnikovog foldera; duplikat u
+# obradjeno/duplikati/; neispravan u neuspesno/. Dry-run ne piše ništa
+# (ni u bazu ni po disku) — vraća samo klasifikaciju i predikciju ishoda.
+# ---------------------------------------------------------------------------
+
+IMPORT_SKIP_DIRS = frozenset({'obradjeno', 'neuspesno'})
+
+_INSTITUTION_PREFIX_RE = re.compile(r'^(?:PMB|ПМБ)[-_\s]+', re.IGNORECASE)
+_FILENAME_DATE_RE = re.compile(r'(?:^|[_\-])((?:19|20)\d{2})-(\d{2})-(\d{2})(?:[_\-.]|$)')
+
+
+def _strip_institution_prefix(stem):
+    """Konvencija toleriše institucijski prefiks (PMB-M-01234 == M-01234)."""
+    return _INSTITUTION_PREFIX_RE.sub('', stem)
+
+
+def datum_iz_imena(filename):
+    """`<INV>_<YYYY-MM-DD>_<NN>` — datum iz imena kao fallback kad nema EXIF-a."""
+    match = _FILENAME_DATE_RE.search(Path(filename).stem)
+    if not match:
+        return None
+    try:
+        return datetime(int(match.group(1)), int(match.group(2)),
+                        int(match.group(3))).date()
+    except ValueError:
+        return None
+
+
+def autor_iz_foldera(cur, folder_name):
+    """Ime korisničkog foldera na share-u = lokalni deo email adrese u MIS-u.
+    Vraća email ili None (nepoznat/dvosmislen folder)."""
+    if not folder_name:
+        return None
+    cur.execute(
+        """
+        SELECT email FROM users
+        WHERE is_active = TRUE
+          AND LOWER(SPLIT_PART(email, '@', 1)) = LOWER(%s)
+        """,
+        (folder_name,),
+    )
+    rows = cur.fetchall()
+    if len(rows) != 1:
+        return None
+    return _scalar(rows[0], 'email')
+
+
+def _premesti_original(path, odrediste_dir):
+    """Premesti fajl sa share-a u odredišni folder, bez prepisivanja: pri
+    koliziji imena dodaje brojčani sufiks. Vraća novu putanju."""
+    odrediste_dir.mkdir(parents=True, exist_ok=True)
+    target = odrediste_dir / path.name
+    counter = 1
+    while target.exists():
+        target = odrediste_dir / f'{path.stem}__{counter}{path.suffix}'
+        counter += 1
+    shutil.move(str(path), str(target))
+    return target
+
+
+def _uvoz_folderi(root):
+    """Korisnički podfolderi ulaza (sortirano) + koren za fajlove van foldera."""
+    if not root.is_dir():
+        return []
+    folders = sorted(
+        p for p in root.iterdir()
+        if p.is_dir() and p.name.lower() not in IMPORT_SKIP_DIRS
+    )
+    return [root] + folders
+
+
+def _uvoz_fajlovi(directory):
+    return sorted(
+        p for p in directory.iterdir()
+        if p.is_file() and p.suffix.lower() in ALLOWED_PHOTO_EXTENSIONS
+    )
+
+
+def _sha256_postoji(cur, path):
+    """Pre-check duplikata direktno sa share-a (bez kopiranja): vraća
+    (sha256, postojeći_id ili None)."""
+    sha256 = fototeka_jobs.sha256_of_file(path)
+    cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
+    row = cur.fetchone()
+    return sha256, (_scalar(row, 'id') if row else None)
+
+
+def run_batch_import(*, dry_run=True, default_zbirka='mineral',
+                     fallback_autor_email='fototeka@nhmbeo.rs',
+                     izvor='cli', pokrenuo_email=None):
+    """Prođe kroz SVE korisničke foldere ulaza i uveze fajlove po konvenciji.
+
+    dry_run=True: nula upisa (baza i disk netaknuti) — vraća predikciju po
+    fajlu. dry_run=False: intake kroz _intake_photo_from_path (dedup,
+    write-once RAW, red za derivate), premeštanje originala po ishodu i upis
+    u fototeka_uvoz_run/stavka.
+
+    Vraća rezime: {'ukupno', 'uvezeno', 'duplikata', 'neuspesno',
+    'u_prijemni_red', 'po_klasi': {...}, 'stavke': [...], 'run_id'}.
+    """
+    root = get_import_path()
+    stavke = []
+    brojaci = {'ukupno': 0, 'uvezeno': 0, 'duplikata': 0, 'neuspesno': 0,
+               'u_prijemni_red': 0}
+    po_klasi = {'predmet': 0, 'teren': 0, 'prijemni_red': 0}
+
     temp_dir = fototeka_jobs.get_media_path() / 'temp'
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        temp_dir.mkdir(parents=True, exist_ok=True)
 
-    total, page = _scan_import_files(directory, offset)
-    saved, skipped = 0, []
-    for path in page:
-        file_size = path.stat().st_size
-        if file_size <= 0:
-            skipped.append(f'{path.name}: датотека је празна')
-            continue
-        if file_size > MAX_PHOTO_SIZE:
-            skipped.append(f'{path.name}: већа од дозвољених 200 MB')
-            continue
-        result = classify_import_filename(path.name, zbirka)
-        temp_path = temp_dir / f'{uuid.uuid4().hex}_{path.suffix.lstrip(".")}'
-        try:
-            shutil.copy2(path, temp_path)  # copy: the share original stays put
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            autori = {}
+            for folder in _uvoz_folderi(root):
+                folder_name = folder.name if folder != root else ''
+                if folder_name and folder_name not in autori:
+                    autori[folder_name] = autor_iz_foldera(cur, folder_name)
+
+    for folder in _uvoz_folderi(root):
+        folder_name = folder.name if folder != root else ''
+        for path in _uvoz_fajlovi(folder):
+            brojaci['ukupno'] += 1
+            stavka = {'datoteka': path.name, 'folder': folder_name,
+                      'ishod': None, 'klasa': None, 'fotografija_id': None,
+                      'poruka': None}
+            stavke.append(stavka)
+
+            file_size = path.stat().st_size
+            if file_size <= 0 or file_size > MAX_PHOTO_SIZE:
+                stavka['ishod'] = 'neuspesno'
+                stavka['poruka'] = ('датотека је празна' if file_size <= 0
+                                    else 'већа од дозвољених 200 MB')
+                brojaci['neuspesno'] += 1
+                if not dry_run:
+                    _premesti_original(path, folder / 'neuspesno')
+                continue
+
+            klasifikovano = classify_import_filename(
+                _strip_institution_prefix(path.name), default_zbirka)
+            stavka['klasa'] = klasifikovano['klasa']
+            stavka['poruka'] = klasifikovano['note']
+            po_klasi[klasifikovano['klasa']] = po_klasi.get(klasifikovano['klasa'], 0) + 1
+
             with get_postgres_connection() as conn:
                 with conn.cursor() as cur:
-                    veza = _resolve_import_veza(cur, result['veza_meta'])
-                    fotografija_id, reason = _intake_photo_from_path(
-                        cur, temp_path, path.name, file_size, path.suffix.lower(),
-                        autor_email=user_email, opis=None, tags=[],
-                        datum_override=None, veza=veza,
-                        u_prijemnom_redu=result['u_prijemnom_redu'], poreklo='import',
-                    )
-            if fotografija_id:
-                saved += 1
-            elif reason:
-                skipped.append(reason)
-        finally:
-            if temp_path.exists():
-                temp_path.unlink()
+                    sha256, postojeci_id = _sha256_postoji(cur, path)
+                    if postojeci_id:
+                        stavka['ishod'] = 'duplikat'
+                        stavka['fotografija_id'] = postojeci_id
+                        stavka['poruka'] = f'идентична фотографија већ постоји (бр. {postojeci_id})'
+                        brojaci['duplikata'] += 1
+                        po_klasi[klasifikovano['klasa']] -= 1
+                        if not dry_run:
+                            _premesti_original(path, folder / 'obradjeno' / 'duplikati')
+                        continue
 
-    if saved:
-        flash(f'Увезено фотографија: {saved}. Умањени прикази се обрађују у позадини.', 'success')
-    if not saved and not skipped:
-        flash('Нема датотека за увоз у изабраном батчу.', 'info')
-    for reason in skipped[:20]:
-        flash(reason, 'warning')
-    # If the directory holds more than this batch, tell the user how much is
-    # left and re-scan the next batch so a >BATCH folder is fully importable.
-    processed_upto = offset + len(page)
-    if processed_upto < total:
-        flash(
-            f'Обрађено {processed_upto} од {total}. Скенирајте следећи батч '
-            f'(датотеке од {processed_upto + 1}).', 'info',
-        )
-        return redirect(url_for('fototeka.fototeka_import'))
-    return redirect(url_for('fototeka.fototeka_galerija'))
+                    if dry_run:
+                        stavka['ishod'] = 'uvezeno'
+                        if klasifikovano['u_prijemnom_redu']:
+                            brojaci['u_prijemni_red'] += 1
+                        brojaci['uvezeno'] += 1
+                        continue
+
+                    autor = autori.get(folder_name) or fallback_autor_email
+                    tags = [] if autori.get(folder_name) else ['uvoz-nepoznat-autor']
+                    temp_path = temp_dir / f'{uuid.uuid4().hex}_{path.suffix.lstrip(".")}'
+                    try:
+                        shutil.copy2(path, temp_path)
+                        veza = _resolve_import_veza(
+                            cur, klasifikovano['veza_meta'],
+                            created_by_email=autor)
+                        fotografija_id, reason = _intake_photo_from_path(
+                            cur, temp_path, path.name, file_size,
+                            path.suffix.lower(), autor_email=autor, opis=None,
+                            tags=tags,
+                            datum_override=datum_iz_imena(path.name),
+                            veza=veza,
+                            u_prijemnom_redu=klasifikovano['u_prijemnom_redu'],
+                            poreklo='import',
+                        )
+                    except Exception as greska:  # jedan fajl ne obara ceo uvoz
+                        fotografija_id, reason = None, f'neočekivana greška: {greska}'
+                    finally:
+                        if temp_path.exists():
+                            temp_path.unlink()
+
+            if dry_run:
+                continue
+            if fotografija_id:
+                stavka['ishod'] = 'uvezeno'
+                stavka['fotografija_id'] = fotografija_id
+                brojaci['uvezeno'] += 1
+                if klasifikovano['u_prijemnom_redu']:
+                    brojaci['u_prijemni_red'] += 1
+                mesec = datetime.now().strftime('%Y-%m')
+                _premesti_original(path, folder / 'obradjeno' / mesec)
+            elif reason and 'идентичн' in reason:
+                stavka['ishod'] = 'duplikat'
+                stavka['poruka'] = reason
+                brojaci['duplikata'] += 1
+                _premesti_original(path, folder / 'obradjeno' / 'duplikati')
+            else:
+                stavka['ishod'] = 'neuspesno'
+                stavka['poruka'] = reason or 'непозната грешка'
+                brojaci['neuspesno'] += 1
+                if reason and reason.startswith('neočekivana greška'):
+                    pass  # prolazna greška (baza/disk): fajl ostaje za sledeći run
+                else:
+                    _premesti_original(path, folder / 'neuspesno')
+
+    run_id = None
+    if not dry_run:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO fototeka_uvoz_run
+                        (zavrsen_at, izvor, pokrenuo_email, ukupno, uvezeno,
+                         duplikata, neuspesno, u_prijemni_red)
+                    VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (izvor, pokrenuo_email, brojaci['ukupno'],
+                     brojaci['uvezeno'], brojaci['duplikata'],
+                     brojaci['neuspesno'], brojaci['u_prijemni_red']),
+                )
+                run_id = _scalar(cur.fetchone(), 'id')
+                for stavka in stavke:
+                    cur.execute(
+                        """
+                        INSERT INTO fototeka_uvoz_stavka
+                            (run_id, datoteka, korisnicki_folder, ishod,
+                             klasa, fotografija_id, poruka)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (run_id, stavka['datoteka'], stavka['folder'] or None,
+                         stavka['ishod'], stavka['klasa'],
+                         stavka['fotografija_id'], stavka['poruka']),
+                    )
+
+    return {**brojaci, 'po_klasi': po_klasi, 'stavke': stavke, 'run_id': run_id}
