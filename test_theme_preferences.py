@@ -117,9 +117,9 @@ def test_theme_cookies_secure_under_https(theme_app):
         assert 'Secure' in cookie
 
 
-def test_current_theme_defaults_to_system_and_green(theme_app):
+def test_current_theme_defaults_to_light_and_green(theme_app):
     with theme_app.test_request_context('/'):
-        assert core_app_views.current_theme_mode() == 'system'
+        assert core_app_views.current_theme_mode() == 'light'
         assert core_app_views.current_theme_accent() == 'zelena'
 
 
@@ -127,7 +127,7 @@ def test_current_theme_normalizes_garbage_values(theme_app):
     with theme_app.test_request_context(
         '/', headers={'Cookie': 'museum_theme=neon; museum_accent=pink'}
     ):
-        assert core_app_views.current_theme_mode() == 'system'
+        assert core_app_views.current_theme_mode() == 'light'
         assert core_app_views.current_theme_accent() == 'zelena'
 
 

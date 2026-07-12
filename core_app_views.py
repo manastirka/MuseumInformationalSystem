@@ -65,7 +65,7 @@ THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
 
 
 def normalize_theme_mode(mode):
-    return mode if mode in THEME_MODES else 'system'
+    return mode if mode in THEME_MODES else 'light'
 
 
 def normalize_theme_accent(accent):
@@ -73,7 +73,7 @@ def normalize_theme_accent(accent):
 
 
 def current_theme_mode():
-    saved = session.get('museum_theme', request.cookies.get('museum_theme', 'system'))
+    saved = session.get('museum_theme', request.cookies.get('museum_theme', 'light'))
     return normalize_theme_mode(saved)
 
 
@@ -85,7 +85,7 @@ def current_theme_accent():
 def set_theme_preference():
     """Store the user's theme preference in session, cookies and (if logged in) the database."""
     data = request.get_json(silent=True) or {}
-    mode = data.get('mode', 'system')
+    mode = data.get('mode', 'light')
     accent = data.get('accent', 'zelena')
     if mode not in THEME_MODES or accent not in THEME_ACCENTS:
         return jsonify({'status': 'error', 'message': 'Invalid theme'}), 400

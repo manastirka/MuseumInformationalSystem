@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sr"{% if current_theme_mode|default('system') in ('dark', 'contrast') %} data-theme="{{ current_theme_mode }}"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}>
+<html lang="sr"{% if current_theme_mode|default('light') in ('dark', 'contrast') %} data-theme="{{ current_theme_mode }}"{% endif %} data-bs-theme="{% if current_theme_mode|default('light') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -38,7 +38,7 @@
                 root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
             }
             window.MuseumTheme = {
-                mode: '{{ current_theme_mode|default('system') }}',
+                mode: '{{ current_theme_mode|default('light') }}',
                 accent: '{{ current_theme_accent|default('zelena') }}',
                 applyResolved: applyResolved
             };
