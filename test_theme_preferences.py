@@ -160,3 +160,22 @@ def test_context_processor_exposes_theme(theme_app):
 
     assert context['current_theme_mode'] == 'dark'
     assert context['current_theme_accent'] == 'petrolej'
+
+def test_set_theme_accepts_contrast_mode(theme_app):
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'contrast', 'accent': 'zelena'},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_theme'] == 'contrast'
+
+    assert response.status_code == 200
+    assert any('museum_theme=contrast' in c for c in response.headers.getlist('Set-Cookie'))
+
+
+def test_current_theme_reads_contrast_cookie(theme_app):
+    with theme_app.test_request_context(
+        '/', headers={'Cookie': 'museum_theme=contrast'}
+    ):
+        assert core_app_views.current_theme_mode() == 'contrast'

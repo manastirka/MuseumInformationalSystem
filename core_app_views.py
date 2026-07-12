@@ -60,7 +60,7 @@ def set_language_preference():
 # Mirrors the museum_lang pattern: session + year-long cookie + POST endpoint;
 # for logged-in users the choice is also persisted in users.theme_mode/accent
 # (migration 022) so it follows them across browsers.
-THEME_MODES = ('light', 'dark', 'system')
+THEME_MODES = ('light', 'dark', 'system', 'contrast')
 THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
 
 

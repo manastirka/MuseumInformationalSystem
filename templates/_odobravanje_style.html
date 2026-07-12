@@ -269,6 +269,34 @@
     --bs-btn-border-color: var(--st-odbijeno-bd);
 }
 
+
+/* --- visoki kontrast --- */
+:root[data-theme="contrast"] {
+    --oc-green-900: #000000;
+    --oc-green-800: #06301e;
+    --oc-green-700: #0b4a2f;
+    --oc-green-050: #e8e8e8;
+    --oc-ink-soft: #1a1a1a;
+    --oc-ink-muted: #333333;
+    --oc-line: #000000;
+    --oc-line-soft: #000000;
+
+    --st-nacrt-fg: #1a1a1a;    --st-nacrt-bg: #ffffff;   --st-nacrt-bd: #000000;
+    --st-cekanje-fg: #5c3c00;  --st-cekanje-bg: #ffe8c2; --st-cekanje-bd: #000000;
+    --st-odobreno-fg: #03401f; --st-odobreno-bg: #cdeeda; --st-odobreno-bd: #000000;
+    --st-odbijeno-fg: #7a0a0a; --st-odbijeno-bg: #ffd9d9; --st-odbijeno-bd: #000000;
+    --st-arhiva-fg: #1a1a1a;   --st-arhiva-bg: #e8e8e8;  --st-arhiva-bd: #000000;
+}
+[data-theme="contrast"] .oc-header,
+[data-theme="contrast"] .oc-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+    box-shadow: none;
+}
+[data-theme="contrast"] .oc-table thead th { background: #ffffff; }
+[data-theme="contrast"] .oc-filters { background: #ffffff; border-bottom: 2px solid #000000; }
+[data-theme="contrast"] .status { border-width: 2px; font-weight: 700; }
+
 @media print {
     body { background: #fff !important; font-size: 11pt; color: #000; }
     .navbar, .sidebar, .sidebar-overlay, .oc-filters, .oc-tabs, .oc-count,

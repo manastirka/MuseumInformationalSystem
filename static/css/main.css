@@ -2721,6 +2721,261 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 /* ============================================
+   LEAFLET — tamna tema (kontrole/popup;
+   pločice karte su podatak i ne diraju se)
+   ============================================ */
+[data-theme="dark"] .leaflet-popup-content-wrapper,
+[data-theme="dark"] .leaflet-popup-tip {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .leaflet-bar a {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .leaflet-bar a:hover {
+    background: #374151;
+}
+
+[data-theme="dark"] .leaflet-control-layers {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .leaflet-control-attribution {
+    background: rgba(31, 41, 55, 0.8);
+    color: #9ca3af;
+}
+
+/* ============================================
+   VISOKI KONTRAST — [data-theme="contrast"]
+   Pristupačnost: crno na belom, jake granice,
+   bez senki i dekorativnih gradijenata.
+   ============================================ */
+[data-theme="contrast"] {
+    --primary: #0b4a2f;
+    --primary-dark: #06301e;
+    --primary-light: #0b4a2f;
+    --success: #04613f;
+    --warning: #7a3c00;
+    --danger: #a80f0f;
+    --info: #003f9e;
+    --bg-body: #ffffff;
+    --bg-card: #ffffff;
+    --bg-elevated: #f2f2f2;
+    --bg-hover: #e8e8e8;
+    --text-primary: #000000;
+    --text-secondary: #1a1a1a;
+    --text-muted: #333333;
+    --border-color: #000000;
+    --focus-ring: #000000;
+    --success-soft: #cdeeda;
+    --warning-soft: #ffe8c2;
+    --danger-soft: #ffd9d9;
+    --info-soft: #d5e4ff;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+}
+
+[data-theme="contrast"] body {
+    background: #ffffff;
+    color: #000000;
+}
+
+[data-theme="contrast"] .card,
+[data-theme="contrast"] .modal-content,
+[data-theme="contrast"] .dropdown-menu {
+    background: #ffffff;
+    border: 2px solid #000000;
+    box-shadow: none;
+    color: #000000;
+}
+
+[data-theme="contrast"] .card-header {
+    background: #ffffff;
+    border-bottom: 2px solid #000000;
+    color: #000000;
+}
+
+[data-theme="contrast"] .form-control,
+[data-theme="contrast"] .form-select,
+[data-theme="contrast"] textarea.form-control {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+    box-shadow: none;
+}
+
+[data-theme="contrast"] .table {
+    color: #000000;
+}
+
+[data-theme="contrast"] .table thead th {
+    background: #ffffff;
+    color: #000000;
+    border-bottom: 2px solid #000000;
+}
+
+[data-theme="contrast"] .table td,
+[data-theme="contrast"] .table th {
+    border-color: #000000;
+}
+
+[data-theme="contrast"] .badge {
+    border: 1px solid currentColor;
+}
+
+[data-theme="contrast"] .alert {
+    border-width: 2px;
+    border-style: solid;
+}
+
+[data-theme="contrast"] :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #000000 !important;
+    outline-offset: 2px;
+}
+
+/* — neutralizacija heritage dekora u kontrastu — */
+[data-theme="contrast"] body.heritage-shell {
+    --primary: #0b4a2f;
+    --primary-dark: #06301e;
+    --primary-light: #0b4a2f;
+    --warning: #7a3c00;
+    --danger: #a80f0f;
+    --info: #003f9e;
+    --bg-body: #ffffff;
+    --bg-card: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #1a1a1a;
+    --text-muted: #333333;
+    --border-color: #000000;
+    --heritage-ink: #000000;
+    --focus-ring: #000000;
+    --heritage-accent-hi: #0b4a2f;
+    --heritage-accent-lo: #06301e;
+    --heritage-accent-hover-hi: #06301e;
+    --heritage-accent-hover-lo: #06301e;
+    background: #ffffff;
+    color: #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .card,
+[data-theme="contrast"] body.heritage-shell .modal-content,
+[data-theme="contrast"] body.heritage-shell .login-card,
+[data-theme="contrast"] body.heritage-shell .accordion-item,
+[data-theme="contrast"] body.heritage-shell .list-group-item,
+[data-theme="contrast"] body.heritage-shell .toast {
+    background: #ffffff;
+    border: 2px solid #000000;
+    box-shadow: none;
+    color: #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .card-header,
+[data-theme="contrast"] body.heritage-shell .card-footer {
+    background: #ffffff;
+    color: #000000;
+    border-color: #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .form-control,
+[data-theme="contrast"] body.heritage-shell .form-select,
+[data-theme="contrast"] body.heritage-shell textarea.form-control,
+[data-theme="contrast"] body.heritage-shell .form-floating-custom .form-control {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+    box-shadow: none;
+}
+
+[data-theme="contrast"] body.heritage-shell .form-label,
+[data-theme="contrast"] body.heritage-shell label,
+[data-theme="contrast"] body.heritage-shell .table,
+[data-theme="contrast"] body.heritage-shell .table tbody td,
+[data-theme="contrast"] body.heritage-shell .dropdown-item {
+    color: #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .table thead th {
+    background: #ffffff;
+    color: #000000;
+    border-bottom: 2px solid #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .table tbody td {
+    background: #ffffff;
+    border-bottom: 1px solid #000000;
+}
+
+[data-theme="contrast"] body.heritage-shell .btn-outline-primary,
+[data-theme="contrast"] body.heritage-shell .btn-outline-success,
+[data-theme="contrast"] body.heritage-shell .btn-outline-secondary,
+[data-theme="contrast"] body.heritage-shell .btn-outline-warning,
+[data-theme="contrast"] body.heritage-shell .btn-outline-danger,
+[data-theme="contrast"] body.heritage-shell .btn-outline-info,
+[data-theme="contrast"] body.heritage-shell .btn-light,
+[data-theme="contrast"] body.heritage-shell .nav-tabs .nav-link,
+[data-theme="contrast"] body.heritage-shell .nav-pills .nav-link,
+[data-theme="contrast"] body.heritage-shell .pagination .page-link {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+    box-shadow: none;
+}
+
+[data-theme="contrast"] body.heritage-shell .btn-primary,
+[data-theme="contrast"] body.heritage-shell .btn-success,
+[data-theme="contrast"] body.heritage-shell .btn-login,
+[data-theme="contrast"] body.heritage-shell .nav-tabs .nav-link.active,
+[data-theme="contrast"] body.heritage-shell .nav-pills .nav-link.active,
+[data-theme="contrast"] body.heritage-shell .pagination .page-item.active .page-link {
+    background: var(--heritage-accent-lo, #06301e);
+    border: 2px solid #000000;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+[data-theme="contrast"] body.heritage-shell .navbar .nav-link,
+[data-theme="contrast"] body.heritage-shell .navbar .nav-link i,
+[data-theme="contrast"] body.heritage-shell .navbar-brand {
+    color: #ffffff !important;
+    text-shadow: none;
+}
+
+[data-theme="contrast"] body.heritage-shell .footer p,
+[data-theme="contrast"] body.heritage-shell .footer h5 {
+    color: #ffffff;
+}
+
+[data-theme="contrast"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+/* — akcenti u kontrastu: zatamnjene, pristupačne vrednosti — */
+[data-theme="contrast"][data-accent="bordo"],
+[data-theme="contrast"][data-accent="bordo"] body.heritage-shell {
+    --primary: #5e1518; --primary-dark: #3d0d0f; --primary-light: #5e1518;
+    --heritage-accent-hi: #5e1518; --heritage-accent-lo: #3d0d0f;
+    --heritage-accent-hover-hi: #3d0d0f; --heritage-accent-hover-lo: #3d0d0f;
+}
+[data-theme="contrast"][data-accent="oker"],
+[data-theme="contrast"][data-accent="oker"] body.heritage-shell {
+    --primary: #5f3f06; --primary-dark: #402a03; --primary-light: #5f3f06;
+    --heritage-accent-hi: #5f3f06; --heritage-accent-lo: #402a03;
+    --heritage-accent-hover-hi: #402a03; --heritage-accent-hover-lo: #402a03;
+}
+[data-theme="contrast"][data-accent="petrolej"],
+[data-theme="contrast"][data-accent="petrolej"] body.heritage-shell {
+    --primary: #0c4550; --primary-dark: #072e36; --primary-light: #0c4550;
+    --heritage-accent-hi: #0c4550; --heritage-accent-lo: #072e36;
+    --heritage-accent-hover-hi: #072e36; --heritage-accent-hover-lo: #072e36;
+}
+
+/* ============================================
    ŠTAMPA — uvek svetla, bez obzira na temu
    ============================================ */
 @media print {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sr"{% if current_theme_mode|default('system') == 'dark' %} data-theme="dark"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}>
+<html lang="sr"{% if current_theme_mode|default('system') in ('dark', 'contrast') %} data-theme="{{ current_theme_mode }}"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,8 +23,13 @@
         (function () {
             var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
             function applyResolved(mode) {
-                var dark = mode === 'dark' || (mode === 'system' && mq && mq.matches);
                 var root = document.documentElement;
+                if (mode === 'contrast') {
+                    root.setAttribute('data-theme', 'contrast');
+                    root.setAttribute('data-bs-theme', 'light');
+                    return;
+                }
+                var dark = mode === 'dark' || (mode === 'system' && mq && mq.matches);
                 if (dark) {
                     root.setAttribute('data-theme', 'dark');
                 } else {
@@ -38,6 +43,25 @@
                 applyResolved: applyResolved
             };
             applyResolved(window.MuseumTheme.mode);
+            // Chart.js defaults za tamnu temu — presretni dodelu window.Chart
+            // (biblioteka se učitava po stranicama, pre donjih skripti).
+            (function () {
+                var chartVal;
+                function applyChartDefaults(C) {
+                    if (!C || !C.defaults) return;
+                    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                        C.defaults.color = '#cdbb9b';
+                        C.defaults.borderColor = 'rgba(214, 177, 115, 0.15)';
+                    }
+                }
+                try {
+                    Object.defineProperty(window, 'Chart', {
+                        configurable: true,
+                        get: function () { return chartVal; },
+                        set: function (v) { chartVal = v; applyChartDefaults(v); }
+                    });
+                } catch (e) { /* fallback: podrazumevane boje */ }
+            })();
             if (mq && mq.addEventListener) {
                 mq.addEventListener('change', function () {
                     if (window.MuseumTheme.mode === 'system') applyResolved('system');
@@ -716,6 +740,9 @@
                             </a></li>
                             <li><a class="dropdown-item theme-mode-option" href="#" data-mode="system">
                                 <i class="bi bi-display me-2"></i>Системска<i class="bi bi-check2 theme-check"></i>
+                            </a></li>
+                            <li><a class="dropdown-item theme-mode-option" href="#" data-mode="contrast">
+                                <i class="bi bi-eye me-2"></i>Високи контраст<i class="bi bi-check2 theme-check"></i>
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><h6 class="dropdown-header">Акценат</h6></li>
