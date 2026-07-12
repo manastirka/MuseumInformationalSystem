@@ -64,6 +64,9 @@
     --font-size-xl: 1.25rem;
     --font-size-2xl: 1.5rem;
     --font-size-3xl: 1.875rem;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --heading-weight: 700;
+    --lh-base: 1.6;
 
     /* Spacing */
     --space-1: 0.25rem;
@@ -81,11 +84,18 @@
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
+    --border-w: 1px;
+    --radius-card: var(--radius-lg);
+    --radius-btn: var(--radius-md);
+    --radius-input: var(--radius-md);
+    --radius-badge: var(--radius-sm);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-card: var(--shadow-sm);
+    --shadow-btn: none;
 
     /* Museum sidebar */
     --sidebar-shell-width: 308px;
@@ -262,7 +272,7 @@ body {
     background-color: var(--bg-body);
     color: var(--text-primary);
     min-height: 100vh;
-    line-height: 1.6;
+    line-height: var(--lh-base);
 }
 
 /* ============================================
@@ -1110,9 +1120,9 @@ body {
    ============================================ */
 .card {
     background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    border: var(--border-w) solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
     transition: var(--transition-base);
 }
 
@@ -1122,7 +1132,7 @@ body {
 
 .card-header {
     background-color: var(--gray-50);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: var(--border-w) solid var(--border-color);
     padding: 1rem 1.25rem;
     font-weight: 600;
 }
@@ -1133,7 +1143,7 @@ body {
 
 .card-footer {
     background-color: var(--gray-50);
-    border-top: 1px solid var(--border-color);
+    border-top: var(--border-w) solid var(--border-color);
     padding: 1rem 1.25rem;
 }
 
@@ -1142,7 +1152,7 @@ body {
    ============================================ */
 .btn {
     font-weight: 500;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     padding: 0.5rem 1rem;
     transition: var(--transition-fast);
     border: none;
@@ -1225,8 +1235,8 @@ body {
    ============================================ */
 .form-control,
 .form-select {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border: var(--border-w) solid var(--border-color);
+    border-radius: var(--radius-input);
     padding: 0.625rem 0.875rem;
     font-size: var(--font-size-base);
     transition: var(--transition-fast);
@@ -1273,7 +1283,7 @@ body {
 
 .table tbody td {
     padding: 0.875rem 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: var(--border-w) solid var(--border-color);
     vertical-align: middle;
 }
 
@@ -1291,7 +1301,7 @@ body {
 .badge {
     font-weight: 500;
     padding: 0.375em 0.625em;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-badge);
     font-size: var(--font-size-xs);
 }
 
@@ -1494,6 +1504,10 @@ body.heritage-shell {
     --text-secondary: #6d5139;
     --text-muted: #8e745c;
     --border-color: #c7a47d;
+    --radius-card: 18px;
+    --radius-btn: 14px;
+    --radius-input: 12px;
+    --shadow-btn: 0 10px 16px rgba(46, 27, 14, 0.08);
     background:
         url("../images/heritage-background.webp") center 72px / cover no-repeat fixed,
         url("../images/heritage-paper-illustration.svg") center 96px / cover no-repeat fixed,
@@ -1516,13 +1530,13 @@ body.heritage-shell h6,
 body.heritage-shell .page-header,
 body.heritage-shell .card-header,
 body.heritage-shell .modal-title {
-    font-family: "Cormorant Garamond", Georgia, serif;
+    font-family: var(--font-display);
     letter-spacing: 0.01em;
 }
 
 body.heritage-shell .card {
     border: 1px solid rgba(121, 85, 53, 0.28);
-    border-radius: 18px;
+    border-radius: var(--radius-card);
     background:
         radial-gradient(circle at 18% 16%, rgba(255, 247, 228, 0.56), transparent 24%),
         linear-gradient(180deg, rgba(255, 251, 242, 0.9), rgba(235, 217, 184, 0.98));
@@ -1562,9 +1576,9 @@ body.heritage-shell .page-header p {
 }
 
 body.heritage-shell .btn {
-    border-radius: 14px;
+    border-radius: var(--radius-btn);
     font-weight: 600;
-    box-shadow: 0 10px 16px rgba(46, 27, 14, 0.08);
+    box-shadow: var(--shadow-btn);
 }
 
 body.heritage-shell .btn-primary,
@@ -1633,7 +1647,7 @@ body.heritage-shell textarea.form-control {
     background: linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(241, 229, 202, 0.98));
     border: 1px solid rgba(144, 106, 71, 0.28);
     color: #4a311f;
-    border-radius: 12px;
+    border-radius: var(--radius-input);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
@@ -1929,7 +1943,7 @@ body.heritage-shell .navbar::after {
 
 body.heritage-shell .navbar-brand {
     color: #e6c37e !important;
-    font-family: "Cormorant Garamond", Georgia, serif;
+    font-family: var(--font-display);
     font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.5rem);
     font-weight: 600;
     letter-spacing: 0.01em;
@@ -2015,7 +2029,7 @@ body.heritage-shell .footer {
 
 body.heritage-shell .footer h5 {
     color: #e3c17d;
-    font-family: "Cormorant Garamond", Georgia, serif;
+    font-family: var(--font-display);
     font-size: 1.2rem;
 }
 
@@ -2748,6 +2762,264 @@ body.heritage-shell .scroll-to-top:hover {
 [data-theme="dark"] .leaflet-control-attribution {
     background: rgba(31, 41, 55, 0.8);
     color: #9ca3af;
+}
+
+/* ============================================
+   STILOVI — data-style na <html>
+   (institucionalna = podrazumevana, bez atributa;
+   menjaju tipografiju i geometriju, boje ne diraju
+   osim arhivske koja tonira neutrale u svetlom)
+   ============================================ */
+
+/* ---------- MODERNA: sans svuda, mekši radijusi, vazduh, ravno ---------- */
+[data-style="moderna"],
+[data-style="moderna"] body.heritage-shell {
+    --font-display: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --lh-base: 1.65;
+    --radius-card: 20px;
+    --radius-btn: 12px;
+    --radius-input: 12px;
+    --radius-badge: 8px;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.07);
+    --shadow-btn: none;
+}
+
+[data-style="moderna"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="moderna"] body.heritage-shell .card,
+[data-style="moderna"] body.heritage-shell .modal-content,
+[data-style="moderna"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-color);
+}
+
+[data-style="moderna"] body.heritage-shell .card-header,
+[data-style="moderna"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="moderna"] body.heritage-shell .form-control,
+[data-style="moderna"] body.heritage-shell .form-select,
+[data-style="moderna"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .btn-primary,
+[data-style="moderna"] body.heritage-shell .btn-success,
+[data-style="moderna"] body.heritage-shell .btn-login,
+[data-style="moderna"] body.heritage-shell .nav-tabs .nav-link.active,
+[data-style="moderna"] body.heritage-shell .nav-pills .nav-link.active,
+[data-style="moderna"] body.heritage-shell .pagination .page-item.active .page-link {
+    background: var(--heritage-accent-lo, var(--primary));
+    border-color: transparent;
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .btn-outline-primary,
+[data-style="moderna"] body.heritage-shell .btn-outline-success,
+[data-style="moderna"] body.heritage-shell .btn-outline-secondary,
+[data-style="moderna"] body.heritage-shell .btn-outline-warning,
+[data-style="moderna"] body.heritage-shell .btn-outline-danger,
+[data-style="moderna"] body.heritage-shell .btn-outline-info,
+[data-style="moderna"] body.heritage-shell .btn-light,
+[data-style="moderna"] body.heritage-shell .nav-tabs .nav-link,
+[data-style="moderna"] body.heritage-shell .nav-pills .nav-link,
+[data-style="moderna"] body.heritage-shell .pagination .page-link {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+/* ---------- ARHIVSKA: serifno i u pasusu, papir, gušće, štampani list ---------- */
+[data-style="arhivska"],
+[data-style="arhivska"] body.heritage-shell {
+    --font-display: 'Source Serif 4', Georgia, serif;
+    --font-family: 'PT Serif', Georgia, serif;
+    --lh-base: 1.45;
+    --radius-card: 4px;
+    --radius-btn: 4px;
+    --radius-input: 3px;
+    --radius-badge: 3px;
+    --shadow-card: none;
+    --shadow-btn: none;
+}
+
+[data-style="arhivska"]:not([data-theme="dark"]),
+[data-style="arhivska"]:not([data-theme="dark"]) body.heritage-shell {
+    --bg-body: #efe9db;
+    --bg-card: #f7f3e8;
+    --bg-elevated: #efe9da;
+    --bg-hover: #e9e2d0;
+    --text-primary: #2c2418;
+    --text-secondary: #5d5340;
+    --text-muted: #8a7d63;
+    --border-color: #c9bfa8;
+    --border-strong: #a89a7c;
+    --heritage-ink: #2c2418;
+}
+
+[data-style="arhivska"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="arhivska"] body.heritage-shell .card,
+[data-style="arhivska"] body.heritage-shell .modal-content,
+[data-style="arhivska"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: none;
+    border: 1px solid var(--border-strong);
+}
+
+[data-style="arhivska"] body.heritage-shell .card-header,
+[data-style="arhivska"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="arhivska"] body.heritage-shell .form-control,
+[data-style="arhivska"] body.heritage-shell .form-select,
+[data-style="arhivska"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="arhivska"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+[data-style="arhivska"] .badge,
+[data-style="arhivska"] .status {
+    border: 1px solid currentColor;
+}
+
+/* ---------- TERENSKA: krupno, jake ivice, veliki dodirni ciljevi ---------- */
+html[data-style="terenska"] {
+    font-size: 17px; /* rem-vrednosti u šablonima skaliraju globalno */
+}
+
+[data-style="terenska"],
+[data-style="terenska"] body.heritage-shell {
+    --font-display: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --lh-base: 1.5;
+    --border-w: 2px;
+    --radius-card: 10px;
+    --radius-btn: 10px;
+    --radius-input: 8px;
+    --radius-badge: 8px;
+    --shadow-card: none;
+    --shadow-btn: none;
+}
+
+[data-style="terenska"] .btn,
+[data-style="terenska"] body.heritage-shell .btn {
+    min-height: 48px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    box-shadow: none;
+}
+
+[data-style="terenska"] .btn-sm,
+[data-style="terenska"] body.heritage-shell .btn-sm {
+    min-height: 40px;
+}
+
+[data-style="terenska"] .form-control,
+[data-style="terenska"] .form-select,
+[data-style="terenska"] body.heritage-shell .form-control,
+[data-style="terenska"] body.heritage-shell .form-select {
+    min-height: 48px;
+    box-shadow: none;
+}
+
+[data-style="terenska"] .form-check-input {
+    width: 1.4em;
+    height: 1.4em;
+}
+
+[data-style="terenska"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="terenska"] body.heritage-shell .card,
+[data-style="terenska"] body.heritage-shell .modal-content,
+[data-style="terenska"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: none;
+    border: var(--border-w) solid var(--border-color);
+}
+
+[data-style="terenska"] body.heritage-shell .card-header,
+[data-style="terenska"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="terenska"] body.heritage-shell .form-control,
+[data-style="terenska"] body.heritage-shell .form-select,
+[data-style="terenska"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+}
+
+[data-style="terenska"] body.heritage-shell .btn-primary,
+[data-style="terenska"] body.heritage-shell .btn-success,
+[data-style="terenska"] body.heritage-shell .btn-login {
+    background: var(--heritage-accent-lo, var(--primary));
+    border-color: transparent;
+    box-shadow: none;
+}
+
+[data-style="terenska"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+/* ============================================
+   GUSTINA — data-density na <html>
+   (komforno = podrazumevano, bez atributa)
+   ============================================ */
+html[data-density="kompakt"] {
+    font-size: 15px; /* rem vrednosti u šablonima skaliraju globalno */
+}
+
+html[data-density="kompakt"][data-style="terenska"] {
+    font-size: 16px; /* teren + kompakt ostaje dodirno bezbedan */
+}
+
+[data-density="kompakt"] .card-body {
+    padding: 0.75rem;
+}
+
+[data-density="kompakt"] .card-header {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}
+
+[data-density="kompakt"] .table td,
+[data-density="kompakt"] .table th {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+[data-density="kompakt"] .btn {
+    padding-top: 0.28rem;
+    padding-bottom: 0.28rem;
+}
+
+[data-density="kompakt"][data-style="terenska"] .btn {
+    min-height: 40px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+[data-density="kompakt"] .oc-table tbody td {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
 }
 
 /* ============================================

@@ -76,6 +76,8 @@ class PostgresAuthSystem:
                             u.is_first_login,
                             u.theme_mode,
                             u.theme_accent,
+                            u.theme_style,
+                            u.theme_density,
                             r.name as role,
                             COALESCE(d.name, ep.department) as department
                         FROM users u
@@ -132,7 +134,9 @@ class PostgresAuthSystem:
                         'position': user['position'],
                         'is_first_login': user['is_first_login'],
                         'theme_mode': user['theme_mode'],
-                        'theme_accent': user['theme_accent']
+                        'theme_accent': user['theme_accent'],
+                        'theme_style': user['theme_style'],
+                        'theme_density': user['theme_density']
                     }
 
         except Exception as e:
@@ -242,8 +246,10 @@ class PostgresAuthSystem:
             logger.error(f"PostgresAuth: Error updating password: {e}")
             return False
 
-    def save_theme_preferences(self, email: str, theme_mode: str, theme_accent: str) -> bool:
-        """Persist the user's UI theme preference (mode + accent)"""
+    def save_theme_preferences(self, email: str, theme_mode: str, theme_accent: str,
+                               theme_style: str = 'institucionalna',
+                               theme_density: str = 'komforno') -> bool:
+        """Persist the user's UI theme preference (mode + accent + style + density)"""
         if not self.available:
             return False
 
@@ -256,9 +262,12 @@ class PostgresAuthSystem:
                         UPDATE users
                         SET theme_mode = %s,
                             theme_accent = %s,
+                            theme_style = %s,
+                            theme_density = %s,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
-                    """, (theme_mode, theme_accent, datetime.now(), email))
+                    """, (theme_mode, theme_accent, theme_style, theme_density,
+                          datetime.now(), email))
 
                     conn.commit()
                     return True
