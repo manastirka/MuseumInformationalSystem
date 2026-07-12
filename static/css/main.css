@@ -2765,6 +2765,221 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 /* ============================================
+   STILOVI — data-style na <html>
+   (institucionalna = podrazumevana, bez atributa;
+   menjaju tipografiju i geometriju, boje ne diraju
+   osim arhivske koja tonira neutrale u svetlom)
+   ============================================ */
+
+/* ---------- MODERNA: sans svuda, mekši radijusi, vazduh, ravno ---------- */
+[data-style="moderna"],
+[data-style="moderna"] body.heritage-shell {
+    --font-display: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --lh-base: 1.65;
+    --radius-card: 20px;
+    --radius-btn: 12px;
+    --radius-input: 12px;
+    --radius-badge: 8px;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.07);
+    --shadow-btn: none;
+}
+
+[data-style="moderna"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="moderna"] body.heritage-shell .card,
+[data-style="moderna"] body.heritage-shell .modal-content,
+[data-style="moderna"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-color);
+}
+
+[data-style="moderna"] body.heritage-shell .card-header,
+[data-style="moderna"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="moderna"] body.heritage-shell .form-control,
+[data-style="moderna"] body.heritage-shell .form-select,
+[data-style="moderna"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .btn-primary,
+[data-style="moderna"] body.heritage-shell .btn-success,
+[data-style="moderna"] body.heritage-shell .btn-login,
+[data-style="moderna"] body.heritage-shell .nav-tabs .nav-link.active,
+[data-style="moderna"] body.heritage-shell .nav-pills .nav-link.active,
+[data-style="moderna"] body.heritage-shell .pagination .page-item.active .page-link {
+    background: var(--heritage-accent-lo, var(--primary));
+    border-color: transparent;
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .btn-outline-primary,
+[data-style="moderna"] body.heritage-shell .btn-outline-success,
+[data-style="moderna"] body.heritage-shell .btn-outline-secondary,
+[data-style="moderna"] body.heritage-shell .btn-outline-warning,
+[data-style="moderna"] body.heritage-shell .btn-outline-danger,
+[data-style="moderna"] body.heritage-shell .btn-outline-info,
+[data-style="moderna"] body.heritage-shell .btn-light,
+[data-style="moderna"] body.heritage-shell .nav-tabs .nav-link,
+[data-style="moderna"] body.heritage-shell .nav-pills .nav-link,
+[data-style="moderna"] body.heritage-shell .pagination .page-link {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="moderna"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+/* ---------- ARHIVSKA: serifno i u pasusu, papir, gušće, štampani list ---------- */
+[data-style="arhivska"],
+[data-style="arhivska"] body.heritage-shell {
+    --font-display: 'Source Serif 4', Georgia, serif;
+    --font-family: 'PT Serif', Georgia, serif;
+    --lh-base: 1.45;
+    --radius-card: 4px;
+    --radius-btn: 4px;
+    --radius-input: 3px;
+    --radius-badge: 3px;
+    --shadow-card: none;
+    --shadow-btn: none;
+}
+
+[data-style="arhivska"]:not([data-theme="dark"]),
+[data-style="arhivska"]:not([data-theme="dark"]) body.heritage-shell {
+    --bg-body: #efe9db;
+    --bg-card: #f7f3e8;
+    --bg-elevated: #efe9da;
+    --bg-hover: #e9e2d0;
+    --text-primary: #2c2418;
+    --text-secondary: #5d5340;
+    --text-muted: #8a7d63;
+    --border-color: #c9bfa8;
+    --border-strong: #a89a7c;
+    --heritage-ink: #2c2418;
+}
+
+[data-style="arhivska"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="arhivska"] body.heritage-shell .card,
+[data-style="arhivska"] body.heritage-shell .modal-content,
+[data-style="arhivska"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: none;
+    border: 1px solid var(--border-strong);
+}
+
+[data-style="arhivska"] body.heritage-shell .card-header,
+[data-style="arhivska"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="arhivska"] body.heritage-shell .form-control,
+[data-style="arhivska"] body.heritage-shell .form-select,
+[data-style="arhivska"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+[data-style="arhivska"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+[data-style="arhivska"] .badge,
+[data-style="arhivska"] .status {
+    border: 1px solid currentColor;
+}
+
+/* ---------- TERENSKA: krupno, jake ivice, veliki dodirni ciljevi ---------- */
+html[data-style="terenska"] {
+    font-size: 17px; /* rem-vrednosti u šablonima skaliraju globalno */
+}
+
+[data-style="terenska"],
+[data-style="terenska"] body.heritage-shell {
+    --font-display: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --lh-base: 1.5;
+    --border-w: 2px;
+    --radius-card: 10px;
+    --radius-btn: 10px;
+    --radius-input: 8px;
+    --radius-badge: 8px;
+    --shadow-card: none;
+    --shadow-btn: none;
+}
+
+[data-style="terenska"] .btn,
+[data-style="terenska"] body.heritage-shell .btn {
+    min-height: 48px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    box-shadow: none;
+}
+
+[data-style="terenska"] .btn-sm,
+[data-style="terenska"] body.heritage-shell .btn-sm {
+    min-height: 40px;
+}
+
+[data-style="terenska"] .form-control,
+[data-style="terenska"] .form-select,
+[data-style="terenska"] body.heritage-shell .form-control,
+[data-style="terenska"] body.heritage-shell .form-select {
+    min-height: 48px;
+    box-shadow: none;
+}
+
+[data-style="terenska"] .form-check-input {
+    width: 1.4em;
+    height: 1.4em;
+}
+
+[data-style="terenska"] body.heritage-shell {
+    background: var(--bg-body);
+}
+
+[data-style="terenska"] body.heritage-shell .card,
+[data-style="terenska"] body.heritage-shell .modal-content,
+[data-style="terenska"] body.heritage-shell .login-card {
+    background: var(--bg-card);
+    box-shadow: none;
+    border: var(--border-w) solid var(--border-color);
+}
+
+[data-style="terenska"] body.heritage-shell .card-header,
+[data-style="terenska"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+}
+
+[data-style="terenska"] body.heritage-shell .form-control,
+[data-style="terenska"] body.heritage-shell .form-select,
+[data-style="terenska"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+}
+
+[data-style="terenska"] body.heritage-shell .btn-primary,
+[data-style="terenska"] body.heritage-shell .btn-success,
+[data-style="terenska"] body.heritage-shell .btn-login {
+    background: var(--heritage-accent-lo, var(--primary));
+    border-color: transparent;
+    box-shadow: none;
+}
+
+[data-style="terenska"] body.heritage-shell .main-content::before {
+    background: none;
+}
+
+/* ============================================
    VISOKI KONTRAST — [data-theme="contrast"]
    Pristupačnost: crno na belom, jake granice,
    bez senki i dekorativnih gradijenata.
