@@ -115,6 +115,11 @@
    DARK MODE
    ============================================ */
 [data-theme="dark"] {
+    --focus-ring: rgba(111, 189, 151, 0.4);
+    --success-soft: #0e2f22;
+    --warning-soft: #33270e;
+    --danger-soft: #351515;
+    --info-soft: #142238;
     --bg-body: #111827;
     --bg-card: #1f2937;
     --bg-nav: #111827;
@@ -225,6 +230,11 @@
 [data-theme="dark"] .alert {
     border-color: var(--border-color);
 }
+
+[data-theme="dark"] .alert-success { border-color: #14532d; color: #6ee7b7; }
+[data-theme="dark"] .alert-warning { border-color: #713f12; color: #fcd34d; }
+[data-theme="dark"] .alert-danger  { border-color: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .alert-info    { border-color: #1e3a8a; color: #93c5fd; }
 
 [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
 [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
@@ -2024,6 +2034,258 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 /* ============================================
+   TAMNI HERITAGE — [data-theme="dark"] varijanta
+   heritage-shell izgleda. Pergament -> tamna koža,
+   mastilo -> slonovača; bordo/zeleno/zlato ostaju.
+   ============================================ */
+[data-theme="dark"] body.heritage-shell {
+    --primary: #58997e;
+    --primary-dark: #3c7561;
+    --primary-light: #79b39a;
+    --warning: #d09a55;
+    --danger: #c96a5e;
+    --info: #c29a58;
+    --bg-body: #1c140e;
+    --bg-card: #2a2118;
+    --bg-nav: #3a1112;
+    --text-primary: #ece0c9;
+    --text-secondary: #cdbb9b;
+    --text-muted: #a5906f;
+    --border-color: #58452f;
+    --heritage-ink: #ece0c9;
+    --heritage-parchment: #2a2118;
+    --heritage-parchment-deep: #1f1811;
+    --success-soft: #17301f;
+    --warning-soft: #33260f;
+    --danger-soft: #351613;
+    --info-soft: #2e2410;
+    --focus-ring: rgba(210, 170, 108, 0.35);
+    background:
+        radial-gradient(circle at top right, rgba(133, 84, 55, 0.14), transparent 30%),
+        radial-gradient(circle at 18% 24%, rgba(214, 177, 115, 0.07), transparent 24%),
+        linear-gradient(180deg, #251b12 0%, #1c140e 38%, #150e09 100%);
+    color: var(--heritage-ink);
+}
+
+[data-theme="dark"] body.heritage-shell .card {
+    border: 1px solid rgba(214, 177, 115, 0.16);
+    background:
+        radial-gradient(circle at 18% 16%, rgba(214, 177, 115, 0.06), transparent 24%),
+        linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+    box-shadow:
+        0 14px 26px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 240, 210, 0.05);
+}
+
+[data-theme="dark"] body.heritage-shell .card-header {
+    background: linear-gradient(180deg, rgba(94, 74, 48, 0.42), rgba(64, 50, 33, 0.22));
+    color: #e8d5ae;
+    border-bottom: 1px solid rgba(214, 177, 115, 0.14);
+}
+
+[data-theme="dark"] body.heritage-shell .card-footer {
+    background: linear-gradient(180deg, rgba(64, 50, 33, 0.2), rgba(48, 38, 27, 0.18));
+    border-top: 1px solid rgba(214, 177, 115, 0.1);
+}
+
+[data-theme="dark"] body.heritage-shell .btn-outline-primary,
+[data-theme="dark"] body.heritage-shell .btn-outline-success,
+[data-theme="dark"] body.heritage-shell .btn-outline-secondary,
+[data-theme="dark"] body.heritage-shell .btn-outline-warning,
+[data-theme="dark"] body.heritage-shell .btn-outline-danger,
+[data-theme="dark"] body.heritage-shell .btn-outline-info,
+[data-theme="dark"] body.heritage-shell .btn-light {
+    background: linear-gradient(180deg, rgba(58, 46, 32, 0.85), rgba(42, 33, 23, 0.92));
+    border: 1px solid rgba(214, 177, 115, 0.25);
+    color: #e4d3ae;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.05), 0 8px 14px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] body.heritage-shell .btn-outline-primary:hover,
+[data-theme="dark"] body.heritage-shell .btn-outline-success:hover,
+[data-theme="dark"] body.heritage-shell .btn-outline-secondary:hover,
+[data-theme="dark"] body.heritage-shell .btn-outline-warning:hover,
+[data-theme="dark"] body.heritage-shell .btn-outline-danger:hover,
+[data-theme="dark"] body.heritage-shell .btn-light:hover,
+[data-theme="dark"] body.heritage-shell .btn-outline-info:hover {
+    color: #f4e8ca;
+    background: linear-gradient(180deg, rgba(74, 59, 41, 0.92), rgba(54, 42, 29, 0.96));
+}
+
+[data-theme="dark"] body.heritage-shell .form-control,
+[data-theme="dark"] body.heritage-shell .form-select,
+[data-theme="dark"] body.heritage-shell textarea.form-control {
+    background: linear-gradient(180deg, rgba(40, 31, 22, 0.96), rgba(33, 25, 18, 0.98));
+    border: 1px solid rgba(214, 177, 115, 0.22);
+    color: #eadbbc;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.04);
+}
+
+[data-theme="dark"] body.heritage-shell .form-control::placeholder,
+[data-theme="dark"] body.heritage-shell .form-select::placeholder,
+[data-theme="dark"] body.heritage-shell textarea.form-control::placeholder {
+    color: rgba(220, 195, 150, 0.42);
+}
+
+[data-theme="dark"] body.heritage-shell .form-control:focus,
+[data-theme="dark"] body.heritage-shell .form-select:focus,
+[data-theme="dark"] body.heritage-shell textarea.form-control:focus {
+    background: linear-gradient(180deg, rgba(46, 36, 25, 0.98), rgba(38, 29, 21, 0.98));
+    border-color: rgba(210, 170, 108, 0.55);
+    box-shadow: 0 0 0 3px rgba(210, 170, 108, 0.14), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+    color: #f2e6c8;
+}
+
+[data-theme="dark"] body.heritage-shell .input-group-text {
+    background: linear-gradient(180deg, rgba(64, 50, 33, 0.9), rgba(52, 41, 27, 0.92));
+    border: 1px solid rgba(214, 177, 115, 0.22);
+    color: #cdbb9b;
+}
+
+[data-theme="dark"] body.heritage-shell .form-label,
+[data-theme="dark"] body.heritage-shell label {
+    color: #d8c39b;
+}
+
+[data-theme="dark"] body.heritage-shell .table {
+    color: #e6d7b8;
+}
+
+[data-theme="dark"] body.heritage-shell .table thead th {
+    background: linear-gradient(180deg, rgba(94, 74, 48, 0.5), rgba(66, 52, 34, 0.3));
+    color: #e8d5ae;
+    border-bottom: 2px solid rgba(214, 177, 115, 0.16);
+}
+
+[data-theme="dark"] body.heritage-shell .table tbody td {
+    border-bottom: 1px solid rgba(214, 177, 115, 0.08);
+    background: rgba(30, 23, 16, 0.35);
+}
+
+[data-theme="dark"] body.heritage-shell .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 236, 200, 0.04);
+}
+
+[data-theme="dark"] body.heritage-shell .table-hover > tbody > tr:hover > * {
+    background-color: rgba(214, 177, 115, 0.08);
+}
+
+[data-theme="dark"] body.heritage-shell .modal-content {
+    border: 1px solid rgba(214, 177, 115, 0.2);
+    background:
+        radial-gradient(circle at 18% 16%, rgba(214, 177, 115, 0.06), transparent 24%),
+        linear-gradient(180deg, rgba(48, 38, 27, 0.98), rgba(36, 28, 20, 0.99));
+    box-shadow: 0 24px 46px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] body.heritage-shell .alert {
+    border: 1px solid rgba(214, 177, 115, 0.2);
+    background: linear-gradient(180deg, rgba(46, 36, 25, 0.9), rgba(38, 29, 21, 0.94));
+    color: #e4d3ae;
+}
+
+[data-theme="dark"] body.heritage-shell .nav-tabs .nav-link,
+[data-theme="dark"] body.heritage-shell .nav-pills .nav-link {
+    color: #cdbb9b;
+    border: 1px solid rgba(214, 177, 115, 0.16);
+    background: linear-gradient(180deg, rgba(58, 46, 32, 0.7), rgba(42, 33, 23, 0.78));
+}
+
+[data-theme="dark"] body.heritage-shell .nav-tabs .nav-link:hover,
+[data-theme="dark"] body.heritage-shell .nav-pills .nav-link:hover {
+    color: #ece0c9;
+    border-color: rgba(214, 177, 115, 0.28);
+}
+
+[data-theme="dark"] body.heritage-shell .list-group-item {
+    background: rgba(38, 30, 21, 0.6);
+    border-color: rgba(214, 177, 115, 0.1);
+    color: #e6d7b8;
+}
+
+[data-theme="dark"] body.heritage-shell .accordion-item {
+    background: linear-gradient(180deg, rgba(48, 38, 27, 0.9), rgba(36, 28, 20, 0.98));
+    border: 1px solid rgba(214, 177, 115, 0.12);
+}
+
+[data-theme="dark"] body.heritage-shell .accordion-button {
+    background: linear-gradient(180deg, rgba(64, 50, 33, 0.78), rgba(52, 41, 27, 0.62));
+    color: #e4d3ae;
+}
+
+[data-theme="dark"] body.heritage-shell .accordion-button:not(.collapsed) {
+    background: linear-gradient(180deg, rgba(94, 74, 48, 0.6), rgba(66, 52, 34, 0.28));
+    color: #ece0c9;
+}
+
+[data-theme="dark"] body.heritage-shell .pagination .page-link {
+    background: linear-gradient(180deg, rgba(58, 46, 32, 0.72), rgba(42, 33, 23, 0.84));
+    border-color: rgba(214, 177, 115, 0.18);
+    color: #d8c39b;
+}
+
+[data-theme="dark"] body.heritage-shell .toast {
+    background: linear-gradient(180deg, rgba(48, 38, 27, 0.98), rgba(36, 28, 20, 0.99));
+    border: 1px solid rgba(214, 177, 115, 0.2);
+    color: #e6d7b8;
+}
+
+[data-theme="dark"] body.heritage-shell .login-container {
+    background:
+        radial-gradient(circle at top right, rgba(133, 84, 55, 0.1), transparent 28%),
+        linear-gradient(180deg, rgba(32, 24, 16, 0.6), rgba(24, 17, 11, 0.8));
+}
+
+[data-theme="dark"] body.heritage-shell .login-card {
+    border: 1px solid rgba(214, 177, 115, 0.2);
+    background:
+        radial-gradient(circle at 18% 16%, rgba(214, 177, 115, 0.06), transparent 24%),
+        linear-gradient(180deg, rgba(48, 38, 27, 0.97), rgba(36, 28, 20, 0.99));
+    box-shadow: 0 24px 44px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] body.heritage-shell .form-floating-custom .form-control {
+    background: linear-gradient(180deg, rgba(40, 31, 22, 0.96), rgba(33, 25, 18, 0.98));
+    border: 1px solid rgba(214, 177, 115, 0.22);
+    color: #eadbbc;
+}
+
+[data-theme="dark"] body.heritage-shell .form-floating-custom label,
+[data-theme="dark"] body.heritage-shell .form-floating-custom .form-icon,
+[data-theme="dark"] body.heritage-shell .password-toggle,
+[data-theme="dark"] body.heritage-shell .back-link {
+    color: #cdbb9b;
+}
+
+[data-theme="dark"] body.heritage-shell .main-content::before {
+    background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 10%, transparent 90%, rgba(0, 0, 0, 0.12)),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 18%);
+}
+
+[data-theme="dark"] body.heritage-shell .navbar .dropdown-menu,
+[data-theme="dark"] body.heritage-shell .dropdown-menu {
+    border: 1px solid rgba(214, 177, 115, 0.22);
+    background:
+        linear-gradient(180deg, rgba(127, 56, 40, 0.1), rgba(127, 56, 40, 0)),
+        linear-gradient(180deg, #33281c 0%, #261d13 100%);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] body.heritage-shell .dropdown-item {
+    color: #e0cfa8;
+}
+
+[data-theme="dark"] body.heritage-shell .dropdown-item i {
+    color: #c9a15f;
+}
+
+[data-theme="dark"] body.heritage-shell .dropdown-item:hover {
+    background: rgba(214, 177, 115, 0.1);
+    color: #f4e8ca;
+}
+
+/* ============================================
    UTILITIES
    ============================================ */
 .container-main {
@@ -2351,4 +2613,53 @@ body.heritage-shell .scroll-to-top:hover {
     justify-content: center;
     color: var(--on-accent);
     font-weight: 600;
+}
+
+/* ============================================
+   ŠTAMPA — uvek svetla, bez obzira na temu
+   ============================================ */
+@media print {
+    [data-theme="dark"],
+    [data-theme="dark"] body,
+    [data-theme="dark"] body.heritage-shell {
+        --primary: #2d6a4f;
+        --primary-dark: #1b4332;
+        --primary-light: #40916c;
+        --success: #059669;
+        --warning: #d97706;
+        --danger: #dc2626;
+        --info: #2563eb;
+        --bg-body: #ffffff;
+        --bg-card: #ffffff;
+        --bg-elevated: #f9fafb;
+        --bg-hover: #f3f4f6;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --text-muted: #9ca3af;
+        --border-color: #e5e7eb;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --success-soft: #d1fae5;
+        --warning-soft: #fef3c7;
+        --danger-soft: #fee2e2;
+        --info-soft: #dbeafe;
+        --heritage-ink: #4a311f;
+    }
+
+    [data-theme="dark"] body,
+    [data-theme="dark"] body.heritage-shell {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }
+
+    [data-theme="dark"] .card,
+    [data-theme="dark"] body.heritage-shell .card,
+    [data-theme="dark"] .table,
+    [data-theme="dark"] body.heritage-shell .table,
+    [data-theme="dark"] body.heritage-shell .table thead th,
+    [data-theme="dark"] body.heritage-shell .table tbody td {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }
 }

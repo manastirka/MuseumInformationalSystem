@@ -110,6 +110,19 @@
     border-radius: 8px; padding: 0.55rem 0.7rem; font-size: 0.82rem; margin-bottom: 0.4rem;
 }
 .foto-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
+
+/* --- tamna tema --- */
+[data-theme="dark"] .fototeka-seg,
+[data-theme="dark"] .fototeka-seg .fototeka-view-btn { background: #242b27; }
+[data-theme="dark"] .fototeka-seg .fototeka-view-btn:hover { background: #2a322d; }
+[data-theme="dark"] .view-grid .foto-item,
+[data-theme="dark"] .view-list .foto-item { background: #242b27; }
+[data-theme="dark"] .view-grid .foto-thumb img,
+[data-theme="dark"] .view-list .foto-thumb img { background: #1a201c; }
+[data-theme="dark"] .foto-meta .foto-title { color: #e6ddc9; }
+[data-theme="dark"] .foto-check { box-shadow: 0 0 0 2px rgba(36, 43, 39, 0.9), 0 1px 3px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .foto-modal { background: #242b27; }
+[data-theme="dark"] .foto-modal-warn { background: #33270f; border-color: #6e5620; color: #e5b566; }
 </style>
 {% endblock %}
 

@@ -239,6 +239,36 @@
 /* --- štampa (Архива) --------------------------------------------------------- */
 .print-header { display: none; }
 .print-footer { display: none; }
+
+/* --- tamna tema (istorija: svetli formalni izgled je default) ------------- */
+:root[data-theme="dark"] {
+    --oc-green-900: #cfe5da;
+    --oc-green-800: #a7d0bd;
+    --oc-green-700: #5da183;
+    --oc-green-050: #1e3229;
+    --oc-ink-soft: #b6bec6;
+    --oc-ink-muted: #99a3ac;
+    --oc-line: #4a453a;
+    --oc-line-soft: #3a362d;
+
+    --st-nacrt-fg: #cbd2d9;    --st-nacrt-bg: #2c333c;   --st-nacrt-bd: #4a5560;
+    --st-cekanje-fg: #e5b566;  --st-cekanje-bg: #33270f; --st-cekanje-bd: #6e5620;
+    --st-odobreno-fg: #7fc39e; --st-odobreno-bg: #17301f; --st-odobreno-bd: #2c5c42;
+    --st-odbijeno-fg: #e08a8a; --st-odbijeno-bg: #351616; --st-odbijeno-bd: #6e2a2a;
+    --st-arhiva-fg: #b6bec6;   --st-arhiva-bg: #272c33;  --st-arhiva-bd: #4a5560;
+}
+[data-theme="dark"] .oc-header,
+[data-theme="dark"] .oc-card,
+[data-theme="dark"] .oc-table thead th {
+    background: #242b27;
+}
+[data-theme="dark"] .oc-table tbody tr:hover { background: #2a322d; }
+[data-theme="dark"] .oc-filters { background: #272d29; }
+[data-theme="dark"] .btn-oc-reject {
+    --bs-btn-color: var(--st-odbijeno-fg);
+    --bs-btn-border-color: var(--st-odbijeno-bd);
+}
+
 @media print {
     body { background: #fff !important; font-size: 11pt; color: #000; }
     .navbar, .sidebar, .sidebar-overlay, .oc-filters, .oc-tabs, .oc-count,
