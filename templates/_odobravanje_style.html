@@ -8,23 +8,28 @@
    ========================================================================== */
 
 :root {
+    /* Vezano na globalne dizajn tokene iz main.css gde su vrednosti identične.
+       PAŽNJA: body.heritage-shell redefiniše --primary/--bg-card/--text-*, a
+       ovaj modul namerno zadržava svoj formalni izgled nezavisno od heritage
+       teme — zato zelene/mastilo/kartice ostaju literali; vezuju se tek u
+       Fazi 2 preko sopstvenih dark vrednosti. */
     --oc-green-900: #12312a;
     --oc-green-800: #1b4332;
     --oc-green-700: #2d6a4f;
     --oc-green-050: #eef4f1;
-    --oc-gold: #c9a15f;
-    --oc-ink-soft: #4b5563;
+    --oc-gold: var(--sidebar-gold-strong, #c9a15f);
+    --oc-ink-soft: var(--gray-600, #4b5563);
     --oc-ink-muted: #6b7280;
     --oc-line: #d9d4c8;
     --oc-line-soft: #e7e3d8;
 
     /* JEDAN sistem statusnih boja — нацрт / на одобрењу / одобрено /
        одбијено / архивирано */
-    --st-nacrt-fg: #4b5563;      --st-nacrt-bg: #f3f4f6;    --st-nacrt-bd: #d1d5db;
+    --st-nacrt-fg: var(--gray-600, #4b5563);  --st-nacrt-bg: var(--gray-100, #f3f4f6);  --st-nacrt-bd: var(--gray-300, #d1d5db);
     --st-cekanje-fg: #92600a;    --st-cekanje-bg: #fdf6e7;  --st-cekanje-bd: #e4c477;
     --st-odobreno-fg: #1b5e3b;   --st-odobreno-bg: #eaf4ee; --st-odobreno-bd: #9dc4ab;
     --st-odbijeno-fg: #9b1c1c;   --st-odbijeno-bg: #fbeeee; --st-odbijeno-bd: #dfa1a1;
-    --st-arhiva-fg: #374151;     --st-arhiva-bg: #eceef1;   --st-arhiva-bd: #b8bfc9;
+    --st-arhiva-fg: var(--gray-700, #374151); --st-arhiva-bg: #eceef1;   --st-arhiva-bd: #b8bfc9;
 }
 
 /* --- zaglavlje stranice ---------------------------------------------------- */
@@ -89,7 +94,7 @@
     font-size: 0.76rem;
     font-weight: 600;
 }
-.oc-tab.active .count { background: var(--oc-green-700); color: #fff; }
+.oc-tab.active .count { background: var(--oc-green-700); color: var(--on-accent, #fff); }
 
 /* --- jedinstvene statusne oznake -------------------------------------------- */
 .status {
@@ -192,15 +197,15 @@
     --bs-btn-border-color: var(--oc-green-700);
     --bs-btn-hover-bg: var(--oc-green-800);
     --bs-btn-hover-border-color: var(--oc-green-800);
-    --bs-btn-color: #fff;
-    --bs-btn-hover-color: #fff;
+    --bs-btn-color: var(--on-accent, #fff);
+    --bs-btn-hover-color: var(--on-accent, #fff);
 }
 .btn-oc-reject {
     --bs-btn-color: #9b1c1c;
     --bs-btn-border-color: #dfa1a1;
     --bs-btn-hover-bg: #9b1c1c;
     --bs-btn-hover-border-color: #9b1c1c;
-    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-color: var(--on-accent, #fff);
 }
 .btn-oc-ghost {
     --bs-btn-color: var(--oc-ink-soft);
@@ -234,6 +239,64 @@
 /* --- štampa (Архива) --------------------------------------------------------- */
 .print-header { display: none; }
 .print-footer { display: none; }
+
+/* --- tamna tema (istorija: svetli formalni izgled je default) ------------- */
+:root[data-theme="dark"] {
+    --oc-green-900: #cfe5da;
+    --oc-green-800: #a7d0bd;
+    --oc-green-700: #5da183;
+    --oc-green-050: #1e3229;
+    --oc-ink-soft: #b6bec6;
+    --oc-ink-muted: #99a3ac;
+    --oc-line: #4a453a;
+    --oc-line-soft: #3a362d;
+
+    --st-nacrt-fg: #cbd2d9;    --st-nacrt-bg: #2c333c;   --st-nacrt-bd: #4a5560;
+    --st-cekanje-fg: #e5b566;  --st-cekanje-bg: #33270f; --st-cekanje-bd: #6e5620;
+    --st-odobreno-fg: #7fc39e; --st-odobreno-bg: #17301f; --st-odobreno-bd: #2c5c42;
+    --st-odbijeno-fg: #e08a8a; --st-odbijeno-bg: #351616; --st-odbijeno-bd: #6e2a2a;
+    --st-arhiva-fg: #b6bec6;   --st-arhiva-bg: #272c33;  --st-arhiva-bd: #4a5560;
+}
+[data-theme="dark"] .oc-header,
+[data-theme="dark"] .oc-card,
+[data-theme="dark"] .oc-table thead th {
+    background: #242b27;
+}
+[data-theme="dark"] .oc-table tbody tr:hover { background: #2a322d; }
+[data-theme="dark"] .oc-filters { background: #272d29; }
+[data-theme="dark"] .btn-oc-reject {
+    --bs-btn-color: var(--st-odbijeno-fg);
+    --bs-btn-border-color: var(--st-odbijeno-bd);
+}
+
+
+/* --- visoki kontrast --- */
+:root[data-theme="contrast"] {
+    --oc-green-900: #000000;
+    --oc-green-800: #06301e;
+    --oc-green-700: #0b4a2f;
+    --oc-green-050: #e8e8e8;
+    --oc-ink-soft: #1a1a1a;
+    --oc-ink-muted: #333333;
+    --oc-line: #000000;
+    --oc-line-soft: #000000;
+
+    --st-nacrt-fg: #1a1a1a;    --st-nacrt-bg: #ffffff;   --st-nacrt-bd: #000000;
+    --st-cekanje-fg: #5c3c00;  --st-cekanje-bg: #ffe8c2; --st-cekanje-bd: #000000;
+    --st-odobreno-fg: #03401f; --st-odobreno-bg: #cdeeda; --st-odobreno-bd: #000000;
+    --st-odbijeno-fg: #7a0a0a; --st-odbijeno-bg: #ffd9d9; --st-odbijeno-bd: #000000;
+    --st-arhiva-fg: #1a1a1a;   --st-arhiva-bg: #e8e8e8;  --st-arhiva-bd: #000000;
+}
+[data-theme="contrast"] .oc-header,
+[data-theme="contrast"] .oc-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+    box-shadow: none;
+}
+[data-theme="contrast"] .oc-table thead th { background: #ffffff; }
+[data-theme="contrast"] .oc-filters { background: #ffffff; border-bottom: 2px solid #000000; }
+[data-theme="contrast"] .status { border-width: 2px; font-weight: 700; }
+
 @media print {
     body { background: #fff !important; font-size: 11pt; color: #000; }
     .navbar, .sidebar, .sidebar-overlay, .oc-filters, .oc-tabs, .oc-count,

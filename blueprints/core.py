@@ -54,6 +54,12 @@ def set_language():
     return core_app_views.set_language_preference()
 
 
+@core_bp.route('/set_theme', methods=['POST'])
+def set_theme():
+    """Set the user's UI theme preference (mode + accent)."""
+    return core_app_views.set_theme_preference()
+
+
 @core_bp.route('/')
 @core_bp.route('/index')
 def index():

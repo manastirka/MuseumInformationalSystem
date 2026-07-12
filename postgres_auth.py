@@ -74,6 +74,8 @@ class PostgresAuthSystem:
                             u.position,
                             u.is_active,
                             u.is_first_login,
+                            u.theme_mode,
+                            u.theme_accent,
                             r.name as role,
                             COALESCE(d.name, ep.department) as department
                         FROM users u
@@ -128,7 +130,9 @@ class PostgresAuthSystem:
                         'role': user['role'] or 'employee',
                         'department': user['department'],
                         'position': user['position'],
-                        'is_first_login': user['is_first_login']
+                        'is_first_login': user['is_first_login'],
+                        'theme_mode': user['theme_mode'],
+                        'theme_accent': user['theme_accent']
                     }
 
         except Exception as e:
@@ -236,6 +240,31 @@ class PostgresAuthSystem:
 
         except Exception as e:
             logger.error(f"PostgresAuth: Error updating password: {e}")
+            return False
+
+    def save_theme_preferences(self, email: str, theme_mode: str, theme_accent: str) -> bool:
+        """Persist the user's UI theme preference (mode + accent)"""
+        if not self.available:
+            return False
+
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE users
+                        SET theme_mode = %s,
+                            theme_accent = %s,
+                            updated_at = %s
+                        WHERE LOWER(email) = LOWER(%s)
+                    """, (theme_mode, theme_accent, datetime.now(), email))
+
+                    conn.commit()
+                    return True
+
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error saving theme preferences: {e}")
             return False
 
     def list_users(self) -> list:
