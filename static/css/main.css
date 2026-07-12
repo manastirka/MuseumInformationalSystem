@@ -2980,6 +2980,49 @@ html[data-style="terenska"] {
 }
 
 /* ============================================
+   GUSTINA — data-density na <html>
+   (komforno = podrazumevano, bez atributa)
+   ============================================ */
+html[data-density="kompakt"] {
+    font-size: 15px; /* rem vrednosti u šablonima skaliraju globalno */
+}
+
+html[data-density="kompakt"][data-style="terenska"] {
+    font-size: 16px; /* teren + kompakt ostaje dodirno bezbedan */
+}
+
+[data-density="kompakt"] .card-body {
+    padding: 0.75rem;
+}
+
+[data-density="kompakt"] .card-header {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}
+
+[data-density="kompakt"] .table td,
+[data-density="kompakt"] .table th {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+[data-density="kompakt"] .btn {
+    padding-top: 0.28rem;
+    padding-bottom: 0.28rem;
+}
+
+[data-density="kompakt"][data-style="terenska"] .btn {
+    min-height: 40px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+[data-density="kompakt"] .oc-table tbody td {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
+
+/* ============================================
    VISOKI KONTRAST — [data-theme="contrast"]
    Pristupačnost: crno na belom, jake granice,
    bez senki i dekorativnih gradijenata.

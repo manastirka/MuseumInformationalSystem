@@ -68,8 +68,8 @@ def test_set_theme_persists_to_db_for_logged_in_user(theme_app, monkeypatch):
     calls = []
 
     class FakeAuth:
-        def save_theme_preferences(self, email, mode, accent):
-            calls.append((email, mode, accent))
+        def save_theme_preferences(self, email, mode, accent, style, density):
+            calls.append((email, mode, accent, style, density))
             return True
 
     import postgres_auth
@@ -83,7 +83,7 @@ def test_set_theme_persists_to_db_for_logged_in_user(theme_app, monkeypatch):
         session['user_email'] = 'kustos@nhmbeo.rs'
         core_app_views.set_theme_preference()
 
-    assert calls == [('kustos@nhmbeo.rs', 'dark', 'petrolej')]
+    assert calls == [('kustos@nhmbeo.rs', 'dark', 'petrolej', 'institucionalna', 'komforno')]
 
 
 def test_set_theme_skips_db_for_anonymous_user(theme_app, monkeypatch):
@@ -117,18 +117,22 @@ def test_theme_cookies_secure_under_https(theme_app):
         assert 'Secure' in cookie
 
 
-def test_current_theme_defaults_to_light_and_green(theme_app):
+def test_current_theme_defaults(theme_app):
     with theme_app.test_request_context('/'):
-        assert core_app_views.current_theme_mode() == 'light'
+        assert core_app_views.current_theme_mode() == 'system'
         assert core_app_views.current_theme_accent() == 'zelena'
+        assert core_app_views.current_theme_style() == 'institucionalna'
+        assert core_app_views.current_theme_density() == 'komforno'
 
 
 def test_current_theme_normalizes_garbage_values(theme_app):
     with theme_app.test_request_context(
-        '/', headers={'Cookie': 'museum_theme=neon; museum_accent=pink'}
+        '/', headers={'Cookie': 'museum_theme=neon; museum_accent=pink; museum_style=brutalizam; museum_density=zbijeno'}
     ):
-        assert core_app_views.current_theme_mode() == 'light'
+        assert core_app_views.current_theme_mode() == 'system'
         assert core_app_views.current_theme_accent() == 'zelena'
+        assert core_app_views.current_theme_style() == 'institucionalna'
+        assert core_app_views.current_theme_density() == 'komforno'
 
 
 def test_current_theme_reads_cookie_then_session(theme_app):
@@ -179,3 +183,56 @@ def test_current_theme_reads_contrast_cookie(theme_app):
         '/', headers={'Cookie': 'museum_theme=contrast'}
     ):
         assert core_app_views.current_theme_mode() == 'contrast'
+
+
+def test_set_theme_stores_style_and_density(theme_app, monkeypatch):
+    calls = []
+
+    class FakeAuth:
+        def save_theme_preferences(self, email, mode, accent, style, density):
+            calls.append((email, mode, accent, style, density))
+            return True
+
+    import postgres_auth
+    monkeypatch.setattr(postgres_auth, 'get_postgres_auth', lambda: FakeAuth())
+
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'dark', 'accent': 'bordo', 'style': 'terenska', 'density': 'kompakt'},
+    ):
+        session['user_email'] = 'kustos@nhmbeo.rs'
+        response = core_app_views.set_theme_preference()
+        assert session['museum_style'] == 'terenska'
+        assert session['museum_density'] == 'kompakt'
+
+    assert calls == [('kustos@nhmbeo.rs', 'dark', 'bordo', 'terenska', 'kompakt')]
+    cookies = response.headers.getlist('Set-Cookie')
+    assert any('museum_style=terenska' in c for c in cookies)
+    assert any('museum_density=kompakt' in c for c in cookies)
+
+
+def test_set_theme_rejects_invalid_style(theme_app):
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'zelena', 'style': 'brutalizam'},
+    ):
+        response = core_app_views.set_theme_preference()
+
+    status = response[1] if isinstance(response, tuple) else response.status_code
+    assert status == 400
+
+
+def test_set_theme_defaults_axes_when_absent(theme_app):
+    """Stariji klijenti šalju samo mode+accent — style/density padaju na default."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'dark', 'accent': 'zelena'},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_style'] == 'institucionalna'
+        assert session['museum_density'] == 'komforno'
+
+    assert response.status_code == 200

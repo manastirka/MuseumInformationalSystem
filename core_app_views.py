@@ -62,10 +62,20 @@ def set_language_preference():
 # (migration 022) so it follows them across browsers.
 THEME_MODES = ('light', 'dark', 'system', 'contrast')
 THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
+THEME_STYLES = ('institucionalna', 'moderna', 'arhivska', 'terenska')
+THEME_DENSITIES = ('komforno', 'kompakt')
 
 
 def normalize_theme_mode(mode):
-    return mode if mode in THEME_MODES else 'light'
+    return mode if mode in THEME_MODES else 'system'
+
+
+def normalize_theme_style(style):
+    return style if style in THEME_STYLES else 'institucionalna'
+
+
+def normalize_theme_density(density):
+    return density if density in THEME_DENSITIES else 'komforno'
 
 
 def normalize_theme_accent(accent):
@@ -73,7 +83,7 @@ def normalize_theme_accent(accent):
 
 
 def current_theme_mode():
-    saved = session.get('museum_theme', request.cookies.get('museum_theme', 'light'))
+    saved = session.get('museum_theme', request.cookies.get('museum_theme', 'system'))
     return normalize_theme_mode(saved)
 
 
@@ -82,25 +92,42 @@ def current_theme_accent():
     return normalize_theme_accent(saved)
 
 
+def current_theme_style():
+    saved = session.get('museum_style', request.cookies.get('museum_style', 'institucionalna'))
+    return normalize_theme_style(saved)
+
+
+def current_theme_density():
+    saved = session.get('museum_density', request.cookies.get('museum_density', 'komforno'))
+    return normalize_theme_density(saved)
+
+
 def set_theme_preference():
     """Store the user's theme preference in session, cookies and (if logged in) the database."""
     data = request.get_json(silent=True) or {}
-    mode = data.get('mode', 'light')
+    mode = data.get('mode', 'system')
     accent = data.get('accent', 'zelena')
-    if mode not in THEME_MODES or accent not in THEME_ACCENTS:
+    style = data.get('style', 'institucionalna')
+    density = data.get('density', 'komforno')
+    if (mode not in THEME_MODES or accent not in THEME_ACCENTS
+            or style not in THEME_STYLES or density not in THEME_DENSITIES):
         return jsonify({'status': 'error', 'message': 'Invalid theme'}), 400
 
     session['museum_theme'] = mode
     session['museum_accent'] = accent
+    session['museum_style'] = style
+    session['museum_density'] = density
 
     if session.get('user_email'):
         from postgres_auth import get_postgres_auth
         try:
-            get_postgres_auth().save_theme_preferences(session['user_email'], mode, accent)
+            get_postgres_auth().save_theme_preferences(
+                session['user_email'], mode, accent, style, density)
         except Exception:
             logger.warning('Theme preference DB persist failed', exc_info=True)
 
-    response = jsonify({'status': 'ok', 'mode': mode, 'accent': accent})
+    response = jsonify({'status': 'ok', 'mode': mode, 'accent': accent,
+                        'style': style, 'density': density})
     cookie_kwargs = dict(
         max_age=31536000,
         samesite='Lax',
@@ -110,6 +137,8 @@ def set_theme_preference():
     )
     response.set_cookie('museum_theme', mode, **cookie_kwargs)
     response.set_cookie('museum_accent', accent, **cookie_kwargs)
+    response.set_cookie('museum_style', style, **cookie_kwargs)
+    response.set_cookie('museum_density', density, **cookie_kwargs)
     return response
 
 
@@ -212,6 +241,8 @@ def handle_login(
             session['is_department_head'] = authenticated_user.get('role') in DEPARTMENT_HEAD_ROLES
             session['museum_theme'] = normalize_theme_mode(authenticated_user.get('theme_mode'))
             session['museum_accent'] = normalize_theme_accent(authenticated_user.get('theme_accent'))
+            session['museum_style'] = normalize_theme_style(authenticated_user.get('theme_style'))
+            session['museum_density'] = normalize_theme_density(authenticated_user.get('theme_density'))
             session.permanent = True
 
             tracker.record_attempt(email, success=True)
