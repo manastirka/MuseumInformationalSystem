@@ -1,0 +1,24 @@
+# Фототека batch import from the shared intake folder (oneshot, driven by
+# fototeka-import.timer).
+# Production install (paths follow /opt/mis conventions):
+#   sudo cp deploy/fototeka-import.service deploy/fototeka-import.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fototeka-import.timer
+# Requirements on prod:
+#   - FOTOTEKA_IMPORT_PATH in /opt/mis/app/.env points to the Samba share root
+#     (/data/fototeka_ulaz) and the 'mis' user is in the 'fototeka-ulaz' group
+#     so it can read and move files there.
+#   - The fototeka worker (mis-fototeka-worker) must be running to build the
+#     derivatives this import enqueues.
+
+[Unit]
+Description=MIS Fototeka batch import from the shared intake folder
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=mis
+WorkingDirectory=/opt/mis/app
+ExecStart=/opt/mis/venv/bin/python /opt/mis/app/fototeka_import.py --izvrsi --izvor timer
+Nice=10

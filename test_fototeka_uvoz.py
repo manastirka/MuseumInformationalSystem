@@ -308,6 +308,34 @@ class RunBatchImportTests(unittest.TestCase):
 
         self.assertEqual(rezime['ukupno'], 0)
 
+    def test_teren_import_works_without_request_context(self):
+        """Regresija: headless uvoz TEREN fajla ne sme da dira Flask sesiju
+        (autor terena dolazi iz korisničkog foldera, ne iz sesije)."""
+        _write_jpeg(self.kustos / 'TEREN_2026_Kopaonik_01.jpg')
+        cur = self._patch_db({
+            'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
+            'WHERE sha256': [],
+            'INSERT INTO fototeka_tereni': {'id': 9},
+            'INSERT INTO fototeka_uvoz_run': {'id': 3},
+        })
+        intake_veze = []
+
+        def fake_intake(cur, temp_path, original_ime, file_size, ext, **kw):
+            intake_veze.append(kw['veza'])
+            return 77, None
+
+        patcher = patch.object(fototeka_views, '_intake_photo_from_path', fake_intake)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        rezime = fototeka_views.run_batch_import(dry_run=False)
+
+        self.assertEqual(rezime['uvezeno'], 1)
+        self.assertEqual(intake_veze[0]['tip'], 'teren')
+        teren_insert = [p for sql, p in cur.executed
+                        if 'INSERT INTO fototeka_tereni' in sql][0]
+        self.assertEqual(teren_insert[2], 'sjovanovic@nhmbeo.rs')
+
     def test_name_collision_in_target_gets_suffix(self):
         odrediste = self.kustos / 'obradjeno' / 'duplikati'
         odrediste.mkdir(parents=True)
@@ -319,6 +347,23 @@ class RunBatchImportTests(unittest.TestCase):
         self.assertEqual(nova.name, 'ista__1.jpg')
         self.assertTrue((odrediste / 'ista.jpg').exists())
         self.assertTrue(nova.exists())
+
+
+class IstorijaTests(unittest.TestCase):
+    """Regresija: psycopg vraća TUPLE redove (ne dict) — mapiranje istorije
+    mora da radi po poziciji kolona, ne preko _scalar."""
+
+    def test_istorija_maps_tuple_rows(self):
+        from datetime import datetime as dt
+        red = (3, dt(2026, 7, 12, 22, 18), 'ui', 'qa@x', 1, 1, 0, 0, 0)
+        cur = _FakeCursor({'FROM fototeka_uvoz_run': [red]})
+        conn = _FakeConnection(cur)
+        with patch.object(fototeka_views, 'get_postgres_connection', lambda: conn):
+            istorija = fototeka_views._uvoz_istorija()
+        self.assertEqual(istorija[0]['id'], 3)
+        self.assertEqual(istorija[0]['izvor'], 'ui')
+        self.assertEqual(istorija[0]['uvezeno'], 1)
+        self.assertEqual(istorija[0]['pokrenut_at'].year, 2026)
 
 
 if __name__ == '__main__':

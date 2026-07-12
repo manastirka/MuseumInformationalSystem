@@ -12,109 +12,135 @@
         margin-bottom: 1.5rem;
     }
     .fototeka-card {
-        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
-        border: 1px solid rgba(26, 71, 42, 0.12);
-        border-radius: 18px;
-        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        background: var(--bg-card, #fff);
+        border: 1px solid var(--border-color, rgba(26, 71, 42, 0.12));
+        border-radius: var(--radius-card, 18px);
+        box-shadow: var(--shadow-card, 0 18px 35px rgba(24, 43, 29, 0.08));
         padding: 1.5rem;
         margin-bottom: 1.5rem;
     }
+    .uvoz-brojke { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; }
+    .uvoz-brojka { border: 1px solid var(--border-color, #ddd); border-radius: 10px; padding: 0.7rem 0.9rem; text-align: center; }
+    .uvoz-brojka .veliki { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .uvoz-brojka .opis { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary, #6b7280); }
     .badge-predmet { background-color: #24573f; }
     .badge-teren { background-color: #2d6f8f; }
     .badge-prijemni_red { background-color: #6c757d; }
+    .ishod-uvezeno { color: var(--success, #059669); }
+    .ishod-duplikat { color: var(--warning, #b45309); }
+    .ishod-neuspesno { color: var(--danger, #dc2626); }
 </style>
 
 <div class="container-fluid py-3">
     <div class="fototeka-header">
         <h2 class="mb-1"><i class="bi bi-hdd-network me-2"></i>Увоз са дељеног диска</h2>
-        <p class="mb-0">По конвенцији имена: <code>TEREN_&lt;година&gt;_&lt;акција&gt;</code> → терен;
-            инвентарни број у имену → предмет; остало → пријемни ред.
-            Оригинали остају на дељеном диску (копирају се у архиву).</p>
+        <p class="mb-0">Улаз: <code>{{ root }}</code> — по један фолдер по кустосу (ауторство).
+            Конвенција: инвентарни број у имену (нпр. <code>PMB-M-01234_2026-07-02_01.tif</code>) → предмет;
+            <code>TEREN_&lt;година&gt;_&lt;акција&gt;</code> → терен; остало → пријемни ред.
+            После увоза датотека се премешта у <code>obradjeno/</code> (дупликати у
+            <code>obradjeno/duplikati/</code>, неисправне у <code>neuspesno/</code>).</p>
     </div>
 
     <div class="fototeka-card">
         <form method="post" action="{{ url_for('fototeka.fototeka_import_scan') }}" class="row g-2 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <input type="hidden" name="offset" value="0"/>
-            <div class="col-md-6">
-                <label class="form-label" for="uvozSubdir">Поддиректоријум (у односу на <code>{{ root }}</code>)</label>
-                <input class="form-control" id="uvozSubdir" name="subdir" value="{{ subdir }}"
-                       placeholder="нпр. 2026_jun_teren">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="uvozZbirka">Подразумевана збирка за предмете</label>
+            <div class="col-md-5">
+                <label class="form-label" for="uvozZbirka">Подразумевана збирка за инвентарне бројеве</label>
                 <select class="form-select" id="uvozZbirka" name="zbirka">
                     {% for key, label in zbirke.items()|sort(attribute='1') %}
                     <option value="{{ key }}" {% if key == zbirka %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-success w-100"><i class="bi bi-search me-1"></i>Скенирај</button>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-search me-1"></i>Скенирај улаз
+                </button>
+            </div>
+            <div class="col-md-4">
+                <span class="text-muted" style="font-size:0.85rem">Скенирање је провера без увоза —
+                    ништа се не уписује док не потврдите.</span>
             </div>
         </form>
     </div>
 
-    {% if scanned is not none %}
+    {% if rezime is not none %}
     <div class="fototeka-card">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 class="mb-0">
-                Преглед
-                {% if total > scanned|length %}
-                (датотеке {{ offset + 1 }}–{{ offset + scanned|length }} од {{ total }})
-                {% else %}
-                ({{ scanned|length }} датотека)
-                {% endif %}
-            </h5>
-            <div class="d-flex gap-2 flex-wrap">
-            {% if scanned %}
-            <form method="post" action="{{ url_for('fototeka.fototeka_import_confirm') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="hidden" name="subdir" value="{{ subdir }}"/>
-                <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
-                <input type="hidden" name="offset" value="{{ offset }}"/>
-                <button type="submit" class="btn btn-primary"
-                        onclick="return confirm('Увести {{ scanned|length }} датотека овог батча?');">
-                    <i class="bi bi-cloud-arrow-down me-1"></i>Увези овај батч
-                </button>
-            </form>
-            {% endif %}
-            {% if next_offset is not none %}
-            <form method="post" action="{{ url_for('fototeka.fototeka_import_scan') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="hidden" name="subdir" value="{{ subdir }}"/>
-                <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
-                <input type="hidden" name="offset" value="{{ next_offset }}"/>
-                <button type="submit" class="btn btn-outline-secondary">
-                    Следећи батч <i class="bi bi-arrow-right ms-1"></i>
-                </button>
-            </form>
-            {% endif %}
-            </div>
+        <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Преглед (није увезено — чека потврду)</h5>
+        <div class="uvoz-brojke mb-3">
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.ukupno }}</div><div class="opis">Укупно датотека</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.predmet }}</div><div class="opis">На предмете</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.teren }}</div><div class="opis">Терен</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.prijemni_red }}</div><div class="opis">Пријемни ред</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.duplikata }}</div><div class="opis">Дупликати</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.neuspesno }}</div><div class="opis">Неисправно</div></div>
         </div>
-        {% if scanned %}
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr><th scope="col">Датотека</th><th scope="col">Класификација</th><th scope="col">Веза</th></tr>
-                </thead>
+
+        {% if rezime.ukupno %}
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Датотека</th><th>Фолдер (аутор)</th><th>Класификација</th><th>Напомена</th></tr></thead>
                 <tbody>
-                    {% for row in scanned %}
+                    {% for stavka in rezime.stavke[:300] %}
                     <tr>
-                        <td>{{ row.ime }}</td>
-                        <td><span class="badge badge-{{ row.klasa }}">
-                            {% if row.klasa == 'predmet' %}Предмет{% elif row.klasa == 'teren' %}Терен{% else %}Пријемни ред{% endif %}
-                        </span></td>
-                        <td class="small text-muted">{{ row.note }}</td>
+                        <td><code>{{ stavka.datoteka }}</code></td>
+                        <td>{{ stavka.folder or '—' }}</td>
+                        <td>
+                            {% if stavka.ishod == 'duplikat' %}<span class="ishod-duplikat">дупликат</span>
+                            {% elif stavka.ishod == 'neuspesno' %}<span class="ishod-neuspesno">неисправно</span>
+                            {% elif stavka.klasa %}<span class="badge badge-{{ stavka.klasa }}">{{ stavka.klasa|replace('_', ' ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted" style="font-size:0.85rem">{{ stavka.poruka or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if rezime.stavke|length > 300 %}
+            <p class="text-muted">Приказано првих 300 од {{ rezime.stavke|length }} — потврда обрађује све.</p>
+            {% endif %}
+        </div>
+
+        <form method="post" action="{{ url_for('fototeka.fototeka_import_confirm') }}" class="mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="zbirka" value="{{ zbirka }}"/>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-box-arrow-in-down me-1"></i>Потврди увоз ({{ rezime.ukupno - rezime.duplikata - rezime.neuspesno }} датотека)
+            </button>
+        </form>
+        {% else %}
+        <p class="text-muted mb-0">Улазни фолдер је празан.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="fototeka-card">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Историја увоза</h5>
+        {% if istorija %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>#</th><th>Време</th><th>Извор</th><th>Покренуо</th>
+                    <th>Укупно</th><th>Увезено</th><th>Пријемни ред</th><th>Дупликати</th><th>Неуспешно</th></tr></thead>
+                <tbody>
+                    {% for run in istorija %}
+                    <tr>
+                        <td>{{ run.id }}</td>
+                        <td>{{ run.pokrenut_at.strftime('%d.%m.%Y. %H:%M') if run.pokrenut_at else '' }}</td>
+                        <td>{{ run.izvor }}</td>
+                        <td>{{ run.pokrenuo_email or '—' }}</td>
+                        <td>{{ run.ukupno }}</td>
+                        <td class="ishod-uvezeno">{{ run.uvezeno }}</td>
+                        <td>{{ run.u_prijemni_red }}</td>
+                        <td class="ishod-duplikat">{{ run.duplikata }}</td>
+                        <td class="ishod-neuspesno">{{ run.neuspesno }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <p class="mb-0">У изабраном директоријуму нема слика за увоз.</p>
+        <p class="text-muted mb-0">Још нема забележених увоза.</p>
         {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endblock %}

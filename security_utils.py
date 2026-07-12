@@ -411,6 +411,33 @@ def admin_required(f):
     return decorated_function
 
 
+def roles_required(*roles):
+    """Decorator factory: allow only the listed roles (admin and direktor are
+    NOT implied — list them explicitly where they should pass)."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            from flask import request, jsonify
+
+            is_api_request = request.path.startswith('/api/')
+
+            if 'user_id' not in session:
+                if is_api_request:
+                    return jsonify({'success': False, 'message': 'Морате бити пријављени'}), 401
+                flash('Морате бити пријављени да бисте приступили овој страници.', 'warning')
+                return redirect(url_for('login'))
+
+            if session.get('user_role') not in roles:
+                if is_api_request:
+                    return jsonify({'success': False, 'message': 'Немате дозволу за приступ'}), 403
+                flash('Немате дозволу за приступ овој страници.', 'danger')
+                return redirect(url_for('dashboard'))
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 def admin_or_department_head_required(f):
     """Allow admins, directors, or non-admins with `is_department_head=True`.
 

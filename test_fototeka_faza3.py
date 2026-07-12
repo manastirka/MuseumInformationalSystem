@@ -219,8 +219,26 @@ class _RouteTestCase(unittest.TestCase):
 
 
 class ImportRouteTests(_RouteTestCase):
+    """Novi tok (Faza 2 uvoza): dry-run pregled celog ulaza je podrazumevan;
+    potvrda radi stvarni uvoz i premešta originale po ishodu."""
 
-    def test_import_screen_is_admin_only(self):
+    CURATOR = {
+        'user_id': 3, 'user_email': 'kustos@nhmbeo.rs', 'user_name': 'Кустос',
+        'user_role': 'curator', 'is_admin': False,
+        'user_department': 'ГЕОЛОГИЈА', 'is_department_head': False,
+    }
+
+    def _user_folder(self, name='sjovanovic'):
+        folder = Path(self.import_root, name)
+        folder.mkdir(exist_ok=True)
+        return folder
+
+    def _make_image(self, name, folder=None):
+        path = Path(folder or self.import_root, name)
+        Image.new('RGB', (400, 300), (30, 90, 40)).save(path)
+        return path
+
+    def test_import_screen_refuses_plain_employee(self):
         self.login(EMPLOYEE)
         response = self.get('/fototeka/uvoz')
         self.assertEqual(response.status_code, 302)
@@ -231,77 +249,58 @@ class ImportRouteTests(_RouteTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/login', response.headers['Location'])
 
-    def test_scan_preview_classifies_files(self):
-        self._make_image('M-77.jpg')
-        self._make_image('TEREN_2024_kopaonik.jpg')
-        self._make_image('nasumicno.jpg')
-        self.login(ADMIN)
-        response = self.post('/fototeka/uvoz/skeniraj',
-                             data={'subdir': '', 'zbirka': 'mineral'})
+    def test_import_screen_allows_curator(self):
+        self.use_db({'FROM fototeka_uvoz_run': []})
+        self.login(self.CURATOR)
+        response = self.get('/fototeka/uvoz')
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Преглед'.encode('utf-8'), response.data)
-        self.assertIn('M-77.jpg'.encode('utf-8'), response.data)
+        self.assertIn('Скенирај улаз'.encode('utf-8'), response.data)
 
-    def test_confirm_intakes_and_keeps_share_original(self):
-        share_file = self._make_image('M-77.jpg')
-        cursor = self.use_db({'INSERT INTO fotografije': {'id': 1}})
+    def test_scan_previews_counts_without_writing(self):
+        folder = self._user_folder()
+        self._make_image('M-77.jpg', folder)
+        self._make_image('TEREN_2024_kopaonik.jpg', folder)
+        self._make_image('nasumicno.jpg', folder)
+        cursor = self.use_db({
+            'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
+            'WHERE sha256': [],
+            'FROM fototeka_uvoz_run': [],
+        })
         self.login(ADMIN)
-        response = self.post('/fototeka/uvoz/potvrdi',
-                             data={'subdir': '', 'zbirka': 'mineral'})
-        self.assertEqual(response.status_code, 302)
-        joined = ' '.join(sql for sql, _ in cursor.executed)
-        self.assertIn('INSERT INTO fotografije', joined)
-        # imported as 'import', linked as a mineral predmet
-        insert = [p for sql, p in cursor.executed if 'INSERT INTO fotografije' in sql][0]
-        self.assertIn('import', insert)
-        self.assertIn('INSERT INTO foto_veza_predmet', joined)
-        # the share original is copied, never moved
-        self.assertTrue(share_file.is_file())
+        response = self.post('/fototeka/uvoz/skeniraj', data={'zbirka': 'mineral'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('чека потврду'.encode('utf-8'), response.data)
+        self.assertIn(b'M-77.jpg', response.data)
+        # dry-run: ništa se ne uvozi niti pomera
+        inserts = [sql for sql, _ in cursor.executed if sql.startswith('INSERT')]
+        self.assertEqual(inserts, [])
+        self.assertTrue((folder / 'M-77.jpg').exists())
 
-    def test_confirm_rejects_traversal_subdir(self):
-        self.use_db({})
+    def test_confirm_intakes_moves_original_and_logs_run(self):
+        folder = self._user_folder()
+        share_file = self._make_image('M-77.jpg', folder)
+        cursor = self.use_db({
+            'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
+            'WHERE sha256': [],
+            'INSERT INTO fotografije': {'id': 1},
+            'INSERT INTO fototeka_uvoz_run': {'id': 5},
+        })
         self.login(ADMIN)
-        response = self.post('/fototeka/uvoz/potvrdi',
-                             data={'subdir': '../../etc', 'zbirka': 'mineral'})
+        response = self.post('/fototeka/uvoz/potvrdi', data={'zbirka': 'mineral'})
         self.assertEqual(response.status_code, 302)
         self.assertIn('/fototeka/uvoz', response.headers['Location'])
+        joined = ' '.join(sql for sql, _ in cursor.executed)
+        self.assertIn('INSERT INTO fotografije', joined)
+        self.assertIn('INSERT INTO foto_veza_predmet', joined)
+        self.assertIn('INSERT INTO fototeka_uvoz_run', joined)
+        insert = [p for sql, p in cursor.executed if 'INSERT INTO fotografije' in sql][0]
+        self.assertIn('import', insert)
+        # original je PREMEŠTEN u obradjeno/<mesec>/
+        self.assertFalse(share_file.exists())
+        self.assertTrue(any((folder / 'obradjeno').rglob('M-77.jpg')))
 
-    def test_scan_reports_true_total_beyond_batch(self):
-        # C2: a directory larger than one batch must report the true total (so
-        # the user knows there is more), not just the page size.
-        for name in ('a1.jpg', 'a2.jpg', 'a3.jpg'):
-            self._make_image(name)
-        self.login(ADMIN)
-        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
-            r = self.post('/fototeka/uvoz/skeniraj',
-                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '0'})
-        self.assertEqual(r.status_code, 200)
-        self.assertIn('од 3'.encode('utf-8'), r.data)
-
-    def test_confirm_first_batch_redirects_back_when_more_remain(self):
-        # C2: after importing a batch that does not exhaust the directory, the
-        # user is sent back to the import screen to continue (not to the gallery).
-        for name in ('b1.jpg', 'b2.jpg', 'b3.jpg'):
-            self._make_image(name)
-        self.use_db({'INSERT INTO fotografije': {'id': 1}})
-        self.login(ADMIN)
-        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
-            r = self.post('/fototeka/uvoz/potvrdi',
-                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '0'})
-        self.assertEqual(r.status_code, 302)
-        self.assertIn('/fototeka/uvoz', r.headers['Location'])
-
-    def test_confirm_last_batch_goes_to_gallery(self):
-        for name in ('c1.jpg', 'c2.jpg', 'c3.jpg'):
-            self._make_image(name)
-        self.use_db({'INSERT INTO fotografije': {'id': 1}})
-        self.login(ADMIN)
-        with patch.object(fototeka_views, 'IMPORT_BATCH_LIMIT', 2):
-            r = self.post('/fototeka/uvoz/potvrdi',
-                          data={'subdir': '', 'zbirka': 'mineral', 'offset': '2'})
-        self.assertEqual(r.status_code, 302)
-        self.assertNotIn('/fototeka/uvoz', r.headers['Location'])
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_confirm_forbidden_for_plain_employee(self):
+        self.login(EMPLOYEE)
+        response = self.post('/fototeka/uvoz/potvrdi', data={'zbirka': 'mineral'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dashboard', response.headers['Location'])

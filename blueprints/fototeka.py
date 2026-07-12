@@ -7,6 +7,7 @@ from security_utils import (
     admin_required,
     login_required,
     module_access_required,
+    roles_required,
 )
 
 
@@ -128,15 +129,15 @@ def fototeka_obrisi(fotografija_id):
 
 @fototeka_bp.route('/fototeka/uvoz')
 @login_required
-@admin_required
+@roles_required('admin', 'direktor', 'curator')
 def fototeka_import():
-    """Samba-share import screen (admin/director only)."""
+    """Samba-share import screen (admin/director/curator)."""
     return fototeka_views.render_import_form()
 
 
 @fototeka_bp.route('/fototeka/uvoz/skeniraj', methods=['POST'])
 @login_required
-@admin_required
+@roles_required('admin', 'direktor', 'curator')
 def fototeka_import_scan():
     """Dry-run preview of the filename-convention classification."""
     return fototeka_views.handle_import_scan()
@@ -144,7 +145,7 @@ def fototeka_import_scan():
 
 @fototeka_bp.route('/fototeka/uvoz/potvrdi', methods=['POST'])
 @login_required
-@admin_required
+@roles_required('admin', 'direktor', 'curator')
 def fototeka_import_confirm():
     """Intake every scanned file (poreklo='import')."""
     return fototeka_views.handle_import_confirm()

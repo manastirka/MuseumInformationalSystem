@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Фототека batch import every 30 minutes
+
+[Timer]
+# Every 30 minutes; Persistent=true runs a missed import after downtime.
+# The import is idempotent (sha256 dedup + files move out of the intake
+# folder after processing), so overlapping content is safe.
+OnCalendar=*:0/30
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
