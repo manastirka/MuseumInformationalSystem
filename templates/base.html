@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sr" data-bs-theme="light">
+<html lang="sr"{% if current_theme_mode|default('system') == 'dark' %} data-theme="dark"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,27 +16,33 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Тема: примена пре првог рендеровања (без треперења).
-         Колачић museum_theme: 'light' | 'dark' | 'system'; без колачића → светла (данашњи изглед). -->
+    <!-- Тема: сервер рендерује data-theme/data-accent из корисникове преференце
+         (context processor); овај скрипт пре првог рендеровања разрешава једино
+         режим 'system' (prefers-color-scheme) и прати промену OS теме уживо. -->
     <script>
         (function () {
-            var theme = 'light';
-            try {
-                var match = document.cookie.match(/(?:^|;\s*)museum_theme=([^;]*)/);
-                var saved = match ? decodeURIComponent(match[1]) : '';
-                if (saved === 'dark' || saved === 'light') {
-                    theme = saved;
-                } else if (saved === 'system') {
-                    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+            function applyResolved(mode) {
+                var dark = mode === 'dark' || (mode === 'system' && mq && mq.matches);
+                var root = document.documentElement;
+                if (dark) {
+                    root.setAttribute('data-theme', 'dark');
+                } else {
+                    root.removeAttribute('data-theme');
                 }
-            } catch (e) { /* остаје светла */ }
-            var root = document.documentElement;
-            if (theme === 'dark') {
-                root.setAttribute('data-theme', 'dark');
-            } else {
-                root.removeAttribute('data-theme');
+                root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
             }
-            root.setAttribute('data-bs-theme', theme);
+            window.MuseumTheme = {
+                mode: '{{ current_theme_mode|default('system') }}',
+                accent: '{{ current_theme_accent|default('zelena') }}',
+                applyResolved: applyResolved
+            };
+            applyResolved(window.MuseumTheme.mode);
+            if (mq && mq.addEventListener) {
+                mq.addEventListener('change', function () {
+                    if (window.MuseumTheme.mode === 'system') applyResolved('system');
+                });
+            }
         })();
     </script>
     <!-- Main Stylesheet -->
@@ -135,6 +141,24 @@
         .lang-option.active:hover {
             background-color: var(--primary-dark, #0b5ed7);
         }
+
+        /* Theme switcher */
+        .theme-mode-option { display: flex; align-items: center; }
+        .theme-mode-option .theme-check { margin-left: auto; visibility: hidden; }
+        .theme-mode-option.active .theme-check { visibility: visible; }
+        .theme-accents { display: flex; gap: 8px; }
+        .theme-accent-swatch {
+            width: 26px; height: 26px; border-radius: 50%;
+            border: 2px solid transparent; cursor: pointer; padding: 0;
+        }
+        .theme-accent-swatch.active {
+            border-color: var(--text-primary, #1f2937);
+            box-shadow: inset 0 0 0 2px var(--bg-card, #ffffff);
+        }
+        .accent-zelena { background: #2d6a4f; }
+        .accent-bordo { background: #7d2a2d; }
+        .accent-oker { background: #8a5f16; }
+        .accent-petrolej { background: #1f5f6b; }
         #langSwitcherBtn {
             transition: all 0.2s ease;
         }
@@ -672,6 +696,35 @@
                                    href="#" data-lang="sr-Latn" onclick="MuseumTranslator.switchLanguage('sr-Latn');return false;">
                                 <span class="me-2">🇷🇸</span> Srpski (latinica)
                             </a></li>
+                        </ul>
+                    </li>
+                    <!-- Theme Switcher -->
+                    <li class="nav-item dropdown me-2">
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center"
+                                id="themeSwitcherBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                aria-expanded="false" title="Тема"
+                                style="border-radius:20px; padding:4px 12px; font-size:0.85rem; margin-top:6px;">
+                            <i class="bi bi-circle-half"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width:210px;">
+                            <li><h6 class="dropdown-header">Режим</h6></li>
+                            <li><a class="dropdown-item theme-mode-option" href="#" data-mode="light">
+                                <i class="bi bi-sun me-2"></i>Светла<i class="bi bi-check2 theme-check"></i>
+                            </a></li>
+                            <li><a class="dropdown-item theme-mode-option" href="#" data-mode="dark">
+                                <i class="bi bi-moon-stars me-2"></i>Тамна<i class="bi bi-check2 theme-check"></i>
+                            </a></li>
+                            <li><a class="dropdown-item theme-mode-option" href="#" data-mode="system">
+                                <i class="bi bi-display me-2"></i>Системска<i class="bi bi-check2 theme-check"></i>
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Акценат</h6></li>
+                            <li class="theme-accents px-3 pb-2" data-no-translate>
+                                <button type="button" class="theme-accent-swatch accent-zelena" data-accent="zelena" title="Зелена" aria-label="Зелена"></button>
+                                <button type="button" class="theme-accent-swatch accent-bordo" data-accent="bordo" title="Бордо" aria-label="Бордо"></button>
+                                <button type="button" class="theme-accent-swatch accent-oker" data-accent="oker" title="Окер" aria-label="Окер"></button>
+                                <button type="button" class="theme-accent-swatch accent-petrolej" data-accent="petrolej" title="Петролеј" aria-label="Петролеј"></button>
+                            </li>
                         </ul>
                     </li>
                     {% if user_logged_in() %}
@@ -1714,6 +1767,60 @@
     .mail-pulse { animation: mailPulse 2s ease-in-out infinite; color: var(--bs-primary) !important; }
     </style>
     {% endif %}
+
+    <!-- Theme Switcher wiring -->
+    <script>
+    (function () {
+        function markActive() {
+            document.querySelectorAll('.theme-mode-option').forEach(function (el) {
+                el.classList.toggle('active', el.dataset.mode === window.MuseumTheme.mode);
+            });
+            document.querySelectorAll('.theme-accent-swatch').forEach(function (el) {
+                el.classList.toggle('active', el.dataset.accent === window.MuseumTheme.accent);
+            });
+        }
+        function setCookie(name, value) {
+            document.cookie = name + '=' + value + '; path=/; max-age=31536000; SameSite=Lax' +
+                (location.protocol === 'https:' ? '; Secure' : '');
+        }
+        function save() {
+            setCookie('museum_theme', window.MuseumTheme.mode);
+            setCookie('museum_accent', window.MuseumTheme.accent);
+            var request = window.secureFetch || fetch;
+            request('/set_theme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: window.MuseumTheme.mode, accent: window.MuseumTheme.accent })
+            }).catch(function () { /* тема остаје примењена локално */ });
+        }
+        function applyAccent() {
+            var root = document.documentElement;
+            if (window.MuseumTheme.accent === 'zelena') {
+                root.removeAttribute('data-accent');
+            } else {
+                root.setAttribute('data-accent', window.MuseumTheme.accent);
+            }
+        }
+        document.querySelectorAll('.theme-mode-option').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.MuseumTheme.mode = el.dataset.mode;
+                window.MuseumTheme.applyResolved(window.MuseumTheme.mode);
+                markActive();
+                save();
+            });
+        });
+        document.querySelectorAll('.theme-accent-swatch').forEach(function (el) {
+            el.addEventListener('click', function () {
+                window.MuseumTheme.accent = el.dataset.accent;
+                applyAccent();
+                markActive();
+                save();
+            });
+        });
+        markActive();
+    })();
+    </script>
 
     <!-- Three.js + Weather Particles -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>

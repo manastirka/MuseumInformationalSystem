@@ -1480,6 +1480,10 @@ body.heritage-shell {
     --primary: #21473d;
     --primary-dark: #163229;
     --primary-light: #346958;
+    --heritage-accent-hi: #285749;
+    --heritage-accent-lo: #1b4439;
+    --heritage-accent-hover-hi: #2d6252;
+    --heritage-accent-hover-lo: #1f4b3f;
     --warning: #a56b2c;
     --danger: #8d3028;
     --info: #7a5a2c;
@@ -1565,7 +1569,7 @@ body.heritage-shell .btn {
 
 body.heritage-shell .btn-primary,
 body.heritage-shell .btn-success {
-    background: linear-gradient(180deg, #285749 0%, #1b4439 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%);
     border: 1px solid rgba(228, 198, 136, 0.36);
     color: #e9d1a0;
     box-shadow: inset 0 1px 0 rgba(245, 229, 191, 0.1), 0 10px 18px rgba(39, 34, 19, 0.18);
@@ -1575,7 +1579,7 @@ body.heritage-shell .btn-primary:hover,
 body.heritage-shell .btn-success:hover,
 body.heritage-shell .btn-primary:focus,
 body.heritage-shell .btn-success:focus {
-    background: linear-gradient(180deg, #2d6252 0%, #1f4b3f 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hover-hi, #2d6252) 0%, var(--heritage-accent-hover-lo, #1f4b3f) 100%);
     color: #f2e4c0;
 }
 
@@ -1703,7 +1707,7 @@ body.heritage-shell .alert {
 }
 
 body.heritage-shell .bg-primary {
-    background: linear-gradient(180deg, #285749 0%, #1b4439 100%) !important;
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%) !important;
 }
 
 body.heritage-shell .bg-success {
@@ -1777,7 +1781,7 @@ body.heritage-shell .nav-pills .nav-link:hover {
 body.heritage-shell .nav-tabs .nav-link.active,
 body.heritage-shell .nav-pills .nav-link.active,
 body.heritage-shell .nav-pills .show > .nav-link {
-    background: linear-gradient(180deg, #285749 0%, #1b4439 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%);
     border-color: rgba(228, 198, 136, 0.36);
     color: #ecd6aa;
 }
@@ -1814,7 +1818,7 @@ body.heritage-shell .pagination .page-link {
 }
 
 body.heritage-shell .pagination .page-item.active .page-link {
-    background: linear-gradient(180deg, #285749 0%, #1b4439 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%);
     border-color: rgba(228, 198, 136, 0.36);
     color: #ecd6aa;
 }
@@ -1879,13 +1883,13 @@ body.heritage-shell .back-link {
 }
 
 body.heritage-shell .btn-login {
-    background: linear-gradient(180deg, #285749 0%, #1b4439 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%);
     border: 1px solid rgba(228, 198, 136, 0.36);
     color: #e9d1a0;
 }
 
 body.heritage-shell .btn-login:hover {
-    background: linear-gradient(180deg, #2d6252 0%, #1f4b3f 100%);
+    background: linear-gradient(180deg, var(--heritage-accent-hover-hi, #2d6252) 0%, var(--heritage-accent-hover-lo, #1f4b3f) 100%);
     color: #f2e4c0;
 }
 
@@ -2283,6 +2287,107 @@ body.heritage-shell .scroll-to-top:hover {
 [data-theme="dark"] body.heritage-shell .dropdown-item:hover {
     background: rgba(214, 177, 115, 0.1);
     color: #f4e8ca;
+}
+
+/* ============================================
+   AKCENTI — data-accent na <html>
+   (zelena = podrazumevana, bez atributa)
+   ============================================ */
+
+[data-accent="bordo"] {
+    --primary: #7d2a2d;
+    --primary-dark: #561719;
+    --primary-light: #9a4a4d;
+    --focus-ring: rgba(125, 42, 45, 0.35);
+}
+
+[data-theme="dark"][data-accent="bordo"] {
+    --primary: #c9787b;
+    --primary-dark: #b06265;
+    --primary-light: #dfa0a2;
+    --focus-ring: rgba(201, 120, 123, 0.4);
+}
+
+[data-accent="bordo"] body.heritage-shell {
+    --primary: #6e2427;
+    --primary-dark: #4a1517;
+    --primary-light: #9a4a4d;
+    --heritage-accent-hi: #6e2427;
+    --heritage-accent-lo: #4a1517;
+    --heritage-accent-hover-hi: #7d2f32;
+    --heritage-accent-hover-lo: #541a1d;
+    --focus-ring: rgba(125, 42, 45, 0.35);
+}
+
+[data-theme="dark"][data-accent="bordo"] body.heritage-shell {
+    --primary: #c9787b;
+    --primary-dark: #b06265;
+    --primary-light: #dfa0a2;
+    --focus-ring: rgba(201, 120, 123, 0.4);
+}
+
+[data-accent="oker"] {
+    --primary: #8a5f16;
+    --primary-dark: #64430d;
+    --primary-light: #a87a28;
+    --focus-ring: rgba(138, 95, 22, 0.35);
+}
+
+[data-theme="dark"][data-accent="oker"] {
+    --primary: #d3aa5c;
+    --primary-dark: #ba9145;
+    --primary-light: #e5c789;
+    --focus-ring: rgba(211, 170, 92, 0.4);
+}
+
+[data-accent="oker"] body.heritage-shell {
+    --primary: #8a6118;
+    --primary-dark: #5f430e;
+    --primary-light: #a87a28;
+    --heritage-accent-hi: #8a6118;
+    --heritage-accent-lo: #5f430e;
+    --heritage-accent-hover-hi: #9a6e1f;
+    --heritage-accent-hover-lo: #6b4c12;
+    --focus-ring: rgba(138, 95, 22, 0.35);
+}
+
+[data-theme="dark"][data-accent="oker"] body.heritage-shell {
+    --primary: #d3aa5c;
+    --primary-dark: #ba9145;
+    --primary-light: #e5c789;
+    --focus-ring: rgba(211, 170, 92, 0.4);
+}
+
+[data-accent="petrolej"] {
+    --primary: #1f5f6b;
+    --primary-dark: #123f48;
+    --primary-light: #35798a;
+    --focus-ring: rgba(31, 95, 107, 0.35);
+}
+
+[data-theme="dark"][data-accent="petrolej"] {
+    --primary: #56a8b6;
+    --primary-dark: #3f8d9b;
+    --primary-light: #83c2cd;
+    --focus-ring: rgba(86, 168, 182, 0.4);
+}
+
+[data-accent="petrolej"] body.heritage-shell {
+    --primary: #235c66;
+    --primary-dark: #153f47;
+    --primary-light: #35798a;
+    --heritage-accent-hi: #235c66;
+    --heritage-accent-lo: #153f47;
+    --heritage-accent-hover-hi: #2a6a75;
+    --heritage-accent-hover-lo: #19484f;
+    --focus-ring: rgba(31, 95, 107, 0.35);
+}
+
+[data-theme="dark"][data-accent="petrolej"] body.heritage-shell {
+    --primary: #56a8b6;
+    --primary-dark: #3f8d9b;
+    --primary-light: #83c2cd;
+    --focus-ring: rgba(86, 168, 182, 0.4);
 }
 
 /* ============================================

@@ -56,6 +56,63 @@ def set_language_preference():
     return jsonify({'status': 'error', 'message': 'Invalid language'}), 400
 
 
+# UI theme: mode ('system' follows prefers-color-scheme) + accent color.
+# Mirrors the museum_lang pattern: session + year-long cookie + POST endpoint;
+# for logged-in users the choice is also persisted in users.theme_mode/accent
+# (migration 022) so it follows them across browsers.
+THEME_MODES = ('light', 'dark', 'system')
+THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
+
+
+def normalize_theme_mode(mode):
+    return mode if mode in THEME_MODES else 'system'
+
+
+def normalize_theme_accent(accent):
+    return accent if accent in THEME_ACCENTS else 'zelena'
+
+
+def current_theme_mode():
+    saved = session.get('museum_theme', request.cookies.get('museum_theme', 'system'))
+    return normalize_theme_mode(saved)
+
+
+def current_theme_accent():
+    saved = session.get('museum_accent', request.cookies.get('museum_accent', 'zelena'))
+    return normalize_theme_accent(saved)
+
+
+def set_theme_preference():
+    """Store the user's theme preference in session, cookies and (if logged in) the database."""
+    data = request.get_json(silent=True) or {}
+    mode = data.get('mode', 'system')
+    accent = data.get('accent', 'zelena')
+    if mode not in THEME_MODES or accent not in THEME_ACCENTS:
+        return jsonify({'status': 'error', 'message': 'Invalid theme'}), 400
+
+    session['museum_theme'] = mode
+    session['museum_accent'] = accent
+
+    if session.get('user_email'):
+        from postgres_auth import get_postgres_auth
+        try:
+            get_postgres_auth().save_theme_preferences(session['user_email'], mode, accent)
+        except Exception:
+            logger.warning('Theme preference DB persist failed', exc_info=True)
+
+    response = jsonify({'status': 'ok', 'mode': mode, 'accent': accent})
+    cookie_kwargs = dict(
+        max_age=31536000,
+        samesite='Lax',
+        path='/',
+        secure=request.is_secure,
+        httponly=False,
+    )
+    response.set_cookie('museum_theme', mode, **cookie_kwargs)
+    response.set_cookie('museum_accent', accent, **cookie_kwargs)
+    return response
+
+
 def render_index(*, dashboard_endpoint):
     """Render the public landing page or redirect logged-in users."""
     if 'user_id' in session:
@@ -153,6 +210,8 @@ def handle_login(
             session['is_admin'] = authenticated_user['role'] == 'admin'
             session['user_department'] = authenticated_user.get('department', '')
             session['is_department_head'] = authenticated_user.get('role') in DEPARTMENT_HEAD_ROLES
+            session['museum_theme'] = normalize_theme_mode(authenticated_user.get('theme_mode'))
+            session['museum_accent'] = normalize_theme_accent(authenticated_user.get('theme_accent'))
             session.permanent = True
 
             tracker.record_attempt(email, success=True)
