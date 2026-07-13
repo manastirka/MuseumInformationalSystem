@@ -8,6 +8,7 @@ from datetime import datetime
 
 from flask import current_app, jsonify, request, session
 from runtime_lock_utils import load_json_file, update_json_file
+from postgres_service import get_postgres_connection
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,28 @@ def _save_science_news(all_news):
     update_json_file(news_file, lambda _current: list(all_news), default=[])
 
 
+def _registry_localities(cur):
+    """Rows of the standalone registry (migration 027), newest names last."""
+    cur.execute(
+        """
+        SELECT id, name, country, note, source
+        FROM localities
+        ORDER BY name
+        """
+    )
+    polja = ('id', 'name', 'country', 'note', 'source')
+    return [dict(zip(polja, row)) for row in cur.fetchall()]
+
+
 def api_get_localities(*, get_mineral_database):
-    """Get all unique localities from the mineral collection with counts and info."""
+    """Localities for the collection tool.
+
+    Source of truth is the standalone registry (`localities`, migration 027) —
+    a locality may exist with zero specimens (field site, future find). Specimen
+    counts are still derived from the free-text `minerals.card_locality`.
+    While the registry is still empty (before the seed runs) the tool falls back
+    to the old runtime aggregate so it never shows an empty screen.
+    """
     try:
         from locality_data import get_locality_data_local_only
 
@@ -56,17 +77,41 @@ def api_get_localities(*, get_mineral_database):
         minerals = result.get('minerals', [])
 
         localities = {}
+        registry = []
+        try:
+            with get_postgres_connection() as conn:
+                with conn.cursor() as cur:
+                    registry = _registry_localities(cur)
+        except Exception as exc:  # sifarnik nedostupan -> stari agregat
+            logger.warning('Locality registry unavailable, falling back: %s', exc)
+
+        for row in registry:
+            localities[row['name']] = {
+                'name': row['name'],
+                'count': 0,
+                'minerals': set(),
+                'source': row['source'],
+                'country': row['country'],
+                'note': row['note'],
+            }
+
         for mineral in minerals:
             locality_name = (mineral.get('lokalitet') or '').strip()
             if not locality_name:
                 continue
 
+            # Registry is the list; a specimen whose free-text locality is not
+            # in it yet still gets counted (it is real data), so nothing is lost
+            # before/without the seed.
             locality_entry = localities.setdefault(
                 locality_name,
                 {
                     'name': locality_name,
                     'count': 0,
                     'minerals': set(),
+                    'source': 'zbirka',
+                    'country': None,
+                    'note': None,
                 },
             )
             locality_entry['count'] += 1
@@ -83,6 +128,9 @@ def api_get_localities(*, get_mineral_database):
                 {
                     'name': locality_data['name'],
                     'count': locality_data['count'],
+                    'source': locality_data.get('source', 'zbirka'),
+                    'country': locality_data.get('country'),
+                    'note': locality_data.get('note'),
                     'minerals': list(locality_data['minerals'])[:10],
                     'has_info': info is not None,
                     'info': {
@@ -100,12 +148,15 @@ def api_get_localities(*, get_mineral_database):
                 }
             )
 
-        response_data.sort(key=lambda item: -item['count'])
+        # Najpre po broju predmeta, pa azbucno — lokaliteti bez predmeta
+        # (rucno dodati, teren) ostaju na spisku, na kraju.
+        response_data.sort(key=lambda item: (-item['count'], item['name']))
         return jsonify(
             {
                 'success': True,
-                'localities': response_data[:100],
+                'localities': response_data,
                 'total': len(response_data),
+                'registry_count': len(registry),
             }
         )
     except Exception as exc:
@@ -243,4 +294,73 @@ def api_get_locality_detail(locality_name, *, get_mineral_database):
         )
     except Exception as exc:
         logger.error("Error fetching locality detail for %s: %s", locality_name, exc)
+        return jsonify({'success': False, 'message': str(exc)}), 500
+
+
+def api_add_locality():
+    """Add a locality to the standalone registry (no specimen required)."""
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    country = (data.get('country') or '').strip() or None
+    note = (data.get('note') or '').strip() or None
+
+    if not name:
+        return jsonify({'success': False, 'message': 'Назив локалитета је обавезан.'}), 400
+    if len(name) > 300:
+        return jsonify({'success': False, 'message': 'Назив је предугачак.'}), 400
+
+    try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO localities (name, country, note, source, created_by_email)
+                    VALUES (%s, %s, %s, 'rucno', %s)
+                    ON CONFLICT (name) DO NOTHING
+                    RETURNING id
+                    """,
+                    (name, country, note, session.get('user_email', 'system')),
+                )
+                row = cur.fetchone()
+            conn.commit()
+
+        if not row:
+            return jsonify({'success': False,
+                            'message': 'Локалитет са тим називом већ постоји.'}), 409
+        return jsonify({'success': True, 'id': row[0], 'name': name})
+    except Exception as exc:
+        logger.error('Error adding locality: %s', exc)
+        return jsonify({'success': False, 'message': str(exc)}), 500
+
+
+def api_delete_locality(locality_id):
+    """Delete a registry entry. Specimens are never touched — but a locality
+    that still has specimens attached by name is refused, so the list cannot
+    silently lose a place the collection references."""
+    try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT name FROM localities WHERE id = %s', (locality_id,))
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({'success': False,
+                                    'message': 'Локалитет не постоји.'}), 404
+                name = row[0]
+
+                cur.execute(
+                    "SELECT count(*) FROM minerals WHERE btrim(coalesce(card_locality,'')) = %s",
+                    (name,),
+                )
+                broj = cur.fetchone()[0]
+                if broj:
+                    return jsonify({
+                        'success': False,
+                        'message': f'Локалитет има {broj} везаних предмета — не може се обрисати.',
+                    }), 409
+
+                cur.execute('DELETE FROM localities WHERE id = %s', (locality_id,))
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as exc:
+        logger.error('Error deleting locality %s: %s', locality_id, exc)
         return jsonify({'success': False, 'message': str(exc)}), 500
