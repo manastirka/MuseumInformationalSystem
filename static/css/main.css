@@ -125,6 +125,10 @@
    DARK MODE
    ============================================ */
 [data-theme="dark"] {
+    --primary: #4fa27c;
+    --primary-dark: #6fbd97;
+    --primary-light: #79b39a;
+    --on-accent: #0c1a14;
     --focus-ring: rgba(111, 189, 151, 0.4);
     --success-soft: #0e2f22;
     --warning-soft: #33270e;
@@ -2065,6 +2069,8 @@ body.heritage-shell .scroll-to-top:hover {
     --info: #c29a58;
     --bg-body: #1c140e;
     --bg-card: #2a2118;
+    --bg-elevated: #33291d;
+    --bg-hover: #3a2f21;
     --bg-nav: #3a1112;
     --text-primary: #ece0c9;
     --text-secondary: #cdbb9b;
@@ -2316,6 +2322,7 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 [data-theme="dark"][data-accent="bordo"] {
+    --on-accent: #24090a;
     --primary: #c9787b;
     --primary-dark: #b06265;
     --primary-light: #dfa0a2;
@@ -2348,6 +2355,7 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 [data-theme="dark"][data-accent="oker"] {
+    --on-accent: #241a05;
     --primary: #d3aa5c;
     --primary-dark: #ba9145;
     --primary-light: #e5c789;
@@ -2380,6 +2388,7 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 [data-theme="dark"][data-accent="petrolej"] {
+    --on-accent: #05191d;
     --primary: #56a8b6;
     --primary-dark: #3f8d9b;
     --primary-light: #83c2cd;
