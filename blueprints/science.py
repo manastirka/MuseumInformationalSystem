@@ -6,7 +6,7 @@ import depot_science_views
 import map_feature_paper_enricher
 import scientific_paper_views
 import scientific_papers_database
-from security_utils import admin_required, login_required, module_access_required
+from security_utils import admin_required, login_required, module_access_required, roles_required
 
 
 science_bp = Blueprint('science', __name__)
@@ -96,6 +96,20 @@ def api_get_localities():
     return depot_science_views.api_get_localities(
         get_mineral_database=current_app.get_mineral_database,
     )
+
+
+@science_bp.route('/api/depot/localities', methods=['POST'])
+@roles_required('admin', 'direktor', 'curator')
+def api_add_locality():
+    """Add a locality to the standalone registry (curator+)."""
+    return depot_science_views.api_add_locality()
+
+
+@science_bp.route('/api/depot/localities/<int:locality_id>', methods=['DELETE'])
+@roles_required('admin', 'direktor', 'curator')
+def api_delete_locality(locality_id):
+    """Delete a registry entry (refused while specimens reference it)."""
+    return depot_science_views.api_delete_locality(locality_id)
 
 
 @science_bp.route('/api/science-news', methods=['GET'])

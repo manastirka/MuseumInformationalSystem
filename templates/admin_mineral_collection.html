@@ -854,6 +854,30 @@ table th.action-cell {
         </ul>
     </nav>
 
+    <script>
+    /* i18n pomoćne funkcije zbirke — MORAJU biti van isključenog bloka naučnih
+       vesti ({% raw %}{% if false %}{% endraw %}): zove ih renderLocalities i ostali kod, pa je njihovo
+       postojanje unutar tog bloka rušilo алат „Локалитети" (ReferenceError). */
+    function getMineralCollectionUiLanguage() {
+        if (window.MuseumTranslator && typeof window.MuseumTranslator.getLangPreference === 'function') {
+            return window.MuseumTranslator.getLangPreference();
+        }
+        return document.documentElement.lang === 'en' ? 'en' : 'sr-Cyrl';
+    }
+
+    function isMineralCollectionEnglish() {
+        return getMineralCollectionUiLanguage() === 'en';
+    }
+
+    function mineralCollectionText(sr, en) {
+        return isMineralCollectionEnglish() ? en : sr;
+    }
+
+    function mineralCollectionLocale() {
+        return isMineralCollectionEnglish() ? 'en-GB' : 'sr-RS';
+    }
+    </script>
+
     {% if false and not is_rruff_mode %}
     <!-- Scientific News Feed -->
     <div class="science-news-shell mb-4" id="science-news-shell">
@@ -1562,24 +1586,6 @@ table th.action-cell {
     };
     let addNewsModal = null;
 
-    function getMineralCollectionUiLanguage() {
-        if (window.MuseumTranslator && typeof window.MuseumTranslator.getLangPreference === 'function') {
-            return window.MuseumTranslator.getLangPreference();
-        }
-        return document.documentElement.lang === 'en' ? 'en' : 'sr-Cyrl';
-    }
-
-    function isMineralCollectionEnglish() {
-        return getMineralCollectionUiLanguage() === 'en';
-    }
-
-    function mineralCollectionText(sr, en) {
-        return isMineralCollectionEnglish() ? en : sr;
-    }
-
-    function mineralCollectionLocale() {
-        return isMineralCollectionEnglish() ? 'en-GB' : 'sr-RS';
-    }
 
     function localizedNewsCategory(category, fallback) {
         const labels = {
@@ -2625,6 +2631,38 @@ table th.action-cell {
                         </div>
                     </div>
 
+                    <!-- Ручно додавање локалитета (независно од предмета) -->
+                    {% if user_role in ('admin', 'direktor', 'curator') %}
+                    <div class="card mb-4" id="locality-add-card">
+                        <div class="card-body py-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label small mb-1" for="new-locality-name">Нови локалитет</label>
+                                    <input type="text" class="form-control form-control-sm" id="new-locality-name"
+                                           placeholder="нпр. Рудник Благодат, Србија">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small mb-1" for="new-locality-country">Држава (опционо)</label>
+                                    <input type="text" class="form-control form-control-sm" id="new-locality-country" placeholder="Србија">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1" for="new-locality-note">Напомена</label>
+                                    <input type="text" class="form-control form-control-sm" id="new-locality-note" placeholder="опционо">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-success btn-sm w-100" id="add-locality-btn">
+                                        <i class="bi bi-plus-lg me-1"></i>Додај
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-text mt-2">
+                                Локалитет може да постоји и без предмета — за терен, будуће налазе и позната налазишта.
+                            </div>
+                            <div id="locality-add-msg" class="small mt-2"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Stats Cards -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
@@ -2673,6 +2711,54 @@ let localitiesDataCache = null;
 document.getElementById('localitiesModal').addEventListener('show.bs.modal', function() {
     loadLocalities();
 });
+
+const addLocalityBtn = document.getElementById('add-locality-btn');
+if (addLocalityBtn) {
+    addLocalityBtn.addEventListener('click', async function () {
+        const nameEl = document.getElementById('new-locality-name');
+        const countryEl = document.getElementById('new-locality-country');
+        const noteEl = document.getElementById('new-locality-note');
+        const msg = document.getElementById('locality-add-msg');
+        const name = (nameEl.value || '').trim();
+        if (!name) {
+            msg.className = 'small mt-2 text-danger';
+            msg.textContent = 'Назив локалитета је обавезан.';
+            return;
+        }
+        addLocalityBtn.disabled = true;
+        msg.className = 'small mt-2 text-muted';
+        msg.textContent = 'Чување...';
+        try {
+            const request = window.secureFetch || fetch;
+            const response = await request('/api/depot/localities', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    country: (countryEl.value || '').trim(),
+                    note: (noteEl.value || '').trim()
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                msg.className = 'small mt-2 text-success';
+                msg.textContent = 'Локалитет „' + name + '" је додат.';
+                nameEl.value = ''; countryEl.value = ''; noteEl.value = '';
+                localitiesDataCache = null;   // спискови се поново учитавају
+                await loadLocalities();
+            } else {
+                msg.className = 'small mt-2 text-danger';
+                msg.textContent = data.message || 'Грешка при чувању.';
+            }
+        } catch (error) {
+            msg.className = 'small mt-2 text-danger';
+            msg.textContent = 'Грешка при чувању: ' + error.message;
+        } finally {
+            addLocalityBtn.disabled = false;
+        }
+    });
+}
 
 document.getElementById('localities-search').addEventListener('input', function(e) {
     filterLocalities(e.target.value);
