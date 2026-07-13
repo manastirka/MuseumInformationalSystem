@@ -518,6 +518,116 @@
             min-height: unset;
         }
     }
+    /* --- tamna tema --- */
+    [data-theme="dark"] .space-shell,
+    [data-theme="dark"] .space-sidebar {
+        background: linear-gradient(180deg, rgba(42, 33, 24, 0.98), rgba(31, 24, 17, 0.98));
+        border: 1px solid rgba(214, 177, 115, 0.16);
+        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="dark"] .space-shell:fullscreen {
+        background: linear-gradient(180deg, #251b12, #150e09);
+    }
+    [data-theme="dark"] .space-subtoolbar {
+        background: linear-gradient(180deg, rgba(42, 33, 24, 0.96), rgba(31, 24, 17, 0.96));
+        border-bottom-color: rgba(214, 177, 115, 0.14);
+    }
+    [data-theme="dark"] .space-subtoolbar-note,
+    [data-theme="dark"] .planner-status,
+    [data-theme="dark"] .planner-view-meta {
+        color: var(--text-secondary);
+    }
+    [data-theme="dark"] .space-canvas {
+        border-color: rgba(214, 177, 115, 0.18);
+        background:
+            linear-gradient(180deg, rgba(51, 41, 29, 0.92), rgba(42, 33, 24, 0.96)),
+            radial-gradient(circle at top right, rgba(214, 177, 115, 0.07), transparent 35%);
+    }
+    [data-theme="dark"] .space-detail-aside {
+        background: linear-gradient(180deg, rgba(42, 33, 24, 0.98), rgba(31, 24, 17, 0.98));
+        border: 1px solid rgba(214, 177, 115, 0.16);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+    }
+    [data-theme="dark"] .space-detail-top {
+        border-bottom-color: rgba(214, 177, 115, 0.14);
+    }
+    [data-theme="dark"] .space-detail-top h5,
+    [data-theme="dark"] .space-panel h5 {
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .space-panel {
+        background: var(--bg-card);
+        border-color: rgba(214, 177, 115, 0.14);
+    }
+    [data-theme="dark"] .space-list-item {
+        background: linear-gradient(180deg, #33291d, #2a2118);
+        border-color: rgba(214, 177, 115, 0.12);
+    }
+    [data-theme="dark"] .space-list-item:hover {
+        border-color: rgba(214, 177, 115, 0.3);
+        background: linear-gradient(180deg, #3a2f21, #33291d);
+    }
+    [data-theme="dark"] .space-list-item.active {
+        border-color: rgba(88, 153, 126, 0.55);
+        background: linear-gradient(180deg, #1f3529, #17301f);
+        box-shadow: 0 0 0 1.5px rgba(88, 153, 126, 0.25);
+    }
+    [data-theme="dark"] .space-list-item-title {
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .space-badge {
+        background: var(--success-soft, #17301f);
+        color: #8fc9ab;
+    }
+    [data-theme="dark"] .space-list-item-meta {
+        color: var(--text-muted);
+    }
+    [data-theme="dark"] .room-search-input {
+        background: var(--bg-elevated);
+        border-color: rgba(214, 177, 115, 0.18);
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .room-search-input:focus {
+        border-color: rgba(88, 153, 126, 0.6);
+        background: var(--bg-hover);
+    }
+    [data-theme="dark"] .room-search-wrap i {
+        color: var(--text-muted);
+    }
+    [data-theme="dark"] .room-detail-grid label {
+        color: var(--text-secondary);
+    }
+    [data-theme="dark"] .room-terms-toggle {
+        color: var(--text-secondary);
+    }
+    [data-theme="dark"] .room-terms-toggle:hover {
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .term-search {
+        background: var(--bg-card);
+    }
+    [data-theme="dark"] .term-group-title {
+        color: var(--text-muted);
+    }
+    [data-theme="dark"] .term-chip {
+        background: var(--bg-elevated);
+        border-color: rgba(214, 177, 115, 0.16);
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .term-chip:hover {
+        background: var(--success-soft, #17301f);
+        border-color: rgba(88, 153, 126, 0.45);
+    }
+    [data-theme="dark"] .planner-empty {
+        background: var(--bg-elevated);
+        border-color: rgba(214, 177, 115, 0.25);
+        color: var(--text-secondary);
+    }
+    [data-theme="dark"] .planner-summary {
+        background: linear-gradient(180deg, #33291d, #2a2118);
+        border-color: rgba(214, 177, 115, 0.14);
+        color: var(--text-secondary);
+    }
 </style>
 
 <div class="container-fluid px-4 py-3"

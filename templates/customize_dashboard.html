@@ -108,6 +108,17 @@
     font-size: 0.875rem;
     font-weight: 600;
 }
+
+/* --- tamna tema --- */
+[data-theme="dark"] .widget-card { background: var(--bg-card); border-color: var(--border-color); }
+[data-theme="dark"] .widget-card:hover { border-color: var(--primary); background: var(--bg-hover); }
+[data-theme="dark"] .widget-card.selected { border-color: var(--primary); background: rgba(88, 153, 126, 0.14); }
+[data-theme="dark"] .widget-card .form-check-input { background-color: var(--bg-elevated); border-color: rgba(214, 177, 115, 0.4); }
+[data-theme="dark"] .widget-card .form-check-input:checked { background-color: var(--primary); border-color: var(--primary); }
+[data-theme="dark"] .preview-card { background: linear-gradient(135deg, #2a2118 0%, #241c14 100%); border: 1px solid var(--border-color); }
+[data-theme="dark"] .preview-item { background: var(--bg-elevated); border-color: var(--border-color); }
+[data-theme="dark"] .preview-item i { color: var(--primary) !important; }
+[data-theme="dark"] #customizeForm .border-top { border-top-color: var(--border-color) !important; }
 </style>
 
 <div class="container-main fade-in">
