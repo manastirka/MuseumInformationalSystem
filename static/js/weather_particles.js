@@ -6,6 +6,16 @@
     'use strict';
 
     function boot() {
+        // Тема/приступачност: без декоративних ефеката у високом контрасту и
+        // када корисник тражи мање покрета (prefers-reduced-motion).
+        if (document.documentElement.getAttribute('data-theme') === 'contrast') {
+            console.log('[Weather] Disabled: high-contrast theme');
+            return;
+        }
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            console.log('[Weather] Disabled: prefers-reduced-motion');
+            return;
+        }
         if (typeof THREE === 'undefined') { console.warn('[Weather] THREE.js not loaded'); return; }
 
         var canvas = document.getElementById('weather-canvas');

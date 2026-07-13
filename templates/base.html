@@ -37,6 +37,13 @@
                 }
                 root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
             }
+            var _applyResolvedBase = applyResolved;
+            applyResolved = function (mode) {
+                _applyResolvedBase(mode);
+                if (typeof applyLeafletDim === 'function') {
+                    applyLeafletDim(document.documentElement.getAttribute('data-theme') === 'dark');
+                }
+            };
             window.MuseumTheme = {
                 mode: '{{ current_theme_mode|default('system') }}',
                 accent: '{{ current_theme_accent|default('zelena') }}',
@@ -45,16 +52,23 @@
                 applyResolved: applyResolved
             };
             applyResolved(window.MuseumTheme.mode);
-            // Chart.js defaults za tamnu temu — presretni dodelu window.Chart
+            // Chart.js defaults po temi — presretni dodelu window.Chart
             // (biblioteka se učitava po stranicama, pre donjih skripti).
+            // Boje mreže/teksta iz tokena; boje PODATAKA ne diramo.
             (function () {
                 var chartVal;
                 function applyChartDefaults(C) {
                     if (!C || !C.defaults) return;
-                    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-                        C.defaults.color = '#cdbb9b';
-                        C.defaults.borderColor = 'rgba(214, 177, 115, 0.15)';
-                    }
+                    var theme = document.documentElement.getAttribute('data-theme');
+                    if (theme !== 'dark' && theme !== 'contrast') return;
+                    var koren = document.body || document.documentElement;
+                    var cs = getComputedStyle(koren);
+                    var tekst = (cs.getPropertyValue('--text-secondary') || '').trim();
+                    C.defaults.color = tekst ||
+                        (theme === 'contrast' ? '#1a1a1a' : '#cdbb9b');
+                    C.defaults.borderColor = theme === 'contrast'
+                        ? '#333333'
+                        : 'rgba(214, 177, 115, 0.15)';
                 }
                 try {
                     Object.defineProperty(window, 'Chart', {
@@ -64,6 +78,23 @@
                     });
                 } catch (e) { /* fallback: podrazumevane boje */ }
             })();
+            // Leaflet pločice u tamnoj temi: prigušenje (podatkovni slojevi
+            // preko pločica ostaju netaknuti). /admin/maps je izuzet — fiksni
+            // tamni viewer sa geološkim kartama gde su boje podatak.
+            function applyLeafletDim(dark) {
+                var el = document.getElementById('misLeafletDim');
+                if (dark && window.location.pathname !== '/admin/maps') {
+                    if (!el) {
+                        el = document.createElement('style');
+                        el.id = 'misLeafletDim';
+                        el.textContent = '.leaflet-tile-pane { filter: brightness(0.65) contrast(1.1) saturate(0.9); }';
+                        document.head.appendChild(el);
+                    }
+                } else if (el) {
+                    el.remove();
+                }
+            }
+            applyLeafletDim(document.documentElement.getAttribute('data-theme') === 'dark');
             if (mq && mq.addEventListener) {
                 mq.addEventListener('change', function () {
                     if (window.MuseumTheme.mode === 'system') applyResolved('system');
