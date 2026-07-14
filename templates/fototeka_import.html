@@ -71,7 +71,7 @@
             <div class="uvoz-brojka"><div class="veliki">{{ rezime.ukupno }}</div><div class="opis">Укупно датотека</div></div>
             <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.predmet }}</div><div class="opis">На предмете</div></div>
             <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.teren }}</div><div class="opis">Терен</div></div>
-            <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.prijemni_red }}</div><div class="opis">Пријемни ред</div></div>
+            <div class="uvoz-brojka"><div class="veliki">{{ rezime.po_klasi.prijemni_red }}</div><div class="opis">БЕЗ ВЕЗЕ (пријемни ред)</div></div>
             <div class="uvoz-brojka"><div class="veliki">{{ rezime.duplikata }}</div><div class="opis">Дупликати</div></div>
             <div class="uvoz-brojka"><div class="veliki">{{ rezime.neuspesno }}</div><div class="opis">Неисправно</div></div>
         </div>
@@ -120,7 +120,8 @@
         <div class="table-responsive">
             <table class="table table-sm align-middle">
                 <thead><tr><th>#</th><th>Време</th><th>Извор</th><th>Покренуо</th>
-                    <th>Укупно</th><th>Увезено</th><th>Пријемни ред</th><th>Дупликати</th><th>Неуспешно</th></tr></thead>
+                    <th>Укупно</th><th>Увезено</th><th>Везано за предмет</th><th>Терен</th>
+                    <th>БЕЗ ВЕЗЕ</th><th>Дупликати</th><th>Неуспешно</th></tr></thead>
                 <tbody>
                     {% for run in istorija %}
                     <tr>
@@ -130,7 +131,9 @@
                         <td>{{ run.pokrenuo_email or '—' }}</td>
                         <td>{{ run.ukupno }}</td>
                         <td class="ishod-uvezeno">{{ run.uvezeno }}</td>
-                        <td>{{ run.u_prijemni_red }}</td>
+                        <td class="ishod-uvezeno">{{ run.vezano_predmet }}</td>
+                        <td>{{ run.vezano_teren }}</td>
+                        <td {% if run.bez_veze %}class="ishod-duplikat fw-bold"{% endif %}>{{ run.bez_veze }}</td>
                         <td class="ishod-duplikat">{{ run.duplikata }}</td>
                         <td class="ishod-neuspesno">{{ run.neuspesno }}</td>
                     </tr>

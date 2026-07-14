@@ -96,7 +96,8 @@ class ConventionTests(unittest.TestCase):
         result = fototeka_views.classify_import_filename(
             fototeka_views._strip_institution_prefix('PMB-M-01234_snimak.jpg'), 'mineral')
         self.assertEqual(result['klasa'], 'predmet')
-        self.assertEqual(result['veza_meta']['inventarni_broj'], '01234')
+        # vodeće nule se skidaju — u bazi predmet stoji kao '1234' (bug run 71)
+        self.assertEqual(result['veza_meta']['inventarni_broj'], '1234')
 
     def test_cyrillic_pmb_prefix(self):
         self.assertEqual(
@@ -185,6 +186,7 @@ class RunBatchImportTests(unittest.TestCase):
         cur = self._patch_db({
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': [],
+            'FROM minerals': [('77',)],   # predmet 77 postoji -> veza je moguća
         })
 
         rezime = fototeka_views.run_batch_import(dry_run=True)
@@ -209,6 +211,7 @@ class RunBatchImportTests(unittest.TestCase):
         self._patch_db({
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': [{'id': 42}],
+            'FROM minerals': [('77',)],
         })
 
         rezime = fototeka_views.run_batch_import(dry_run=True)
@@ -236,6 +239,7 @@ class RunBatchImportTests(unittest.TestCase):
         cur = self._patch_db({
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': sha_lookup,
+            'FROM minerals': [('77',)],
             'INSERT INTO fototeka_uvoz_run': {'id': 7},
         })
         patcher = patch.object(fototeka_views, '_intake_photo_from_path', fake_intake)
@@ -280,6 +284,7 @@ class RunBatchImportTests(unittest.TestCase):
         self._patch_db({
             'SPLIT_PART': [],  # folder se ne mapira ni na jednog korisnika
             'WHERE sha256': [],
+            'FROM minerals': [('5',)],
         })
         intake_calls = []
 

@@ -432,6 +432,10 @@ cleanup_empty_july_drafts_cli.register_cli(app)
 import lokaliteti_cli
 lokaliteti_cli.register_cli(app)
 
+# CLI: flask povezi-fotografije (retroaktivno vezivanje uvezenih fotografija)
+import povezi_fotografije_cli
+povezi_fotografije_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(

@@ -264,6 +264,7 @@ class ImportRouteTests(_RouteTestCase):
         cursor = self.use_db({
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': [],
+            'FROM minerals': [('77',)],
             'FROM fototeka_uvoz_run': [],
         })
         self.login(ADMIN)
@@ -282,6 +283,7 @@ class ImportRouteTests(_RouteTestCase):
         cursor = self.use_db({
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': [],
+            'FROM minerals': [('77',)],   # predmet postoji -> veza se pravi
             'INSERT INTO fotografije': {'id': 1},
             'INSERT INTO fototeka_uvoz_run': {'id': 5},
         })
