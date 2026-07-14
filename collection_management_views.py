@@ -848,6 +848,11 @@ def render_mineral_detail(mineral_id, *, get_mineral_database):
     if mineral.get('naziv'):
         rruff_data = mineral_db.get_rruff_data_for_mineral(mineral['naziv'])
 
+    # Kartica predmeta je do sada gledala SAMO staru `images` putanju, pa je
+    # predmet sa fotografijom iz Фototeke prikazivao placeholder. Isti batch
+    # lookup kao u tabeli (poštuje vidljivost).
+    _priloži_foto_id([mineral])
+
     return render_template('admin_mineral_detail.html', mineral=mineral, rruff_data=rruff_data)
 
 

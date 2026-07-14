@@ -42,15 +42,26 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-5 text-center">
-                            <img src="{{ url_for('get_specimen_image', database='minerals', entity_type='mineral', entity_id=mineral.id) }}"
+                            {# Фототека има предност (нов систем); стара `images` табела је резерва. #}
+                            {% if mineral.foto_id %}
+                                {% set slika_url = url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='jpg') %}
+                                {% set uvecano_url = slika_url %}
+                            {% else %}
+                                {% set slika_url = url_for('get_specimen_image', database='minerals', entity_type='mineral', entity_id=mineral.id) %}
+                                {% set uvecano_url = url_for('get_specimen_image_full', database='minerals', entity_type='mineral', entity_id=mineral.id) %}
+                            {% endif %}
+                            <img src="{{ slika_url }}"
                                  alt="{{ mineral.naziv or 'Минерал' }}"
                                  class="img-fluid rounded shadow mb-3"
                                  style="max-height: 350px; object-fit: contain; cursor: zoom-in;"
                                  data-bs-toggle="modal" data-bs-target="#imageEnlargeModal"
-                                 onclick="document.getElementById('enlargedImage').src='{{ url_for('get_specimen_image_full', database='minerals', entity_type='mineral', entity_id=mineral.id) }}'"
+                                 onclick="document.getElementById('enlargedImage').src='{{ uvecano_url }}'"
                                  onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/specimen-placeholder.png') }}'; this.style.cursor='default'; this.removeAttribute('data-bs-toggle'); this.removeAttribute('data-bs-target'); this.onclick=null;">
                             <p class="text-muted small mb-0">
                                 <i class="bi bi-camera"></i> Фотографија примерка
+                                {% if mineral.foto_id %}
+                                — <a href="{{ url_for('fototeka.fototeka_fotografija', fotografija_id=mineral.foto_id) }}">Фототека</a>
+                                {% endif %}
                             </p>
                         </div>
                         <div class="col-md-7">

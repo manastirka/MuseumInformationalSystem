@@ -168,3 +168,24 @@ class AttachToRowsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DetaljKarticeTests(unittest.TestCase):
+    """BUG 2: kartica predmeta je gledala SAMO staru images putanju, pa je
+    predmet sa fototeka fotografijom prikazivao placeholder."""
+
+    def test_detalj_dobija_foto_id(self):
+        mineral = {'id': 11, 'inventarni_broj': '42'}
+        with patch.object(fototeka_views, 'glavne_fotografije_predmeta',
+                          lambda *a, **k: {'42': 13}):
+            with patch.object(collection_management_views, 'session', ADMIN):
+                collection_management_views._priloži_foto_id([mineral])
+        self.assertEqual(mineral['foto_id'], 13)
+
+    def test_detalj_bez_fototeke_ostaje_na_legacy(self):
+        mineral = {'id': 11, 'inventarni_broj': '42'}
+        with patch.object(fototeka_views, 'glavne_fotografije_predmeta',
+                          lambda *a, **k: {}):
+            with patch.object(collection_management_views, 'session', ADMIN):
+                collection_management_views._priloži_foto_id([mineral])
+        self.assertIsNone(mineral['foto_id'])
