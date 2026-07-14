@@ -215,6 +215,9 @@
                 <label class="fototeka-sel">
                     <input class="form-check-input mt-0" type="checkbox" id="fototekaSelectAll"> Изабери све
                 </label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="fototekaBatchOpen">
+                    <i class="bi bi-pencil-square me-1"></i>Уреди изабрано (<span id="fototekaBatchCount">0</span>)
+                </button>
                 <button type="button" class="btn btn-sm btn-oc-approve" id="fototekaDownloadOpen">
                     <i class="bi bi-download me-1"></i>Преузми изабрано (<span id="fototekaSelCount">0</span>)
                 </button>
@@ -328,4 +331,72 @@
 {% endif %}
 
 <script src="{{ url_for('static', filename='js/fototeka_galerija.js') }}"></script>
+<!-- Групно уређивање изабраних фотографија -->
+<div class="foto-modal-backdrop" id="fototekaBatchBackdrop" hidden>
+    <div class="foto-modal" style="max-width: 640px; max-height: 90vh; overflow-y: auto;">
+        <h5 class="foto-modal-title"><i class="bi bi-pencil-square me-1"></i>Уреди изабрано</h5>
+        <p class="foto-modal-stats" id="fototekaBatchStats">Изабрано: <strong>0</strong> фотографија.</p>
+
+        <form method="post" action="{{ url_for('fototeka.fototeka_batch_edit') }}" id="fototekaBatchForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div id="fototekaBatchIds"></div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Тагови</label>
+                <div class="d-flex gap-3 flex-wrap mb-1" data-no-translate>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="tag_akcija" value="" checked> <span class="form-check-label">Не дирај</span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="tag_akcija" value="dodaj"> <span class="form-check-label">Додај (постојећи остају)</span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="tag_akcija" value="zameni"> <span class="form-check-label">Замени све</span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="tag_akcija" value="ukloni"> <span class="form-check-label">Уклони наведене</span></label>
+                </div>
+                <input class="form-control" name="tagovi" id="fototekaBatchTagovi"
+                       placeholder="нпр. кварц, Трепча, макро (раздвојено зарезом)">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Опис</label>
+                <div class="d-flex gap-3 flex-wrap mb-1" data-no-translate>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="opis_akcija" value="" checked> <span class="form-check-label">Не дирај</span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="opis_akcija" value="postavi"> <span class="form-check-label text-danger">Постави свима (преписује постојећи!)</span></label>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="opis_akcija" value="dopisi"> <span class="form-check-label">Допиши на крај</span></label>
+                </div>
+                <textarea class="form-control" name="opis" id="fototekaBatchOpis" rows="2"
+                          placeholder="Опис који се примењује на све изабране"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="fototekaBatchVidljivost">Видљивост</label>
+                <select class="form-select" name="vidljivost" id="fototekaBatchVidljivost">
+                    <option value="">Не дирај</option>
+                    <option value="javno">Јавно (сви запослени)</option>
+                    <option value="privatno">Приватно (аутор + управа)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Веза (важи за све изабране)</label>
+                {% include "_fototeka_veza_form.html" with context %}
+            </div>
+
+            {% if is_admin() %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="fototekaBatchAutor">Аутор <span class="badge bg-secondary">само админ</span></label>
+                <input class="form-control" name="autor_email" id="fototekaBatchAutor" type="email"
+                       placeholder="емаил новог аутора (празно = не дирај)">
+            </div>
+            {% endif %}
+
+            <div class="foto-modal-warn" id="fototekaBatchSazetak">
+                Изаберите бар једну акцију.
+            </div>
+
+            <div class="foto-modal-actions">
+                <button type="button" class="btn btn-oc-ghost btn-outline-secondary" id="fototekaBatchCancel">Одустани</button>
+                <button type="submit" class="btn btn-oc-approve" id="fototekaBatchSubmit" disabled>
+                    <i class="bi bi-check2 me-1"></i>Примени
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
