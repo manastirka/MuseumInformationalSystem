@@ -127,6 +127,14 @@ def fototeka_obrisi(fotografija_id):
     return fototeka_views.handle_obrisi(fotografija_id)
 
 
+@fototeka_bp.route('/fototeka/batch-izmena', methods=['POST'])
+@login_required
+@module_access_required('fototeka')
+def fototeka_batch_edit():
+    """Group edit of the selected photos (per-item server-side permission check)."""
+    return fototeka_views.handle_batch_edit()
+
+
 @fototeka_bp.route('/fototeka/uvoz')
 @login_required
 @roles_required('admin', 'direktor', 'curator')

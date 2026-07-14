@@ -2408,3 +2408,170 @@ def nadji_predmet(cur, zbirka, broj):
         return None, 'dvosmisleno'
     red = redovi[0]
     return (red[kolona] if isinstance(red, dict) else red[0]), 'ok'
+
+
+# ---------------------------------------------------------------------------
+# Grupno uredjivanje izabranih fotografija (batch edit).
+#
+# Posle uvoza od 100+ fotografija kustos ih je morao uredjivati jednu po jednu.
+# Ovde se ista logika (tagovi, opis, vidljivost, veza) primenjuje na skup, uz
+# provere PO SVAKOJ STAVCI na serveru — UI nikad nije jedina brana. Fotografija
+# koju korisnik ne sme da menja se PRESKACE (broji se i prijavljuje), nikad ne
+# obara ceo posao.
+# ---------------------------------------------------------------------------
+
+BATCH_MAX = 500
+
+TAG_AKCIJE = ('dodaj', 'zameni', 'ukloni')
+OPIS_AKCIJE = ('postavi', 'dopisi')
+
+
+def _audit_upisi(cur, fotografija_id, akcija, izmene, korisnik_id):
+    """Trag u opšti `audit_log` (tabela postoji od db/schema.sql)."""
+    cur.execute(
+        """
+        INSERT INTO audit_log (table_name, record_id, action, new_values, performed_by)
+        VALUES ('fotografije', %s, %s, %s, %s)
+        """,
+        (fotografija_id, akcija, json.dumps(izmene, ensure_ascii=False), korisnik_id),
+    )
+
+
+def _tagovi_fotografije(cur, fotografija_id):
+    cur.execute(
+        'SELECT tag FROM fotografija_tagovi WHERE fotografija_id = %s',
+        (fotografija_id,),
+    )
+    return [(red['tag'] if isinstance(red, dict) else red[0]) for red in cur.fetchall()]
+
+
+def primeni_batch_izmenu(cur, session_data, photo, akcije):
+    """Primeni tražene akcije na JEDNU fotografiju. Vraća dict izmena (za audit).
+
+    Poziva se tek pošto je can_edit_photo prošao — ovde se ne proverava pravo.
+    """
+    izmene = {}
+
+    tag_akcija = akcije.get('tag_akcija')
+    tagovi = akcije.get('tagovi') or []
+    if tag_akcija and tagovi:
+        postojeci = _tagovi_fotografije(cur, photo['id'])
+        if tag_akcija == 'zameni':
+            novi = list(tagovi)
+        elif tag_akcija == 'dodaj':
+            novi = list(postojeci)
+            for tag in tagovi:
+                if tag.casefold() not in {t.casefold() for t in novi}:
+                    novi.append(tag)
+        elif tag_akcija == 'ukloni':
+            za_uklanjanje = {t.casefold() for t in tagovi}
+            novi = [t for t in postojeci if t.casefold() not in za_uklanjanje]
+        else:
+            novi = postojeci
+        if sorted(novi) != sorted(postojeci):
+            _replace_tags(cur, photo['id'], novi)
+            izmene['tagovi'] = {'akcija': tag_akcija, 'pre': postojeci, 'posle': novi}
+
+    opis_akcija = akcije.get('opis_akcija')
+    opis = (akcije.get('opis') or '').strip()
+    if opis_akcija and opis:
+        stari = (photo.get('opis') or '').strip()
+        if opis_akcija == 'dopisi':
+            novi_opis = (stari + '\n' + opis).strip() if stari else opis
+        else:
+            novi_opis = opis
+        if novi_opis != stari:
+            cur.execute(
+                'UPDATE fotografije SET opis = %s, updated_at = now() WHERE id = %s',
+                (novi_opis, photo['id']),
+            )
+            izmene['opis'] = {'akcija': opis_akcija, 'posle': novi_opis}
+
+    vidljivost = akcije.get('vidljivost')
+    if vidljivost in ('javno', 'privatno') and vidljivost != photo.get('vidljivost'):
+        if can_change_visibility(session_data, photo):
+            cur.execute(
+                'UPDATE fotografije SET vidljivost = %s, updated_at = now() WHERE id = %s',
+                (vidljivost, photo['id']),
+            )
+            izmene['vidljivost'] = {'pre': photo.get('vidljivost'), 'posle': vidljivost}
+
+    veza = akcije.get('veza')
+    if veza:
+        _insert_veza(cur, photo['id'], veza)
+        izmene['veza'] = {k: v for k, v in veza.items() if k != 'tip'} | {'tip': veza['tip']}
+
+    autor = (akcije.get('autor_email') or '').strip().lower()
+    if autor and _session_is_admin(session_data):   # samo admin sme autora
+        if autor != (photo.get('autor_email') or '').lower():
+            cur.execute(
+                'UPDATE fotografije SET autor_email = %s, updated_at = now() WHERE id = %s',
+                (autor, photo['id']),
+            )
+            izmene['autor_email'] = {'pre': photo.get('autor_email'), 'posle': autor}
+
+    return izmene
+
+
+def handle_batch_edit():
+    """Grupna izmena izabranih fotografija iz galerije.
+
+    Prava se proveravaju PO STAVCI (can_edit_photo); fotografije koje korisnik
+    ne sme da menja se preskaču i prijavljuju. Autora sme da menja samo admin.
+    """
+    ids_raw = request.form.getlist('ids')
+    ids = [int(x) for x in ids_raw if str(x).strip().isdigit()][:BATCH_MAX]
+    if not ids:
+        flash('Није изабрана ниједна фотографија.', 'warning')
+        return redirect(request.referrer or url_for('fototeka.fototeka_galerija'))
+
+    tag_akcija = (request.form.get('tag_akcija') or '').strip()
+    opis_akcija = (request.form.get('opis_akcija') or '').strip()
+    akcije = {
+        'tag_akcija': tag_akcija if tag_akcija in TAG_AKCIJE else None,
+        'tagovi': _parse_tags(request.form.get('tagovi') or ''),
+        'opis_akcija': opis_akcija if opis_akcija in OPIS_AKCIJE else None,
+        'opis': request.form.get('opis') or '',
+        'vidljivost': (request.form.get('vidljivost') or '').strip() or None,
+        'autor_email': request.form.get('autor_email') or '',
+    }
+
+    izmenjeno, preskoceno, bez_promene = 0, 0, 0
+    korisnik_id = session.get('user_id')
+
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            try:
+                akcije['veza'] = _parse_veza_form(request.form, cur)
+            except ValueError as greska:
+                flash(str(greska), 'danger')
+                return redirect(request.referrer or url_for('fototeka.fototeka_galerija'))
+
+            for fotografija_id in ids:
+                photo = _fetch_photo(cur, fotografija_id)
+                if not photo:
+                    preskoceno += 1
+                    continue
+                # SERVERSKA provera po svakoj stavci — UI nije brana.
+                if not can_edit_photo(session, photo):
+                    preskoceno += 1
+                    continue
+                izmene = primeni_batch_izmenu(cur, session, photo, akcije)
+                if izmene:
+                    _audit_upisi(cur, fotografija_id, 'BATCH_EDIT', izmene, korisnik_id)
+                    izmenjeno += 1
+                else:
+                    bez_promene += 1
+
+    if izmenjeno:
+        flash(f'Измењено фотографија: {izmenjeno}.', 'success')
+    if bez_promene:
+        flash(f'Без промене (већ су такве): {bez_promene}.', 'info')
+    if preskoceno:
+        flash(
+            f'Прескочено: {preskoceno} — немате право измене над њима '
+            f'(туђе приватне фотографије).', 'warning')
+    if not izmenjeno and not preskoceno and not bez_promene:
+        flash('Ништа није промењено — ниједна акција није изабрана.', 'info')
+
+    return redirect(request.referrer or url_for('fototeka.fototeka_galerija'))

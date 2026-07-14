@@ -80,6 +80,8 @@
                 if (item) { item.classList.toggle('selected', b.checked); }
             });
             if (count) { count.textContent = String(sel.length); }
+            var batchCount = document.getElementById('fototekaBatchCount');
+            if (batchCount) { batchCount.textContent = String(sel.length); }
             if (selectAll) {
                 selectAll.checked = sel.length > 0 && sel.length === boxes.length;
                 selectAll.indeterminate = sel.length > 0 && sel.length < boxes.length;
@@ -148,7 +150,91 @@
             });
         }
 
+        initBatchEdit(selected, refreshSelection);
         refreshSelection();
+    }
+
+    /* Групно уређивање изабраних: модал приказује ТАЧНО шта ће се десити
+       (колико фотографија, које акције), па тек онда шаље. Права се и даље
+       проверавају на серверу, по свакој ставци. */
+    function initBatchEdit(selected, refreshSelection) {
+        var openBtn = document.getElementById('fototekaBatchOpen');
+        var backdrop = document.getElementById('fototekaBatchBackdrop');
+        if (!openBtn || !backdrop) { return; }
+
+        var form = document.getElementById('fototekaBatchForm');
+        var idsBox = document.getElementById('fototekaBatchIds');
+        var stats = document.getElementById('fototekaBatchStats');
+        var sazetak = document.getElementById('fototekaBatchSazetak');
+        var submitBtn = document.getElementById('fototekaBatchSubmit');
+        var cancelBtn = document.getElementById('fototekaBatchCancel');
+
+        function zatvori() { backdrop.hidden = true; }
+
+        function opisAkcije() {
+            var poruke = [];
+            var tagA = form.querySelector('input[name=tag_akcija]:checked');
+            var tagovi = (form.querySelector('[name=tagovi]').value || '').trim();
+            if (tagA && tagA.value && tagovi) {
+                var kako = { dodaj: 'додају (постојећи остају)', zameni: 'ЗАМЕЊУЈУ све постојеће',
+                             ukloni: 'уклањају' }[tagA.value];
+                poruke.push('Тагови се ' + kako + ': ' + tagovi);
+            }
+            var opisA = form.querySelector('input[name=opis_akcija]:checked');
+            var opis = (form.querySelector('[name=opis]').value || '').trim();
+            if (opisA && opisA.value && opis) {
+                poruke.push(opisA.value === 'postavi'
+                    ? 'Опис се ПОСТАВЉА свима (преписује постојећи)'
+                    : 'Опис се дописује на крај постојећег');
+            }
+            var vid = form.querySelector('[name=vidljivost]').value;
+            if (vid) { poruke.push('Видљивост: ' + (vid === 'javno' ? 'јавно' : 'приватно')); }
+            var vezaTip = form.querySelector('[name=veza_tip]');
+            if (vezaTip && vezaTip.value && vezaTip.value !== 'bez') {
+                poruke.push('Веза се додаје свима: ' + vezaTip.options[vezaTip.selectedIndex].text);
+            }
+            var autor = form.querySelector('[name=autor_email]');
+            if (autor && autor.value.trim()) { poruke.push('Аутор се мења у: ' + autor.value.trim()); }
+            return poruke;
+        }
+
+        function osveziSazetak() {
+            var broj = selected().length;
+            var poruke = opisAkcije();
+            stats.innerHTML = 'Изабрано: <strong>' + broj + '</strong> фотографија.';
+            if (!poruke.length) {
+                sazetak.textContent = 'Изаберите бар једну акцију.';
+                submitBtn.disabled = true;
+                return;
+            }
+            sazetak.innerHTML = 'Над <strong>' + broj + '</strong> фотографија: <br>• ' +
+                poruke.join('<br>• ') +
+                '<br><small>Фотографије које не смете да мењате биће прескочене.</small>';
+            submitBtn.disabled = broj === 0;
+        }
+
+        openBtn.addEventListener('click', function () {
+            var sel = selected();
+            if (!sel.length) { return; }
+            idsBox.innerHTML = '';
+            sel.forEach(function (b) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids';
+                input.value = b.value;
+                idsBox.appendChild(input);
+            });
+            backdrop.hidden = false;
+            osveziSazetak();
+        });
+
+        form.addEventListener('input', osveziSazetak);
+        form.addEventListener('change', osveziSazetak);
+        if (cancelBtn) { cancelBtn.addEventListener('click', zatvori); }
+        backdrop.addEventListener('click', function (e) { if (e.target === backdrop) { zatvori(); } });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !backdrop.hidden) { zatvori(); }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
