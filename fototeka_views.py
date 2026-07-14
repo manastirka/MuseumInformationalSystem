@@ -509,7 +509,8 @@ def render_galerija():
             'NOT (' + ' OR '.join(veza_exists.values()) + ')'
         )
     elif veza == 'prijemni_red':
-        filters.append('f.u_prijemnom_redu = TRUE')
+        filters.append(
+            'f.sklonjena_sa_reda = FALSE AND (' + bez_ijedne_veze_sql('f') + ')')
 
     # server-side access control: hide others' private photos
     vis_clause, vis_params = _visibility_filter(session, 'f')
@@ -599,10 +600,27 @@ def render_galerija():
 # Reception queue (пријемни ред)
 # ---------------------------------------------------------------------------
 
+# Prijemni red se IZVODI iz stanja, ne iz zastavice. Zastavica
+# `u_prijemnom_redu` je umela da laze: stari uvoz ju je postavljao na FALSE za
+# svako ime koje je LICILO na inventarni broj, pa i kad predmet ne postoji —
+# takve fotografije su ostajale nevidljive kustosu. Veze ne lazu.
+_BEZ_IJEDNE_VEZE_SQL = """
+    NOT EXISTS (SELECT 1 FROM foto_veza_predmet v WHERE v.fotografija_id = {alias}.id)
+    AND NOT EXISTS (SELECT 1 FROM foto_veza_teren t WHERE t.fotografija_id = {alias}.id)
+    AND NOT EXISTS (SELECT 1 FROM foto_veza_projekat p WHERE p.fotografija_id = {alias}.id)
+    AND NOT EXISTS (SELECT 1 FROM foto_veza_izlozba i WHERE i.fotografija_id = {alias}.id)
+"""
+
+
+def bez_ijedne_veze_sql(alias='fotografije'):
+    return _BEZ_IJEDNE_VEZE_SQL.format(alias=alias)
+
+
 def render_prijemni_red():
-    """Photos flagged for curation (u_prijemnom_redu) — oldest first, so the
-    backlog is worked front to back. A photo leaves the queue as soon as a
-    link is added (handle_dodaj_vezu) or it is cleared here."""
+    """Every photo with NO link at all — regardless of how it got there (batch
+    import, retroactive relink, plain upload) — oldest first. Derived from the
+    links themselves, not from a flag that could lie; a photo leaves the queue
+    the moment a link is added, or when a curator deliberately clears it."""
     vis_clause, vis_params = _visibility_filter(session, 'fotografije')
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
@@ -611,7 +629,9 @@ def render_prijemni_red():
                 SELECT id, original_ime, opis, status, autor_email,
                        datum_snimanja, created_at
                 FROM fotografije
-                WHERE obrisana = FALSE AND u_prijemnom_redu = TRUE
+                WHERE obrisana = FALSE
+                  AND sklonjena_sa_reda = FALSE
+                  AND {bez_ijedne_veze_sql('fotografije')}
                   {('AND ' + vis_clause) if vis_clause else ''}
                 ORDER BY created_at ASC, id ASC
                 """,
@@ -637,7 +657,9 @@ def handle_skini_sa_reda(fotografija_id):
                 abort(403)
             cur.execute(
                 """
-                UPDATE fotografije SET u_prijemnom_redu = FALSE, updated_at = now()
+                UPDATE fotografije
+                SET sklonjena_sa_reda = TRUE, u_prijemnom_redu = FALSE,
+                    updated_at = now()
                 WHERE id = %s
                 """,
                 (fotografija_id,),
