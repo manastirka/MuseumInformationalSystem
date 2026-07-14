@@ -2205,3 +2205,54 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                     )
 
     return {**brojaci, 'po_klasi': po_klasi, 'stavke': stavke, 'run_id': run_id}
+
+
+# ---------------------------------------------------------------------------
+# Thumbnail glavne fotografije za liste predmeta (tabela zbirke).
+#
+# JEDAN batch upit za celu stranu (bez N+1): za skup inventarnih brojeva vrati
+# {inv_broj -> fotografija_id} glavne fotografije. "Glavna" = najstarija
+# (najmanji id) — ista konvencija koju vec koristi collection_media_views za
+# sliku predmeta, pa tabela i detalj pokazuju istu fotografiju.
+#
+# Vidljivost se filtrira SERVERSKI (_visibility_filter): tudja privatna
+# fotografija se ne vraca, pa predmet u tabeli izgleda kao da je bez slike.
+# ---------------------------------------------------------------------------
+
+def glavne_fotografije_predmeta(session_data, database_name, inventarni_brojevi):
+    """Mapa {inventarni_broj: fotografija_id} glavnih fotografija predmeta.
+
+    Prazan ulaz -> prazna mapa (bez upita). Racuna se samo na fotografije koje
+    su 'spremna' (derivat postoji) i nisu obrisane.
+    """
+    brojevi = [str(broj).strip() for broj in (inventarni_brojevi or []) if str(broj or '').strip()]
+    if not brojevi:
+        return {}
+
+    vis_clause, vis_params = _visibility_filter(session_data, 'f')
+    sql = """
+        SELECT DISTINCT ON (v.inventarni_broj) v.inventarni_broj, f.id
+        FROM foto_veza_predmet v
+        JOIN fotografije f ON f.id = v.fotografija_id
+        WHERE v.database_name = %s
+          AND v.inventarni_broj = ANY(%s)
+          AND f.obrisana = FALSE
+          AND f.status = 'spremna'
+    """
+    params = [database_name, brojevi]
+    if vis_clause:
+        sql += f' AND {vis_clause}'
+        params.extend(vis_params)
+    sql += ' ORDER BY v.inventarni_broj, f.id'
+
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            redovi = cur.fetchall()
+
+    mapa = {}
+    for red in redovi:
+        broj = red['inventarni_broj'] if isinstance(red, dict) else red[0]
+        foto_id = red['id'] if isinstance(red, dict) else red[1]
+        mapa[str(broj)] = foto_id
+    return mapa

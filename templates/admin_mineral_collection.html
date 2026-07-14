@@ -573,15 +573,34 @@ table th.action-cell {
 
 /* Thumbnail image styling */
 .img-thumbnail {
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border-radius: var(--radius-btn, 8px);
+    border: var(--border-w, 2px) solid var(--border-color, #e9ecef);
     padding: 2px;
+    background: var(--bg-elevated, #fff);
     transition: all 0.2s ease;
 }
 
 .table tbody tr:hover .img-thumbnail {
-    border-color: #2d6a4f;
+    border-color: var(--primary, #2d6a4f);
     transform: scale(1.05);
+}
+
+/* Предмет без фотографије: дискретан плацехолдер (не празан простор) */
+.img-thumbnail.mineral-thumb-prazno {
+    opacity: 0.38;
+    filter: grayscale(1);
+    border-style: dashed;
+}
+
+.mineral-thumb-link {
+    display: inline-block;
+    line-height: 0;
+    border-radius: var(--radius-btn, 8px);
+}
+
+.mineral-thumb-link:focus-visible {
+    outline: 3px solid var(--focus-ring, rgba(45, 106, 79, 0.35));
+    outline-offset: 2px;
 }
 
 /* Badge improvements */
@@ -2400,15 +2419,35 @@ table th.action-cell {
                         {% for mineral in minerals %}
                         <tr>
                             <td class="text-center mineral-image-cell">
-                                <img src="{% if mineral.has_image %}{{ url_for('get_specimen_thumbnail', database='minerals', entity_type='mineral', entity_id=mineral.id) }}{% else %}{{ url_for('static', filename='images/specimen-placeholder-thumb.png') }}{% endif %}"
-                                     alt="{{ mineral.naziv or 'Минерал' }}"
-                                     class="img-thumbnail"
-                                     loading="lazy"
-                                     decoding="async"
-                                     width="60"
-                                     height="60"
-                                     style="max-width: 60px; max-height: 60px; object-fit: cover;"
-                                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/specimen-placeholder-thumb.png') }}';">
+                                {# Фототека има предност (нов систем); стара `images` табела је
+                                   резерва; без иједне слике иде дискретан плацехолдер. #}
+                                {% set placeholder_url = url_for('static', filename='images/specimen-placeholder-thumb.png') %}
+                                {% if mineral.foto_id %}
+                                    {% set thumb_url = url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='thumb') %}
+                                    {% set thumb_link = url_for('fototeka.fototeka_fotografija', fotografija_id=mineral.foto_id) %}
+                                {% elif mineral.has_image %}
+                                    {% set thumb_url = url_for('get_specimen_thumbnail', database='minerals', entity_type='mineral', entity_id=mineral.id) %}
+                                    {% set thumb_link = url_for('admin_mineral_detail', mineral_id=mineral.id) %}
+                                {% else %}
+                                    {% set thumb_url = placeholder_url %}
+                                    {% set thumb_link = none %}
+                                {% endif %}
+                                {% if thumb_link %}
+                                <a href="{{ thumb_link }}" class="mineral-thumb-link"
+                                   title="{% if mineral.foto_id %}Отвори фотографију{% else %}Отвори предмет{% endif %}">
+                                {% endif %}
+                                    <img src="{{ thumb_url }}"
+                                         alt="{{ mineral.naziv or 'Минерал' }}"
+                                         class="img-thumbnail{% if not thumb_link %} mineral-thumb-prazno{% endif %}"
+                                         loading="lazy"
+                                         decoding="async"
+                                         width="60"
+                                         height="60"
+                                         style="max-width: 60px; max-height: 60px; object-fit: cover;"
+                                         onerror="this.onerror=null; this.classList.add('mineral-thumb-prazno'); this.src='{{ placeholder_url }}';">
+                                {% if thumb_link %}
+                                </a>
+                                {% endif %}
                             </td>
                             {% for col_id in selected_columns %}
                                 <td class="mineral-column-{{ col_id }}">
