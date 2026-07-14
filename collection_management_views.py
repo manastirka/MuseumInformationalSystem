@@ -728,6 +728,27 @@ def render_meteorite_collection(
     )
 
 
+def _priloži_foto_id(minerals):
+    """Upisi `foto_id` (glavna fotografija iz Фototeke) na svaki red strane.
+
+    Jedan upit za celu stranu. Ako Фototeka nije dostupna, redovi ostaju bez
+    `foto_id` i tabela pada nazad na staru `images` tabelu / placeholder —
+    lista se nikad ne rusi zbog slika.
+    """
+    if not minerals:
+        return
+    try:
+        import fototeka_views
+
+        brojevi = [m.get('inventarni_broj') for m in minerals]
+        mapa = fototeka_views.glavne_fotografije_predmeta(session, 'mineral', brojevi)
+        for mineral in minerals:
+            broj = str(mineral.get('inventarni_broj') or '').strip()
+            mineral['foto_id'] = mapa.get(broj)
+    except Exception as exc:  # slike nikad ne obaraju listu predmeta
+        logger.warning('Фototeka thumbnails unavailable for the collection table: %s', exc)
+
+
 def render_mineral_collection(*, get_mineral_database, get_image_upload_action_url):
     """Render mineral collection or RRUFF browser view."""
     mineral_db = get_mineral_database()
@@ -785,6 +806,11 @@ def render_mineral_collection(*, get_mineral_database, get_image_upload_action_u
 
         stats = mineral_db.get_statistics()
         rruff_stats = mineral_db.get_rruff_statistics()
+
+    # Thumbnail glavne fotografije iz Фototeke: JEDAN batch upit za celu stranu
+    # (ne po redu). Vidljivost se filtrira serverski — tudja privatna fotografija
+    # se ne vraca, pa predmet izgleda kao da nema sliku.
+    _priloži_foto_id(result.get('minerals') or [])
 
     return render_template(
         'admin_mineral_collection.html',
