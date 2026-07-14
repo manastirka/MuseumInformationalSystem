@@ -1860,6 +1860,10 @@ def classify_import_filename(filename, default_zbirka):
                 'note': 'Терен без године — пријемни ред'}
     broj = _extract_predmet_broj(filename, default_zbirka)
     if broj:
+        # Fleksibilno: 'M 028' == 'M-28' == '028' == '28'. Postojanje predmeta se
+        # proverava kasnije (nadji_predmet) — broj koji ne postoji u zbirci ide
+        # BEZ VEZE, ne u tihu vezu u prazno.
+        broj = normalizuj_inv_broj(broj) or broj
         label = get_zbirka_labels().get(default_zbirka, default_zbirka)
         return {'klasa': 'predmet',
                 'veza_meta': {'tip': 'predmet', 'database_name': default_zbirka,
@@ -1891,7 +1895,8 @@ def _uvoz_istorija(limit=10):
             cur.execute(
                 """
                 SELECT id, pokrenut_at, izvor, pokrenuo_email, ukupno,
-                       uvezeno, duplikata, neuspesno, u_prijemni_red
+                       uvezeno, duplikata, neuspesno, u_prijemni_red,
+                       vezano_predmet, vezano_teren, bez_veze
                 FROM fototeka_uvoz_run
                 ORDER BY id DESC
                 LIMIT %s
@@ -1900,7 +1905,8 @@ def _uvoz_istorija(limit=10):
             )
             rows = cur.fetchall()
     polja = ('id', 'pokrenut_at', 'izvor', 'pokrenuo_email', 'ukupno',
-             'uvezeno', 'duplikata', 'neuspesno', 'u_prijemni_red')
+             'uvezeno', 'duplikata', 'neuspesno', 'u_prijemni_red',
+             'vezano_predmet', 'vezano_teren', 'bez_veze')
     rezultat = []
     for row in rows:
         if isinstance(row, dict):
@@ -1945,9 +1951,16 @@ def handle_import_confirm():
     )
     if rezime['uvezeno']:
         flash(
-            f"Увезено фотографија: {rezime['uvezeno']} "
-            f"(у пријемни ред: {rezime['u_prijemni_red']}). "
+            f"Увезено фотографија: {rezime['uvezeno']} — "
+            f"везано за предмет: {rezime['po_klasi'].get('predmet', 0)}, "
+            f"терен: {rezime['po_klasi'].get('teren', 0)}, "
+            f"БЕЗ ВЕЗЕ: {rezime['po_klasi'].get('prijemni_red', 0)} "
+            f"(чекају у пријемном реду). "
             f"Умањени прикази се обрађују у позадини.", 'success')
+    if rezime['po_klasi'].get('prijemni_red'):
+        flash(
+            f"{rezime['po_klasi']['prijemni_red']} фотографија НИЈЕ везано ни за "
+            f"један предмет — отворите Пријемни ред да их повежете.", 'warning')
     if rezime['duplikata']:
         flash(f"Прескочено дупликата: {rezime['duplikata']} "
               f"(премештени у obradjeno/duplikati).", 'info')
@@ -2103,12 +2116,34 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
 
             klasifikovano = classify_import_filename(
                 _strip_institution_prefix(path.name), default_zbirka)
-            stavka['klasa'] = klasifikovano['klasa']
-            stavka['poruka'] = klasifikovano['note']
-            po_klasi[klasifikovano['klasa']] = po_klasi.get(klasifikovano['klasa'], 0) + 1
 
             with get_postgres_connection() as conn:
                 with conn.cursor() as cur:
+                    # Predmet se veze SAMO ako stvarno postoji u zbirci. Broj koji
+                    # ne postoji (ili je dvosmislen) NIJE vezan predmet — ide u
+                    # prijemni red i vidi se u izvestaju kao BEZ VEZE.
+                    if klasifikovano['klasa'] == 'predmet':
+                        trazeni = klasifikovano['veza_meta']['inventarni_broj']
+                        nadjen, status = nadji_predmet(cur, default_zbirka, trazeni)
+                        if status == 'ok':
+                            klasifikovano['veza_meta']['inventarni_broj'] = nadjen
+                        elif status == 'neprovereno':
+                            klasifikovano['note'] += ' (постојање предмета није проверено)'
+                        else:
+                            razlog = ('инв. бр. %s не постоји у збирци' % trazeni
+                                      if status == 'nema'
+                                      else 'инв. бр. %s је двосмислен (више предмета)' % trazeni)
+                            klasifikovano = {
+                                'klasa': 'prijemni_red',
+                                'veza_meta': None,
+                                'u_prijemnom_redu': True,
+                                'note': f'БЕЗ ВЕЗЕ — {razlog}',
+                            }
+
+                    stavka['klasa'] = klasifikovano['klasa']
+                    stavka['poruka'] = klasifikovano['note']
+                    po_klasi[klasifikovano['klasa']] = po_klasi.get(klasifikovano['klasa'], 0) + 1
+
                     sha256, postojeci_id = _sha256_postoji(cur, path)
                     if postojeci_id:
                         stavka['ishod'] = 'duplikat'
@@ -2182,13 +2217,16 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                     """
                     INSERT INTO fototeka_uvoz_run
                         (zavrsen_at, izvor, pokrenuo_email, ukupno, uvezeno,
-                         duplikata, neuspesno, u_prijemni_red)
-                    VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s)
+                         duplikata, neuspesno, u_prijemni_red,
+                         vezano_predmet, vezano_teren, bez_veze)
+                    VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (izvor, pokrenuo_email, brojaci['ukupno'],
                      brojaci['uvezeno'], brojaci['duplikata'],
-                     brojaci['neuspesno'], brojaci['u_prijemni_red']),
+                     brojaci['neuspesno'], brojaci['u_prijemni_red'],
+                     po_klasi.get('predmet', 0), po_klasi.get('teren', 0),
+                     po_klasi.get('prijemni_red', 0)),
                 )
                 run_id = _scalar(cur.fetchone(), 'id')
                 for stavka in stavke:
@@ -2256,3 +2294,95 @@ def glavne_fotografije_predmeta(session_data, database_name, inventarni_brojevi)
         foto_id = red['id'] if isinstance(red, dict) else red[1]
         mapa[str(broj)] = foto_id
     return mapa
+
+
+# ---------------------------------------------------------------------------
+# Fleksibilno prepoznavanje inventarskih brojeva iz imena datoteke.
+#
+# Kustosi imenuju fajlove kako im je pri ruci: 'M 028.JPG', 'M-28.jpg',
+# 'M028.jpg', 'PMB-M-01234.tif'. U bazi je inventarni broj nekonzistentan i sa
+# druge strane: pretezno cist broj bez nula ('28', '3359'), ali ima i zapisa sa
+# slovnom oznakom ('M4301') i sa vodecom nulom. Zato se NE poredi sirov tekst
+# nego NORMALIZOVAN oblik sa obe strane:
+#   veliko slovo -> skini slovnu oznaku zbirke -> skini razdvajac -> skini
+#   vodece nule.  'M 028' == 'M-28' == 'M028' == '028' == '28'
+#
+# Kljucno (uzrok buga u run-u 71): fotografija se veze SAMO ako predmet sa tim
+# brojem stvarno postoji. Broj koji ne postoji u zbirci vise nije "vezan
+# predmet" (tiha veza u prazno) nego BEZ VEZE -> pijemni red, vidljivo u
+# izvestaju.
+# ---------------------------------------------------------------------------
+
+# Zbirke cije predmete umemo da proverimo u PostgreSQL-u: zbirka -> (tabela, kolona).
+# Za zbirke van ove mape postojanje se NE proverava (status 'neprovereno').
+PREDMET_TABELE = {
+    'mineral': ('minerals', 'inventory_number'),
+}
+
+_INV_PREFIX_RE = re.compile(r'^[A-ZА-ЯЂЈЉЊЋЖЧШЏ]+[-_\s]*', re.IGNORECASE)
+
+
+def normalizuj_inv_broj(raw):
+    """'M 028' / 'M-28' / 'M028' / '028' / 28  ->  '28'.
+
+    Skida slovnu oznaku zbirke, razdvajac i vodece nule. Broj koji je sav od
+    nula ostaje '0'. Vraca '' ako od ulaza ne ostane nista upotrebljivo.
+    """
+    tekst = str(raw or '').strip().upper()
+    if not tekst:
+        return ''
+    # Skidaj slovne oznake dok ih ima: 'PMB-M-01234' -> 'M-01234' -> '01234'
+    # (institucijski prefiks + oznaka zbirke mogu da stoje jedan za drugim).
+    while True:
+        skraceno = _INV_PREFIX_RE.sub('', tekst, count=1)
+        if skraceno == tekst or not skraceno:
+            break
+        tekst = skraceno
+    tekst = tekst.replace(' ', '').replace('-', '').replace('_', '')
+    if not tekst:
+        return ''
+    if tekst.isdigit():
+        return tekst.lstrip('0') or '0'
+    return tekst
+
+
+def nadji_predmet(cur, zbirka, broj):
+    """Pronadji predmet po fleksibilno uparenom inventarnom broju.
+
+    Vraca (inventarni_broj_iz_baze, status) gde je status:
+      'ok'           — tacno jedan predmet (koristi se njegov zapis iz baze),
+      'nema'         — nijedan predmet sa tim brojem (fotografija ide BEZ VEZE),
+      'dvosmisleno'  — vise predmeta se normalizuje na isti broj (covek odlucuje),
+      'neprovereno'  — zbirka nije u PREDMET_TABELE, ne umemo da proverimo.
+    """
+    kljuc = normalizuj_inv_broj(broj)
+    if not kljuc:
+        return None, 'nema'
+
+    tabela_kolona = PREDMET_TABELE.get(zbirka)
+    if not tabela_kolona:
+        return broj, 'neprovereno'
+
+    tabela, kolona = tabela_kolona
+    # Normalizacija u SQL-u mora da preslika Python normalizuj_inv_broj():
+    # veliko slovo -> skini slovni prefiks i razdvajac -> skini vodece nule.
+    cur.execute(
+        f"""
+        SELECT {kolona}
+        FROM {tabela}
+        WHERE {kolona} IS NOT NULL
+          AND ltrim(
+                regexp_replace(upper(btrim({kolona})), '^[A-ZА-Я]+[-_ ]*', ''),
+                '0'
+              ) = %s
+        LIMIT 2
+        """,
+        (kljuc,),
+    )
+    redovi = cur.fetchall()
+    if not redovi:
+        return None, 'nema'
+    if len(redovi) > 1:
+        return None, 'dvosmisleno'
+    red = redovi[0]
+    return (red[kolona] if isinstance(red, dict) else red[0]), 'ok'
