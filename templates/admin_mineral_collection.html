@@ -598,6 +598,40 @@ table th.action-cell {
     border-radius: var(--radius-btn, 8px);
 }
 
+/* Увећање на прелаз миша. Оверлеј живи у <body> (position: fixed) јер
+   .table-responsive и .card имају overflow:hidden — сваки оверлеј унутар
+   табеле био би одсечен. */
+#mineralThumbPreview {
+    position: fixed;
+    z-index: 2000;
+    pointer-events: none;
+    background: var(--bg-card, #fff);
+    border: var(--border-w, 1px) solid var(--border-color, #d1d5db);
+    border-radius: var(--radius-card, 12px);
+    box-shadow: var(--shadow-md, 0 10px 30px rgba(0, 0, 0, 0.25));
+    padding: 6px;
+    display: none;
+}
+
+#mineralThumbPreview img {
+    display: block;
+    max-width: 360px;
+    max-height: 360px;
+    border-radius: var(--radius-btn, 8px);
+}
+
+#mineralThumbPreview .preview-naziv {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #6b7280);
+    padding: 4px 2px 0;
+    max-width: 360px;
+    text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .table tbody tr:hover .img-thumbnail { transform: none; }
+}
+
 .mineral-thumb-link:focus-visible {
     outline: 3px solid var(--focus-ring, rgba(45, 106, 79, 0.35));
     outline-offset: 2px;
@@ -2439,6 +2473,9 @@ table th.action-cell {
                                     <img src="{{ thumb_url }}"
                                          alt="{{ mineral.naziv or 'Минерал' }}"
                                          class="img-thumbnail{% if not thumb_link %} mineral-thumb-prazno{% endif %}"
+                                         {% if mineral.foto_id %}data-preview="{{ url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='jpg') }}"
+                                         {% elif mineral.has_image %}data-preview="{{ url_for('get_specimen_image', database='minerals', entity_type='mineral', entity_id=mineral.id) }}"
+                                         {% endif %}data-preview-naziv="{{ mineral.naziv or '' }}"
                                          loading="lazy"
                                          decoding="async"
                                          width="60"
@@ -2750,6 +2787,92 @@ let localitiesDataCache = null;
 document.getElementById('localitiesModal').addEventListener('show.bs.modal', function() {
     loadLocalities();
 });
+
+/* Увећање фотографије на прелаз миша преко сличице у табели.
+   ВАЖНО: слушалац је ДЕЛЕГИРАН на document — MutationObserver у
+   translator.js замењује чворове табеле при пресловљавању и обрисао би
+   слушаоце закачене директно на <img>. Оверлеј се убацује у <body>
+   (position: fixed) јер .table-responsive/.card имају overflow:hidden. */
+(function () {
+    var preview = null;
+    var trenutni = null;
+
+    function napraviPreview() {
+        if (preview) return preview;
+        preview = document.createElement('div');
+        preview.id = 'mineralThumbPreview';
+        preview.innerHTML = '<img alt=""><div class="preview-naziv"></div>';
+        document.body.appendChild(preview);
+        // Тек кад слика стигне знамо праве димензије — тада поново позиционирај.
+        preview.querySelector('img').addEventListener('load', function () {
+            pozicioniraj(null);
+        });
+        return preview;
+    }
+
+    var poslednjiDogadjaj = null;
+
+    function pozicioniraj(event) {
+        if (!preview || preview.style.display !== 'block') return;
+        if (event) poslednjiDogadjaj = { clientX: event.clientX, clientY: event.clientY };
+        if (!poslednjiDogadjaj) return;
+        var razmak = 18;
+        // Пре него што се слика учита offsetWidth је 0 — узми максималне
+        // димензије из CSS-а (360px + падинг), иначе оверлеј испадне из екрана.
+        var w = Math.max(preview.offsetWidth, 372);
+        var h = Math.max(preview.offsetHeight, 372);
+        var x = poslednjiDogadjaj.clientX + razmak;
+        var y = poslednjiDogadjaj.clientY + razmak;
+        if (x + w > window.innerWidth - 8) x = poslednjiDogadjaj.clientX - w - razmak;
+        if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+        preview.style.left = Math.max(8, x) + 'px';
+        preview.style.top = Math.max(8, y) + 'px';
+    }
+
+    function prikazi(img, event) {
+        var izvor = img.getAttribute('data-preview');
+        if (!izvor) return;                       // предмет без фотографије
+        var p = napraviPreview();
+        var slika = p.querySelector('img');
+        var naziv = p.querySelector('.preview-naziv');
+        if (slika.getAttribute('src') !== izvor) slika.setAttribute('src', izvor);
+        naziv.textContent = img.getAttribute('data-preview-naziv') || '';
+        p.style.display = 'block';
+        trenutni = img;
+        pozicioniraj(event);
+    }
+
+    function sakrij() {
+        if (preview) preview.style.display = 'none';
+        trenutni = null;
+    }
+
+    document.addEventListener('mouseover', function (event) {
+        var img = event.target.closest && event.target.closest('img.img-thumbnail[data-preview]');
+        if (img && img !== trenutni) prikazi(img, event);
+    });
+    document.addEventListener('mousemove', function (event) {
+        if (trenutni) pozicioniraj(event);
+    });
+    document.addEventListener('mouseout', function (event) {
+        var img = event.target.closest && event.target.closest('img.img-thumbnail[data-preview]');
+        if (img && trenutni === img) sakrij();
+    });
+    // Скрол сакрива увећање само ако миш ВИШЕ НИЈЕ над сличицом. (Раније је
+    // сваки скрол гасио оверлеј — а .table-responsive скролује и при самом
+    // прелазу миша, па се увећање гасило чим се појави.)
+    document.addEventListener('scroll', function () {
+        if (!trenutni) return;
+        if (trenutni.matches(':hover')) {
+            pozicioniraj(null);
+        } else {
+            sakrij();
+        }
+    }, true);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') sakrij();
+    });
+})();
 
 const addLocalityBtn = document.getElementById('add-locality-btn');
 if (addLocalityBtn) {
