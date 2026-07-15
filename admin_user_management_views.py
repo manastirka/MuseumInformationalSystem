@@ -67,7 +67,14 @@ def render_manage_user_access(
     get_museum_employees,
 ):
     """Manage user module access."""
-    load_module_access()
+    # Render the card grid from the freshly loaded module_access, not from the
+    # reference captured before this call. load_module_access() rebinds the
+    # global to a new dict; with the shared-settings DB and its 60s TTL, a stale
+    # reference (or another worker's stale cache) would paint cards from old
+    # permissions while the access guard already sees the new ones — the card
+    # then shows "+" for a module the user really has. force=True defeats the
+    # TTL so the grid matches the guard.
+    module_access = load_module_access(force=True)
     users_with_access = []
 
     try:

@@ -102,6 +102,7 @@
                                                 {% if module_info.default_access %}
                                                 <span class="badge bg-success ms-1" style="font-size: 0.6rem;">СВИ</span>
                                                 {% endif %}
+                                                <span class="badge bg-success ms-1 assigned-badge" style="font-size: 0.6rem;">ДОДЕЉЕНО</span>
                                             </div>
                                         </div>
                                         <div class="btn-group btn-group-sm">
@@ -131,7 +132,7 @@
             <div class="card mt-3">
                 <div class="card-body py-2">
                     <div class="d-flex flex-wrap gap-3 small">
-                        <span><span class="badge bg-success">Зелено</span> = Има приступ</span>
+                        <span><span class="badge bg-success">ДОДЕЉЕНО</span> = Има приступ (зелена картица)</span>
                         <span><span class="badge bg-light text-dark border">Бело</span> = Нема приступ</span>
                         <span><span class="badge bg-success">СВИ</span> = Сви имају приступ</span>
                     </div>
@@ -157,12 +158,18 @@
 <style>
 .module-card {
     transition: all 0.2s;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--border-color, #dee2e6);
 }
-.module-card.has-access {
-    border-color: #28a745;
-    background-color: #d4edda;
+/* Three classes (.card.module-card.has-access) so the accent wins over
+   theme rules like `body.heritage-shell .card` (two classes + element). */
+.card.module-card.has-access {
+    border-color: var(--success, #28a745);
+    border-left: 4px solid var(--success, #28a745);
+    background-color: var(--success-soft, #d4edda);
 }
+.module-card.has-access strong { color: var(--success, #28a745); }
+.module-card .assigned-badge { display: none; }
+.module-card.has-access .assigned-badge { display: inline-block; }
 .module-card .grant-btn { display: inline-block; }
 .module-card .revoke-btn { display: none; }
 .module-card.has-access .grant-btn { display: none; }
@@ -230,7 +237,7 @@ function grantAccess(moduleKey) {
         body: formData
     })
     .then(response => {
-        if (response.redirected) {
+        if (response.ok || response.redirected) {
             // Update UI immediately
             const card = document.getElementById('module-' + moduleKey);
             if (card) {
@@ -264,7 +271,7 @@ function revokeAccess(moduleKey) {
         body: formData
     })
     .then(response => {
-        if (response.redirected) {
+        if (response.ok || response.redirected) {
             // Update UI immediately
             const card = document.getElementById('module-' + moduleKey);
             if (card) {
