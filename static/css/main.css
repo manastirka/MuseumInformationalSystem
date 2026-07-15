@@ -2694,6 +2694,24 @@ body.heritage-shell .scroll-to-top:hover {
 .tooltip-inner {
     border-radius: var(--radius-md);
     padding: 0.5rem 0.75rem;
+    /* Tooltip прати тему: површина + текст кроз токене. Раније је у тамној
+       теми текст постајао таман на тамној подлози (нечитљив) јер је боја
+       долазила из Bootstrap/наслеђа, а не из наших токена. */
+    --bs-tooltip-bg: var(--bg-elevated);
+    --bs-tooltip-color: var(--text-primary);
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: var(--border-w) solid var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.tooltip-inner * {
+    color: var(--text-primary) !important;
+}
+
+.tooltip .tooltip-arrow::before {
+    border-top-color: var(--border-color) !important;
+    border-bottom-color: var(--border-color) !important;
 }
 
 /* ============================================

@@ -1,0 +1,488 @@
+[
+  {
+    "code": "001",
+    "name": "Leštane",
+    "lat": 44.731389,
+    "lon": 20.586667
+  },
+  {
+    "code": "002",
+    "name": "Đački potok",
+    "lat": 43.5825,
+    "lon": 21.694444
+  },
+  {
+    "code": "003",
+    "name": "Veliko Selo",
+    "lat": 44.823611,
+    "lon": 20.594444
+  },
+  {
+    "code": "004",
+    "name": "Oplanići",
+    "lat": 43.771111,
+    "lon": 20.681667
+  },
+  {
+    "code": "005",
+    "name": "Prebreza",
+    "lat": 43.3375,
+    "lon": 21.245833
+  },
+  {
+    "code": "006",
+    "name": "Popovac",
+    "lat": 43.913333,
+    "lon": 21.493611
+  },
+  {
+    "code": "007",
+    "name": "Mazgoš",
+    "lat": 43.062222,
+    "lon": 22.908889
+  },
+  {
+    "code": "008",
+    "name": "Drmno",
+    "lat": 44.731667,
+    "lon": 21.24
+  },
+  {
+    "code": "009",
+    "name": "Bele Vode",
+    "lat": 43.641111,
+    "lon": 21.197222
+  },
+  {
+    "code": "010",
+    "name": "s. Lazarevac",
+    "lat": 43.673889,
+    "lon": 20.263611
+  },
+  {
+    "code": "011",
+    "name": "Brajkovac",
+    "lat": 44.291389,
+    "lon": 20.325556
+  },
+  {
+    "code": "012",
+    "name": "Tavnik",
+    "lat": 43.870278,
+    "lon": 20.607222
+  },
+  {
+    "code": "013",
+    "name": "Snegotin",
+    "lat": 44.582778,
+    "lon": 21.588611
+  },
+  {
+    "code": "014",
+    "name": "Melnica",
+    "lat": 44.398056,
+    "lon": 21.52
+  },
+  {
+    "code": "015",
+    "name": "Paragovo",
+    "lat": 43.181111,
+    "lon": 21.035556
+  },
+  {
+    "code": "016",
+    "name": "Sibnica 1",
+    "lat": 43.796111,
+    "lon": 21.035833
+  },
+  {
+    "code": "017",
+    "name": "Sibnica 2",
+    "lat": 43.796111,
+    "lon": 21.035833
+  },
+  {
+    "code": "018",
+    "name": "Sibnica 3",
+    "lat": 43.769722,
+    "lon": 21.016944
+  },
+  {
+    "code": "019",
+    "name": "Sibnica 4",
+    "lat": 43.795,
+    "lon": 21.034444
+  },
+  {
+    "code": "020",
+    "name": "Ugljevik (BiH)",
+    "lat": 44.672222,
+    "lon": 18.986389
+  },
+  {
+    "code": "021",
+    "name": "Ugljevik, PM Bogutovo Selo (BiH)",
+    "lat": 44.672222,
+    "lon": 18.986389
+  },
+  {
+    "code": "022",
+    "name": "Turija, Banovići (BiH)",
+    "lat": 44.426944,
+    "lon": 18.439167
+  },
+  {
+    "code": "023",
+    "name": "Vračevići",
+    "lat": 44.288333,
+    "lon": 20.178611
+  },
+  {
+    "code": "024",
+    "name": "Strelac 1",
+    "lat": 42.993333,
+    "lon": 22.4675
+  },
+  {
+    "code": "025",
+    "name": "Strelac 2",
+    "lat": 42.988889,
+    "lon": 22.463056
+  },
+  {
+    "code": "026",
+    "name": "Strelac 3",
+    "lat": 42.988889,
+    "lon": 22.463056
+  },
+  {
+    "code": "027",
+    "name": "Valniš",
+    "lat": 42.983889,
+    "lon": 22.499722
+  },
+  {
+    "code": "028",
+    "name": "Raljin 1",
+    "lat": 43.003889,
+    "lon": 22.485
+  },
+  {
+    "code": "029",
+    "name": "Raljin 2",
+    "lat": 43.003889,
+    "lon": 22.485
+  },
+  {
+    "code": "030",
+    "name": "Raljin 3",
+    "lat": 43.003889,
+    "lon": 22.485
+  },
+  {
+    "code": "031",
+    "name": "Bustranje",
+    "lat": 42.421389,
+    "lon": 21.88
+  },
+  {
+    "code": "032",
+    "name": "Kljevo",
+    "lat": 43.576389,
+    "lon": 20.418056
+  },
+  {
+    "code": "033",
+    "name": "Veles (Makedonija)",
+    "lat": 41.698889,
+    "lon": 21.755278
+  },
+  {
+    "code": "034",
+    "name": "Slanci",
+    "lat": 44.796389,
+    "lon": 20.585
+  },
+  {
+    "code": "035",
+    "name": "Slanci otpad",
+    "lat": 44.796389,
+    "lon": 20.583611
+  },
+  {
+    "code": "036",
+    "name": "Zvonce",
+    "lat": 42.931667,
+    "lon": 22.578611
+  },
+  {
+    "code": "037",
+    "name": "Vranište",
+    "lat": 43.521667,
+    "lon": 22.455556
+  },
+  {
+    "code": "038",
+    "name": "Aleksinački Bujmir",
+    "lat": 43.51,
+    "lon": 21.754167
+  },
+  {
+    "code": "039",
+    "name": "Kremenica",
+    "lat": 43.209167,
+    "lon": 22.346667
+  },
+  {
+    "code": "040",
+    "name": "Našuskovica",
+    "lat": 42.956667,
+    "lon": 22.561667
+  },
+  {
+    "code": "041",
+    "name": "Raljin B",
+    "lat": 43.003889,
+    "lon": 22.485
+  },
+  {
+    "code": "042",
+    "name": "Riđake",
+    "lat": 44.657778,
+    "lon": 19.763889
+  },
+  {
+    "code": "043",
+    "name": "Gračanica, Bugojno (BiH)",
+    "lat": 43.992222,
+    "lon": 17.517778
+  },
+  {
+    "code": "044",
+    "name": "Progorelica",
+    "lat": 43.683889,
+    "lon": 20.533611
+  },
+  {
+    "code": "045",
+    "name": "Luke – Mezgraja (BiH)",
+    "lat": 44.626111,
+    "lon": 18.986389
+  },
+  {
+    "code": "046",
+    "name": "Medevac",
+    "lat": 44.265,
+    "lon": 20.408056
+  },
+  {
+    "code": "047",
+    "name": "Spilia (Grčka)",
+    "lat": 41.131111,
+    "lon": 23.491389
+  },
+  {
+    "code": "048",
+    "name": "Sibnica 6",
+    "lat": 43.796667,
+    "lon": 21.036389
+  },
+  {
+    "code": "049",
+    "name": "Sibnica 7",
+    "lat": 43.794722,
+    "lon": 21.034167
+  },
+  {
+    "code": "050",
+    "name": "Kruševica",
+    "lat": 44.35,
+    "lon": 20.398611
+  },
+  {
+    "code": "051",
+    "name": "Valniš 2",
+    "lat": 42.984722,
+    "lon": 22.4875
+  },
+  {
+    "code": "052",
+    "name": "Studena 1",
+    "lat": 42.974444,
+    "lon": 22.501667
+  },
+  {
+    "code": "053",
+    "name": "Studena 2",
+    "lat": 42.973333,
+    "lon": 22.502222
+  },
+  {
+    "code": "054",
+    "name": "Goražde (Crna Gora)",
+    "lat": 42.885278,
+    "lon": 19.933889
+  },
+  {
+    "code": "055",
+    "name": "Vina",
+    "lat": 43.654444,
+    "lon": 22.119444
+  },
+  {
+    "code": "056",
+    "name": "Vina A",
+    "lat": 43.643056,
+    "lon": 22.130556
+  },
+  {
+    "code": "057",
+    "name": "Osmakovo",
+    "lat": 43.2825,
+    "lon": 22.426944
+  },
+  {
+    "code": "101",
+    "name": "Ravanica",
+    "lat": 43.970833,
+    "lon": 21.509722
+  },
+  {
+    "code": "102",
+    "name": "Vlaški Do",
+    "lat": 44.734167,
+    "lon": 21.214167
+  },
+  {
+    "code": "103",
+    "name": "Božurovac (Levač)",
+    "lat": 43.878056,
+    "lon": 21.131111
+  },
+  {
+    "code": "104",
+    "name": "Vinča-Ritopek",
+    "lat": 44.754722,
+    "lon": 20.614167
+  },
+  {
+    "code": "105",
+    "name": "Zagorica (Kragujevac)",
+    "lat": 44.013889,
+    "lon": 20.911667
+  },
+  {
+    "code": "106",
+    "name": "Venčani",
+    "lat": 44.373611,
+    "lon": 20.116667
+  },
+  {
+    "code": "107",
+    "name": "Miločaj",
+    "lat": 43.753611,
+    "lon": 20.406944
+  },
+  {
+    "code": "108",
+    "name": "Duboko (Umka)",
+    "lat": 44.680278,
+    "lon": 20.311389
+  },
+  {
+    "code": "109",
+    "name": "Kamendol",
+    "lat": 44.458056,
+    "lon": 20.475833
+  },
+  {
+    "code": "110",
+    "name": "Vražogrnac",
+    "lat": 44.455,
+    "lon": 22.203611
+  },
+  {
+    "code": "111",
+    "name": "Bele vode (Beograd)",
+    "lat": 44.784167,
+    "lon": 20.417222
+  },
+  {
+    "code": "112",
+    "name": "Guča",
+    "lat": 43.780833,
+    "lon": 20.215
+  },
+  {
+    "code": "113",
+    "name": "Kraljevo",
+    "lat": 43.723611,
+    "lon": 20.689167
+  },
+  {
+    "code": "114",
+    "name": "Sebečevac",
+    "lat": 43.438611,
+    "lon": 21.009167
+  },
+  {
+    "code": "115",
+    "name": "Duboka",
+    "lat": 44.685556,
+    "lon": 20.310833
+  },
+  {
+    "code": "116",
+    "name": "Kosovo",
+    "lat": 42.666667,
+    "lon": 21.166667
+  },
+  {
+    "code": "117",
+    "name": "Trnavac (Zaječar)",
+    "lat": 43.910278,
+    "lon": 22.275833
+  },
+  {
+    "code": "118",
+    "name": "Pljevlja",
+    "lat": 43.358889,
+    "lon": 19.357222
+  },
+  {
+    "code": "119",
+    "name": "Markovac",
+    "lat": 44.233333,
+    "lon": 21.066667
+  },
+  {
+    "code": "120",
+    "name": "Saranovo (Rača)",
+    "lat": 44.231944,
+    "lon": 20.961389
+  },
+  {
+    "code": "121",
+    "name": "Negotin",
+    "lat": 44.226389,
+    "lon": 22.531389
+  },
+  {
+    "code": "122",
+    "name": "Kolubara",
+    "lat": 44.353889,
+    "lon": 20.099167
+  },
+  {
+    "code": "123",
+    "name": "Riljac (Trstenik)",
+    "lat": 43.618889,
+    "lon": 20.988056
+  },
+  {
+    "code": "627",
+    "name": "Levač",
+    "lat": 43.878056,
+    "lon": 21.131111
+  }
+]
