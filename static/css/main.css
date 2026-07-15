@@ -44,6 +44,10 @@
     --accent-strong: var(--primary-dark);
     --accent-light: var(--primary-light);
     --on-accent: #ffffff;
+    /* Трака навигације је УВЕК тамна (бордо/дрво) у свим темама, па њен
+       текст не сме да зависи од --on-accent (текст НА акценту, који је
+       у тамној теми таман) — то је рушило читљивост менија. */
+    --navbar-text: #ffffff;
     --on-accent-soft: rgba(255, 255, 255, 0.8);
     --bg-elevated: var(--gray-50);
     --bg-hover: var(--gray-100);
@@ -482,7 +486,7 @@ body {
 
 .navbar-brand {
     font-weight: 600;
-    color: var(--on-accent) !important;
+    color: var(--navbar-text) !important;
     font-size: 1rem;
     display: flex;
     align-items: center;
@@ -491,7 +495,7 @@ body {
 }
 
 .navbar-brand:hover {
-    color: var(--on-accent) !important;
+    color: var(--navbar-text) !important;
 }
 
 .navbar-brand img {
@@ -517,7 +521,7 @@ body {
     gap: 0.35rem;
     white-space: nowrap;
     line-height: 1.2;
-    color: var(--on-accent) !important;
+    color: var(--navbar-text) !important;
     font-weight: 600;
     font-size: 0.9rem;
     padding: 0.5rem 0.85rem !important;
@@ -531,13 +535,13 @@ body {
 .navbar .nav-link:hover,
 .navbar .nav-link.dropdown-toggle:hover,
 .navbar .show > .nav-link:hover {
-    color: var(--on-accent) !important;
+    color: var(--navbar-text) !important;
     background: rgba(255, 255, 255, 0.18) !important;
     background-color: rgba(255, 255, 255, 0.18) !important;
 }
 
 .navbar .nav-link.active {
-    color: var(--on-accent) !important;
+    color: var(--navbar-text) !important;
     background: rgba(255, 255, 255, 0.2) !important;
     background-color: rgba(255, 255, 255, 0.2) !important;
 }
@@ -2771,6 +2775,74 @@ body.heritage-shell .scroll-to-top:hover {
 [data-theme="dark"] .leaflet-control-attribution {
     background: rgba(31, 41, 55, 0.8);
     color: #9ca3af;
+}
+
+/* ============================================
+   ПАДАЈУЋИ МЕНИЈИ — активна ставка кроз токене
+   Bootstrap подразумевано боји .dropdown-item.active
+   својом плавом (#0d6efd) која не прати ниједан наш
+   токен: искаче из музејске палете и у тамној теми и
+   високом контрасту руши читљивост (мерено 2.9–3.4:1).
+   Активна ставка сада узима акценат теме.
+   ============================================ */
+.dropdown-menu {
+    --bs-dropdown-link-active-bg: var(--primary);
+    --bs-dropdown-link-active-color: var(--on-accent);
+    --bs-dropdown-link-hover-bg: var(--bg-hover);
+    --bs-dropdown-link-hover-color: var(--text-primary);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: var(--primary);
+    color: var(--on-accent);
+}
+
+.dropdown-item.active i,
+.dropdown-item:active i {
+    color: var(--on-accent);
+}
+
+/* Заглавља секција у менију (Режим / Акценат / Стил / Густина) */
+.dropdown-header {
+    color: var(--text-secondary);
+}
+
+[data-theme="contrast"] .dropdown-item.active,
+[data-theme="contrast"] .dropdown-item:active {
+    background-color: var(--primary);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+[data-theme="contrast"] .dropdown-header {
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+/* Ставке подменија (Биологија/Геологија…) користе акценат као боју текста;
+   у тамној теми --primary даје 4.2:1 (испод AA), па узимају светлију
+   варијанту акцента која постоји као токен. */
+[data-theme="dark"] .dropdown-toggle-submenu {
+    color: var(--primary-dark) !important;
+}
+
+[data-theme="dark"] .dropdown-item.active .theme-check,
+[data-theme="dark"] .dropdown-item.active i {
+    color: var(--on-accent) !important;
+}
+
+/* Активна ставка мора да победи heritage правила веће специфичности
+   (body.heritage-shell .dropdown-item), иначе задржи своју светлу боју
+   на акцентованој подлози: измерено 2.03–2.17:1 у тамној и контрасту. */
+body.heritage-shell .dropdown-item.active,
+body.heritage-shell .dropdown-item.active i,
+[data-theme="dark"] body.heritage-shell .dropdown-item.active,
+[data-theme="dark"] body.heritage-shell .dropdown-item.active i,
+[data-theme="contrast"] body.heritage-shell .dropdown-item.active,
+[data-theme="contrast"] body.heritage-shell .dropdown-item.active i {
+    background-color: var(--primary) !important;
+    color: var(--on-accent) !important;
 }
 
 /* ============================================
