@@ -69,3 +69,56 @@ for (const rezim of REZIMI) {
     });
   }
 }
+
+
+// Hover kartica (tooltip) vozila — bug sa produkcije: u tamnoj temi tekst na
+// tamnoj podlozi (bg i color su bili tamni ~1:1). Tooltip se lazy-renderuje na
+// hover, pa ga sweep menija nije video. Meri se stvarni kontrast teksta.
+function _lum(c) {
+  const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+}
+function _rgb(s) { const m = s.match(/rgba?\(([^)]+)\)/); return m[1].split(',').map(parseFloat); }
+function _odnos(a, b) { const l1 = _lum(a), l2 = _lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
+
+for (const rezim of REZIMI) {
+  for (const stil of STILOVI) {
+    test(`kontrast hover kartice vozila: ${rezim} × ${stil}`, async ({ page }) => {
+      test.skip(!EMAIL || !PASS, 'QA kredencijali su potrebni.');
+      await login(page);
+      const resp = await page.goto('/vehicle_reservations');
+      test.skip(!resp || resp.status() >= 400, 'Странице возила нема.');
+
+      await page.evaluate(([r, s]) => {
+        document.documentElement.setAttribute('data-theme', r);
+        document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
+        if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
+        else document.documentElement.setAttribute('data-style', s);
+      }, [rezim, stil]);
+      await page.waitForTimeout(250);
+
+      const karta = page.locator('.vehicle-card[data-bs-toggle="tooltip"]').first();
+      test.skip((await karta.count()) === 0, 'Нема возила у бази.');
+
+      // Tooltip se lazy-renderuje; hover ume da promaši pri brzom radu, pa
+      // pokušavamo do 3 puta (miš van -> nazad) dok se ne pojavi.
+      let info = null;
+      for (let poku = 0; poku < 3 && !info; poku++) {
+        await page.mouse.move(2, 2);
+        await page.waitForTimeout(150);
+        await karta.hover();
+        await page.waitForTimeout(500);
+        info = await page.evaluate(() => {
+          const t = document.querySelector('.tooltip-inner');
+          if (!t || t.offsetParent === null) return null;
+          const cs = getComputedStyle(t);
+          return { bg: cs.backgroundColor, color: cs.color };
+        });
+      }
+      expect(info, 'tooltip se nije prikazao').not.toBeNull();
+      const o = _odnos(_rgb(info.color), _rgb(info.bg));
+      expect(o, `kontrast teksta tooltipa vozila ${o.toFixed(2)} < 4.5 (${info.color} na ${info.bg})`)
+        .toBeGreaterThanOrEqual(4.5);
+    });
+  }
+}
