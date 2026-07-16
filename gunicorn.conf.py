@@ -14,7 +14,17 @@ backlog = 2048
 # NOTE: with in-memory rate limiting (default), login throttling is per-worker.
 # Set RATELIMIT_STORAGE_URL to a Redis URL if using multiple workers.
 workers = int(os.environ.get('WORKERS', '1'))
-worker_class = 'sync'
+# gthread umesto sync: rute za slike (serve_derivat/serve_raw) su kratke -
+# provera prava + DB upit, a sam prenos fajla ide preko nginx X-Accel-Redirect
+# (FOTOTEKA_XACCEL). Sa sync worker-om jedna galerija (do 60 thumbnaila) drzi
+# sve workere zauzete dok se fajlovi strimuju; gthread dozvoljava da jedan
+# worker paralelno servisira vise takvih kratkih zahteva bez cene dodatnih
+# procesa (preload deli kod, ali svaki proces ipak nosi svoj overhead).
+# threads=4 x WORKERS=4 = 16 istovremenih slotova; DB pool (max 10/worker)
+# pokriva 4 niti po worker-u. Broj niti je konzervativan - I/O-vezane kratke
+# rute, ne CPU-vezan posao (obrada slika je u zasebnom fototeka_worker-u).
+worker_class = os.environ.get('GUNICORN_WORKER_CLASS', 'gthread')
+threads = int(os.environ.get('GUNICORN_THREADS', '4'))
 worker_connections = 1000
 timeout = 120
 keepalive = 2

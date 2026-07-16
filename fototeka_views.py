@@ -11,6 +11,7 @@ database; the RAW file always stays.
 
 import json
 import logging
+import mimetypes
 import os
 import re
 import shutil
@@ -19,8 +20,10 @@ import uuid
 import zipfile
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import (
+    Response,
     abort,
     after_this_request,
     flash,
@@ -1353,6 +1356,34 @@ def _derivative_path(photo, kind):
     return full_path if full_path.is_file() else None
 
 
+# Interne nginx putanje za X-Accel-Redirect. Flask ovde SAMO proveri prava pa
+# vrati ovaj header s praznim telom; nginx (interna `location`) sam isporuci
+# fajl sa /data/mis/media odnosno /data/arhiva, oslobadjajuci gunicorn worker.
+XACCEL_DERIVAT_PREFIX = '/_zasticeno/derivati/'
+XACCEL_RAW_PREFIX = '/_zasticeno/raw/'
+
+
+def _xaccel_enabled():
+    """X-Accel isporuka je iza prekidača da bi deploy bio bezbedan PRE nego što
+    se nginx ručno podesi na produkciji. Isključeno (default) = send_file."""
+    return os.environ.get('FOTOTEKA_XACCEL', '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _xaccel_response(internal_uri, *, mimetype, download_name=None):
+    """Prazan odgovor koji transfer fajla prepušta nginx-u preko X-Accel-Redirect.
+    Prava su već proverena uzvodno — nginx samo strimuje fajl iz `internal`
+    lokacije. URI se URL-enkoduje jer ga nginx interno dekodira."""
+    response = Response(b'', mimetype=mimetype)
+    response.headers['X-Accel-Redirect'] = quote(internal_uri, safe='/')
+    if download_name:
+        ascii_fallback = download_name.encode('ascii', 'ignore').decode() or 'download'
+        response.headers['Content-Disposition'] = (
+            "attachment; filename=\"%s\"; filename*=UTF-8''%s"
+            % (ascii_fallback, quote(download_name))
+        )
+    return response
+
+
 def serve_derivat(fotografija_id, kind):
     if kind not in ('jpg', 'thumb'):
         abort(404)
@@ -1367,14 +1398,18 @@ def serve_derivat(fotografija_id, kind):
         abort(403)
     if photo['status'] != 'spremna':
         return _send_placeholder(kind)
+    sha = photo['sha256'].strip()
+    rel_path = fototeka_jobs.derivative_relative_path(sha, kind)
     media_root = fototeka_jobs.get_media_path().resolve()
-    full_path = (media_root / fototeka_jobs.derivative_relative_path(
-        photo['sha256'].strip(), kind)).resolve()
+    full_path = (media_root / rel_path).resolve()
     if not str(full_path).startswith(str(media_root) + os.sep):
         abort(404)
     if not full_path.is_file():
         return _send_placeholder(kind)
-    response = send_file(full_path, mimetype='image/jpeg')
+    if _xaccel_enabled():
+        response = _xaccel_response(XACCEL_DERIVAT_PREFIX + rel_path, mimetype='image/jpeg')
+    else:
+        response = send_file(full_path, mimetype='image/jpeg')
     _apply_private_cache_headers(response, photo)
     return response
 
@@ -1403,12 +1438,23 @@ def serve_raw(fotografija_id):
     full_path = _archival_original_path(photo)
     if full_path is None:
         abort(404)
-    response = send_file(
-        full_path,
-        as_attachment=True,
-        download_name=photo['original_ime'] or full_path.name,
-        max_age=0,
-    )
+    download_name = photo['original_ime'] or full_path.name
+    if _xaccel_enabled():
+        # raw_putanja je već proveren (containment + postojanje) u
+        # _archival_original_path; koristimo ga kao internu relativnu putanju.
+        mimetype = mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
+        response = _xaccel_response(
+            XACCEL_RAW_PREFIX + str(photo['raw_putanja']),
+            mimetype=mimetype,
+            download_name=download_name,
+        )
+    else:
+        response = send_file(
+            full_path,
+            as_attachment=True,
+            download_name=download_name,
+            max_age=0,
+        )
     _apply_private_cache_headers(response, photo)
     return response
 
