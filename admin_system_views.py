@@ -43,13 +43,21 @@ def load_saved_settings(force: bool = False):
         if age < _SAVED_SETTINGS_CACHE_TTL_SECONDS:
             return deepcopy(_saved_settings_cache['data'])
 
-    loaded = module_access_support.load_json_settings_data(
-        setting_key='system_settings',
-        default_value={},
-        get_postgres_connection=get_postgres_connection if db_enabled else None,
-        file_path=str(SETTINGS_FILE),
-        current_mtime=SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else None,
-    )
+    try:
+        loaded = module_access_support.load_json_settings_data(
+            setting_key='system_settings',
+            default_value={},
+            get_postgres_connection=get_postgres_connection if db_enabled else None,
+            file_path=str(SETTINGS_FILE),
+            current_mtime=SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else None,
+        )
+    except module_access_support.SharedSettingsUnavailable:
+        # Baza za deljena podešavanja nedostupna, a nema last-known-good: ne rušimo
+        # stranicu — služimo poslednji lokalno keširan snimak ako postoji, inače
+        # prazne vrednosti; greška je već ERROR-logovana u sloju ispod.
+        cached = _saved_settings_cache.get('data')
+        logger.error("Sistemska podešavanja nedostupna (baza pala); koristim keš/prazno")
+        return deepcopy(cached) if cached is not None else {}
     _saved_settings_cache['data'] = deepcopy(loaded)
     _saved_settings_cache['timestamp'] = datetime.now().timestamp()
     _saved_settings_cache['db_enabled'] = db_enabled
