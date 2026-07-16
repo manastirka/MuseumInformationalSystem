@@ -43,12 +43,16 @@ async function izmeriKontrast(page, korenSelektor) {
         ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '';
       return el.tagName.toLowerCase() + cls;
     };
+    // Емоџи носи сопствене боје и не прати `color` — мерење контраста над њим
+    // је лажна пријава (нпр. застава 🇷🇸 у бирачу језика).
+    const samoEmoji = (s) => /^[\p{Extended_Pictographic}\p{Emoji_Presentation}️‍\s]+$/u.test(s);
+
     const out = [];
     const svi = [...new Set(koreni.flatMap((k) => [k, ...k.querySelectorAll('*')]))];
     for (const el of svi) {
       const tekst = [...el.childNodes]
         .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
-      if (!tekst) continue;
+      if (!tekst || samoEmoji(tekst)) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue;
       const r = el.getBoundingClientRect();

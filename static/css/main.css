@@ -26,6 +26,10 @@
 
     /* Semantic Colors */
     --success: #059669;
+    /* --success је и ПОЗАДИНА (.badge.bg-success) и текст (.text-success).
+       У тамној теми текст мора да буде светлији, а позадина не сме да се помери
+       — зато засебан токен, по узору на --navbar-text. */
+    --success-text: #059669;
     --warning: #d97706;
     --danger: #dc2626;
     --info: #2563eb;
@@ -129,6 +133,7 @@
    DARK MODE
    ============================================ */
 [data-theme="dark"] {
+    --success-text: #6ee7b7;
     --primary: #4fa27c;
     --primary-dark: #6fbd97;
     --primary-light: #79b39a;
@@ -187,6 +192,30 @@
 [data-theme="dark"] .table td,
 [data-theme="dark"] .table th {
     border-color: var(--border-color);
+}
+
+/* Контекстуалне врсте табеле (.table-success, .table-light, .table-warning…)
+   Bootstrap на самој врсти хардкодује `--bs-table-color: #000`, а ћелије боји
+   преко `var(--bs-table-color-state, var(--bs-table-color-type,
+   var(--bs-table-color)))`. Зато `[data-theme="dark"] .table { color: … }`
+   изнад НЕ помаже — наслеђена боја губи од боје коју Bootstrap постави на
+   ћелију. Подлога врсте у тамној теми постаје тамна, а текст остаје црн:
+   измерено 1.23:1 на `/admin/timesheet_reports` (`.table-success` врсте).
+   Ови шаблони користе контекстуалне класе 42 пута, па се решава на једном
+   месту — кроз токен, само за тамну тему. */
+[data-theme="dark"] .table-primary,
+[data-theme="dark"] .table-secondary,
+[data-theme="dark"] .table-success,
+[data-theme="dark"] .table-danger,
+[data-theme="dark"] .table-warning,
+[data-theme="dark"] .table-info,
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .table-active {
+    --bs-table-color: var(--text-primary);
+    --bs-table-color-type: var(--text-primary);
+    --bs-table-hover-color: var(--text-primary);
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-active-color: var(--text-primary);
 }
 
 [data-theme="dark"] .form-control,
@@ -275,6 +304,23 @@
 
 [data-theme="dark"] .text-muted {
     color: var(--text-muted) !important;
+}
+
+/* `.text-success` у тамној теми: `--success` (#059669) је намењен ПОЗАДИНИ, па
+   као текст пада на тамној подлози — измерено 2.28:1 на `/vehicle_reservations`
+   („Слободно" на тамнозеленој ћелији). Тамна тема не редефинише `--success`
+   (и не сме — то би померило позадине беџева), зато засебан `--success-text`. */
+[data-theme="dark"] .text-success {
+    color: var(--success-text) !important;
+}
+
+/* Подмени у мега-менију: поправка 5615ce5 се ослонила на то да је
+   `--primary-dark` у тамној теми СВЕТЛИЈИ (#6fbd97). Али `body.heritage-shell`
+   — а он је на СВАКОЈ страни — враћа `--primary-dark` на тамнозелену (#3c7561),
+   па је та поправка практично мртва свуда: измерено 2.61:1. Овде се узима
+   `--primary-light`, који у тамном heritage-у јесте светао (#79b39a). */
+[data-theme="dark"] body.heritage-shell .dropdown-toggle-submenu {
+    color: var(--primary-light) !important;
 }
 
 
