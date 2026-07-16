@@ -194,6 +194,16 @@
     background-color: var(--gray-100);
     border-color: var(--border-color);
     color: var(--text-primary);
+    color-scheme: dark;
+}
+
+/* Nativni <option> u padajućoj listi nema svoju pozadinu (nasleđuje temu,
+   pa je u tamnoj temi zavisan od color-scheme. Dajemo mu čvrstu pozadinu i
+   tekst iz tokena da lista imena bude čitljiva bez obzira na pretraživač. */
+[data-theme="dark"] .form-select option,
+[data-theme="dark"] .form-control option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
 }
 
 [data-theme="dark"] .form-control:focus,
@@ -2149,6 +2159,13 @@ body.heritage-shell .scroll-to-top:hover {
     box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.04);
 }
 
+/* Padajuća lista prati topli (braon) izgled polja umesto neutralno sive. */
+[data-theme="dark"] body.heritage-shell .form-select option,
+[data-theme="dark"] body.heritage-shell .form-control option {
+    background-color: #281f16;
+    color: #eadbbc;
+}
+
 [data-theme="dark"] body.heritage-shell .form-control::placeholder,
 [data-theme="dark"] body.heritage-shell .form-select::placeholder,
 [data-theme="dark"] body.heritage-shell textarea.form-control::placeholder {
@@ -3179,6 +3196,14 @@ html[data-density="kompakt"][data-style="terenska"] {
     border: 2px solid #000000;
     color: #000000;
     box-shadow: none;
+    color-scheme: light;
+}
+
+/* Padajuća lista u visokom kontrastu: čvrsto crno na belom. */
+[data-theme="contrast"] .form-select option,
+[data-theme="contrast"] .form-control option {
+    background-color: #ffffff;
+    color: #000000;
 }
 
 [data-theme="contrast"] .table {
