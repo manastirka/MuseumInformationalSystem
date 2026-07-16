@@ -1093,17 +1093,19 @@ class ModuleAccessSupportTests(unittest.TestCase):
     def test_load_db_json_setting_backs_off_after_failure(self):
         get_postgres_connection = MagicMock(side_effect=RuntimeError('db unavailable'))
 
-        first = module_access_support._load_db_json_setting(
-            get_postgres_connection=get_postgres_connection,
-            setting_key='system_settings',
-        )
-        second = module_access_support._load_db_json_setting(
-            get_postgres_connection=get_postgres_connection,
-            setting_key='system_settings',
-        )
+        # Pad baze se sada diže kao SharedSettingsUnavailable (nikad tihi None),
+        # a backoff i dalje sprečava ponovni pokušaj ka bazi unutar intervala.
+        with self.assertRaises(module_access_support.SharedSettingsUnavailable):
+            module_access_support._load_db_json_setting(
+                get_postgres_connection=get_postgres_connection,
+                setting_key='system_settings',
+            )
+        with self.assertRaises(module_access_support.SharedSettingsUnavailable):
+            module_access_support._load_db_json_setting(
+                get_postgres_connection=get_postgres_connection,
+                setting_key='system_settings',
+            )
 
-        self.assertIsNone(first)
-        self.assertIsNone(second)
         self.assertEqual(get_postgres_connection.call_count, 1)
 
 
@@ -1708,6 +1710,12 @@ class ImageStorageBackendTests(unittest.TestCase):
 
 
 class SharedSettingsPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        # Očisti procesne keševe da test ne zavisi od redosleda izvršavanja
+        # (backoff/last-known-good preživljavaju između klasa u istom procesu).
+        module_access_support._db_setting_failure_cache.clear()
+        module_access_support._last_known_good.clear()
+
     def test_module_access_loads_from_postgres_shared_settings(self):
         fake_conn = FakeConnection(one={'setting_value': {
             'example': {'authorized_users': ['user@example.com']}

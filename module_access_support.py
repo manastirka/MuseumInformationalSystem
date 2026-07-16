@@ -14,6 +14,21 @@ SHARED_SETTINGS_TABLE = 'app_shared_settings'
 _db_setting_failure_cache: dict[str, float] = {}
 _DB_RETRY_INTERVAL_SECONDS = float(os.environ.get('SHARED_SETTINGS_DB_RETRY_INTERVAL_SECONDS', '15'))
 
+# Poslednja pouzdano poznata vrednost po ključu (last-known-good). Puni se pri
+# svakom uspešnom čitanju/upisu ka bazi i služi da se pri padu baze NE vrate tiho
+# podrazumevane (šire) dozvole. _NO_ROW znači "baza dostupna, ali nema upisa".
+_NO_ROW = object()
+_UNSET = object()
+_last_known_good: dict[str, Any] = {}
+
+
+class SharedSettingsUnavailable(RuntimeError):
+    """Baza za deljena podešavanja nedostupna, a nema last-known-good vrednosti.
+
+    Signalizira pozivaocu da se ponaša fail-closed (najrestriktivnije) umesto da
+    posluži permisivne podrazumevane vrednosti.
+    """
+
 
 def _ensure_shared_settings_table(get_postgres_connection: Callable[[], Any]):
     """Ensure the shared settings table exists before reads or writes."""
@@ -36,13 +51,22 @@ def _load_db_json_setting(
     get_postgres_connection: Optional[Callable[[], Any]],
     setting_key: str,
 ):
-    """Load a JSON setting blob from PostgreSQL."""
+    """Load a JSON setting blob from PostgreSQL.
+
+    Returns the stored value, or ``_NO_ROW`` when the database is reachable but has
+    no row for ``setting_key``. Raises :class:`SharedSettingsUnavailable` when the
+    database cannot be consulted, so callers never mistake an outage for
+    "no configured value".
+    """
     if get_postgres_connection is None:
-        return None
+        return _NO_ROW
 
     last_failure_at = _db_setting_failure_cache.get(setting_key)
     if last_failure_at is not None and (time.time() - last_failure_at) < _DB_RETRY_INTERVAL_SECONDS:
-        return None
+        raise SharedSettingsUnavailable(
+            f"{setting_key}: preskačem čitanje baze tokom {_DB_RETRY_INTERVAL_SECONDS:.0f}s "
+            f"backoff-a nakon skorašnjeg pada"
+        )
 
     try:
         _ensure_shared_settings_table(get_postgres_connection)
@@ -53,18 +77,19 @@ def _load_db_json_setting(
                     (setting_key,),
                 )
                 row = cur.fetchone()
-                if not row:
-                    return None
-                value = row[0] if isinstance(row, tuple) else row['setting_value']
-                if isinstance(value, str):
-                    _db_setting_failure_cache.pop(setting_key, None)
-                    return json.loads(value)
-                _db_setting_failure_cache.pop(setting_key, None)
-                return value
+        if not row:
+            result = _NO_ROW
+        else:
+            value = row[0] if isinstance(row, tuple) else row['setting_value']
+            result = json.loads(value) if isinstance(value, str) else value
     except Exception as exc:
         _db_setting_failure_cache[setting_key] = time.time()
-        logger.warning("Falling back to file storage for %s: %s", setting_key, exc)
-        return None
+        raise SharedSettingsUnavailable(
+            f"{setting_key}: čitanje tabele {SHARED_SETTINGS_TABLE} iz PostgreSQL-a nije uspelo: {exc}"
+        ) from exc
+
+    _db_setting_failure_cache.pop(setting_key, None)
+    return result
 
 
 def _save_db_json_setting(
@@ -92,6 +117,7 @@ def _save_db_json_setting(
                     (setting_key, json.dumps(payload, ensure_ascii=False)),
                 )
             conn.commit()
+        _last_known_good[setting_key] = deepcopy(payload)
         return True
     except Exception as exc:
         logger.warning("Could not save %s to PostgreSQL shared settings: %s", setting_key, exc)
@@ -106,11 +132,41 @@ def load_json_settings_data(
     file_path: Optional[str] = None,
     current_mtime=None,
 ):
-    """Load shared JSON settings from PostgreSQL first, then file fallback."""
-    db_value = _load_db_json_setting(
-        get_postgres_connection=get_postgres_connection,
-        setting_key=setting_key,
-    )
+    """Load shared JSON settings from PostgreSQL first, then file fallback.
+
+    Pad baze se NIKAD ne pretvara tiho u podrazumevanu vrednost: kada je baza
+    nedostupna, vraća se poslednja pouzdano poznata vrednost (last-known-good), a
+    ako ničeg nema u kešu diže se :class:`SharedSettingsUnavailable` da pozivalac
+    može da se ponaša fail-closed umesto da posluži permisivni default.
+    """
+    try:
+        db_value = _load_db_json_setting(
+            get_postgres_connection=get_postgres_connection,
+            setting_key=setting_key,
+        )
+    except SharedSettingsUnavailable as exc:
+        cached = _last_known_good.get(setting_key, _UNSET)
+        if cached is _NO_ROW:
+            logger.error(
+                "Deljena podešavanja '%s': baza nedostupna (%s); služim last-known-good "
+                "(nema sačuvanih override-a)", setting_key, exc,
+            )
+            return deepcopy(default_value)
+        if cached is not _UNSET:
+            logger.error(
+                "Deljena podešavanja '%s': baza nedostupna (%s); služim last-known-good vrednost",
+                setting_key, exc,
+            )
+            return deepcopy(cached)
+        logger.error(
+            "Deljena podešavanja '%s': baza nedostupna (%s) i nema last-known-good u kešu; "
+            "signaliziram pozivaocu da se ponaša fail-closed", setting_key, exc,
+        )
+        raise
+
+    if get_postgres_connection is not None:
+        _last_known_good[setting_key] = deepcopy(db_value) if isinstance(db_value, dict) else _NO_ROW
+
     if isinstance(db_value, dict):
         logger.info("Loaded %s from PostgreSQL shared settings", setting_key)
         return db_value
@@ -155,6 +211,22 @@ def save_json_settings_data(
     return saved_to_db or saved_to_file
 
 
+def _fail_closed_module_access(default_access):
+    """Najrestriktivnija verzija dozvola: svaki modul deny-all.
+
+    Skida sve override-e (default_access=False, prazni authorized/restricted) tako
+    da pad baze NIKAD ne može da proširi pristup. Admin i direktor zadržavaju
+    pristup preko provere uloge uzvodno (`user_has_module_access`).
+    """
+    locked = deepcopy(default_access)
+    for module_info in locked.values():
+        if isinstance(module_info, dict):
+            module_info['default_access'] = False
+            module_info['authorized_users'] = []
+            module_info['restricted_users'] = []
+    return locked
+
+
 def load_module_access_data(
     *,
     module_access_file,
@@ -162,7 +234,11 @@ def load_module_access_data(
     default_access,
     get_postgres_connection: Optional[Callable[[], Any]] = None,
 ):
-    """Load and merge persisted module access overrides into defaults."""
+    """Load and merge persisted module access overrides into defaults.
+
+    Pri padu baze bez last-known-good vrednosti ponaša se fail-closed (najrestriktivnije)
+    umesto da tiho vrati permisivne podrazumevane dozvole.
+    """
     merged_access = deepcopy(default_access)
     try:
         saved_access = load_json_settings_data(
@@ -172,15 +248,23 @@ def load_module_access_data(
             file_path=module_access_file,
             current_mtime=current_mtime,
         )
-        for module_key, module_data in saved_access.items():
+    except SharedSettingsUnavailable:
+        logger.error(
+            "Modul-pristup nedostupan i nema last-known-good u kešu; prelazim na "
+            "fail-closed (najrestriktivniji pristup) dok se PostgreSQL ne oporavi"
+        )
+        return _fail_closed_module_access(default_access)
+
+    try:
+        for module_key, module_data in (saved_access or {}).items():
             if module_key in merged_access:
                 if 'authorized_users' in module_data:
                     merged_access[module_key]['authorized_users'] = module_data['authorized_users']
                 if 'restricted_users' in module_data:
                     merged_access[module_key]['restricted_users'] = module_data['restricted_users']
     except Exception as exc:
-        logger.error("Error loading module access: %s", exc)
-        merged_access = deepcopy(default_access)
+        logger.error("Error merging module access overrides: %s; failing closed", exc)
+        return _fail_closed_module_access(default_access)
 
     return merged_access
 
@@ -221,7 +305,12 @@ def load_dashboard_preferences_data(
     default_prefs,
     get_postgres_connection: Optional[Callable[[], Any]] = None,
 ):
-    """Load dashboard preferences or return defaults when unavailable."""
+    """Load dashboard preferences or return defaults when unavailable.
+
+    Dashboard preferencije nisu kontrola pristupa, pa pad baze bez last-known-good
+    pada na podrazumevane vrednosti — ali se greška LOGUJE na ERROR nivou umesto
+    da se proguta tiho (last-known-good služi sam :func:`load_json_settings_data`).
+    """
     try:
         return load_json_settings_data(
             setting_key='dashboard_preferences',
@@ -230,10 +319,12 @@ def load_dashboard_preferences_data(
             file_path=dashboard_prefs_file,
             current_mtime=current_mtime,
         )
-    except Exception as exc:
-        logger.error("Error loading dashboard preferences: %s", exc)
-
-    return deepcopy(default_prefs)
+    except SharedSettingsUnavailable:
+        logger.error(
+            "Dashboard preferencije nedostupne i nema last-known-good u kešu; "
+            "koristim podrazumevane dok se PostgreSQL ne oporavi"
+        )
+        return deepcopy(default_prefs)
 
 
 def save_dashboard_preferences_data(
