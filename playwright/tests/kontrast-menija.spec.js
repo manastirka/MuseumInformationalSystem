@@ -122,3 +122,43 @@ for (const rezim of REZIMI) {
     });
   }
 }
+
+
+// Dropdown za IZBOR ZAPOSLENOG na /admin/manage_access — bug sa produkcije:
+// u tamnoj temi nativna <option> lista nije imala svoju pozadinu (nasleđivala
+// je temu, a vidljivost popup-a zavisila od color-scheme), pa je lista imena
+// bila nečitljiva. Popup nativnog select-a je van DOM-a (axe ga ne meri), pa
+// merimo stvarni kontrast stavke: tekst opcije vs njena čvrsta pozadina.
+for (const rezim of REZIMI) {
+  for (const stil of STILOVI) {
+    test(`kontrast izbora korisnika (manage_access): ${rezim} × ${stil}`, async ({ page }) => {
+      test.skip(!EMAIL || !PASS, 'QA kredencijali su potrebni.');
+      await login(page);
+      const resp = await page.goto('/admin/manage_access');
+      test.skip(!resp || resp.status() >= 400, 'Стране за управљање приступом нема.');
+
+      await page.evaluate(([r, s]) => {
+        document.documentElement.setAttribute('data-theme', r);
+        document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
+        if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
+        else document.documentElement.setAttribute('data-style', s);
+      }, [rezim, stil]);
+      await page.waitForTimeout(250);
+
+      const info = await page.evaluate(() => {
+        const sel = document.getElementById('userSelect');
+        if (!sel || sel.options.length < 2) return null;
+        const opt = sel.options[1];
+        const cs = getComputedStyle(sel), ocs = getComputedStyle(opt);
+        return { optColor: ocs.color, optBg: ocs.backgroundColor, colorScheme: cs.colorScheme };
+      });
+      expect(info, 'select за избор корисника није нађен').not.toBeNull();
+      // Popup ne sme da zavisi od pretraživača: stavka mora imati ČVRSTU pozadinu.
+      expect(info.optBg, `ставка листе нема чврсту позадину (${info.optBg}) [${rezim}×${stil}]`)
+        .not.toBe('rgba(0, 0, 0, 0)');
+      const o = _odnos(_rgb(info.optColor), _rgb(info.optBg));
+      expect(o, `kontrast stavke liste ${o.toFixed(2)} < 4.5 (${info.optColor} na ${info.optBg}) [${rezim}×${stil}]`)
+        .toBeGreaterThanOrEqual(4.5);
+    });
+  }
+}
