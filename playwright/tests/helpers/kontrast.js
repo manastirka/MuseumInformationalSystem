@@ -17,6 +17,15 @@ const REZIMI = ['dark', 'contrast'];
 const STILOVI = ['institucionalna', 'moderna', 'arhivska', 'terenska'];
 
 async function postaviTemu(page, rezim, stil) {
+  // Промена теме покреће CSS transition на боји. На тешким странама (нпр.
+  // збирка са 2700 редова) мерење ухвати боју УСРЕД прелаза — ни стару ни нову
+  // — па тест пада насумично, зависно од оптерећења. Прелази се гасе пре мерења.
+  await page.addStyleTag({
+    content: `*, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }`,
+  });
   await page.evaluate(([r, s]) => {
     document.documentElement.setAttribute('data-theme', r);
     document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
