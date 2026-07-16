@@ -130,6 +130,25 @@ class ServeRawXAccelTests(_RouteTestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertNotIn('X-Accel-Redirect', resp.headers)
 
+    def test_flag_on_normalizes_traversal_inside_arhiva(self):
+        # raw_putanja sa `..` koja se JOŠ UVEK razrešava unutar arhive: send_file
+        # (flag OFF) posluži razrešeni fajl, pa X-Accel URI mora biti taj isti
+        # razrešeni put. Sirov `..` u URI-ju nginx normalizuje PRE poklapanja
+        # `location`, pa bi ispao iz interne lokacije => oba režima moraju dati
+        # istu, već normalizovanu putanju.
+        self._write_raw()
+        petljava = 'razno/2026/../../razno/2026/proba__aaaaaaaa.jpg'
+        self.use_db({'FROM fotografije WHERE id': _photo(raw_putanja=petljava)})
+        self.login(AUTHOR)
+        with _xaccel('1'):
+            resp = self.get('/fototeka/raw/5')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.headers.get('X-Accel-Redirect'),
+            '/_zasticeno/raw/razno/2026/proba__aaaaaaaa.jpg',
+        )
+        self.assertNotIn('..', resp.headers.get('X-Accel-Redirect', ''))
+
 
 if __name__ == '__main__':
     import unittest

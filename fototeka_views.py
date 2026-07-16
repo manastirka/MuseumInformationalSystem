@@ -1369,6 +1369,13 @@ def _xaccel_enabled():
     return os.environ.get('FOTOTEKA_XACCEL', '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+def _xaccel_uri(prefix, full_path, root):
+    """Interni URI iz VEĆ razrešene i proverene putanje, ne iz sirove vrednosti iz
+    baze. nginx normalizuje `..` PRE poklapanja `location`, pa bi sirov segment
+    ispao iz interne lokacije i razišao se sa onim što send_file posluži."""
+    return prefix + full_path.relative_to(root).as_posix()
+
+
 def _xaccel_response(internal_uri, *, mimetype, download_name=None):
     """Prazan odgovor koji transfer fajla prepušta nginx-u preko X-Accel-Redirect.
     Prava su već proverena uzvodno — nginx samo strimuje fajl iz `internal`
@@ -1407,7 +1414,10 @@ def serve_derivat(fotografija_id, kind):
     if not full_path.is_file():
         return _send_placeholder(kind)
     if _xaccel_enabled():
-        response = _xaccel_response(XACCEL_DERIVAT_PREFIX + rel_path, mimetype='image/jpeg')
+        response = _xaccel_response(
+            _xaccel_uri(XACCEL_DERIVAT_PREFIX, full_path, media_root),
+            mimetype='image/jpeg',
+        )
     else:
         response = send_file(full_path, mimetype='image/jpeg')
     _apply_private_cache_headers(response, photo)
@@ -1440,11 +1450,9 @@ def serve_raw(fotografija_id):
         abort(404)
     download_name = photo['original_ime'] or full_path.name
     if _xaccel_enabled():
-        # raw_putanja je već proveren (containment + postojanje) u
-        # _archival_original_path; koristimo ga kao internu relativnu putanju.
         mimetype = mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
         response = _xaccel_response(
-            XACCEL_RAW_PREFIX + str(photo['raw_putanja']),
+            _xaccel_uri(XACCEL_RAW_PREFIX, full_path, fototeka_jobs.get_arhiva_path().resolve()),
             mimetype=mimetype,
             download_name=download_name,
         )
