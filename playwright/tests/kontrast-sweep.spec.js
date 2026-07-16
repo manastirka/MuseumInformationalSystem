@@ -16,13 +16,7 @@ const { postaviTemu, izmeriKontrast } = require('./helpers/kontrast');
 const EMAIL = process.env.CYPRESS_ADMIN_EMAIL || process.env.QA_EMAIL;
 const PASS = process.env.CYPRESS_ADMIN_PASSWORD || process.env.QA_PASSWORD;
 
-const STRANE = [
-  '/fototeka', '/fototeka/25', '/fototeka/prijemni-red', '/fototeka/upload', '/fototeka/uvoz',
-  '/admin/mineral_collection', '/admin/manage_access', '/admin/virtual_depot',
-  '/vehicle_management', '/vehicle_reservations',
-  '/dokumenti', '/dokumenti/odobravanje', '/zahtevi/godisnji-odmor', '/zahtevi/odobravanje',
-  '/admin/timesheet_reports', '/dashboard', '/admin_panel', '/terenska-aktivnost',
-];
+const STRANE = (process.env.SWEEP_STRANE || '/admin/timesheet_reports,/vehicle_reservations').split(',');
 
 async function login(page) {
   await page.goto('/login');
