@@ -52,6 +52,13 @@
        текст не сме да зависи од --on-accent (текст НА акценту, који је
        у тамној теми таман) — то је рушило читљивост менија. */
     --navbar-text: #ffffff;
+    /* Преглед молбе (`.document-preview`) је ФИКСНО бели папир — то је приказ
+       документа који се штампа, па остаје бео у свакој теми. Зато ни његов
+       текст не сме да прати тему: у тамној је `--text-primary` светло крем и
+       испадне крем на белом (измерено 1.31:1). Иста замка као код навигације,
+       само обрнута — тамно мастило на трајно светлој подлози. Вредност је
+       затечено heritage мастило, да светла тема остане пиксел-идентична. */
+    --paper-text: #4a311f;
     --on-accent-soft: rgba(255, 255, 255, 0.8);
     --bg-elevated: var(--gray-50);
     --bg-hover: var(--gray-100);
@@ -306,12 +313,55 @@
     color: var(--text-muted) !important;
 }
 
+/* `.bg-light` у тамној теми постаје `--gray-100` (#374151) — СВЕТЛИЈА површина
+   од картице (#2a2118). `--text-muted` (#a5906f) је подешен за картицу, па на
+   тој светлијој подлози пада на 3.35:1 („Приказ по страни:" на
+   `/admin/mineral_collection`). На том једном степенику пригушени текст иде
+   корак навише, на `--text-secondary`. */
+[data-theme="dark"] .bg-light .text-muted,
+[data-theme="dark"] .bg-light.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+/* `.btn-outline-secondary` у тамној теми задржава Bootstrap-ову сиву
+   (#6c757d) на тамној подлози → 3.4:1 („Колоне" на `/admin/mineral_collection`).
+   Обрис дугмета иде на токене теме. */
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
 /* `.text-success` у тамној теми: `--success` (#059669) је намењен ПОЗАДИНИ, па
    као текст пада на тамној подлози — измерено 2.28:1 на `/vehicle_reservations`
    („Слободно" на тамнозеленој ћелији). Тамна тема не редефинише `--success`
    (и не сме — то би померило позадине беџева), зато засебан `--success-text`. */
 [data-theme="dark"] .text-success {
     color: var(--success-text) !important;
+}
+
+/* Молба (`/zahtevi/*`) — фиксно бели папир, а текст у њему је наслеђивао токен
+   теме: у тамној крем на белом, 1.18–1.31:1 („Директору…", датум, поља молбе).
+   Исти шаблон прегледа користе 4 стране захтева, па је правило заједничко.
+   Подлога се НЕ дира (документ се штампа); мења се само мастило, и то само у
+   тамној теми — светла остаје пиксел-идентична. Преглед нема интерактивних
+   елемената, па `*` овде не гази дугмад/поља. */
+[data-theme="dark"] .document-preview,
+[data-theme="dark"] .document-preview * {
+    color: var(--paper-text);
+}
+
+/* Исти образац, изван прегледа: жути чип `.highlight-field` (#fff3cd) и
+   сиви сажетак локација (#f8f9fa) су ФИКСНО светле површине, а текст им је
+   пратио тему → крем на жутом 1.18:1, пригушено на сивом 2.92:1
+   (`/zahtev-sluzbeni-put`). Подлоге остају, мења се мастило. */
+[data-theme="dark"] .highlight-field,
+[data-theme="dark"] .highlight-field *,
+[data-theme="dark"] .selected-locations-summary,
+[data-theme="dark"] .selected-locations-summary *,
+[data-theme="dark"] .selected-locations-summary.text-muted,
+[data-theme="dark"] .integration-status,
+[data-theme="dark"] .integration-status * {
+    color: var(--paper-text) !important;
 }
 
 /* Подмени у мега-менију: поправка 5615ce5 се ослонила на то да је
