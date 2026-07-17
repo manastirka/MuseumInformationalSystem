@@ -11,6 +11,13 @@
         padding: 2rem;
         margin-bottom: 1.5rem;
     }
+    /* Заглавље је тамнозелено, а Bootstrap `<code>` носи своју розе (#d63384)
+       подешену за белу подлогу — овде даје 1.46–2.5:1. Имена фолдера и
+       конвенција су упутство које се ЧИТА, не украс. Топло злато лежи на
+       зеленом (≈8:1) и држи `code` визуелно одвојеним од текста око њега. */
+    .fototeka-header code {
+        color: #f0d9a8;
+    }
     .fototeka-card {
         background: var(--bg-card, #fff);
         border: 1px solid var(--border-color, rgba(26, 71, 42, 0.12));

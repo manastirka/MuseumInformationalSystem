@@ -13,7 +13,11 @@
 // страницу преко canvas-а и очита боју тачно испод сваког текста. То ради и за
 // градијенте, и за слике, и за преклопљене полупровидне слојеве.
 
+// Ранији тестови су мерили само режиме који ОДСТУПАЈУ од подразумеваног, јер је
+// светла тема тада важила за неприкосновену („светла остаје пиксел-идентична").
+// Од поправке heritage тонова то више не важи — светла се мери као и остале.
 const REZIMI = ['dark', 'contrast'];
+const SVI_REZIMI = ['light', 'dark', 'contrast'];
 const STILOVI = ['institucionalna', 'moderna', 'arhivska', 'terenska'];
 
 async function postaviTemu(page, rezim, stil) {
@@ -232,4 +236,4 @@ async function izmeriUStanju(page, korenSelektor) {
   return padovi;
 }
 
-module.exports = { REZIMI, STILOVI, postaviTemu, izmeriKontrast };
+module.exports = { REZIMI, SVI_REZIMI, STILOVI, postaviTemu, izmeriKontrast };

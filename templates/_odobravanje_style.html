@@ -19,7 +19,11 @@
     --oc-green-050: #eef4f1;
     --oc-gold: var(--sidebar-gold-strong, #c9a15f);
     --oc-ink-soft: var(--gray-600, #4b5563);
-    --oc-ink-muted: #6b7280;
+    /* Хладна сива (#6b7280) је подешена за белу картицу, али табови стоје на
+       ТАМНИЈЕМ пергаменту (222,194,169) — тамо пада на 2.85:1 („Документа").
+       Топло браонкасто мастило исте тежине: ≈5.1:1 на пергаменту, ≈7.9:1 на
+       белој картици, и боље лежи уз heritage него сива. */
+    --oc-ink-muted: #57493a;
     --oc-line: #d9d4c8;
     --oc-line-soft: #e7e3d8;
 
@@ -169,7 +173,10 @@
 .oc-chain-step { color: var(--oc-ink-muted); white-space: nowrap; }
 .oc-chain-step.done { color: var(--st-odobreno-fg); }
 .oc-chain-step.current { color: var(--st-cekanje-fg); font-weight: 600; }
-.oc-chain-arrow { color: var(--oc-line); }
+/* `--oc-line` је боја ЛИНИЈЕ (оквири, границе табова) — као мастило на белом
+   даје 1.39:1. Стрелица јесте ситна, али је прави текст у ланцу одобравања,
+   па узима пригушено мастило као и кораци око ње. */
+.oc-chain-arrow { color: var(--oc-ink-muted); }
 
 /* --- filteri ---------------------------------------------------------------- */
 .oc-filters {
