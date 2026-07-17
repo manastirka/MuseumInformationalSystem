@@ -57,17 +57,9 @@ def build_collection_access_bindings(
         'build_collection_highlight_qr_url': support.build_collection_highlight_qr_url,
         'apply_qr_highlight_filter': support.apply_qr_highlight_filter,
         'ensure_qr_collection_access': support.ensure_qr_collection_access,
-        'load_all_mineral_records_for_image_upload': support.load_all_mineral_records_for_image_upload,
         'normalize_image_upload_database': support.normalize_image_upload_database,
         'get_image_upload_config': support.get_image_upload_config,
         'get_image_upload_module_key': support.get_image_upload_module_key,
-        'get_image_upload_collection_url': support.get_image_upload_collection_url,
-        'get_image_upload_action_url': support.get_image_upload_action_url,
-        'get_image_upload_display_name': support.get_image_upload_display_name,
-        'get_accessible_image_upload_databases': support.get_accessible_image_upload_databases,
-        'normalize_image_upload_record': support.normalize_image_upload_record,
-        'get_image_upload_records': support.get_image_upload_records,
-        'ensure_image_upload_access': support.ensure_image_upload_access,
     }
 
 

@@ -1,4 +1,4 @@
-"""Shared route implementations for public QR/media views and batch image upload."""
+"""Shared route implementations for public QR and specimen media views."""
 
 import logging
 import os
@@ -106,25 +106,12 @@ def _send_placeholder(*placeholder_candidates):
     return "No image available", 404
 
 
-def _fototeka_serving_enabled():
-    """Feature flag for serving legacy specimen images from Фототека instead
-    of the old images store. Off by default — flip on per host only after the
-    migration (migrate_images_to_fototeka.py) is verified."""
-    return os.environ.get('FOTOTEKA_SERVE_LEGACY_IMAGES', '').strip().lower() in (
-        '1', 'true', 'yes', 'on'
-    )
-
-
 def _fototeka_entity_response(database, entity_type, entity_id, size):
-    """When the flag is on, serve a migrated Фототека derivative for this
-    entity (mineral collections only — the migrated set). Only 'javno' photos
-    are served here: this route authorizes on collection access, not photo
-    authorship, so it must never expose a photo the author flipped to
-    'privatno'. Returns a Flask response or None to fall back to the legacy
-    store. Any error returns None, so enabling the flag can never break the
-    existing image path."""
-    if not _fototeka_serving_enabled():
-        return None
+    """Serve a Фототека derivative for this entity (mineral collections only —
+    the linked set). Only 'javno' photos are served here: this route authorizes
+    on collection access, not photo authorship, so it must never expose a photo
+    the author flipped to 'privatno'. Returns a Flask response, or None when the
+    item has no usable Фототека photo — the caller then serves a placeholder."""
     if str(database).lower() not in ('mineral', 'minerals'):
         return None
     try:
@@ -161,135 +148,14 @@ def _fototeka_entity_response(database, entity_type, entity_id, size):
         if not full_path.is_file():
             return None
         return send_file(full_path, mimetype='image/jpeg')
-    except Exception as exc:  # noqa: BLE001 - never break the legacy path
-        logger.warning('Fototeka image serving fell back to legacy: %s', exc)
+    except Exception as exc:  # noqa: BLE001 - a broken photo must not 500 the page
+        logger.warning('Фототека слика није послужена (иде плацехолдер): %s', exc)
         return None
 
 
-def _send_entity_image(get_image_storage, database, entity_type, entity_id, size):
-    fototeka_response = _fototeka_entity_response(database, entity_type, entity_id, size)
-    if fototeka_response is not None:
-        return fototeka_response
-    try:
-        image_storage = get_image_storage()
-        primary_image_path_getter = getattr(image_storage, 'get_primary_entity_image_path', None)
-        if primary_image_path_getter:
-            image_path = primary_image_path_getter(database, entity_type, entity_id, size)
-            if image_path and image_path.exists():
-                suffix = image_path.suffix.lower()
-                mimetype = 'image/png' if suffix == '.png' else 'image/jpeg'
-                return send_file(image_path, mimetype=mimetype)
-
-        images = image_storage.get_images_for_entity(database, entity_type, entity_id)
-        if images:
-            image_id = images[0]['image_id']
-            image_path = image_storage.get_image_path(image_id, size)
-            if image_path and image_path.exists():
-                suffix = image_path.suffix.lower()
-                mimetype = 'image/png' if suffix == '.png' else 'image/jpeg'
-                return send_file(image_path, mimetype=mimetype)
-    except Exception as exc:
-        logger.error("Error loading specimen image: %s", exc)
-    return None
-
-
-def handle_batch_image_upload(
-    *,
-    get_accessible_image_upload_databases,
-    normalize_image_upload_database,
-    ensure_image_upload_access,
-    user_has_module_access,
-    get_image_upload_config,
-    get_batch_uploader,
-    get_image_upload_records,
-    get_image_upload_collection_url,
-    get_image_upload_display_name,
-):
-    """Batch image upload interface for museum collections."""
-    user_email = session.get('user_email', '')
-    user_role = session.get('user_role', 'user')
-    databases = get_accessible_image_upload_databases(user_email, user_role)
-
-    database = normalize_image_upload_database(request.values.get('database'))
-    if database:
-        access_redirect = ensure_image_upload_access(database)
-        if access_redirect:
-            return access_redirect
-
-    if not databases and user_role != 'admin':
-        flash('Немате приступ ниједној збирци са групним отпремањем слика.', 'warning')
-        if user_has_module_access(user_email, user_role, 'museum_databases'):
-            return redirect(url_for('museum_databases'))
-        return redirect(url_for('dashboard'))
-
-    if request.method == 'POST':
-        action = request.form.get('action')
-        directory = (request.form.get('directory') or '').strip()
-
-        config = get_image_upload_config(database)
-        if not config:
-            flash('Изаберите подржану збирку за отпремање слика.', 'warning')
-            return redirect(url_for('batch_image_upload'))
-
-        if not directory:
-            flash('Унесите директоријум са сликама.', 'warning')
-            return redirect(url_for('batch_image_upload', database=database))
-
-        uploader = get_batch_uploader()
-        database_items = get_image_upload_records(database)
-
-        if action == 'preview':
-            preview = uploader.preview_batch_upload(directory, database_items, database)
-            if preview.get('error'):
-                flash('Нису пронађене валидне слике у изабраном директоријуму.', 'warning')
-                return redirect(url_for('batch_image_upload', database=database))
-
-            return render_template(
-                'admin_batch_upload_preview.html',
-                database=database,
-                database_name=config['name'],
-                directory=directory,
-                preview=preview,
-                back_url=get_image_upload_collection_url(database),
-            )
-
-        if action == 'upload':
-            image_files = uploader.scan_directory(directory)
-            if not image_files:
-                flash('Нису пронађене слике за отпремање.', 'warning')
-                return redirect(url_for('batch_image_upload', database=database))
-
-            results = uploader.process_batch_upload(
-                image_files=image_files,
-                database_items=database_items,
-                database=database,
-                entity_type=config['entity_type'],
-                auto_upload=request.form.get('auto_upload') == 'true',
-            )
-            return render_template(
-                'admin_batch_upload_results.html',
-                database=database,
-                database_name=config['name'],
-                results=results,
-                back_url=get_image_upload_collection_url(database),
-            )
-
-        flash('Непозната акција групног отпремања.', 'warning')
-        return redirect(url_for('batch_image_upload', database=database))
-
-    return render_template(
-        'admin_batch_image_upload.html',
-        databases=databases,
-        selected_database=database,
-        selected_database_name=get_image_upload_display_name(database) if database else '',
-        back_url=get_image_upload_collection_url(database)
-        if database
-        else (
-            url_for('museum_databases')
-            if user_has_module_access(user_email, user_role, 'museum_databases')
-            else url_for('dashboard')
-        ),
-    )
+def _send_entity_image(database, entity_type, entity_id, size):
+    """Фототека је једини извор слика предмета; без ње иде плацехолдер."""
+    return _fototeka_entity_response(database, entity_type, entity_id, size)
 
 
 def render_qr_view_mineral_box(box_number, *, get_mineral_database):
@@ -362,37 +228,37 @@ def render_qr_view_mineral_box(box_number, *, get_mineral_database):
     )
 
 
-def get_specimen_image(database, entity_type, entity_id, *, get_image_storage):
+def get_specimen_image(database, entity_type, entity_id):
     """Get specimen image or placeholder."""
     auth_response = _authorize_specimen_media_request(database, entity_type)
     if auth_response is not None:
         return auth_response
 
-    response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'medium')
+    response = _send_entity_image(database, entity_type, entity_id, 'medium')
     if response is not None:
         return response
     return _send_placeholder(os.path.join('static', 'images', 'specimen-placeholder.png'))
 
 
-def get_specimen_image_full(database, entity_type, entity_id, *, get_image_storage):
+def get_specimen_image_full(database, entity_type, entity_id):
     """Get full-size specimen image."""
     auth_response = _authorize_specimen_media_request(database, entity_type)
     if auth_response is not None:
         return auth_response
 
-    response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'original')
+    response = _send_entity_image(database, entity_type, entity_id, 'original')
     if response is not None:
         return response
-    return get_specimen_image(database, entity_type, entity_id, get_image_storage=get_image_storage)
+    return get_specimen_image(database, entity_type, entity_id)
 
 
-def get_specimen_thumbnail(database, entity_type, entity_id, *, get_image_storage):
+def get_specimen_thumbnail(database, entity_type, entity_id):
     """Get specimen thumbnail or small placeholder."""
     auth_response = _authorize_specimen_media_request(database, entity_type)
     if auth_response is not None:
         return auth_response
 
-    response = _send_entity_image(get_image_storage, database, entity_type, entity_id, 'small')
+    response = _send_entity_image(database, entity_type, entity_id, 'small')
     if response is not None:
         return response
     return _send_placeholder(

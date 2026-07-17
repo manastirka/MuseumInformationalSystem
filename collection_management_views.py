@@ -11,7 +11,6 @@ from pathlib import Path
 from flask import current_app, flash, redirect, render_template, request, session, url_for
 from core_app_views import current_ui_language
 from werkzeug.utils import secure_filename
-from image_storage_engine import get_image_storage
 from collection_registry import get_collection_form_info, get_collection_route_map
 
 logger = logging.getLogger(__name__)
@@ -283,38 +282,6 @@ def _apply_sanja_form_data(item_data):
     return item_data
 
 
-def _store_sanja_uploaded_image(record_id):
-    image_file = request.files.get('image')
-    if not image_file or not image_file.filename:
-        return None
-
-    storage = get_image_storage()
-    safe_name = secure_filename(image_file.filename)
-    suffix = Path(safe_name).suffix or '.jpg'
-    temp_dir = storage.base_path / 'temp'
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=temp_dir) as temp_file:
-        temp_path = Path(temp_file.name)
-
-    try:
-        image_file.save(temp_path)
-        image_id = storage.store_image(
-            file_path=str(temp_path),
-            database='sanja_paleogene_neogene_mammals',
-            entity_type='sanja_paleogene_neogene_mammals',
-            entity_id=str(record_id),
-            description='Слика примерка',
-            metadata={'collection': 'sanja_paleogene_neogene_mammals'},
-        )
-    finally:
-        if temp_path.exists():
-            temp_path.unlink()
-
-    if not image_id:
-        flash('Примерак је сачуван, али слика није могла да се сачува.', 'warning')
-    return image_id
-
-
 def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None):
     is_edit = record_id is not None
     try:
@@ -348,7 +315,6 @@ def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None)
 
         _apply_sanja_form_data(item_data)
         _save_sanja_database_payload(payload)
-        _store_sanja_uploaded_image(item_data['id'])
 
         flash_message = (
             'Примерак је успешно ажуриран.'
@@ -631,8 +597,6 @@ def render_standard_collection_database(
     statistics,
     prepare_collection_records_for_display,
     get_qr_collection_action_url,
-    get_image_upload_action_url,
-    image_upload_database=None,
     collection_actions_enabled=True,
     collection_add_enabled=None,
     collection_export_enabled=None,
@@ -649,7 +613,6 @@ def render_standard_collection_database(
         collection_type=collection_type,
         highlight=highlight,
         qr_action_url=get_qr_collection_action_url(collection_type),
-        image_upload_url=get_image_upload_action_url(image_upload_database or collection_type),
         collection_actions_enabled=collection_actions_enabled,
         collection_add_enabled=collection_actions_enabled if collection_add_enabled is None else collection_add_enabled,
         collection_export_enabled=collection_actions_enabled if collection_export_enabled is None else collection_export_enabled,
@@ -661,7 +624,6 @@ def render_cultural_heritage_database(
     get_cultural_heritage_database,
     prepare_collection_records_for_display,
     get_qr_collection_action_url,
-    get_image_upload_action_url,
 ):
     """Render cultural heritage database view."""
     heritage_db = get_cultural_heritage_database()
@@ -700,7 +662,6 @@ def render_cultural_heritage_database(
         total_heritage_items=len(all_heritage_items),
         highlight=highlight,
         qr_action_url=get_qr_collection_action_url('heritage'),
-        image_upload_url=get_image_upload_action_url('cultural_heritage'),
     )
 
 
@@ -709,7 +670,6 @@ def render_meteorite_collection(
     get_meteorite_collection_database,
     prepare_collection_records_for_display,
     get_qr_collection_action_url,
-    get_image_upload_action_url,
 ):
     """Render meteorite collection database."""
     meteorite_db = get_meteorite_collection_database()
@@ -724,7 +684,6 @@ def render_meteorite_collection(
         collection_type='meteorite',
         highlight=highlight,
         qr_action_url=get_qr_collection_action_url('meteorite'),
-        image_upload_url=get_image_upload_action_url('meteorite'),
     )
 
 
@@ -749,7 +708,7 @@ def _priloži_foto_id(minerals):
         logger.warning('Фototeka thumbnails unavailable for the collection table: %s', exc)
 
 
-def render_mineral_collection(*, get_mineral_database, get_image_upload_action_url):
+def render_mineral_collection(*, get_mineral_database):
     """Render mineral collection or RRUFF browser view."""
     mineral_db = get_mineral_database()
     current_lang = current_ui_language()
@@ -831,7 +790,6 @@ def render_mineral_collection(*, get_mineral_database, get_image_upload_action_u
         elements=elements,
         crystal_system=crystal_system,
         ima_status=ima_status,
-        image_upload_url=get_image_upload_action_url('mineral'),
     )
 
 
@@ -932,17 +890,14 @@ def handle_add_mineral(*, get_mineral_database):
     )
 
 
-def handle_edit_mineral(mineral_id, *, get_mineral_database, get_image_storage):
+def handle_edit_mineral(mineral_id, *, get_mineral_database):
     """Display and process edit-mineral form."""
     mineral_db = get_mineral_database()
     mineral = mineral_db.get_mineral_by_id(mineral_id)
-    image_storage = get_image_storage()
 
     if not mineral:
         flash('Минерал није пронађен.', 'error')
         return redirect(url_for('admin_mineral_collection'))
-
-    mineral_images = image_storage.get_images_for_entity('mineral', 'collection_item', str(mineral_id))
 
     if request.method == 'POST':
         mineral_data = _build_mineral_form_data(
@@ -955,7 +910,6 @@ def handle_edit_mineral(mineral_id, *, get_mineral_database, get_image_storage):
                 mineral_data=mineral_data,
                 edit_mode=True,
                 mineral_id=mineral_id,
-                mineral_images=mineral_images,
             )
 
         if mineral_db.update_mineral(mineral_id, mineral_data):
@@ -985,32 +939,7 @@ def handle_edit_mineral(mineral_id, *, get_mineral_database, get_image_storage):
         mineral_data=mineral_data,
         edit_mode=True,
         mineral_id=mineral_id,
-        mineral_images=mineral_images,
     )
-
-
-def handle_delete_mineral_image(mineral_id, image_id, *, get_mineral_database, get_image_storage):
-    """Delete a mineral image from the edit screen."""
-    mineral_db = get_mineral_database()
-    mineral = mineral_db.get_mineral_by_id(mineral_id)
-    if not mineral:
-        flash('Минерал није пронађен.', 'error')
-        return redirect(url_for('admin_mineral_collection'))
-
-    image_storage = get_image_storage()
-    mineral_images = image_storage.get_images_for_entity('mineral', 'collection_item', str(mineral_id))
-    image_ids = {img.get('image_id') for img in mineral_images if img.get('image_id')}
-
-    if image_id not in image_ids:
-        flash('Слика није пронађена за овај минерал.', 'error')
-        return redirect(url_for('edit_mineral', mineral_id=mineral_id))
-
-    if image_storage.delete_image(image_id):
-        flash('Слика је успешно обрисана.', 'success')
-    else:
-        flash('Грешка при брисању слике.', 'error')
-
-    return redirect(url_for('edit_mineral', mineral_id=mineral_id))
 
 
 def handle_delete_mineral(mineral_id, *, get_mineral_database):

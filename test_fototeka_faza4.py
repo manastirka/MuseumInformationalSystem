@@ -186,7 +186,7 @@ class MigrationWritePathTests(unittest.TestCase):
         self.assertEqual(list(self.arhiva.rglob('*.jpg')), [])
 
 
-class LegacyServingRedirectTests(unittest.TestCase):
+class FototekaServiranjeTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix='fototeka4-serve-')
@@ -203,51 +203,45 @@ class LegacyServingRedirectTests(unittest.TestCase):
         _write_jpeg(path)
         return path
 
-    def test_flag_off_returns_none(self):
-        # default: flag not set -> legacy path is used, no Фототека lookup
-        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'false'}):
-            self.assertIsNone(
-                collection_media_views._fototeka_entity_response('minerals', 'mineral', '5', 'medium'))
-
-    def test_flag_on_serves_migrated_derivative(self):
+    def test_bez_flaga_sluzi_derivat(self):
+        """Фототека служи дериват — нема више прекидача ни легаци резерве."""
         sha = 'c' * 64
         self._make_derivative(sha)
         cursor = _FakeCursor({'FROM fotografije f': {'sha256': sha}})
         conn = _FakeConnection(cursor)
-        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'true'}), \
-             patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
+        with patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
              museum_app.app.test_request_context('/'):
             response = collection_media_views._fototeka_entity_response(
                 'minerals', 'mineral', '5', 'medium')
         self.assertIsNotNone(response)
+        response.close()
 
-    def test_flag_on_no_photo_falls_back(self):
+    def test_bez_fotografije_vraca_none(self):
+        """Без фотографије -> None; позивалац одатле служи плацехолдер."""
         cursor = _FakeCursor({})  # no fotografije row
         conn = _FakeConnection(cursor)
-        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'true'}), \
-             patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
+        with patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
              museum_app.app.test_request_context('/'):
             self.assertIsNone(collection_media_views._fototeka_entity_response(
                 'minerals', 'mineral', '5', 'medium'))
 
-    def test_flag_on_non_mineral_falls_back(self):
-        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'true'}):
-            self.assertIsNone(collection_media_views._fototeka_entity_response(
-                'botany', 'collection_item', '5', 'medium'))
+    def test_ne_mineral_zbirka_vraca_none(self):
+        self.assertIsNone(collection_media_views._fototeka_entity_response(
+            'botany', 'collection_item', '5', 'medium'))
 
-    def test_flag_on_query_restricts_to_public_only(self):
-        # A2: the legacy specimen route authorizes on collection access, not
-        # photo authorship — so it must select only 'javno' photos, never a
-        # private one the author flipped after migration.
+    def test_upit_sluzi_samo_javne_fotografije(self):
+        # A2: ова рута ауторизује на приступ збирци, не на ауторство фотографије
+        # — зато сме да изабере само 'javno', никад приватну фотографију.
         sha = 'c' * 64
         self._make_derivative(sha)
         cursor = _FakeCursor({'FROM fotografije f': {'sha256': sha}})
         conn = _FakeConnection(cursor)
-        with patch.dict(os.environ, {'FOTOTEKA_SERVE_LEGACY_IMAGES': 'true'}), \
-             patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
+        with patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
              museum_app.app.test_request_context('/'):
-            collection_media_views._fototeka_entity_response(
+            odgovor = collection_media_views._fototeka_entity_response(
                 'minerals', 'mineral', '5', 'medium')
+        if odgovor is not None:
+            odgovor.close()
         joined = ' '.join(sql for sql, _ in cursor.executed)
         self.assertIn('vidljivost', joined)
         self.assertIn("'javno'", joined)

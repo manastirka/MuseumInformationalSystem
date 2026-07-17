@@ -213,9 +213,6 @@ class MuseumTestAgent:
         ('/admin/qr_generator', 'QR Generator'),
         ('/admin/qr_boxes/minerals', 'Mineral QR Boxes'),
 
-        # Images
-        ('/admin/batch_image_upload', 'Batch Image Upload'),
-
         # Timesheet
         ('/timesheet', 'Timesheet'),
         ('/admin/timesheet', 'Admin Timesheet'),

@@ -635,29 +635,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_qr_collection_url=museum_app.get_qr_collection_url,
         )
 
-    def test_batch_image_upload_route_delegates_to_collection_media_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.collection_media_views,
-            'handle_batch_image_upload',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/batch_image_upload', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            get_accessible_image_upload_databases=museum_app.get_accessible_image_upload_databases,
-            normalize_image_upload_database=museum_app.normalize_image_upload_database,
-            ensure_image_upload_access=museum_app.ensure_image_upload_access,
-            user_has_module_access=museum_app.user_has_module_access,
-            get_image_upload_config=museum_app.get_image_upload_config,
-            get_batch_uploader=museum_app.get_batch_uploader,
-            get_image_upload_records=museum_app.get_image_upload_records,
-            get_image_upload_collection_url=museum_app.get_image_upload_collection_url,
-            get_image_upload_display_name=museum_app.get_image_upload_display_name,
-        )
-
     def test_qr_view_mineral_box_route_delegates_to_collection_media_module(self):
         with patch.object(
             museum_app.collection_media_views,
@@ -685,7 +662,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             'botany',
             'specimen',
             '7',
-            get_image_storage=museum_app.get_image_storage,
         )
 
     def test_image_by_id_route_delegates_to_collection_media_module(self):
@@ -1272,7 +1248,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_cultural_heritage_database=museum_app.get_cultural_heritage_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
         )
 
     def test_add_heritage_item_route_delegates_to_collection_management_module(self):
@@ -1344,7 +1319,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             statistics=museum_app.BOTANY_COLLECTION_DATABASE['statistics'],
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
         )
 
     def test_meteorite_collection_route_delegates_to_collection_management_module(self):
@@ -1362,7 +1336,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
         )
 
     def test_mineral_collection_route_delegates_to_collection_management_module(self):
@@ -1378,7 +1351,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with(
             get_mineral_database=museum_app.get_mineral_database,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
         )
 
     def test_mineral_detail_route_delegates_to_collection_management_module(self):
@@ -1442,28 +1414,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             12,
             get_mineral_database=museum_app.get_mineral_database,
-            get_image_storage=museum_app.get_image_storage,
-        )
-
-    def test_delete_mineral_image_route_delegates_to_collection_management_module(self):
-        self._login(role='admin')
-
-        with patch.object(
-            museum_app.collection_management_views,
-            'handle_delete_mineral_image',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.post(
-                '/admin/edit_mineral/12/delete_image/test-image',
-                base_url=self.base_url,
-            )
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            12,
-            'test-image',
-            get_mineral_database=museum_app.get_mineral_database,
-            get_image_storage=museum_app.get_image_storage,
         )
 
     def test_inventory_book_route_delegates_to_collection_management_module(self):
@@ -1558,8 +1508,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             visitor_records=museum_app.VISITOR_RECORDS,
             research_projects=museum_app.RESEARCH_PROJECTS,
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
-            get_image_upload_module_key=museum_app.get_image_upload_module_key,
             user_has_module_access=museum_app.user_has_module_access,
         )
 

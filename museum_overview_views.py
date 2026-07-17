@@ -86,8 +86,6 @@ def render_museum_databases(
     visitor_records,
     research_projects,
     get_qr_collection_action_url,
-    get_image_upload_action_url,
-    get_image_upload_module_key,
     user_has_module_access,
     get_meteorite_collection_database=None,
     botany_collection_database=None,
@@ -507,16 +505,6 @@ def render_museum_databases(
     for db_key, collection_type in qr_database_map.items():
         if db_key in databases_info:
             databases_info[db_key]['qr_url'] = get_qr_collection_action_url(collection_type)
-
-    image_upload_database_map = {
-        'minerals': 'mineral',
-        'cultural_heritage': 'cultural_heritage',
-        **registry_collection_types,
-    }
-    for db_key, database in image_upload_database_map.items():
-        module_key = get_image_upload_module_key(database)
-        if db_key in databases_info and module_key and user_has_module_access(user_email, user_role, module_key):
-            databases_info[db_key]['image_upload_url'] = get_image_upload_action_url(database)
 
     if inventory_total is not None:
         databases_info['minerals']['inventory_total'] = inventory_total

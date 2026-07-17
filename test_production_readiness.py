@@ -19,7 +19,6 @@ from PIL import Image
 import config as config_module
 import security_utils
 import image_storage_engine
-import image_api
 import module_access_support
 import collection_management_views
 import app_access_support
@@ -1505,91 +1504,6 @@ class ImageBackupTests(unittest.TestCase):
         insert_calls = [params for query, params in restore_conn.cursor_obj.executed if 'INSERT INTO images' in query]
         self.assertTrue(insert_calls)
         self.assertEqual(insert_calls[0][6], f'object://originals/{image_id}.jpg')
-
-    def test_backup_to_server_posts_to_receiver_with_token_and_preserves_metadata(self):
-        fake_client = FakeS3Client()
-        fake_boto3 = types.SimpleNamespace(client=lambda service_name, **kwargs: fake_client)
-        image_id = 'img_remote_backup'
-        source_image = self.tmpdir / 'remote-source.jpg'
-        Image.new('RGB', (4, 4), color='white').save(source_image, format='JPEG')
-
-        source_row = {
-            'image_id': image_id,
-            'database_name': 'mineral',
-            'entity_type': 'collection_item',
-            'entity_id': '42',
-            'original_filename': 'original.jpg',
-            'file_extension': '.jpg',
-            'file_path': f'object://originals/{image_id}.jpg',
-            'thumbnail_small': '',
-            'thumbnail_medium': '',
-            'thumbnail_large': '',
-            'description': 'desc',
-            'file_size': source_image.stat().st_size,
-            'file_hash': 'abc123',
-            'width': 4,
-            'height': 4,
-            'custom_metadata': {'label': 'value'},
-            'backed_up': False,
-            'backup_date': None,
-            'created_at': None,
-            'updated_at': None,
-        }
-        select_conn = FakeConnection([source_row])
-        receiver_conn = FakeConnection()
-        update_conn = FakeConnection()
-
-        receiver_app = Flask(__name__)
-        receiver_app.config['TESTING'] = True
-        receiver_app.register_blueprint(image_api.image_api, url_prefix='/api/images')
-        receiver_client = receiver_app.test_client()
-
-        def fake_post(url, files=None, data=None, headers=None, timeout=None):
-            del url, timeout
-            uploaded = files['file']
-            uploaded.seek(0)
-            response = receiver_client.post(
-                '/api/images/backup/receive',
-                data={
-                    'image_id': data['image_id'],
-                    'metadata': data['metadata'],
-                    'file': (io.BytesIO(uploaded.read()), 'backup.jpg'),
-                },
-                headers=headers,
-                content_type='multipart/form-data',
-            )
-            return types.SimpleNamespace(status_code=response.status_code, text=response.get_data(as_text=True))
-
-        env = {
-            'IMAGE_STORAGE_BACKEND': 'object',
-            'AWS_S3_BUCKET': 'museum-images-test',
-            'IMAGE_STORAGE_OBJECT_PREFIX': 'museum-images',
-            'IMAGE_BACKUP_TOKEN': 'backup-token',
-        }
-        with patch.dict(os.environ, env, clear=False):
-            with patch.dict(sys.modules, {'boto3': fake_boto3}):
-                image_storage_engine._image_storage_instances.clear()
-                with patch.object(image_storage_engine.ImageStorageEngine, '_ensure_db_table', return_value=None):
-                    source_engine = image_storage_engine.ImageStorageEngine(
-                        str(self.tmpdir / 'source-store'),
-                        'https://backup.example.com',
-                    )
-                    source_engine.storage_backend.save_file(source_image, 'originals', f'{image_id}.jpg')
-                    source_engine.get_image_path = lambda _image_id, size='original': source_engine.storage_backend.resolve_ref(  # noqa: E731
-                        f'object://originals/{image_id}.jpg'
-                    )
-
-                    with patch('image_storage_engine._get_db_connection', side_effect=[select_conn, receiver_conn, update_conn]):
-                        with patch('image_storage_engine.requests.post', side_effect=fake_post):
-                            backed_up = source_engine.backup_to_server(image_id)
-
-        self.assertTrue(backed_up)
-        self.assertTrue(update_conn.committed)
-        receiver_inserts = [params for query, params in receiver_conn.cursor_obj.executed if 'INSERT INTO images' in query]
-        self.assertTrue(receiver_inserts)
-        self.assertEqual(receiver_inserts[0][1], 'mineral')
-        self.assertEqual(receiver_inserts[0][2], 'collection_item')
-        self.assertEqual(receiver_inserts[0][3], '42')
 
 
 class ImageStorageBackendTests(unittest.TestCase):

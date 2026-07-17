@@ -165,103 +165,20 @@ class CollectionAccessSupport:
             'meteorites': 'meteorite',
             'heritage': 'cultural_heritage',
         }
+        # Мапа дозвола: збирка -> кључ модула који чува приступ њеним сликама.
         self.image_upload_config = {
-            'mineral': {
-                'name': 'Минералошка збирка',
-                'prefix': 'M',
-                'route': 'admin_mineral_collection',
-                'module': 'mineral_database',
-                'loader': self.load_all_mineral_records_for_image_upload,
-                'entity_type': 'collection_item',
-            },
-            'meteorite': {
-                'name': 'Збирка метеорита',
-                'prefix': 'MET',
-                'route': 'meteorite_collection',
-                'module': 'meteorite_collection',
-                'loader': lambda: self.get_meteorite_collection_database().get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'botany': {
-                'name': 'Ботаничка збирка',
-                'prefix': 'BOT',
-                'route': 'botany_collection',
-                'module': 'botany_collection',
-                'loader': lambda: self.botany_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'ichthyology': {
-                'name': 'Ихтиолошка збирка',
-                'prefix': 'ICH',
-                'route': 'ichthyology_collection',
-                'module': 'ichthyology_collection',
-                'loader': lambda: self.ichthyology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'entomology': {
-                'name': 'Ентомолошка збирка',
-                'prefix': 'ENT',
-                'route': 'entomology_collection',
-                'module': 'entomology_collection',
-                'loader': lambda: self.entomology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'mycology': {
-                'name': 'Миколошка збирка',
-                'prefix': 'MYC',
-                'route': 'mycology_collection',
-                'module': 'mycology_collection',
-                'loader': lambda: self.mycology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'herpetology': {
-                'name': 'Херпетолошка збирка',
-                'prefix': 'HERP',
-                'route': 'herpetology_collection',
-                'module': 'herpetology_collection',
-                'loader': lambda: self.herpetology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'ornithology': {
-                'name': 'Орнитолошка збирка',
-                'prefix': 'ORN',
-                'route': 'ornithology_collection',
-                'module': 'ornithology_collection',
-                'loader': lambda: self.ornithology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'paleozoology': {
-                'name': 'Палеозоолошка збирка',
-                'prefix': 'PAL',
-                'route': 'paleozoology_collection',
-                'module': 'paleozoology_collection',
-                'loader': lambda: self.paleozoology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'paleobotany': {
-                'name': 'Палеоботаничка збирка',
-                'prefix': 'PBOT',
-                'route': 'paleobotany_collection',
-                'module': 'paleobotany_collection',
-                'loader': lambda: self.paleobotany_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'petrology': {
-                'name': 'Петролошка збирка',
-                'prefix': 'PETR',
-                'route': 'petrology_collection',
-                'module': 'petrology_collection',
-                'loader': lambda: self.petrology_collection_database.get('specimens', []),
-                'entity_type': 'collection_item',
-            },
-            'cultural_heritage': {
-                'name': 'Културно наслеђе',
-                'prefix': 'КД',
-                'route': 'cultural_heritage_database',
-                'module': 'cultural_heritage',
-                'loader': lambda: self.get_cultural_heritage_database().get('heritage_items', []),
-                'entity_type': 'heritage_item',
-            },
+            'mineral': {'module': 'mineral_database'},
+            'meteorite': {'module': 'meteorite_collection'},
+            'botany': {'module': 'botany_collection'},
+            'ichthyology': {'module': 'ichthyology_collection'},
+            'entomology': {'module': 'entomology_collection'},
+            'mycology': {'module': 'mycology_collection'},
+            'herpetology': {'module': 'herpetology_collection'},
+            'ornithology': {'module': 'ornithology_collection'},
+            'paleozoology': {'module': 'paleozoology_collection'},
+            'paleobotany': {'module': 'paleobotany_collection'},
+            'petrology': {'module': 'petrology_collection'},
+            'cultural_heritage': {'module': 'cultural_heritage'},
         }
 
     def normalize_qr_collection_type(self, collection_type):
@@ -449,39 +366,6 @@ class CollectionAccessSupport:
             return redirect(url_for('museum_databases'))
         return redirect(url_for('dashboard'))
 
-    def load_all_mineral_records_for_image_upload(self):
-        """Load all mineral records for batch image matching."""
-        mineral_db = self.get_mineral_database()
-        if not mineral_db or not getattr(mineral_db, 'available', False):
-            return []
-
-        per_page = 5000
-        records = []
-
-        try:
-            result = mineral_db.get_all_minerals(
-                page=1,
-                per_page=per_page,
-                sort_by='inventarni_broj',
-                sort_order='asc',
-            ) or {}
-            records.extend(result.get('minerals', []))
-
-            total_pages = result.get('total_pages', 1) or 1
-            for page in range(2, total_pages + 1):
-                page_result = mineral_db.get_all_minerals(
-                    page=page,
-                    per_page=per_page,
-                    sort_by='inventarni_broj',
-                    sort_order='asc',
-                ) or {}
-                records.extend(page_result.get('minerals', []))
-        except Exception as exc:  # pragma: no cover - depends on DB availability
-            logger.error("Failed to load mineral records for batch upload: %s", exc)
-            return []
-
-        return records
-
     def normalize_image_upload_database(self, database):
         """Normalize legacy or UI aliases to canonical image-upload database ids."""
         if not database:
@@ -497,144 +381,3 @@ class CollectionAccessSupport:
         """Get the module access key required for batch image upload."""
         config = self.get_image_upload_config(database)
         return config['module'] if config else None
-
-    def get_image_upload_collection_url(self, database):
-        """Get the collection landing page URL for a supported image-upload collection."""
-        config = self.get_image_upload_config(database)
-        if not config:
-            user_email = session.get('user_email', '')
-            user_role = session.get('user_role', 'user')
-            if self.user_has_module_access(user_email, user_role, 'museum_databases'):
-                return url_for('museum_databases')
-            return url_for('dashboard')
-        return url_for(config['route'])
-
-    def get_image_upload_action_url(self, database):
-        """Get the scoped batch image upload URL for a collection."""
-        config = self.get_image_upload_config(database)
-        if not config:
-            return None
-        return url_for(
-            'batch_image_upload',
-            database=self.normalize_image_upload_database(database),
-        )
-
-    def get_image_upload_display_name(self, database):
-        """Get human-readable name for a batch image upload collection."""
-        config = self.get_image_upload_config(database)
-        return config['name'] if config else database
-
-    def get_accessible_image_upload_databases(self, user_email, user_role):
-        """List image-upload collections available to the current user."""
-        databases = []
-
-        for database_id, config in self.image_upload_config.items():
-            if self.user_has_module_access(user_email, user_role, config['module']):
-                databases.append(
-                    {
-                        'id': database_id,
-                        'name': config['name'],
-                        'prefix': config['prefix'],
-                    }
-                )
-
-        return databases
-
-    def normalize_image_upload_record(self, record, database):
-        """Add common matching fields across heterogeneous collection records."""
-        if not isinstance(record, dict):
-            return record
-
-        normalized = dict(record)
-        database = self.normalize_image_upload_database(database)
-
-        inventory_value = self._first_populated_value(
-            normalized,
-            [
-                'inventarni_broj',
-                'inventory_number',
-                'catalog_number',
-                'record_number',
-                'registry_number',
-                'id',
-            ],
-        )
-        if inventory_value not in (None, ''):
-            normalized.setdefault('inventarni_broj', str(inventory_value).strip())
-
-        if database == 'cultural_heritage':
-            heritage_value = self._first_populated_value(
-                normalized,
-                ['registry_number', 'inventory_number', 'id'],
-            )
-            if heritage_value not in (None, ''):
-                normalized.setdefault('registry_number', str(heritage_value).strip())
-                normalized.setdefault('heritage_id', str(heritage_value).strip())
-
-        display_name = self._first_populated_value(
-            normalized,
-            [
-                'naziv',
-                'name',
-                'item_name',
-                'specimen_name',
-                'scientific_name',
-                'common_name_sr',
-                'rock_name',
-                'subcategory',
-                'category',
-            ],
-        )
-        if display_name not in (None, ''):
-            normalized.setdefault('name', str(display_name).strip())
-
-        locality = self._first_populated_value(
-            normalized,
-            ['lokalitet', 'locality', 'location_found', 'origin', 'location', 'habitat'],
-        )
-        if locality not in (None, ''):
-            normalized.setdefault('locality', str(locality).strip())
-
-        return normalized
-
-    def get_image_upload_records(self, database):
-        """Load normalized records for batch image upload matching."""
-        config = self.get_image_upload_config(database)
-        if not config or 'loader' not in config:
-            return []
-
-        try:
-            records = config['loader']() or []
-        except Exception as exc:  # pragma: no cover - depends on DB availability
-            logger.error("Failed to load image upload records for %s: %s", database, exc)
-            return []
-
-        return [
-            self.normalize_image_upload_record(record, database)
-            for record in records
-            if isinstance(record, dict)
-        ]
-
-    def ensure_image_upload_access(self, database):
-        """Return a redirect response when the current user cannot use image upload for a collection."""
-        module_key = self.get_image_upload_module_key(database)
-
-        if not module_key:
-            flash('Групно отпремање слика није доступно за ову збирку.', 'warning')
-            user_email = session.get('user_email', '')
-            user_role = session.get('user_role', 'user')
-            if self.user_has_module_access(user_email, user_role, 'museum_databases'):
-                return redirect(url_for('museum_databases'))
-            return redirect(url_for('dashboard'))
-
-        user_email = session.get('user_email', '')
-        user_role = session.get('user_role', 'user')
-
-        if self.user_has_module_access(user_email, user_role, module_key):
-            return None
-
-        flash('Немате приступ групном отпремању слика за ову збирку.', 'error')
-
-        if self.user_has_module_access(user_email, user_role, 'museum_databases'):
-            return redirect(url_for('museum_databases'))
-        return redirect(url_for('dashboard'))
