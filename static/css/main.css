@@ -28,8 +28,12 @@
     --success: #059669;
     /* --success је и ПОЗАДИНА (.badge.bg-success) и текст (.text-success).
        У тамној теми текст мора да буде светлији, а позадина не сме да се помери
-       — зато засебан токен, по узору на --navbar-text. */
-    --success-text: #059669;
+       — зато засебан токен, по узору на --navbar-text.
+       Исто важи и у СВЕТЛОЈ: #059669 као текст даје 3.35:1 на белој картици —
+       испод AA. Није се видело јер је `.text-success` до сада узимао `--success`
+       у свим темама осим тамне. Вредност је иста као `--success` у високом
+       контрасту, дакле већ провозана кроз тему. */
+    --success-text: #04613f;
     --warning: #d97706;
     --danger: #dc2626;
     --info: #2563eb;
@@ -309,6 +313,22 @@
     color: var(--text-primary);
 }
 
+/* Правила изнад (и она за h1–h6) гађају ДЕТЕ директно, па туку наслеђивање: кад
+   родитељ носи изричиту боју — `<div class="card-header bg-info text-white">` —
+   наслов у њему свеједно добије крем теме, а не белу коју је шаблон тражио.
+   На тамној браон плочи то је 3.78:1 („Укупно стање" на
+   `/admin/timesheet_reports`); у светлој истог проблема нема јер тамо ова груба
+   правила и не постоје, па наслов уредно наследи белу.
+   Иста замка коју већ носе `.document-preview` и `.integration-status`, само
+   овде решена враћањем на наслеђивање. */
+[data-theme="dark"] .text-white h1, [data-theme="dark"] .text-white h2,
+[data-theme="dark"] .text-white h3, [data-theme="dark"] .text-white h4,
+[data-theme="dark"] .text-white h5, [data-theme="dark"] .text-white h6,
+[data-theme="dark"] .text-white p, [data-theme="dark"] .text-white span,
+[data-theme="dark"] .text-white label {
+    color: inherit;
+}
+
 [data-theme="dark"] .text-muted {
     color: var(--text-muted) !important;
 }
@@ -317,9 +337,16 @@
    од картице (#2a2118). `--text-muted` (#a5906f) је подешен за картицу, па на
    тој светлијој подлози пада на 3.35:1 („Приказ по страни:" на
    `/admin/mineral_collection`). На том једном степенику пригушени текст иде
-   корак навише, на `--text-secondary`. */
+   корак навише, на `--text-secondary`.
+   Исти степеник праве и `.bg-opacity-*` тинте: семантичка боја на 10–25% преко
+   тамне картице даје баш такву, светлију површину (ћелије календара на
+   `/vehicle_reservations`, измерено 3.7–4.3:1). Раније се то није видело јер
+   је прозирност под heritage-ом била мртва па су ћелије биле пуне и ТАМНЕ —
+   тада је исти текст падао на 1:1, дакле није ново него откривено. */
 [data-theme="dark"] .bg-light .text-muted,
-[data-theme="dark"] .bg-light.text-muted {
+[data-theme="dark"] .bg-light.text-muted,
+[data-theme="dark"] [class*="bg-opacity-"] .text-muted,
+[data-theme="dark"] [class*="bg-opacity-"].text-muted {
     color: var(--text-secondary) !important;
 }
 
@@ -329,14 +356,6 @@
 [data-theme="dark"] .btn-outline-secondary {
     color: var(--text-secondary);
     border-color: var(--border-color);
-}
-
-/* `.text-success` у тамној теми: `--success` (#059669) је намењен ПОЗАДИНИ, па
-   као текст пада на тамној подлози — измерено 2.28:1 на `/vehicle_reservations`
-   („Слободно" на тамнозеленој ћелији). Тамна тема не редефинише `--success`
-   (и не сме — то би померило позадине беџева), зато засебан `--success-text`. */
-[data-theme="dark"] .text-success {
-    color: var(--success-text) !important;
 }
 
 /* Молба (`/zahtevi/*`) — фиксно бели папир, а текст у њему је наслеђивао токен
@@ -1647,7 +1666,10 @@ body.heritage-shell {
     --bg-nav: #4d1617;
     --text-primary: #4a311f;
     --text-secondary: #6d5139;
-    --text-muted: #8e745c;
+    /* #8e745c је на кремастој картици давао 3.79:1 — испод AA. Пригушено
+       мастило по природи иде уз ивицу прага, па се овде бира најсветлији тон
+       који пролази са резервом (≈4.9:1) и остаје топло браон. */
+    --text-muted: #7d6349;
     --border-color: #c7a47d;
     --radius-card: 18px;
     --radius-btn: 14px;
@@ -1677,6 +1699,19 @@ body.heritage-shell .card-header,
 body.heritage-shell .modal-title {
     font-family: var(--font-display);
     letter-spacing: 0.01em;
+}
+
+/* `<div class="card bg-dark text-white">` (заглавље на `/vehicle_management`):
+   `.bg-dark` поставља само `background-color`, а heritage преко `.card` развуче
+   свој кремасти градијент — а СЛИКА се црта ИЗНАД боје, па тамна подлога никад
+   није ни видљива. Остане бели текст на крему: измерено 1.21:1. Исти образац
+   као мртва прозирност горе — скраћеница `background:` гази Bootstrap.
+   Тон је бордо из `.page-header`, дакле оно што таква заглавља већ носе. */
+body.heritage-shell .card.bg-dark {
+    background:
+        radial-gradient(circle at 22% 16%, rgba(255, 231, 188, 0.14), transparent 24%),
+        linear-gradient(135deg, #5c1719 0%, #6d1f21 34%, #4d1517 100%);
+    border: 1px solid rgba(230, 192, 118, 0.3);
 }
 
 body.heritage-shell .card {
@@ -1865,28 +1900,41 @@ body.heritage-shell .alert {
     color: #5b3b24;
 }
 
+/* Bootstrap боју позадине даје као `rgba(<боја>, var(--bs-bg-opacity))`, па
+   `.bg-opacity-25` и род раде тако што помере ТУ променљиву. Heritage је овде
+   преписивао ГРАДИЈЕНТОМ кроз скраћеницу `background:`, а градијент променљиву
+   не чита — зато је свака `.bg-opacity-*` класа под heritage-ом била МРТВА:
+   ћелија замишљена као 25% тинта испадала је пуна, средњетамна браон/зелена, а
+   на њој пада и тамни и бели текст (измерено 2.06:1 „-" и 2.28:1 „Слободно" на
+   `/vehicle_reservations`). Одатле долази 310 од 464 појаве у светлој теми —
+   дакле није ствар тона него мртве прозирности.
+   `color-mix` враћа исту боју на тражену прозирност, па градијент опет прати
+   `--bs-bg-opacity`. Без `.bg-opacity-*` вредност је 1 → површина остаје
+   пиксел иста као пре. */
 body.heritage-shell .bg-primary {
-    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--heritage-accent-hi, #285749) calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, var(--heritage-accent-lo, #1b4439) calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
 body.heritage-shell .bg-success {
-    background: linear-gradient(180deg, #2b5d4d 0%, #21483c 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, #2b5d4d calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, #21483c calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
 body.heritage-shell .bg-warning {
-    background: linear-gradient(180deg, #b77a36 0%, #8e5a23 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, #b77a36 calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, #8e5a23 calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
 body.heritage-shell .bg-danger {
-    background: linear-gradient(180deg, #8d3028 0%, #64211d 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, #8d3028 calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, #64211d calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
 body.heritage-shell .bg-info {
-    background: linear-gradient(180deg, #9f7740 0%, #77552e 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, #9f7740 calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, #77552e calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
+/* Тон је уз то мало потамњен (#8d6b49 → #7f5f40): крем текст на пуном
+   `.bg-secondary` беџу давао је 4.45:1 — таман испод прага. */
 body.heritage-shell .bg-secondary {
-    background: linear-gradient(180deg, #8d6b49 0%, #6e5137 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, #7f5f40 calc(var(--bs-bg-opacity, 1) * 100%), transparent) 0%, color-mix(in srgb, #61472f calc(var(--bs-bg-opacity, 1) * 100%), transparent) 100%) !important;
 }
 
 body.heritage-shell .border-primary {
@@ -1909,9 +1957,41 @@ body.heritage-shell .border-info {
     border-color: rgba(159, 119, 64, 0.42) !important;
 }
 
+/* Тон је потамњен (#8b6a3c → #856236): крем мастило на затеченој браон давало
+   је 4.45:1. Сада ≈5.6:1, а беџ остаје топло браон — heritage, не сивило. */
 body.heritage-shell .badge:not(.badge-in-dev) {
-    background: linear-gradient(135deg, #8b6a3c, #6f512f);
+    background: linear-gradient(135deg, #856236, #674a2a);
     color: #f7ead0;
+}
+
+/* `.bg-light` и `.bg-warning` на беџу траже СВЕТЛУ плочу и тамно мастило —
+   Bootstrap их зато и пише уз `.text-dark`. Heritage је, међутим, преко СВАКОГ
+   беџа развлачио своју браон плочу: светли беџ је испадао средњебраон, а тамно
+   мастило на њему 2.59:1 („Рад у музеју", „Бело"), односно 3.74:1 на
+   наранџастој („Поднето"). Уз то се губила и разлика међу врстама беџа — све
+   исто браон. Ове две зато добијају светле heritage тонове (пергамент и топли
+   ћилибар), чиме се враћа и боја као носилац значења.
+   Пошто су то ТРАЈНО светле плоче, мастило им не сме да прати тему — иста
+   замка као `.document-preview`, и исти токен: `--paper-text`. Без тога тамна
+   тема кроз `[data-theme="dark"] .text-dark` врати крем и испадне крем на
+   пергаменту (измерено 1.02:1). `!important` + већа специфичност су ту да
+   надјачају баш то правило, и `.text-dark` из Bootstrap-а. */
+body.heritage-shell .badge.bg-light,
+body.heritage-shell .badge.text-bg-light {
+    background: linear-gradient(135deg, #f3e7cf, #e4d3ae) !important;
+    color: var(--paper-text) !important;
+}
+
+body.heritage-shell .badge.bg-warning {
+    background: linear-gradient(135deg, #e8bd70, #d7a24a) !important;
+    color: var(--paper-text) !important;
+}
+
+/* `badge bg-light text-success` носи значење бојом, па зелена остаје — али
+   фиксна тамна: `--success-text` је у тамној теми светлозелен (#6ee7b7) и на
+   овој трајно светлој плочи не би прошао. */
+body.heritage-shell .badge.bg-light.text-success {
+    color: #04613f !important;
 }
 
 body.heritage-shell .nav-tabs,
@@ -2215,7 +2295,10 @@ body.heritage-shell .scroll-to-top:hover {
     --bg-nav: #3a1112;
     --text-primary: #ece0c9;
     --text-secondary: #cdbb9b;
-    --text-muted: #a5906f;
+    /* #a5906f на ћелији табеле даје 4.39:1 („до 17.01.2026", регистрације на
+       `/terenska-aktivnost`) — таман испод прага. Корак навише, али и даље
+       јасно испод `--text-secondary`, да се пригушено и даље чита као пригушено. */
+    --text-muted: #b09b7a;
     --border-color: #58452f;
     --heritage-ink: #ece0c9;
     --heritage-parchment: #2a2118;
@@ -2580,7 +2663,7 @@ body.heritage-shell .scroll-to-top:hover {
 }
 
 .text-success {
-    color: var(--success) !important;
+    color: var(--success-text) !important;
 }
 
 .text-warning {
@@ -3103,7 +3186,9 @@ body.heritage-shell .dropdown-item.active i,
     --bg-hover: #e9e2d0;
     --text-primary: #2c2418;
     --text-secondary: #5d5340;
-    --text-muted: #8a7d63;
+    /* Иста поправка као у подразумеваној heritage палети: #8a7d63 на
+       најсветлијој картици (#f7f3e8) даје 3.65:1. */
+    --text-muted: #796b52;
     --border-color: #c9bfa8;
     --border-strong: #a89a7c;
     --heritage-ink: #2c2418;

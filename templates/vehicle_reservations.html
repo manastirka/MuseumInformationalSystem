@@ -472,8 +472,12 @@ document.addEventListener('DOMContentLoaded', () => {
     vertical-align: middle;
 }
 
+/* `background`, не `background-color`: heritage преко `.table thead th` развуче
+   полупровидан пергаментни градијент, а СЛИКА се црта изнад боје — тако је
+   браон заглавље испадало избледело (155,124,79) и бели текст падао на 3.5:1.
+   Скраћеница брише ту слику, па остаје пуна браон и бело пролази ≈6.3:1. */
 #calendarTable th {
-    background-color: var(--museum-primary);
+    background: var(--museum-primary);
     color: white;
     font-weight: 600;
     padding: 0.75rem;
