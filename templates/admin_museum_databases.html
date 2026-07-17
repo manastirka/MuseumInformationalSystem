@@ -231,12 +231,6 @@
                                 QR кодови
                             </a>
                             {% endif %}
-                            {% if db_info.image_upload_url %}
-                            <a href="{{ db_info.image_upload_url }}" class="btn btn-ripple btn-outline-primary">
-                                <i class="bi bi-images me-2"></i>
-                                Слике
-                            </a>
-                            {% endif %}
                         {% elif db_info.status == 'development' %}
                             <button class="btn btn-ripple btn-outline-{{ db_info.color }}" @click="showToast('info', 'У развоју', 'Ова база је у развоју и биће доступна ускоро.', 'bi-tools')">
                                 <i class="bi bi-tools me-2"></i>

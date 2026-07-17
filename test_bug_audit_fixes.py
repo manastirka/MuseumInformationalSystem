@@ -197,7 +197,6 @@ class TestCulturalHeritage:
                     get_cultural_heritage_database=self._heritage_db,
                     prepare_collection_records_for_display=lambda key, recs: (recs, None),
                     get_qr_collection_action_url=lambda key: '/qr',
-                    get_image_upload_action_url=lambda key: '/img',
                 )
         assert result == 'ok'  # reached render_template without crashing
         stats = captured['statistics']

@@ -41,7 +41,6 @@ def _render_collection_list(entry):
             get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-            get_image_upload_action_url=museum_app.get_image_upload_action_url,
         )
 
     database = getattr(museum_app, entry.database_attr)
@@ -60,7 +59,6 @@ def _render_collection_list(entry):
         'statistics': database['statistics'],
         'prepare_collection_records_for_display': museum_app.prepare_collection_records_for_display,
         'get_qr_collection_action_url': museum_app.get_qr_collection_action_url,
-        'get_image_upload_action_url': museum_app.get_image_upload_action_url,
     }
     if (
         not entry.collection_actions_enabled
@@ -104,7 +102,6 @@ def admin_mineral_collection():
 
     return collection_management_views.render_mineral_collection(
         get_mineral_database=museum_app.get_mineral_database,
-        get_image_upload_action_url=museum_app.get_image_upload_action_url,
     )
 
 
@@ -159,21 +156,6 @@ def edit_mineral(mineral_id):
     return collection_management_views.handle_edit_mineral(
         mineral_id,
         get_mineral_database=museum_app.get_mineral_database,
-        get_image_storage=museum_app.get_image_storage,
-    )
-
-
-@collections_bp.route('/admin/edit_mineral/<int:mineral_id>/delete_image/<image_id>', methods=['POST'])
-@module_access_required('mineral_database')
-def delete_mineral_image(mineral_id, image_id):
-    """Delete a mineral image from the edit screen."""
-    import app as museum_app
-
-    return collection_management_views.handle_delete_mineral_image(
-        mineral_id,
-        image_id,
-        get_mineral_database=museum_app.get_mineral_database,
-        get_image_storage=museum_app.get_image_storage,
     )
 
 
@@ -247,8 +229,6 @@ def museum_databases():
         visitor_records=museum_app.VISITOR_RECORDS,
         research_projects=museum_app.RESEARCH_PROJECTS,
         get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-        get_image_upload_action_url=museum_app.get_image_upload_action_url,
-        get_image_upload_module_key=museum_app.get_image_upload_module_key,
         user_has_module_access=museum_app.user_has_module_access,
     )
 

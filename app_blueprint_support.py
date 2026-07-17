@@ -165,7 +165,6 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
         'admin_rruff_detail',
         'add_mineral',
         'edit_mineral',
-        'delete_mineral_image',
         'delete_mineral',
         'inventory_book',
         'inventory_reconciliation',
@@ -176,7 +175,6 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
     ),
     'media': (
         'qr_view_mineral_box',
-        'batch_image_upload',
         'serve_static',
         'get_specimen_image',
         'get_specimen_image_full',
@@ -235,8 +233,6 @@ BLUEPRINT_REGISTRATION_ORDER = (
 )
 
 CSRF_EXEMPT_ENDPOINTS = (
-    'image_api.upload_image',
-    'image_api.receive_backup',
     'chat.api_chat_leave',
     'core.set_language',
     'set_language',

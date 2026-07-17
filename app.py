@@ -41,7 +41,6 @@ else:
     from mineral_database import get_mineral_database
 
 from image_storage_engine import get_image_storage
-from image_api import image_api
 from archive_signature_blueprint import (
     APP_ROOT as ARCHIVE_SIGNATURE_APP_ROOT,
     APPROVAL_CHAINS,
@@ -83,7 +82,6 @@ from blueprints.collections import collections_bp
 from blueprints.media import media_bp
 from blueprints.mineral_science import mineral_science_bp
 from blueprints.core import core_bp
-from batch_image_upload import get_batch_uploader
 import bird_ringing_database
 import scientific_papers_database
 import importlib.util
@@ -379,7 +377,6 @@ def get_locale():
 
 babel = Babel(app, locale_selector=get_locale)
 
-app.register_blueprint(image_api)
 app.register_blueprint(archive_signature_bp)
 app.register_blueprint(approval_center_bp)
 app.register_blueprint(documents_bp)
@@ -435,6 +432,10 @@ lokaliteti_cli.register_cli(app)
 # CLI: flask povezi-fotografije (retroaktivno vezivanje uvezenih fotografija)
 import povezi_fotografije_cli
 povezi_fotografije_cli.register_cli(app)
+
+# CLI: flask obrisi-legacy-slike (brisanje starog `images` skladista)
+import obrisi_legacy_slike_cli
+obrisi_legacy_slike_cli.register_cli(app)
 
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.

@@ -225,7 +225,6 @@ def cultural_heritage_database():
         get_cultural_heritage_database=museum_app.get_cultural_heritage_database,
         prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
         get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
-        get_image_upload_action_url=museum_app.get_image_upload_action_url,
     )
 
 

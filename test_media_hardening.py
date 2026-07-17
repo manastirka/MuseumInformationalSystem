@@ -3,7 +3,6 @@
 
 import json
 import os
-import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -16,7 +15,6 @@ os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-flask-session')
 
 import app as museum_app
 import archive_signature_blueprint
-import image_api as image_api_mod
 
 
 class MediaAccessHardeningTests(unittest.TestCase):
@@ -74,39 +72,6 @@ class MediaAccessHardeningTests(unittest.TestCase):
 
 
 class ThumbnailPerformanceHardeningTests(unittest.TestCase):
-    def test_send_entity_image_uses_bounded_primary_path_lookup(self):
-        class FastPathStorage:
-            def __init__(self, image_path):
-                self.image_path = image_path
-                self.slow_lookup_called = False
-
-            def get_primary_entity_image_path(self, database, entity_type, entity_id, size):
-                self.fast_lookup_args = (database, entity_type, entity_id, size)
-                return self.image_path
-
-            def get_images_for_entity(self, database, entity_type, entity_id):
-                self.slow_lookup_called = True
-                return []
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            image_path = Path(tmp_dir) / 'thumb.jpg'
-            image_path.write_bytes(b'placeholder')
-            storage = FastPathStorage(image_path)
-
-            with museum_app.app.test_request_context('/'):
-                response = museum_app.collection_media_views._send_entity_image(
-                    lambda: storage,
-                    'minerals',
-                    'mineral',
-                    '151',
-                    'small',
-                )
-
-        self.assertEqual(response.status_code, 200)
-        response.close()
-        self.assertEqual(storage.fast_lookup_args, ('minerals', 'mineral', '151', 'small'))
-        self.assertFalse(storage.slow_lookup_called)
-
     def test_mineral_table_uses_local_placeholder_instead_of_thumbnail_storm(self):
         template = Path('templates/admin_mineral_collection.html').read_text(encoding='utf-8')
 
@@ -116,21 +81,15 @@ class ThumbnailPerformanceHardeningTests(unittest.TestCase):
         self.assertIn('loading="lazy"', template)
         self.assertIn('decoding="async"', template)
 
-    def test_mineral_table_shows_thumbnail_when_has_image(self):
-        """Minerals with has_image=True must render the real thumbnail endpoint,
-        not the static placeholder. The placeholder is only for minerals without
-        an image, so we avoid an HTTP request per empty row while still showing
-        real images when they exist."""
+    def test_mineral_table_shows_fototeka_thumbnail_when_photo_linked(self):
+        """Minerals with a Фототека photo must render its derivative, not the
+        placeholder. The placeholder is only for minerals without a photo, so we
+        avoid an HTTP request per empty row while still showing real images."""
         template = Path('templates/admin_mineral_collection.html').read_text(encoding='utf-8')
 
-        # The template must branch on mineral.has_image.
-        self.assertIn('mineral.has_image', template)
-
-        # When has_image is true, the row must point at the thumbnail endpoint
-        # with the correct database/entity_type/entity_id parameters.
+        self.assertIn('mineral.foto_id', template)
         self.assertIn(
-            "url_for('get_specimen_thumbnail', database='minerals',"
-            " entity_type='mineral', entity_id=mineral.id)",
+            "url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='thumb')",
             template,
         )
 
@@ -147,19 +106,6 @@ class ErrorSanitizationTests(unittest.TestCase):
             sess['user_name'] = 'Test User'
             sess['user_role'] = role
             sess['is_admin'] = role == 'admin'
-
-    def test_image_api_hides_internal_exception_details(self):
-        self._login(role='admin')
-
-        with patch.object(
-            image_api_mod,
-            'get_image_storage',
-            side_effect=RuntimeError('/srv/secret/path'),
-        ):
-            response = self.client.get('/api/images/stats', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.get_json(), {'error': 'Internal server error'})
 
     def test_archive_api_hides_internal_exception_details(self):
         self._login(role='employee')

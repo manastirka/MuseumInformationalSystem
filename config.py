@@ -135,12 +135,6 @@ class Config:
     # Samba share mount that the import screen scans (admin enters a subpath
     # under this root; the app never reads outside it).
     FOTOTEKA_IMPORT_PATH: str = os.environ.get('FOTOTEKA_IMPORT_PATH', './data/fototeka_import')
-    # Serve legacy specimen images from Фототека (after migration) instead of
-    # the old images store. Off by default; flip on per host only once
-    # migrate_images_to_fototeka.py has been run and verified.
-    FOTOTEKA_SERVE_LEGACY_IMAGES: bool = os.environ.get(
-        'FOTOTEKA_SERVE_LEGACY_IMAGES', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
-
     # Redis
     REDIS_URL: str = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     CACHE_TYPE: str = os.environ.get('CACHE_TYPE', 'simple')

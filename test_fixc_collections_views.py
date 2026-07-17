@@ -50,7 +50,6 @@ def test_heritage_statistics_resilient_to_missing_keys():
                 get_cultural_heritage_database=_heritage_db_missing_keys,
                 prepare_collection_records_for_display=lambda ct, records: (records, None),
                 get_qr_collection_action_url=lambda ct: '/qr',
-                get_image_upload_action_url=lambda ct: '/upload',
             )
 
     assert result == 'OK'
@@ -99,7 +98,6 @@ def test_heritage_statistics_still_count_present_keys():
                 get_cultural_heritage_database=lambda: db,
                 prepare_collection_records_for_display=lambda ct, records: (records, None),
                 get_qr_collection_action_url=lambda ct: '/qr',
-                get_image_upload_action_url=lambda ct: '/upload',
             )
 
     stats = mock_render.call_args.kwargs['statistics']

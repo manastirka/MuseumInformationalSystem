@@ -21,17 +21,19 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg://aleksandarlu
 class MineralDatabase:
     """Mineralogical collection database accessor - PostgreSQL version."""
 
+    # Фототека је једини извор слика. Веза иде на инвентарни број (не на id),
+    # исто као `glavne_fotografije_predmeta` у fototeka_views — рачунају се само
+    # спремне и необрисане фотографије. Видљивост се овде не филтрира: ово служи
+    # сортирању по слици, а не приказу.
     _HAS_IMAGE_SQL = """
         EXISTS (
             SELECT 1
-            FROM images img
-            WHERE img.entity_id = minerals.id::text
-              AND (
-                    (img.database_name = 'minerals' AND img.entity_type = 'mineral')
-                 OR (img.database_name = 'mineral' AND img.entity_type = 'collection_item')
-                 OR (img.database_name = 'mineral' AND img.entity_type = 'mineral')
-                 OR (img.database_name = 'minerals' AND img.entity_type = 'collection_item')
-              )
+            FROM foto_veza_predmet v
+            JOIN fotografije f ON f.id = v.fotografija_id
+            WHERE v.database_name = 'mineral'
+              AND v.inventarni_broj = minerals.inventory_number
+              AND f.obrisana = FALSE
+              AND f.status = 'spremna'
         )
     """
 

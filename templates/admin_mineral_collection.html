@@ -896,7 +896,7 @@ table th.action-cell {
                     <li><a class="dropdown-item" href="{{ url_for('qr.admin_qr_mineral_boxes') }}">
                         <i class="bi bi-box"></i>QR кутије
                     </a></li>
-                    <li><a class="dropdown-item" href="{{ image_upload_url or (url_for('batch_image_upload') ~ '?database=mineral') }}">
+                    <li><a class="dropdown-item" href="{{ url_for('fototeka.fototeka_galerija') }}">
                         <i class="bi bi-images"></i>Слике
                     </a></li>
                     <li><a class="dropdown-item" href="{{ url_for('collections.export_collection_to_pdf', collection_type='mineral') }}">
@@ -2453,15 +2453,12 @@ table th.action-cell {
                         {% for mineral in minerals %}
                         <tr>
                             <td class="text-center mineral-image-cell">
-                                {# Фототека има предност (нов систем); стара `images` табела је
-                                   резерва; без иједне слике иде дискретан плацехолдер. #}
+                                {# Фототека је једини извор слика; без фотографије иде
+                                   дискретан плацехолдер. #}
                                 {% set placeholder_url = url_for('static', filename='images/specimen-placeholder-thumb.png') %}
                                 {% if mineral.foto_id %}
                                     {% set thumb_url = url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='thumb') %}
                                     {% set thumb_link = url_for('fototeka.fototeka_fotografija', fotografija_id=mineral.foto_id) %}
-                                {% elif mineral.has_image %}
-                                    {% set thumb_url = url_for('get_specimen_thumbnail', database='minerals', entity_type='mineral', entity_id=mineral.id) %}
-                                    {% set thumb_link = url_for('admin_mineral_detail', mineral_id=mineral.id) %}
                                 {% else %}
                                     {% set thumb_url = placeholder_url %}
                                     {% set thumb_link = none %}
@@ -2474,7 +2471,6 @@ table th.action-cell {
                                          alt="{{ mineral.naziv or 'Минерал' }}"
                                          class="img-thumbnail{% if not thumb_link %} mineral-thumb-prazno{% endif %}"
                                          {% if mineral.foto_id %}data-preview="{{ url_for('fototeka.fototeka_media', fotografija_id=mineral.foto_id, kind='jpg') }}"
-                                         {% elif mineral.has_image %}data-preview="{{ url_for('get_specimen_image', database='minerals', entity_type='mineral', entity_id=mineral.id) }}"
                                          {% endif %}data-preview-naziv="{{ mineral.naziv or '' }}"
                                          loading="lazy"
                                          decoding="async"

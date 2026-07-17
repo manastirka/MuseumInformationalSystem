@@ -59,41 +59,6 @@
     box-shadow: 0 0 0 0.2rem rgba(45, 106, 79, 0.15);
 }
 
-.image-manager-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.9rem;
-}
-
-.image-manager-card {
-    border: 1px solid #d8e2dc;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #ffffff;
-}
-
-.image-manager-card img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    display: block;
-    background: #edf2f7;
-}
-
-.image-manager-body {
-    padding: 0.75rem;
-}
-
-.image-manager-caption {
-    font-size: 0.78rem;
-    color: #6b7280;
-    min-height: 2.2rem;
-}
-
-[data-theme="dark"] .image-manager-card {
-    background: #1f2937;
-    border-color: #4b5563;
-}
 </style>
 
 <div class="container-fluid px-4 mt-4">
@@ -272,33 +237,11 @@
                     <h5 class="form-section-title">
                         <i class="bi bi-images me-2"></i>Слике
                     </h5>
-                    {% if mineral_images %}
-                    <div class="image-manager-grid">
-                        {% for image in mineral_images %}
-                        <div class="image-manager-card">
-                            <a href="{{ url_for('get_image_by_id', image_id=image.image_id, size='original') }}" target="_blank" rel="noopener">
-                                <img src="{{ url_for('get_image_by_id', image_id=image.image_id, size='small') }}"
-                                     alt="{{ image.description or ('Слика ' ~ loop.index) }}">
-                            </a>
-                            <div class="image-manager-body">
-                                <div class="image-manager-caption mb-2">
-                                    {{ image.description or image.original_filename or 'Без описа' }}
-                                </div>
-                                <button type="submit"
-                                        class="btn btn-outline-danger btn-sm w-100"
-                                        form="delete-image-{{ image.image_id }}"
-                                        onclick="return confirm('Да ли сте сигурни да желите да обришете ову слику?')">
-                                    <i class="bi bi-trash me-1"></i>Обриши слику
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
                     <div class="alert alert-light border mb-0">
-                        <i class="bi bi-info-circle me-2"></i>Овај минерал тренутно нема сачуване слике.
+                        <i class="bi bi-info-circle me-2"></i>Фотографије предмета се воде у
+                        <a href="{{ url_for('fototeka.fototeka_galerija') }}">Фототеци</a> —
+                        отпремају се увозом и повезују на инвентарни број.
                     </div>
-                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -341,16 +284,6 @@
         </div>
     </form>
 
-    {% if edit_mode and mineral_images %}
-        {% for image in mineral_images %}
-        <form id="delete-image-{{ image.image_id }}"
-              method="POST"
-              action="{{ url_for('delete_mineral_image', mineral_id=mineral_id, image_id=image.image_id) }}"
-              class="d-none">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        </form>
-        {% endfor %}
-    {% endif %}
 </div>
 
 {% if edit_mode %}
