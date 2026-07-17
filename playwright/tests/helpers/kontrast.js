@@ -35,10 +35,30 @@ async function postaviTemu(page, rezim, stil) {
   await page.waitForTimeout(200);
 }
 
-const SAKRIJ_ID = '__kontrast_sakrij__';
-
 // Враћа падове: [{selektor, tekst, fg, bg, odnos, prag}]
 async function izmeriKontrast(page, korenSelektor) {
+  // 0) Мери се и снима у ИСТОМ стању распореда.
+  //
+  // `screenshot({fullPage:true})` привремено развуче прозор на целу висину
+  // документа. Ако се правоугаоници покупе при висини 720, а снимак направи при
+  // висини нпр. 3780, распоред се помери (`min-height: 100vh` и сродно) па
+  // координате гађају погрешне пикселе — насумично, зависно од стране и стила
+  // (навигација је испадала „злато на крему", розе заглавље „крем на крему").
+  // Зато се прозор прво развуче, па се тек онда мери и снима.
+  const stariProzor = page.viewportSize();
+  const visinaDok = await page.evaluate(() => document.documentElement.scrollHeight);
+  const punaVisina = Math.min(Math.max(visinaDok, stariProzor ? stariProzor.height : 720), 8000);
+  await page.setViewportSize({ width: stariProzor ? stariProzor.width : 1280, height: punaVisina });
+  await page.waitForTimeout(150);
+
+  try {
+    return await izmeriUStanju(page, korenSelektor);
+  } finally {
+    if (stariProzor) await page.setViewportSize(stariProzor);
+  }
+}
+
+async function izmeriUStanju(page, korenSelektor) {
   // 1) покупи кандидате (елементи са сопственим видљивим текстом)
   const kandidati = await page.evaluate((koren) => {
     // querySelectorAll, не querySelector: селектор попут `.fototeka-card` гађа
@@ -56,12 +76,26 @@ async function izmeriKontrast(page, korenSelektor) {
     // је лажна пријава (нпр. застава 🇷🇸 у бирачу језика).
     const samoEmoji = (s) => /^[\p{Extended_Pictographic}\p{Emoji_Presentation}️‍\s]+$/u.test(s);
 
+    // ОГРАНИЧЕЊЕ: `position: fixed|sticky` се на снимку целе стране не поклапа
+    // са својим правоугаоником — снимак се прави са развученим прозором, а
+    // лепљиви елемент остаје „закачен" другде, па се очита погрешан пиксел
+    // (навигација је испадала „злато на крему" 1.15:1, иако је стварно злато на
+    // бордо ≈ 5.5:1). Такви се овде прескачу; навигацију покрива
+    // `kontrast-menija.spec.js`, који мери отворене меније директно.
+    const uLepljivom = (el) => {
+      for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+        const p = getComputedStyle(n).position;
+        if (p === 'fixed' || p === 'sticky') return true;
+      }
+      return false;
+    };
+
     const out = [];
     const svi = [...new Set(koreni.flatMap((k) => [k, ...k.querySelectorAll('*')]))];
     for (const el of svi) {
       const tekst = [...el.childNodes]
         .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
-      if (!tekst || samoEmoji(tekst)) continue;
+      if (!tekst || samoEmoji(tekst) || uLepljivom(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue;
       const r = el.getBoundingClientRect();
@@ -87,16 +121,29 @@ async function izmeriKontrast(page, korenSelektor) {
 
   if (!kandidati.length) return [];
 
-  // 2) сакриј СВЕ текстове па сними — остаје чиста позадина
-  await page.addStyleTag({
-    content: `#${SAKRIJ_ID}{}
-      *, *::before, *::after {
-        color: transparent !important;
-        text-shadow: none !important;
-        text-decoration-color: transparent !important;
-        caret-color: transparent !important;
-      }`,
-  }).then((h) => h.evaluate((el, id) => el.setAttribute('id', id), SAKRIJ_ID));
+  // 2) сакриј СВЕ текстове па сними — остаје чиста позадина.
+  //
+  // Мора ИНЛАЈН, не преко <style>: `* { color: transparent !important }` има
+  // специфичност (0,0,0), па га туче свако друго `!important` правило са јачим
+  // селектором (нпр. `--navbar-text` на навигацији). Такав текст остане видљив,
+  // мери се ГЛИФ уместо позадине и испадне „злато на злату" ≈ 1.15:1 — лажна
+  // пријава. Декларација у style атрибуту бије сваки селектор, па хвата и њих.
+  const vraceno = await page.evaluate(() => {
+    const stari = [];
+    for (const el of document.querySelectorAll('*')) {
+      stari.push([el, el.style.getPropertyValue('color'), el.style.getPropertyPriority('color'),
+        el.style.getPropertyValue('text-shadow')]);
+      el.style.setProperty('color', 'transparent', 'important');
+      el.style.setProperty('text-shadow', 'none', 'important');
+    }
+    window.__kontrastVrati = () => {
+      for (const [el, boja, prio, senka] of stari) {
+        if (boja) el.style.setProperty('color', boja, prio); else el.style.removeProperty('color');
+        if (senka) el.style.setProperty('text-shadow', senka); else el.style.removeProperty('text-shadow');
+      }
+    };
+    return document.querySelectorAll('*').length;
+  });
 
   const snimak = (await page.screenshot({ fullPage: true })).toString('base64');
 
@@ -180,7 +227,7 @@ async function izmeriKontrast(page, korenSelektor) {
   }, [snimak, kandidati]);
 
   // 4) врати текст
-  await page.evaluate((id) => { const el = document.getElementById(id); if (el) el.remove(); }, SAKRIJ_ID);
+  await page.evaluate(() => { if (window.__kontrastVrati) window.__kontrastVrati(); });
 
   return padovi;
 }
