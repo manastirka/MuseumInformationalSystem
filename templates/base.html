@@ -1415,6 +1415,14 @@
                 </li>
                 {% endif %}
                 {% endif %}
+                {% if has_module_access('kr_dosije') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('kr_dosije.lista') }}" aria-label="К-Р досије">
+                        <i class="bi bi-clipboard2-pulse"></i>
+                        <span>К-Р досије</span>
+                    </a>
+                </li>
+                {% endif %}
                 {% if has_module_access('museum_databases') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('museum_databases') }}" aria-label="Базе података">

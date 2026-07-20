@@ -96,4 +96,24 @@ test.describe('К-Р досије', () => {
     // module_access_required одбија: 403 или редирект (не 200 са листом).
     expect([302, 303, 403]).toContain(resp.status());
   });
+
+  test('корисник СА модулом види ставку „К-Р досије" у навигацији', async ({ page }) => {
+    test.skip(!adminEmail || !adminPassword,
+      'Админ креденцијали су обавезни за проверу навигације.');
+
+    await login(page, adminEmail, adminPassword);
+    await page.goto('/dashboard');
+    const stavka = page.locator('a[aria-label="К-Р досије"]');
+    await expect(stavka.first()).toBeVisible();
+    await expect(stavka.first()).toHaveAttribute('href', /\/kr-dosije$/);
+  });
+
+  test('корисник БЕЗ модула не види ставку „К-Р досије" у навигацији', async ({ page }) => {
+    test.skip(!employeeEmail || !employeePassword,
+      'Креденцијали запосленог су обавезни за проверу навигације.');
+
+    await login(page, employeeEmail, employeePassword);
+    await page.goto('/dashboard');
+    await expect(page.locator('a[aria-label="К-Р досије"]')).toHaveCount(0);
+  });
 });
