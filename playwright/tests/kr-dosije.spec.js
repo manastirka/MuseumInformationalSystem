@@ -142,6 +142,10 @@ test.describe('К-Р досије', () => {
     const row = page.locator(`#${rowId}`);
     await expect(row).toHaveClass(/kr-vraceno/);
     await expect(row).toBeInViewport();
+
+    // истицање ОСТАЈЕ до следећег клика, па се тада гаси
+    await page.locator('.kr-header').click();
+    await expect(row).not.toHaveClass(/kr-vraceno/);
   });
 
   test('browser back враћа на исту страну + истиче ред', async ({ page }) => {

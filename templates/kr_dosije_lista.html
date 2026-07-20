@@ -27,19 +27,14 @@
         color: var(--text-primary);
     }
     /* Ред из ког се корисник вратио — акценат теме (Bootstrap success токен,
-       дефинисан у свим темама) са прозирношћу, који се лагано угаси. */
+       дефинисан у свим темама) са прозирношћу. Остаје истакнут ДО СЛЕДЕЋЕГ
+       КЛИКА (JS уклања класу), да око лако нађе где је стало. */
     tr.kr-vraceno > td {
-        animation: krVraceno 4.5s ease-out forwards;
+        background-color: rgba(var(--bs-success-rgb, 45, 106, 79), 0.20);
+        transition: background-color 0.4s ease-out;
     }
     tr.kr-vraceno > td:first-child {
         box-shadow: inset 3px 0 0 0 rgba(var(--bs-success-rgb, 45, 106, 79), 0.9);
-    }
-    @keyframes krVraceno {
-        0%, 18%   { background-color: rgba(var(--bs-success-rgb, 45, 106, 79), 0.30); }
-        100%      { background-color: transparent; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        tr.kr-vraceno > td { animation: none; background-color: rgba(var(--bs-success-rgb, 45, 106, 79), 0.18); }
     }
 </style>
 
@@ -191,10 +186,11 @@
         var row = document.getElementById('kr-dosije-' + id);
         if (!row) return;  // досије је на другој страни/филтеру — ништа
         row.scrollIntoView({ block: 'center', behavior: 'auto' });
-        // рестарт анимације ако је ред већ био истакнут
-        row.classList.remove('kr-vraceno');
-        void row.offsetWidth;
         row.classList.add('kr-vraceno');
+        // Остаје истакнут до СЛЕДЕЋЕГ клика било где на страни.
+        document.addEventListener('click', function () {
+            row.classList.remove('kr-vraceno');
+        }, { once: true });
     }
     window.addEventListener('pageshow', krIstakniPovratak);
 })();
