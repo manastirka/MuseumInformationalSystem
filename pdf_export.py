@@ -860,3 +860,127 @@ def export_specimen_certificate_pdf(specimen: Dict, collection_name: str) -> Byt
     """Export specimen certificate to PDF"""
     exporter = SpecimenCertificatePDFExporter()
     return exporter.export_specimen_certificate(specimen, collection_name)
+
+
+# ============================================================================
+# Конзерваторско-рестаураторски досије
+# ============================================================================
+class KRDosijePDFExporter(MuseumPDFExporter):
+    """Званични PDF једног К-Р досијеа (институционална тема, ћирилица)."""
+
+    _ODELJENJE = {'geo': 'Геолошко одељење', 'bio': 'Биолошко одељење'}
+    _FAZA = {'pre': 'Пре радова', 'tokom': 'Током радова', 'posle': 'После радова'}
+    _PREDMET_TIP = {'zbirka': 'Из збирке', 'slobodan': 'Слободан унос'}
+
+    def export_kr_dosije(self, dosije: Dict) -> BytesIO:
+        buffer = self.create_pdf_buffer()
+        doc = SimpleDocTemplate(
+            buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm,
+            topMargin=3*cm, bottomMargin=2.5*cm,
+        )
+        styles = self.create_styles()
+        story = []
+
+        story.append(Paragraph('Конзерваторско-рестаураторски досије',
+                               styles['MuseumTitle']))
+        story.append(Paragraph(escape(self.safe_str(dosije.get('evidencioni_broj'))),
+                               styles['MuseumSubtitle']))
+        story.append(Paragraph(
+            escape(self._ODELJENJE.get(dosije.get('odeljenje'), '')),
+            styles['SerbianNormal']))
+        story.append(Spacer(1, 0.4*cm))
+
+        # --- Предмет ---
+        story.append(Paragraph('Предмет', styles['SectionHeading']))
+        predmet_rows = [
+            ('Назив предмета', dosije.get('naziv_predmeta')),
+            ('Врста уноса', self._PREDMET_TIP.get(dosije.get('predmet_tip'))),
+            ('Инвентарни број', dosije.get('inventarni_broj')),
+            ('Колекторски број', dosije.get('kolektorski_broj')),
+            ('Наручилац', dosije.get('narucilac')),
+        ]
+        story.append(self._info_table(predmet_rows, styles))
+        story.append(Spacer(1, 0.3*cm))
+
+        # --- Извршиоци и период ---
+        izvrsioci = dosije.get('izvrsioci') or []
+        izvrs_txt = ', '.join(i.get('ime_tekst', '') for i in izvrsioci) or 'Н/Д'
+        period = self._format_period(dosije)
+        story.append(self._info_table([
+            ('Лице које је вршило радове', izvrs_txt),
+            ('Време извршења радова', period),
+        ], styles))
+        story.append(Spacer(1, 0.4*cm))
+
+        # --- Три описа стања ---
+        for naslov, kljuc in (
+            ('Опис стања пре радова', 'opis_pre'),
+            ('Опис поступка и употребљених материјала', 'opis_postupak'),
+            ('Опис стања након радова', 'opis_posle'),
+        ):
+            story.append(Paragraph(naslov, styles['SectionHeading']))
+            story.append(Paragraph(self._multiline(dosije.get(kljuc)),
+                                   styles['SerbianNormal']))
+            story.append(Spacer(1, 0.3*cm))
+
+        # --- Фотографије по фази (документарно; по имену) ---
+        foto = dosije.get('fotografije') or {}
+        if any(foto.get(f) for f in ('pre', 'tokom', 'posle')):
+            story.append(Paragraph('Фотографије', styles['SectionHeading']))
+            for faza in ('pre', 'tokom', 'posle'):
+                stavke = foto.get(faza) or []
+                if not stavke:
+                    continue
+                imena = ', '.join(escape(self.safe_str(s.get('original_ime')))
+                                  for s in stavke)
+                story.append(Paragraph(
+                    f'<b>{self._FAZA[faza]}</b> ({len(stavke)}): {imena}',
+                    styles['SerbianNormal']))
+            story.append(Spacer(1, 0.3*cm))
+
+        # --- Напомена ---
+        if dosije.get('napomena'):
+            story.append(Paragraph('Напомена', styles['SectionHeading']))
+            story.append(Paragraph(self._multiline(dosije.get('napomena')),
+                                   styles['SerbianNormal']))
+
+        doc.build(story, onFirstPage=self.add_header_footer,
+                  onLaterPages=self.add_header_footer)
+        buffer.seek(0)
+        return buffer
+
+    def _info_table(self, rows, styles):
+        data = []
+        for label, value in rows:
+            data.append([
+                Paragraph(f'<b>{escape(label)}</b>', styles['SerbianNormal']),
+                Paragraph(self._multiline(value), styles['SerbianNormal']),
+            ])
+        table = Table(data, colWidths=[5*cm, 12*cm])
+        table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LINEBELOW', (0, 0), (-1, -1), 0.25, self.light_gray),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        return table
+
+    def _multiline(self, value):
+        text = self.safe_str(value)
+        return escape(text).replace('\n', '<br/>')
+
+    def _format_period(self, dosije):
+        if dosije.get('period_tekst'):
+            return self.safe_str(dosije.get('period_tekst'))
+        od, do = dosije.get('period_od'), dosije.get('period_do')
+        if od and do and od != do:
+            return f'{od.strftime("%d.%m.%Y")} — {do.strftime("%d.%m.%Y")}'
+        if od:
+            return od.strftime('%d.%m.%Y')
+        return 'Н/Д'
+
+
+def export_kr_dosije_pdf(dosije: Dict) -> BytesIO:
+    """Export a Конзерваторско-рестаураторски досије to PDF"""
+    exporter = KRDosijePDFExporter()
+    return exporter.export_kr_dosije(dosije)

@@ -47,6 +47,9 @@ lxml>=5.0.0
 # Word Document Generation
 python-docx>=1.1.0
 
+# Excel (used by the K-R досије import CLI: uvezi-kr-dosije)
+openpyxl>=3.1.0
+
 # Production Server
 gunicorn>=21.0.0
 

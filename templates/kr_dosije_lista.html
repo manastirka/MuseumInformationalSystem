@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Конзерваторско-рестаураторски досијеи{% endblock %}
+
+{% block content %}
+<style>
+    .kr-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    /* --- tamna tema --- */
+    [data-theme="dark"] .kr-card {
+        background: linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+        border-color: rgba(214, 177, 115, 0.16);
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+        color: var(--text-primary);
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="kr-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1"><i class="bi bi-tools me-2"></i>Конзерваторско-рестаураторски досијеи</h2>
+                <p class="mb-0">Евиденција конзерваторско-рестаураторских радова над предметима збирки.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('kr_dosije.novi') }}" class="btn btn-light">
+                    <i class="bi bi-plus-lg me-1"></i>Нови досије
+                </a>
+                <a href="{{ url_for('kr_dosije.predlosci') }}" class="btn btn-outline-light">
+                    <i class="bi bi-card-text me-1"></i>Предлошци
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="kr-card">
+        <form method="get" action="{{ url_for('kr_dosije.lista') }}" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label" for="krPretraga">Претрага</label>
+                <input type="text" class="form-control" id="krPretraga" name="q" value="{{ q or '' }}"
+                       placeholder="нпр. евиденциони број, назив предмета, инвентарни број">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="krOdeljenje">Одељење</label>
+                <select class="form-select" id="krOdeljenje" name="odeljenje">
+                    <option value="">Сва одељења</option>
+                    {% for key, label in odeljenje_labels.items() %}
+                    <option value="{{ key }}" {% if key == odeljenje_filter %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-success"><i class="bi bi-search me-1"></i>Прикажи</button>
+                <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-outline-secondary">Поништи</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="kr-card">
+        {% if dosijei %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Ев. број</th>
+                        <th>Предмет</th>
+                        <th>Одељење</th>
+                        <th>Извршиоци</th>
+                        <th>Период</th>
+                        <th class="text-end">Акције</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in dosijei %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('kr_dosije.detalj', dosije_id=d.id) }}">{{ d.evidencioni_broj }}</a>
+                        </td>
+                        <td>
+                            {{ d.naziv_predmeta }}
+                            {% if d.inventarni_broj %}<div class="text-muted small">Инв. бр.: {{ d.inventarni_broj }}</div>{% endif %}
+                            {% if d.kolektorski_broj %}<div class="text-muted small">Колект. бр.: {{ d.kolektorski_broj }}</div>{% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ odeljenje_labels.get(d.odeljenje, d.odeljenje) }}</span>
+                        </td>
+                        <td>
+                            {% if d.izvrsioci %}
+                                {{ d.izvrsioci | map(attribute='ime_tekst') | join(', ') }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if d.period_od %}{{ d.period_od.strftime('%d.%m.%Y') }}{% endif %}
+                            {% if d.period_od and d.period_do %}–{% endif %}
+                            {% if d.period_do %}{{ d.period_do.strftime('%d.%m.%Y') }}{% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                <a class="btn btn-sm btn-outline-success" href="{{ url_for('kr_dosije.detalj', dosije_id=d.id) }}">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a class="btn btn-sm btn-outline-danger" href="{{ url_for('kr_dosije.pdf', dosije_id=d.id) }}">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">Нема досијеа за изабране критеријуме.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}{% if dosije %}Измена досијеа{% else %}Нови досије{% endif %} — К-Р досије{% endblock %}
+
+{% block content %}
+<style>
+    .kr-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-autocomplete-wrap { position: relative; }
+    .kr-autocomplete-list {
+        position: absolute;
+        z-index: 1050;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 260px;
+        overflow-y: auto;
+        background: var(--bg-card, #fff);
+        border: 1px solid rgba(26, 71, 42, 0.2);
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: none;
+    }
+    .kr-autocomplete-list li {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+    }
+    .kr-autocomplete-list li:hover,
+    .kr-autocomplete-list li.active {
+        background-color: rgba(45, 106, 79, 0.12);
+    }
+    .kr-izvrsilac-red { margin-bottom: 0.5rem; }
+    .kr-foto-thumb {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid rgba(26, 71, 42, 0.18);
+    }
+    /* --- tamna tema --- */
+    [data-theme="dark"] .kr-card {
+        background: linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+        border-color: rgba(214, 177, 115, 0.16);
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .kr-autocomplete-list {
+        border-color: rgba(214, 177, 115, 0.25);
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="kr-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1">
+                    <i class="bi bi-tools me-2"></i>{% if dosije %}Измена досијеа{% else %}Нови конзерваторско-рестаураторски досије{% endif %}
+                </h2>
+                {% if dosije %}<p class="mb-0">Ев. број: {{ dosije.evidencioni_broj }}</p>{% endif %}
+            </div>
+            <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Сви досијеи
+            </a>
+        </div>
+    </div>
+
+    <form method="post"
+          action="{% if dosije %}{{ url_for('kr_dosije.izmena', dosije_id=dosije.id) }}{% else %}{{ url_for('kr_dosije.novi') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="kr-card">
+            <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Предмет</h5>
+            <div class="row g-3">
+                {% if ctx.is_admin or ctx.is_director %}
+                <div class="col-md-4">
+                    <label class="form-label" for="krOdeljenjePolje">Одељење</label>
+                    <select class="form-select" id="krOdeljenjePolje" name="odeljenje">
+                        {% for key, label in odeljenje_labels.items() %}
+                        <option value="{{ key }}" {% if dosije and dosije.odeljenje == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <label class="form-label d-block">Тип предмета</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="predmet_tip" id="krTipZbirka" value="zbirka"
+                               {% if not dosije or dosije.predmet_tip == 'zbirka' %}checked{% endif %}>
+                        <label class="form-check-label" for="krTipZbirka">Предмет из збирке</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="predmet_tip" id="krTipSlobodan" value="slobodan"
+                               {% if dosije and dosije.predmet_tip == 'slobodan' %}checked{% endif %}>
+                        <label class="form-check-label" for="krTipSlobodan">Слободан унос / екстерни предмет</label>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label" for="krPredmetPretraga">Претрага предмета у збиркама</label>
+                    <div class="kr-autocomplete-wrap">
+                        <input type="text" class="form-control" id="krPredmetPretraga" autocomplete="off"
+                               placeholder="Укуцајте назив, инвентарни или колекторски број…">
+                        <ul class="kr-autocomplete-list" id="krPredmetRezultati"></ul>
+                    </div>
+                    <div class="form-text">Одабиром се попуњавају поља предмета испод.</div>
+                </div>
+
+                <input type="hidden" name="database_name" id="krDatabaseName"
+                       value="{{ dosije.database_name if dosije and dosije.database_name else '' }}">
+
+                <div class="col-md-6">
+                    <label class="form-label" for="krNazivPredmeta">Назив предмета</label>
+                    <input type="text" class="form-control" id="krNazivPredmeta" name="naziv_predmeta" required
+                           value="{{ dosije.naziv_predmeta if dosije and dosije.naziv_predmeta else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="krInventarniBroj">Инвентарни број</label>
+                    <input type="text" class="form-control" id="krInventarniBroj" name="inventarni_broj"
+                           value="{{ dosije.inventarni_broj if dosije and dosije.inventarni_broj else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="krKolektorskiBroj">Колекторски број</label>
+                    <input type="text" class="form-control" id="krKolektorskiBroj" name="kolektorski_broj"
+                           value="{{ dosije.kolektorski_broj if dosije and dosije.kolektorski_broj else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="krNarucilac">Наручилац / власник (за слободан унос)</label>
+                    <input type="text" class="form-control" id="krNarucilac" name="narucilac"
+                           value="{{ dosije.narucilac if dosije and dosije.narucilac else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="kr-card">
+            <h5 class="mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>Опис радова</h5>
+
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0" for="krOpisPre">Опис стања пре радова</label>
+                    <button type="button" class="btn btn-sm btn-outline-secondary kr-predlozak-btn"
+                            data-vrsta="pre" data-target="krOpisPre">
+                        <i class="bi bi-card-text me-1"></i>Из предлошка
+                    </button>
+                </div>
+                <textarea class="form-control" id="krOpisPre" name="opis_pre" rows="4">{{ dosije.opis_pre if dosije and dosije.opis_pre else '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0" for="krOpisPostupak">Опис поступка и употребљених материјала</label>
+                    <button type="button" class="btn btn-sm btn-outline-secondary kr-predlozak-btn"
+                            data-vrsta="postupak" data-target="krOpisPostupak">
+                        <i class="bi bi-card-text me-1"></i>Из предлошка
+                    </button>
+                </div>
+                <textarea class="form-control" id="krOpisPostupak" name="opis_postupak" rows="5">{{ dosije.opis_postupak if dosije and dosije.opis_postupak else '' }}</textarea>
+            </div>
+
+            <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0" for="krOpisPosle">Опис стања након радова</label>
+                    <button type="button" class="btn btn-sm btn-outline-secondary kr-predlozak-btn"
+                            data-vrsta="posle" data-target="krOpisPosle">
+                        <i class="bi bi-card-text me-1"></i>Из предлошка
+                    </button>
+                </div>
+                <textarea class="form-control" id="krOpisPosle" name="opis_posle" rows="4">{{ dosije.opis_posle if dosije and dosije.opis_posle else '' }}</textarea>
+            </div>
+        </div>
+
+        <div class="kr-card">
+            <h5 class="mb-3"><i class="bi bi-people me-2"></i>Извршиоци</h5>
+            <div id="krIzvrsiociLista">
+                {% if izvrsioci %}
+                    {% for iz in izvrsioci %}
+                    <div class="row g-2 kr-izvrsilac-red">
+                        <div class="col-md-5">
+                            <select class="form-select" name="izvrsilac_email">
+                                <option value="">— корисник система —</option>
+                                {% for k in korisnici %}
+                                <option value="{{ k.email }}" {% if iz.user_email == k.email %}selected{% endif %}>{{ k.full_name }} ({{ k.email }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" name="izvrsilac_ime"
+                                   placeholder="или слободан унос имена"
+                                   value="{% if not iz.user_email %}{{ iz.ime_tekst }}{% endif %}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-center">
+                            <button type="button" class="btn btn-outline-danger kr-izvrsilac-ukloni"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="row g-2 kr-izvrsilac-red" id="krIzvrsilacPredlozak" style="display:none;">
+                <div class="col-md-5">
+                    <select class="form-select" name="izvrsilac_email" disabled>
+                        <option value="">— корисник система —</option>
+                        {% for k in korisnici %}
+                        <option value="{{ k.email }}">{{ k.full_name }} ({{ k.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="izvrsilac_ime" placeholder="или слободан унос имена" disabled>
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-danger kr-izvrsilac-ukloni"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="krIzvrsilacDodaj">
+                <i class="bi bi-plus-lg me-1"></i>Додај извршиоца
+            </button>
+        </div>
+
+        <div class="kr-card">
+            <h5 class="mb-3"><i class="bi bi-calendar-range me-2"></i>Период и напомена</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" for="krPeriodOd">Период од</label>
+                    <input type="date" class="form-control" id="krPeriodOd" name="period_od"
+                           value="{{ dosije.period_od.strftime('%Y-%m-%d') if dosije and dosije.period_od else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="krPeriodDo">Период до</label>
+                    <input type="date" class="form-control" id="krPeriodDo" name="period_do"
+                           value="{{ dosije.period_do.strftime('%Y-%m-%d') if dosije and dosije.period_do else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="krPeriodTekst">Период (текстуални опис)</label>
+                    <input type="text" class="form-control" id="krPeriodTekst" name="period_tekst"
+                           value="{{ dosije.period_tekst if dosije and dosije.period_tekst else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="krNapomena">Напомена</label>
+                    <textarea class="form-control" id="krNapomena" name="napomena" rows="3">{{ dosije.napomena if dosije and dosije.napomena else '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="kr-card">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-save me-1"></i>Сачувај
+                </button>
+                <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-outline-secondary">Одустани</a>
+            </div>
+        </div>
+    </form>
+
+    {% if dosije %}
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-images me-2"></i>Фотографије</h5>
+
+        <form method="post" action="{{ url_for('kr_dosije.foto_upload', dosije_id=dosije.id) }}"
+              enctype="multipart/form-data" class="row g-2 align-items-end mb-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="col-md-3">
+                <label class="form-label" for="krFotoFaza">Фаза</label>
+                <select class="form-select" id="krFotoFaza" name="faza">
+                    {% for key, label in faza_labels.items() %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="krFotoSlike">Слике (може више одједном)</label>
+                <input type="file" class="form-control" id="krFotoSlike" name="slike" multiple
+                       accept=".jpg,.jpeg,.png,.tif,.tiff,.webp,.bmp,.gif">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success"><i class="bi bi-cloud-arrow-up me-1"></i>Отпреми</button>
+            </div>
+        </form>
+
+        {% for faza_key, faza_label in faza_labels.items() %}
+        <h6 class="mt-3 mb-2">{{ faza_label }}</h6>
+        {% set slike = fotografije.get(faza_key, []) %}
+        {% if slike %}
+        <div class="d-flex flex-wrap gap-3">
+            {% for foto in slike %}
+            <div class="text-center">
+                <img src="/fototeka/media/{{ foto.foto_id }}/thumb" alt="{{ foto.original_ime or 'фотографија' }}" class="kr-foto-thumb d-block mb-1">
+                <form method="post" action="{{ url_for('kr_dosije.foto_ukloni', dosije_id=dosije.id, veza_id=foto.veza_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Уклонити везу ове фотографије са досијеом?');">
+                        <i class="bi bi-x-lg me-1"></i>Уклони везу
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Нема фотографија у овој фази.</p>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="kr-card">
+        <p class="text-muted mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Фотографије се могу додати након што досије буде сачуван.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    // --- Autocomplete предмета ---
+    var pretraga = document.getElementById('krPredmetPretraga');
+    var lista = document.getElementById('krPredmetRezultati');
+    var timer = null;
+
+    function zatvoriListu() {
+        lista.style.display = 'none';
+        lista.innerHTML = '';
+    }
+
+    function popuniPredmet(item) {
+        document.getElementById('krDatabaseName').value = item.database_name || '';
+        document.getElementById('krInventarniBroj').value = item.inventarni_broj || '';
+        document.getElementById('krKolektorskiBroj').value = item.kolektorski_broj || '';
+        if (item.naziv) {
+            document.getElementById('krNazivPredmeta').value = item.naziv;
+        }
+        pretraga.value = item.prikaz || item.naziv || '';
+        zatvoriListu();
+    }
+
+    function prikaziRezultate(rezultati) {
+        lista.innerHTML = '';
+        if (!rezultati || !rezultati.length) {
+            zatvoriListu();
+            return;
+        }
+        rezultati.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item.prikaz || item.naziv || '';
+            li.addEventListener('click', function () { popuniPredmet(item); });
+            lista.appendChild(li);
+        });
+        lista.style.display = 'block';
+    }
+
+    if (pretraga) {
+        pretraga.addEventListener('input', function () {
+            var q = pretraga.value.trim();
+            if (timer) { clearTimeout(timer); }
+            if (q.length < 2) { zatvoriListu(); return; }
+            timer = setTimeout(function () {
+                fetch('/kr-dosije/api/predmet?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) { prikaziRezultate(d.rezultati || []); })
+                    .catch(function () { zatvoriListu(); });
+            }, 250);
+        });
+        document.addEventListener('click', function (e) {
+            if (!lista.contains(e.target) && e.target !== pretraga) { zatvoriListu(); }
+        });
+    }
+
+    // --- Предлошци у textarea ---
+    function trenutnoOdeljenje() {
+        var sel = document.getElementById('krOdeljenjePolje');
+        return sel ? sel.value : '';
+    }
+
+    document.querySelectorAll('.kr-predlozak-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var vrsta = btn.getAttribute('data-vrsta');
+            var target = document.getElementById(btn.getAttribute('data-target'));
+            var url = '/kr-dosije/api/predlosci?vrsta=' + encodeURIComponent(vrsta);
+            var od = trenutnoOdeljenje();
+            if (od) { url += '&odeljenje=' + encodeURIComponent(od); }
+            fetch(url)
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var predlosci = d.predlosci || [];
+                    if (!predlosci.length) {
+                        alert('Нема доступних предложака за ову врсту.');
+                        return;
+                    }
+                    var poruka = 'Изаберите предложак (унесите редни број):\n';
+                    predlosci.forEach(function (p, i) {
+                        poruka += (i + 1) + '. ' + p.naziv + '\n';
+                    });
+                    var izbor = prompt(poruka, '1');
+                    if (izbor === null) { return; }
+                    var idx = parseInt(izbor, 10) - 1;
+                    if (isNaN(idx) || idx < 0 || idx >= predlosci.length) { return; }
+                    var sadrzaj = predlosci[idx].sadrzaj || '';
+                    if (target.value.trim() && !confirm('Заменити постојећи текст? (Откажи = додај на крај)')) {
+                        target.value = target.value.replace(/\s*$/, '') + '\n' + sadrzaj;
+                    } else {
+                        target.value = sadrzaj;
+                    }
+                })
+                .catch(function () { alert('Грешка при учитавању предложака.'); });
+        });
+    });
+
+    // --- Извршиоци: додавање/уклањање редова ---
+    var lista_iz = document.getElementById('krIzvrsiociLista');
+    var predlozak = document.getElementById('krIzvrsilacPredlozak');
+    var dodaj = document.getElementById('krIzvrsilacDodaj');
+
+    function vezuUklanjanje(red) {
+        var btn = red.querySelector('.kr-izvrsilac-ukloni');
+        if (btn) {
+            btn.addEventListener('click', function () { red.remove(); });
+        }
+    }
+
+    if (lista_iz) {
+        lista_iz.querySelectorAll('.kr-izvrsilac-red').forEach(vezuUklanjanje);
+    }
+
+    if (dodaj && predlozak) {
+        dodaj.addEventListener('click', function () {
+            var novi = predlozak.cloneNode(true);
+            novi.id = '';
+            novi.style.display = '';
+            novi.querySelectorAll('select, input').forEach(function (el) { el.disabled = false; });
+            lista_iz.appendChild(novi);
+            vezuUklanjanje(novi);
+        });
+    }
+})();
+</script>
+{% endblock %}
