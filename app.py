@@ -68,6 +68,7 @@ from blueprints.projects import (
 from blueprints.approval_center import approval_center_bp
 from blueprints.documents import documents_bp
 from blueprints.fototeka import fototeka_bp
+from blueprints.kr_dosije import kr_dosije_bp
 from blueprints.qr import qr_bp
 from blueprints.mail import MAILBOX_ADMIN_FORBIDDEN_MESSAGE, mail_bp
 from blueprints.chat import chat_bp
@@ -381,6 +382,7 @@ app.register_blueprint(archive_signature_bp)
 app.register_blueprint(approval_center_bp)
 app.register_blueprint(documents_bp)
 app.register_blueprint(fototeka_bp)
+app.register_blueprint(kr_dosije_bp)
 app_blueprint_support.register_standard_blueprints(
     app,
     {
@@ -436,6 +438,10 @@ povezi_fotografije_cli.register_cli(app)
 # CLI: flask obrisi-legacy-slike (brisanje starog `images` skladista)
 import obrisi_legacy_slike_cli
 obrisi_legacy_slike_cli.register_cli(app)
+
+# CLI: flask uvezi-kr-dosije <putanja> (uvoz konzervatorskog xlsx + slika)
+import kr_dosije_cli
+kr_dosije_cli.register_cli(app)
 
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
@@ -634,6 +640,16 @@ MODULE_ACCESS = {
         'icon': 'bi-camera',
         'default_access': True,  # Everyone has access by default
         'restricted_users': []   # No restrictions
+    },
+    'kr_dosije': {
+        'name': 'К-Р досије',
+        'description': 'Конзерваторско-рестаураторски досијеи о захватима на предметима',
+        'icon': 'bi-clipboard2-pulse',
+        'default_access': False,  # Restricted: конзерватори + шефови + директор/админ
+        'authorized_users': [
+            'nenad.mladenovic@nhmbeo.rs',   # конзерватор, геолошко одељење
+            'gorana.petkovski@nhmbeo.rs',   # конзерватор, биолошко одељење
+        ]
     },
     'museum_databases': {
         'name': 'Музејске базе података',

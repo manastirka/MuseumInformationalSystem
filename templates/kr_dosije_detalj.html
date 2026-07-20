@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dosije.evidencioni_broj }} — К-Р досије{% endblock %}
+
+{% block content %}
+<style>
+    .kr-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-opis-text { white-space: pre-line; }
+    .kr-foto-thumb {
+        width: 140px;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid rgba(26, 71, 42, 0.18);
+    }
+    .kr-meta-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-secondary, #6c757d);
+    }
+    /* --- tamna tema --- */
+    [data-theme="dark"] .kr-card {
+        background: linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+        border-color: rgba(214, 177, 115, 0.16);
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+        color: var(--text-primary);
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="kr-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                    <h2 class="mb-0"><i class="bi bi-tools me-2"></i>{{ dosije.evidencioni_broj }}</h2>
+                    <span class="badge bg-light text-dark">{{ odeljenje_labels.get(dosije.odeljenje, dosije.odeljenje) }}</span>
+                </div>
+                <p class="mb-0">{{ dosije.naziv_predmeta }}</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left me-1"></i>Списак
+                </a>
+                <a href="{{ url_for('kr_dosije.pdf', dosije_id=dosije.id) }}" class="btn btn-light">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                </a>
+                {% if can_edit %}
+                <a href="{{ url_for('kr_dosije.izmena', dosije_id=dosije.id) }}" class="btn btn-light">
+                    <i class="bi bi-pencil-square me-1"></i>Измена
+                </a>
+                {% endif %}
+                {% if can_delete %}
+                <form method="post" action="{{ url_for('kr_dosije.brisanje', dosije_id=dosije.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger"
+                            onclick="return confirm('Обрисати овај досије? Ова радња се не може опозвати.');">
+                        <i class="bi bi-trash me-1"></i>Брисање
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Предмет</h5>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="kr-meta-label">Тип предмета</div>
+                <div>{% if dosije.predmet_tip == 'slobodan' %}Слободан унос{% else %}Из збирке{% endif %}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="kr-meta-label">База (збирка)</div>
+                <div>{{ dosije.database_name or '—' }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="kr-meta-label">Инвентарни број</div>
+                <div>{{ dosije.inventarni_broj or '—' }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="kr-meta-label">Колекторски број</div>
+                <div>{{ dosije.kolektorski_broj or '—' }}</div>
+            </div>
+            <div class="col-md-6">
+                <div class="kr-meta-label">Наручилац / власник</div>
+                <div>{{ dosije.narucilac or '—' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>Опис стања пре радова</h5>
+        <div class="kr-opis-text">{{ dosije.opis_pre or '—' }}</div>
+    </div>
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>Опис поступка и употребљених материјала</h5>
+        <div class="kr-opis-text">{{ dosije.opis_postupak or '—' }}</div>
+    </div>
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-clipboard2-heart me-2"></i>Опис стања након радова</h5>
+        <div class="kr-opis-text">{{ dosije.opis_posle or '—' }}</div>
+    </div>
+
+    <div class="kr-card">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h5 class="mb-3"><i class="bi bi-people me-2"></i>Извршиоци</h5>
+                {% if izvrsioci %}
+                <ul class="mb-0">
+                    {% for iz in izvrsioci %}
+                    <li>{{ iz.ime_tekst }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">Нема унетих извршилаца.</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <h5 class="mb-3"><i class="bi bi-calendar-range me-2"></i>Период</h5>
+                <p class="mb-1">
+                    {% if dosije.period_od %}{{ dosije.period_od.strftime('%d.%m.%Y') }}{% endif %}
+                    {% if dosije.period_od and dosije.period_do %}–{% endif %}
+                    {% if dosije.period_do %}{{ dosije.period_do.strftime('%d.%m.%Y') }}{% endif %}
+                    {% if not dosije.period_od and not dosije.period_do %}—{% endif %}
+                </p>
+                {% if dosije.period_tekst %}<p class="text-muted mb-0">{{ dosije.period_tekst }}</p>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if dosije.napomena %}
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-sticky me-2"></i>Напомена</h5>
+        <div class="kr-opis-text">{{ dosije.napomena }}</div>
+    </div>
+    {% endif %}
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-images me-2"></i>Фотографије</h5>
+        {% set ima_slika = fotografije.get('pre') or fotografije.get('tokom') or fotografije.get('posle') %}
+        {% if ima_slika %}
+            {% for faza_key, faza_label in faza_labels.items() %}
+            {% set slike = fotografije.get(faza_key, []) %}
+            {% if slike %}
+            <h6 class="mt-3 mb-2">{{ faza_label }}</h6>
+            <div class="d-flex flex-wrap gap-3">
+                {% for foto in slike %}
+                <a href="/fototeka/media/{{ foto.foto_id }}/jpg" target="_blank" rel="noopener">
+                    <img src="/fototeka/media/{{ foto.foto_id }}/thumb" alt="{{ foto.original_ime or 'фотографија' }}" class="kr-foto-thumb">
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+        <p class="text-muted mb-0">Нема приложених фотографија.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

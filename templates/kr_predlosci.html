@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Предлошци — К-Р досије{% endblock %}
+
+{% block content %}
+<style>
+    .kr-header {
+        background: linear-gradient(135deg, #173b2a 0%, #24573f 55%, #327255 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .kr-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,244,239,0.98));
+        border: 1px solid rgba(26, 71, 42, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 18px 35px rgba(24, 43, 29, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    /* --- tamna tema --- */
+    [data-theme="dark"] .kr-card {
+        background: linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+        border-color: rgba(214, 177, 115, 0.16);
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+        color: var(--text-primary);
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="kr-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1"><i class="bi bi-card-text me-2"></i>Предлошци описа</h2>
+                <p class="mb-0">Готови текстови за брже попуњавање описа у конзерваторско-рестаураторским досијеима.</p>
+            </div>
+            <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-light">
+                <i class="bi bi-arrow-left me-1"></i>Досијеи
+            </a>
+        </div>
+    </div>
+
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-plus-circle me-2"></i>Нови предложак</h5>
+        <form method="post" action="{{ url_for('kr_dosije.predlozak_novi') }}" class="row g-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="col-md-4">
+                <label class="form-label" for="krNovaVrsta">Врста</label>
+                <select class="form-select" id="krNovaVrsta" name="vrsta" required>
+                    {% for key, label in vrsta_labels.items() %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="krNovoOdeljenje">Одељење</label>
+                <select class="form-select" id="krNovoOdeljenje" name="odeljenje">
+                    <option value="">Сва одељења</option>
+                    {% for key, label in odeljenje_labels.items() %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="krNoviNaziv">Назив</label>
+                <input type="text" class="form-control" id="krNoviNaziv" name="naziv" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="krNoviSadrzaj">Садржај</label>
+                <textarea class="form-control" id="krNoviSadrzaj" name="sadrzaj" rows="4" required></textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Сачувај предложак</button>
+            </div>
+        </form>
+    </div>
+
+    {% for vrsta_key, vrsta_label in vrsta_labels.items() %}
+    <div class="kr-card">
+        <h5 class="mb-3"><i class="bi bi-collection me-2"></i>{{ vrsta_label }}</h5>
+        {% set stavke = predlosci | selectattr('vrsta', 'equalto', vrsta_key) | list %}
+        {% if stavke %}
+        {% for p in stavke %}
+        <div class="border rounded p-3 mb-3">
+            <form method="post" action="{{ url_for('kr_dosije.predlozak_izmena', predlozak_id=p.id) }}" class="row g-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="col-md-8">
+                    <label class="form-label">Назив</label>
+                    <input type="text" class="form-control" name="naziv" value="{{ p.naziv }}" required>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <span class="badge bg-secondary">{{ odeljenje_labels.get(p.odeljenje, 'Сва одељења') }}</span>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Садржај</label>
+                    <textarea class="form-control" name="sadrzaj" rows="4" required>{{ p.sadrzaj }}</textarea>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-save me-1"></i>Сачувај измене</button>
+                </div>
+            </form>
+            <form method="post" action="{{ url_for('kr_dosije.predlozak_brisanje', predlozak_id=p.id) }}" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        onclick="return confirm('Обрисати овај предложак?');">
+                    <i class="bi bi-trash me-1"></i>Обриши
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted mb-0">Нема предложака ове врсте.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
