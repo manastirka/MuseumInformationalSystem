@@ -106,3 +106,18 @@ def test_pdf_koristi_ugradjeni_font():
         assert '+' in fn, f'фонт није уграђен (нема subset префикс): {fn}'
     assert not any('Helvetica' in fn for fn in fonts), \
         f'ћирилица се црта Helvetica-ом (квадратићи): {fonts}'
+
+
+def test_bazni_exporter_takodje_ima_cirilicu():
+    """Иста поправка важи за СВЕ PDF извозе (не само К-Р): базни exporter мора
+    да исцрта ћирилицу уграђеним фонтом (нпр. сертификат узорка)."""
+    from pdf_export import export_specimen_certificate_pdf
+    specimen = {'inventarni_broj': 'M2051', 'naziv': 'Кварц са пиритом',
+                'description': 'Конзервација č ž š'}
+    buf = export_specimen_certificate_pdf(specimen, 'Минералошка збирка')
+    text, _ = _extract(buf)
+    assert 'ертификат' in text, f'нема ћирилице у базном извозу: {text[:150]!r}'
+    fonts = _fontovi_kojima_se_crta_cirilica(buf)
+    assert fonts, 'ниједан ћирилични глиф исцртан у базном извозу?'
+    for fn in fonts:
+        assert 'LiberationSerif' in fn, f'базни извоз не користи уграђени фонт: {fn}'
