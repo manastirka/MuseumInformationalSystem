@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Преглед увоза радне листе{% endblock %}
+{% block content %}
+{% set CATS = [('rad_na_mestu','Рад на месту'),('van_muzeja','Ван музеја'),
+  ('godisnji_odmor','Годишњи'),('drzavni_praznik','Празник'),
+  ('placeno_odsustvo','Плаћено'),('ostalo_odsustvo','Остало'),
+  ('bolovanje_manje_30','Бол. <30'),('bolovanje_vece_30','Бол. >30')] %}
+<div class="container py-4" style="max-width: 900px;">
+  <h2 class="mb-3"><i class="bi bi-eye me-2"></i>Преглед прочитане радне листе</h2>
+
+  {% if not name_ok %}
+  <div class="alert alert-warning">
+    Име из документа (<b>{{ parsed.employee_name }}</b>) не изгледа као ваше име
+    (<b>{{ session_name }}</b>). Листа ће се увести као ВАША текућа листа —
+    проверите да ли сте отпремили праву датотеку.
+  </div>
+  {% endif %}
+  {% for w in parsed.warnings %}
+    <div class="alert alert-warning py-2 mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ w }}</div>
+  {% endfor %}
+
+  <div class="card card-body mb-3">
+    <div class="row">
+      <div class="col-md-6"><b>Запослени:</b> {{ parsed.employee_name }}</div>
+      <div class="col-md-6"><b>Месец/година:</b> {{ parsed.month }}/{{ parsed.year }}</div>
+      <div class="col-md-6"><b>Организациона јединица:</b> {{ parsed.organization_unit or '—' }}</div>
+      <div class="col-md-6"><b>Радно место:</b> {{ parsed.position or '—' }}</div>
+      <div class="col-md-6"><b>Радних сати:</b> {{ parsed.totals.radni }}</div>
+      <div class="col-md-6"><b>Укупно евидентирано:</b> {{ parsed.totals.sve }}</div>
+    </div>
+  </div>
+
+  <div class="table-responsive mb-3">
+    <table class="table table-sm table-bordered align-middle">
+      <thead><tr><th>Дан</th>{% for _,lbl in CATS %}<th class="text-center small">{{ lbl }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for dan, rec in parsed.daily_data.items() %}
+        <tr><td>{{ dan }}</td>
+          {% for code,_ in CATS %}<td class="text-center">{{ rec.get(code, '') or '' }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if parsed.work_description %}
+  <div class="card card-body mb-3">
+    <b>Обављени послови:</b>
+    <pre class="mb-0 mt-2" style="white-space: pre-wrap; font-family: inherit;">{{ parsed.work_description }}</pre>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('timesheet.uvoz_potvrdi') }}" class="d-flex gap-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Потврди и пошаљи на одобравање</button>
+    <a href="{{ url_for('timesheet.uvoz_radne') }}" class="btn btn-outline-secondary">Одустани</a>
+  </form>
+</div>
+{% endblock %}

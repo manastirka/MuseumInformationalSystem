@@ -5,6 +5,7 @@ from flask import Blueprint, redirect, session, url_for
 import notification_views
 import timesheet_admin_views
 import timesheet_employee_views
+import timesheet_uvoz_views
 from security_utils import admin_or_department_head_required, admin_required, login_required
 from timesheet_repository import TimesheetRepository
 
@@ -224,6 +225,50 @@ def timesheet_entry():
 def timesheet_view():
     """Read-only view of a saved/submitted report."""
     return timesheet_employee_views.render_timesheet_view()
+
+
+# --- Увоз радне листе из Word-а (запослени: текућа листа) ---
+@timesheet_bp.route('/timesheet/uvoz')
+@login_required
+def uvoz_radne():
+    """Форма за увоз текуће радне листе из .docx."""
+    return timesheet_uvoz_views.render_uvoz_form()
+
+
+@timesheet_bp.route('/timesheet/uvoz/pregled', methods=['POST'])
+@login_required
+def uvoz_pregled():
+    """Парсирај отпремљени .docx и прикажи преглед пре потврде."""
+    return timesheet_uvoz_views.handle_uvoz_pregled()
+
+
+@timesheet_bp.route('/timesheet/uvoz/potvrdi', methods=['POST'])
+@login_required
+def uvoz_potvrdi():
+    """Потврди увоз текуће листе (иде у ланац одобравања)."""
+    return timesheet_uvoz_views.handle_uvoz_potvrdi()
+
+
+# --- Архивски масовни увоз (админ/шеф) ---
+@timesheet_bp.route('/admin/timesheet/uvoz-arhiva')
+@admin_or_department_head_required
+def uvoz_arhiva():
+    """Форма за масовни архивски увоз .docx радних листа."""
+    return timesheet_uvoz_views.render_uvoz_arhiva_form()
+
+
+@timesheet_bp.route('/admin/timesheet/uvoz-arhiva/pregled', methods=['POST'])
+@admin_or_department_head_required
+def uvoz_arhiva_pregled():
+    """Dry-run извештај архивског увоза (поклапања/упозорења/одбијања)."""
+    return timesheet_uvoz_views.handle_uvoz_arhiva_pregled()
+
+
+@timesheet_bp.route('/admin/timesheet/uvoz-arhiva/potvrdi', methods=['POST'])
+@admin_or_department_head_required
+def uvoz_arhiva_potvrdi():
+    """Потврди архивски увоз (уписује као одобрене)."""
+    return timesheet_uvoz_views.handle_uvoz_arhiva_potvrdi()
 
 
 @timesheet_bp.route('/api/timesheet/load')

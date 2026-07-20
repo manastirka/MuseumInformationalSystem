@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Извештај архивског увоза{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-3"><i class="bi bi-archive me-2"></i>Извештај архивског увоза</h2>
+  <p class="text-muted">Прихватљивих: <b>{{ br_ok }}</b> · одбијених: <b>{{ br_odbijeno }}</b>.
+     Проверите поклапања запослених пре потврде. Ставке без изабраног запосленог се прескачу.</p>
+
+  <form method="post" action="{{ url_for('timesheet.uvoz_arhiva_potvrdi') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle">
+        <thead><tr>
+          <th>Датотека</th><th>Запослени (из документа)</th><th>Мапирано на</th>
+          <th>Месец/год.</th><th>Радни/укупно</th><th>Напомене</th>
+        </tr></thead>
+        <tbody>
+        {% set ns = namespace(oki=0) %}
+        {% for s in stavke %}
+          {% if s.ok %}
+          <tr>
+            <td class="small">{{ s.filename }}</td>
+            <td>{{ s.employee_name }}</td>
+            <td>
+              <select name="email_{{ ns.oki }}" class="form-select form-select-sm">
+                <option value="">— прескочи —</option>
+                {% for c in s.match.candidates %}
+                <option value="{{ c.email }}"
+                  {% if c.email == s.match.email %}selected{% endif %}>
+                  {{ c.full_name }} ({{ (c.score*100)|round|int }}%)
+                </option>
+                {% endfor %}
+              </select>
+              {% if not s.match.confident %}
+                <div class="text-warning small"><i class="bi bi-exclamation-triangle"></i> проверите ручно</div>
+              {% endif %}
+            </td>
+            <td>{{ s.mesec }}/{{ s.godina }}</td>
+            <td>{{ s.radni }}/{{ s.sve }}</td>
+            <td class="small text-muted">{{ s.warnings | join('; ') }}</td>
+          </tr>
+          {% set ns.oki = ns.oki + 1 %}
+          {% else %}
+          <tr class="table-danger">
+            <td class="small">{{ s.filename }}</td>
+            <td colspan="5" class="small"><i class="bi bi-x-circle me-1"></i>Одбијено: {{ s.razlog }}</td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-success" {% if br_ok == 0 %}disabled{% endif %}>
+        <i class="bi bi-check2-circle me-1"></i>Потврди архивски увоз
+      </button>
+      <a href="{{ url_for('timesheet.uvoz_arhiva') }}" class="btn btn-outline-secondary">Одустани</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
