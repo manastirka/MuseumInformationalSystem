@@ -114,10 +114,14 @@ def _fetch_fotografije(cur, dosije_id):
 # ---------------------------------------------------------------------------
 # Листа
 # ---------------------------------------------------------------------------
+PER_PAGE = 25
+
+
 def render_lista():
     ctx = _ctx()
     q = (request.args.get('q') or '').strip()
     odeljenje_filter = (request.args.get('odeljenje') or '').strip()
+    page = _parse_page(request.args.get('page'))
 
     where, params = [], []
     vis = _visible_odeljenja(ctx)
@@ -127,7 +131,8 @@ def render_lista():
             # директорских права не види ниједан досије.
             return render_template('kr_dosije_lista.html', dosijei=[], q=q,
                                    odeljenje_filter=odeljenje_filter, ctx=ctx,
-                                   odeljenje_labels=core.ODELJENJE_LABELS)
+                                   odeljenje_labels=core.ODELJENJE_LABELS,
+                                   page=1, total_pages=1, total=0)
         where.append('odeljenje = ANY(%s)')
         params.append(list(vis))
     if odeljenje_filter in core.ODELJENJE_LABELS:
@@ -139,20 +144,32 @@ def render_lista():
         like = f'%{q}%'
         params += [like, like, like, like]
 
-    sql = 'SELECT * FROM kr_dosije'
-    if where:
-        sql += ' WHERE ' + ' AND '.join(where)
-    sql += ' ORDER BY created_at DESC, id DESC LIMIT 500'
-
+    where_sql = (' WHERE ' + ' AND '.join(where)) if where else ''
     with get_postgres_connection() as conn, conn.cursor() as cur:
-        cur.execute(sql, params)
+        cur.execute('SELECT COUNT(*) FROM kr_dosije' + where_sql, params)
+        total = cur.fetchone()[0]
+        total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        page = min(page, total_pages)
+        cur.execute(
+            'SELECT * FROM kr_dosije' + where_sql +
+            ' ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s',
+            params + [PER_PAGE, (page - 1) * PER_PAGE],
+        )
         dosijei = [_row_dict(cur, r) for r in cur.fetchall()]
         for d in dosijei:
             d['izvrsioci'] = _fetch_izvrsioci(cur, d['id'])
 
     return render_template('kr_dosije_lista.html', dosijei=dosijei, q=q,
                            odeljenje_filter=odeljenje_filter, ctx=ctx,
-                           odeljenje_labels=core.ODELJENJE_LABELS)
+                           odeljenje_labels=core.ODELJENJE_LABELS,
+                           page=page, total_pages=total_pages, total=total)
+
+
+def _parse_page(raw):
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return 1
 
 
 # ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@
                 <p class="mb-0">{{ dosije.naziv_predmeta }}</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-outline-light">
+                <a href="{{ url_for('kr_dosije.lista') }}" class="btn btn-outline-light kr-nazad">
                     <i class="bi bi-arrow-left me-1"></i>Списак
                 </a>
                 <a href="{{ url_for('kr_dosije.pdf', dosije_id=dosije.id) }}" class="btn btn-light">
@@ -174,4 +174,21 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+(function () {
+    // „Списак": ако смо стигли са листе, врати се history.back() да се сачува
+    // тачно стање (страна, филтери, скрол) + да листа истакне овај досије.
+    // Иначе (директан URL) обичан линк води на листу.
+    var nazad = document.querySelector('.kr-nazad');
+    if (!nazad) return;
+    nazad.addEventListener('click', function (e) {
+        var ref = document.referrer || '';
+        if (/\/kr-dosije(\?|$)/.test(ref) && history.length > 1) {
+            e.preventDefault();
+            history.back();
+        }
+    });
+})();
+</script>
 {% endblock %}
