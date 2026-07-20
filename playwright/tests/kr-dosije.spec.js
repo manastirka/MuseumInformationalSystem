@@ -116,4 +116,44 @@ test.describe('К-Р досије', () => {
     await page.goto('/dashboard');
     await expect(page.locator('a[aria-label="К-Р досије"]')).toHaveCount(0);
   });
+
+  // --- повратак на место + истицање ---
+  async function otvoriDosijeSaStrane2(page) {
+    await page.goto('/kr-dosije?page=2');
+    await expect(page.locator('.pagination .page-item.active')).toHaveText('2');
+    const row = page.locator('tr[id^="kr-dosije-"]').first();
+    const rowId = await row.getAttribute('id');            // нпр. "kr-dosije-46"
+    await page.locator(`#${rowId} a.kr-open`).first().click();
+    await expect(page).toHaveURL(/\/kr-dosije\/\d+/);
+    return rowId;
+  }
+
+  test('дугме „Списак" враћа на исту страну + истиче ред + скрола на њега', async ({ page }) => {
+    test.skip(!adminEmail || !adminPassword, 'Админ креденцијали су обавезни.');
+    await login(page, adminEmail, adminPassword);
+
+    const rowId = await otvoriDosijeSaStrane2(page);
+    await page.locator('.kr-nazad').first().click();
+
+    // иста страна пагинације
+    await expect(page).toHaveURL(/[?&]page=2/);
+    await expect(page.locator('.pagination .page-item.active')).toHaveText('2');
+    // ред је истакнут и доскроловано на њега
+    const row = page.locator(`#${rowId}`);
+    await expect(row).toHaveClass(/kr-vraceno/);
+    await expect(row).toBeInViewport();
+  });
+
+  test('browser back враћа на исту страну + истиче ред', async ({ page }) => {
+    test.skip(!adminEmail || !adminPassword, 'Админ креденцијали су обавезни.');
+    await login(page, adminEmail, adminPassword);
+
+    const rowId = await otvoriDosijeSaStrane2(page);
+    await page.goBack();
+
+    await expect(page).toHaveURL(/[?&]page=2/);
+    const row = page.locator(`#${rowId}`);
+    await expect(row).toHaveClass(/kr-vraceno/);
+    await expect(row).toBeInViewport();
+  });
 });
