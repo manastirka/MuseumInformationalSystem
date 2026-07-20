@@ -4,6 +4,7 @@ PDF Export Module for Museum Information System
 Supports Serbian Cyrillic text and generates professional reports
 """
 
+import os
 from io import BytesIO
 from datetime import datetime
 from xml.sax.saxutils import escape
@@ -871,6 +872,39 @@ class KRDosijePDFExporter(MuseumPDFExporter):
     _ODELJENJE = {'geo': 'Геолошко одељење', 'bio': 'Биолошко одељење'}
     _FAZA = {'pre': 'Пре радова', 'tokom': 'Током радова', 'posle': 'После радова'}
     _PREDMET_TIP = {'zbirka': 'Из збирке', 'slobodan': 'Слободан унос'}
+
+    def __init__(self):
+        super().__init__()
+        # Базни setup_fonts зависи од системских (msttcore/liberation) фонтова
+        # који на ПРОДУ не морају постојати — тада reportlab пада на Helvetica
+        # без ћирилице (квадратићи). Зато уграђујемо (embed) Liberation Serif
+        # ИЗ РЕПОА: пуна ћирилица + латинични дијакритици (č ž š), серифни
+        # институционални изглед (метрички компатибилан с Times-ом).
+        self._register_cyrillic_fonts()
+
+    def _register_cyrillic_fonts(self):
+        fonts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts')
+        regular = os.path.join(fonts_dir, 'LiberationSerif-Regular.ttf')
+        bold = os.path.join(fonts_dir, 'LiberationSerif-Bold.ttf')
+        if not (os.path.isfile(regular) and os.path.isfile(bold)):
+            # Уграђени фонт недостаје — остави базни (не руши извоз), али је
+            # ово стварна регресија коју треба одмах видети у логу.
+            print(f'[KRDosijePDF] UPOZORENJE: уграђени фонт није нађен у {fonts_dir} — '
+                  f'ћирилица можда неће бити исправна')
+            return
+        pdfmetrics.registerFont(TTFont('KRSerif', regular))
+        pdfmetrics.registerFont(TTFont('KRSerif-Bold', bold))
+        # <b> унутар Paragraph-а користи болд варијанту (иначе faux-bold).
+        pdfmetrics.registerFontFamily(
+            'KRSerif', normal='KRSerif', bold='KRSerif-Bold',
+            italic='KRSerif', boldItalic='KRSerif-Bold',
+        )
+        # Пресними базне (Times/Helvetica) — create_styles и add_header_footer
+        # читају ова поља, па сви стилови (наслови, поднаслови, секције, табеле,
+        # заглавље/подножје) добијају уграђени ћирилични фонт.
+        self.font_name = 'KRSerif'
+        self.font_bold = 'KRSerif-Bold'
+        self.font_sans = 'KRSerif'
 
     def export_kr_dosije(self, dosije: Dict) -> BytesIO:
         buffer = self.create_pdf_buffer()
