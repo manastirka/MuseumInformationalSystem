@@ -22,12 +22,15 @@ import fototeka_views
 
 class BezIjedneVezeSqlTests(unittest.TestCase):
 
-    def test_pokriva_sve_cetiri_vrste_veze(self):
+    def test_pokriva_sve_vrste_veze(self):
         sql = fototeka_views.bez_ijedne_veze_sql('f')
+        # SVE veza-tabele, uklj. foto_veza_kr_dosije (K-R dosije) — inace
+        # CLI-unete slike ispadaju kao sirocad u prijemnom redu.
         for tabela in ('foto_veza_predmet', 'foto_veza_teren',
-                       'foto_veza_projekat', 'foto_veza_izlozba'):
+                       'foto_veza_projekat', 'foto_veza_izlozba',
+                       'foto_veza_kr_dosije'):
             self.assertIn(tabela, sql)
-        self.assertEqual(sql.count('NOT EXISTS'), 4)
+        self.assertEqual(sql.count('NOT EXISTS'), 5)
 
     def test_ne_oslanja_se_na_zastavicu(self):
         """Zastavica ume da laze — uslov sme da gleda iskljucivo veze."""

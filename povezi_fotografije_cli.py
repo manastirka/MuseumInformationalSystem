@@ -43,6 +43,9 @@ def fotografije_bez_veze(cur):
           AND NOT EXISTS (SELECT 1 FROM foto_veza_teren t WHERE t.fotografija_id = f.id)
           AND NOT EXISTS (SELECT 1 FROM foto_veza_projekat p WHERE p.fotografija_id = f.id)
           AND NOT EXISTS (SELECT 1 FROM foto_veza_izlozba i WHERE i.fotografija_id = f.id)
+          -- K-R vezana slika NIJE sirotan: ne diraj je (inace bi je ovaj alat
+          -- pokusao da preveze na mineral). Isti razlog kao bez_ijedne_veze_sql.
+          AND NOT EXISTS (SELECT 1 FROM foto_veza_kr_dosije k WHERE k.fotografija_id = f.id)
           AND NOT EXISTS (
                 SELECT 1
                 FROM foto_veza_predmet v
