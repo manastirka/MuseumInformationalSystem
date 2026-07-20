@@ -607,11 +607,17 @@ def render_galerija():
 # `u_prijemnom_redu` je umela da laze: stari uvoz ju je postavljao na FALSE za
 # svako ime koje je LICILO na inventarni broj, pa i kad predmet ne postoji —
 # takve fotografije su ostajale nevidljive kustosu. Veze ne lazu.
+#
+# JEDAN IZVOR ISTINE za "je li fotografija ikako povezana": OVDE se nabrajaju
+# SVE veze-tabele. Nova veza-tabela (npr. foto_veza_kr_dosije za K-R dosije)
+# MORA biti dodata i ovde, inace slike unete izvan UI-ja (CLI: uvezi-kr-dosije)
+# pogresno ispadaju kao sirocad iako su u bazi uredno vezane. (test_prijemni_red)
 _BEZ_IJEDNE_VEZE_SQL = """
     NOT EXISTS (SELECT 1 FROM foto_veza_predmet v WHERE v.fotografija_id = {alias}.id)
     AND NOT EXISTS (SELECT 1 FROM foto_veza_teren t WHERE t.fotografija_id = {alias}.id)
     AND NOT EXISTS (SELECT 1 FROM foto_veza_projekat p WHERE p.fotografija_id = {alias}.id)
     AND NOT EXISTS (SELECT 1 FROM foto_veza_izlozba i WHERE i.fotografija_id = {alias}.id)
+    AND NOT EXISTS (SELECT 1 FROM foto_veza_kr_dosije k WHERE k.fotografija_id = {alias}.id)
 """
 
 
