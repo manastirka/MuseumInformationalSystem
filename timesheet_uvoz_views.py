@@ -22,8 +22,10 @@ _SESSION_KEY_TEKUCA = 'uvoz_radne_tekuca'
 _SESSION_KEY_ARHIVA = 'uvoz_radne_arhiva'
 
 
-def _is_docx(filename):
-    return (filename or '').lower().endswith('.docx')
+def _is_word(filename):
+    # Мек филтер по екстензији; ПРАВА одлука о формату је по magic бајтовима
+    # у парсеру (људи преименују фајлове).
+    return (filename or '').lower().endswith(('.doc', '.docx'))
 
 
 def _parse_upload(file_storage):
@@ -41,8 +43,8 @@ def render_uvoz_form():
 
 def handle_uvoz_pregled():
     f = request.files.get('docx')
-    if f is None or not _is_docx(f.filename):
-        flash('Изаберите .docx датотеку радне листе.', 'warning')
+    if f is None or not _is_word(f.filename):
+        flash('Изаберите .doc или .docx датотеку радне листе.', 'warning')
         return redirect(url_for('timesheet.uvoz_radne'))
     try:
         parsed = _parse_upload(f)
@@ -89,9 +91,9 @@ def handle_uvoz_arhiva_pregled():
     stavke = []
     with get_postgres_connection() as conn, conn.cursor() as cur:
         for f in files:
-            if not _is_docx(f.filename):
+            if not _is_word(f.filename):
                 stavke.append({'filename': f.filename, 'ok': False,
-                               'razlog': 'није .docx датотека'})
+                               'razlog': 'није .doc ни .docx датотека'})
                 continue
             try:
                 parsed = _parse_upload(f)

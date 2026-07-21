@@ -305,15 +305,44 @@ def _extract_work_description(doc):
 # ---------------------------------------------------------------------------
 # Јавни улаз
 # ---------------------------------------------------------------------------
+def _read_source_bytes(source):
+    if hasattr(source, 'read'):
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+        return source.read()
+    with open(source, 'rb') as fh:
+        return fh.read()
+
+
 def parse_radna_lista(source):
-    """Рашчлани .docx (путања или file-like). Враћа dict или диже
-    RadnaListaParseError. `warnings` носи неблокирајуће напомене."""
+    """Рашчлани радну листу из .docx ИЛИ .doc (путања или file-like).
+
+    Формат се одлучује по magic бајтовима (не екстензији): .docx се чита директно,
+    стари .doc се конвертује кроз LibreOffice. Враћа dict или диже
+    RadnaListaParseError са јасним разлогом.
+    """
+    import io
+    import doc_konverzija
     try:
         import docx
     except ImportError as exc:  # pragma: no cover
         raise RadnaListaParseError(f'python-docx није доступан: {exc}')
+
+    data = _read_source_bytes(source)
     try:
-        doc = docx.Document(source)
+        docx_bytes = doc_konverzija.ensure_docx_bytes(data)
+    except doc_konverzija.SofficeUnavailable:
+        raise RadnaListaParseError(
+            'Увоз .doc формата тренутно није могућ — обратите се администратору.')
+    except doc_konverzija.DocConversionError as exc:
+        raise RadnaListaParseError(f'.doc се није могао конвертовати у .docx: {exc}')
+    except ValueError as desc:
+        raise RadnaListaParseError(f'датотека није ни .doc ни .docx ({desc}).')
+
+    try:
+        doc = docx.Document(io.BytesIO(docx_bytes))
     except Exception as exc:
         raise RadnaListaParseError(f'датотека није исправан .docx: {exc}')
 

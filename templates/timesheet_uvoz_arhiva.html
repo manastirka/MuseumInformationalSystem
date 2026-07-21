@@ -3,15 +3,15 @@
 {% block content %}
 <div class="container py-4" style="max-width: 820px;">
   <h2 class="mb-3"><i class="bi bi-archive me-2"></i>Архивски увоз радних листа</h2>
-  <p class="text-muted">Отпремите више .docx радних листа претходних периода.
+  <p class="text-muted">Отпремите више .doc/.docx радних листа претходних периода.
      Добићете извештај шта је прочитано и на ког запосленог се мапира (без уписа);
      тек по потврди се уписују као <b>одобрене архивске</b> листе.</p>
   <form method="post" action="{{ url_for('timesheet.uvoz_arhiva_pregled') }}"
         enctype="multipart/form-data" class="card card-body">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="mb-3">
-      <label class="form-label" for="docx">Word датотеке (.docx, више одједном)</label>
-      <input class="form-control" type="file" id="docx" name="docx" accept=".docx" multiple required>
+      <label class="form-label" for="docx">Word датотеке (.doc/.docx, више одједном)</label>
+      <input class="form-control" type="file" id="docx" name="docx" accept=".doc,.docx" multiple required>
     </div>
     <div>
       <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Прегледај (dry-run)</button>
