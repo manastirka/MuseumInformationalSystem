@@ -128,7 +128,12 @@ def _collect_label_values(doc):
     return pairs, texts
 
 
-def _extract_header(doc):
+_NAME_KEYS = ('име и презиме', 'ime i prezime', 'запослени', 'zaposleni')
+_ORG_KEYS = ('организацион', 'organizacion', 'одељењ', 'odeljen', 'јединиц', 'jedinic')
+_POS_KEYS = ('радно место', 'radno mesto')
+
+
+def _extract_header(doc, matrix_table=None, header_row=0):
     pairs, texts = _collect_label_values(doc)
 
     def find(*keys):
@@ -137,9 +142,17 @@ def _extract_header(doc):
                 return v.strip()
         return None
 
-    name = find('име и презиме', 'ime i prezime', 'запослени', 'zaposleni')
-    org = find('организацион', 'organizacion', 'одељењ', 'odeljen', 'јединиц', 'jedinic')
-    position = find('радно место', 'radno mesto')
+    name = find(*_NAME_KEYS)
+    org = find(*_ORG_KEYS)
+    position = find(*_POS_KEYS)
+
+    # Заглавље може бити УНУТАР матрице (спојене ћелије): нпр. апп-извоз држи
+    # ознаку „Име и презиме:" у једном реду, а стварну вредност у реду ИСПОД
+    # (ознака чак носи placeholder). Тада вадимо структурно (ћелија испод ознаке).
+    if matrix_table is not None and header_row > 0:
+        name = _value_by_label(matrix_table, _NAME_KEYS, prefer_below=True) or name
+        org = _value_by_label(matrix_table, _ORG_KEYS, prefer_below=True) or org
+        position = _value_by_label(matrix_table, _POS_KEYS, prefer_below=False) or position
 
     month, year = _extract_month_year(pairs, texts)
     return {
@@ -149,6 +162,50 @@ def _extract_header(doc):
         'month': month,
         'year': year,
     }
+
+
+def _value_by_label(table, keys, prefer_below):
+    """Вредност уз ОЗНАКУ у табели. Ознака је ћелија где се кључ појављује ПРЕ
+    двотачке („Организациона јединица: …") — тиме се вредносне ћелије које
+    случајно садрже кључну реч (нпр. „Геолошко одељење") НЕ третирају као ознаке.
+    prefer_below=True → узми ћелију ИСПОД ознаке (вредност је у реду испод, ознака
+    може носити placeholder); иначе део после двотачке у истој ћелији."""
+    rows = table.rows
+    for ri, row in enumerate(rows):
+        for ci, cell in enumerate(row.cells):
+            raw = cell.text
+            if ':' not in raw:
+                continue
+            label_part = _norm(raw.split(':', 1)[0])
+            if not any(k in label_part for k in keys):
+                continue
+            inline = raw.split(':', 1)[1].strip()
+            below = ''
+            if ri + 1 < len(rows) and ci < len(rows[ri + 1].cells):
+                below = rows[ri + 1].cells[ci].text.strip()
+            if below.endswith(':'):   # ред испод је опет ознака, не вредност
+                below = ''
+            if prefer_below:
+                if below:
+                    return below
+                if inline and not _looks_placeholder(inline):
+                    return inline
+            else:
+                if inline:
+                    return inline
+                if below:
+                    return below
+    return None
+
+
+def _looks_placeholder(text):
+    """Груба детекција placeholder-а (нпр. „СссссSSSSSsssssa"): нема размака и
+    има мешавину случајних понављања/оба писма без смисла."""
+    t = text.strip()
+    if not t or ' ' in t:
+        return False
+    # понављање истог слова 3+ пута заредом → placeholder
+    return bool(re.search(r'(.)\1\1', t))
 
 
 def _clean_name(name):
@@ -209,44 +266,72 @@ def _table_grid(table):
     return [[c.text for c in row.cells] for row in table.rows]
 
 
-def _find_matrix(doc, warnings):
-    """Нађи табелу матрице и врати (grid, orientation). orientation:
-    'days_rows' (дани редови × категорије колоне) или 'days_cols'."""
+def _find_matrix(doc):
+    """Нађи табелу матрице. Толерантан на ПРЕАМБУЛУ (заглавље унутар табеле,
+    спојене ћелије): ред-заглавље (дани ИЛИ категорије) се тражи БИЛО ГДЕ, не
+    само у првом реду. Враћа (table, grid, orientation, header_row) или None.
+
+    orientation 'days_rows' = дани редови × категорије колоне; 'days_cols' =
+    категорије редови × дани колоне. header_row = индекс реда-заглавља.
+    """
     best = None
     for t in doc.tables:
         grid = _table_grid(t)
-        if len(grid) < 3 or len(grid[0]) < 3:
+        if len(grid) < 2 or len(grid[0]) < 2:
             continue
-        header = grid[0]
-        first_col = [r[0] for r in grid]
-        cat_in_header = sum(1 for c in header if _match_category(c))
-        cat_in_col = sum(1 for c in first_col if _match_category(c))
-        days_in_header = sum(1 for c in header[1:] if _as_int_day(c))
-        days_in_col = sum(1 for c in first_col[1:] if _as_int_day(c))
-        # Праг 2 категорије: апп-извоз прати само „рад на месту" и „ван музеја"
-        # у табели (одсуства су у резимеу), а изворна матрица има свих 8.
-        if cat_in_header >= 2 and days_in_col >= 8:
-            score = cat_in_header + days_in_col
-            cand = (score, grid, 'days_rows')
-        elif cat_in_col >= 2 and days_in_header >= 8:
-            score = cat_in_col + days_in_header
-            cand = (score, grid, 'days_cols')
-        else:
-            continue
-        if best is None or cand[0] > best[0]:
-            best = cand
+        for hr in range(len(grid)):
+            # days_cols: ред са данима (Датум 1..31), категорије у колони 0 испод
+            days_in_row = sum(1 for c in grid[hr][1:] if _as_int_day(c))
+            if days_in_row >= 8:
+                cats_below = sum(1 for r in range(hr + 1, len(grid))
+                                 if _match_category(grid[r][0]))
+                if cats_below >= 2:
+                    best = _better(best, (days_in_row + cats_below, t, grid, 'days_cols', hr))
+            # days_rows: ред са ≥2 категорије, дани у колони 0 испод
+            cats_in_row = sum(1 for c in grid[hr] if _match_category(c))
+            if cats_in_row >= 2:
+                days_below = sum(1 for r in range(hr + 1, len(grid))
+                                 if _as_int_day(grid[r][0]))
+                if days_below >= 8:
+                    best = _better(best, (cats_in_row + days_below, t, grid, 'days_rows', hr))
     if best is None:
-        return None, None
-    return best[1], best[2]
+        return None
+    return best[1], best[2], best[3], best[4]
 
 
-def _parse_matrix(grid, orientation, warnings):
-    """Врати daily_data {day: {cat: hours}} само за дане са неким сатима."""
+def _better(best, cand):
+    return cand if (best is None or cand[0] > best[0]) else best
+
+
+def _matrix_error_reason(doc):
+    """Конкретан разлог зашто матрица није призната — да корисник/админ зна шта
+    фали без дебуговања."""
+    if not doc.tables:
+        return ('нема ниједне табеле у документу — недостаје матрица присуства '
+                '(табела са данима 1–31 и редовима категорија).')
+    for t in doc.tables:
+        grid = _table_grid(t)
+        has_days = any(sum(1 for c in row[1:] if _as_int_day(c)) >= 8 for row in grid) \
+            or sum(1 for r in range(len(grid)) if _as_int_day(grid[r][0])) >= 8
+        has_cats = any(_match_category(c) for row in grid for c in row)
+        if has_days and not has_cats:
+            return ('табела има дане, али ниједан ред није препознат као категорија '
+                    '(Рад на месту, Ван музеја, Годишњи одмор, Државни празник, '
+                    'Плаћено/Остало одсуство, Боловање) — можда другачији називи.')
+        if has_cats and not has_days:
+            return ('табела има категорије, али недостаје ред са данима (1–31) / „Датум".')
+    return ('није пронађена матрица присуства (табела са данима 1–31 и '
+            'редовима категорија).')
+
+
+def _parse_matrix(grid, orientation, header_row):
+    """Врати daily_data {day: {cat: hours}} само за дане са неким сатима.
+    Редови ИСПОД header_row су подаци (изнад је преамбула/заглавље)."""
     daily = {}
+    header = grid[header_row]
     if orientation == 'days_rows':
-        header = grid[0]
         col_cat = {j: _match_category(header[j]) for j in range(1, len(header))}
-        for row in grid[1:]:
+        for row in grid[header_row + 1:]:
             if not row or _is_total_label(row[0]):
                 continue
             day = _as_int_day(row[0])
@@ -261,9 +346,8 @@ def _parse_matrix(grid, orientation, warnings):
             if rec:
                 daily[day] = rec
     else:  # days_cols: категорије редови × дани колоне
-        header = grid[0]
         col_day = {j: _as_int_day(header[j]) for j in range(1, len(header))}
-        for row in grid[1:]:
+        for row in grid[header_row + 1:]:
             if not row:
                 continue
             cat = _match_category(row[0])
@@ -347,21 +431,28 @@ def parse_radna_lista(source):
         raise RadnaListaParseError(f'датотека није исправан .docx: {exc}')
 
     warnings = []
-    header = _extract_header(doc)
+    # Матрицу тражимо ПРЕ заглавља: тако знамо да ли је заглавље унутар табеле
+    # (спојене ћелије) па вредности вадимо структурно.
+    found = _find_matrix(doc)
+    if found is None:
+        raise RadnaListaParseError(_matrix_error_reason(doc))
+    matrix_table, grid, orientation, header_row = found
+
+    header = _extract_header(doc, matrix_table, header_row)
     if not header['employee_name']:
-        raise RadnaListaParseError('није пронађено име запосленог (нема „Име и презиме").')
+        raise RadnaListaParseError(
+            'није пронађено име запосленог (заглавље „Име и презиме" није нађено '
+            'ни у пасусима ни у табели).')
     if not header['month'] or not header['year']:
-        raise RadnaListaParseError('није препознат месец и/или година радне листе.')
+        raise RadnaListaParseError(
+            'није препознат месец и/или година (нема „РАДНА ЛИСТА за месец … '
+            '<година>" ни назива месеца).')
     if not 1 <= header['month'] <= 12:
         raise RadnaListaParseError(f'нелогичан месец: {header["month"]}.')
 
-    grid, orientation = _find_matrix(doc, warnings)
-    if grid is None:
-        raise RadnaListaParseError(
-            'није пронађена матрица присуства (табела са категоријама и данима).')
-    daily = _parse_matrix(grid, orientation, warnings)
+    daily = _parse_matrix(grid, orientation, header_row)
     if not daily:
-        warnings.append('матрица нема ниједан дан са унетим сатима.')
+        warnings.append('матрица је нађена, али ниједан дан нема унете сате.')
 
     totals = _totals(daily)
     if totals['radni'] == 0 and totals['sve'] == 0:
