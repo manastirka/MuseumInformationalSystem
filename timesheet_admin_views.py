@@ -352,6 +352,7 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         reports['filtered_total'] = len(filtered)
         reports['only_verifiable'] = True
 
+    from timesheet_postgres import available_report_years
     return render_template(
         'admin_timesheet_reports.html',
         reports=reports,
@@ -362,6 +363,9 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         search=search or '',
         only_verifiable=only_verifiable,
         month_options=_month_options(),
+        # Године за филтер се изводе из података (глобално, за админа/шефа) —
+        # архивски увоз старих година одмах постаје доступан.
+        available_years=available_report_years(),
         category_labels=timesheet_repository_cls.CATEGORY_LABELS,
         calendar=calendar,
     )
