@@ -50,8 +50,11 @@ def _month_choices():
 
 
 def _year_choices():
-    current_year = datetime.now().year
-    return list(range(current_year - 2, current_year + 3))
+    """Године за бирач се ИЗВОДЕ ИЗ ПОДАТАКА запосленог (од најстарије листе коју
+    има до текуће), а не из хардкодованог опсега — тако архивски увоз старих
+    година одмах постаје доступан."""
+    from timesheet_postgres import available_report_years
+    return available_report_years(session.get('user_email'))
 
 
 def _no_cache_response(response):

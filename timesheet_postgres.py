@@ -1169,6 +1169,43 @@ def get_edit_request_rate_limit_status(user_email: str) -> Dict:
 # TIMESHEET STATUS WORKFLOW
 # =============================================================================
 
+def available_report_years(employee_email: Optional[str] = None) -> List[int]:
+    """Списак година за бирач — ИЗВЕДЕН ИЗ ПОДАТАКА, не хардкодован опсег.
+
+    Од MIN(година) која постоји у `timesheet_reports` (скопирано на запосленог
+    ако је `employee_email` дат, иначе глобално за админа/шефа) до текуће године.
+    Увек укључује бар претходну и текућу годину (унос подразумевано иде за
+    претходни месец), па ради и на празној табели. Растуће сортирано.
+
+    Овим архивски увоз (нпр. листе из 2011) одмах постаје доступан у бирачу,
+    без ручног ширења опсега.
+    """
+    current = date.today().year
+    data_min = data_max = None
+    try:
+        with get_pooled_connection() as conn:
+            with conn.cursor() as cur:
+                if employee_email:
+                    cur.execute(
+                        'SELECT MIN(year) AS mn, MAX(year) AS mx FROM timesheet_reports '
+                        'WHERE LOWER(employee_email) = LOWER(%s)',
+                        (employee_email,),
+                    )
+                else:
+                    cur.execute('SELECT MIN(year) AS mn, MAX(year) AS mx FROM timesheet_reports')
+                row = cur.fetchone()
+                if row:
+                    data_min = row['mn'] if isinstance(row, dict) else row[0]
+                    data_max = row['mx'] if isinstance(row, dict) else row[1]
+    except Exception:
+        logger.exception('available_report_years: упит није успео, користим фолбек опсег')
+
+    floor = current - 1  # унос за претходни месец увек мора да буде могућ
+    start = min(data_min, floor) if data_min else floor
+    end = max(current, data_max) if data_max else current
+    return list(range(start, end + 1))
+
+
 def default_entry_period() -> Tuple[int, int]:
     """Return the (month, year) an employee enters by default right now.
 
