@@ -194,6 +194,59 @@ def build_transposed_days_cols(name=EMPLOYEE_NAME, month=MONTH, year=YEAR,
     return _to_bytes(doc)
 
 
+_MONTH_NAMES_CYR = {
+    1: 'јануар', 2: 'фебруар', 3: 'март', 4: 'април', 5: 'мај', 6: 'јун',
+    7: 'јул', 8: 'август', 9: 'септембар', 10: 'октобар', 11: 'новембар',
+    12: 'децембар',
+}
+
+
+def build_app_export_header_in_table(name='Петар Петровић', month=MONTH,
+                                     year=YEAR, daily=None):
+    """(f) СТВАРНИ апп-извоз (анонимизован по узору на /mnt/zajednicko/април.doc):
+    заглавље је УНУТАР табеле (спојене ћелије), ознака „Име и презиме:" носи
+    placeholder а стварно име је у реду ИСПОД; ред „Датум 1..31" није први ред
+    (има преамбулу), категорије су редови (транспоновано). Овај распоред је
+    раније рушио парсер."""
+    daily = SAMPLE_DAILY if daily is None else daily
+    doc = docx.Document()
+    ncols = 1 + 31 + 1  # ознака + дани 1..31 + „Укупно:"
+    table = doc.add_table(rows=0, cols=ncols)
+
+    r0 = table.add_row().cells
+    r0[0].text = 'Природњачки музеј у Београду'
+
+    r1 = table.add_row().cells
+    r1[0].text = 'Име и презиме: Сссссссссс'   # placeholder у ознаци (као у оригиналу)
+    r1[9].text = f'РАДНА ЛИСТА за месец  {_MONTH_NAMES_CYR.get(month, month)} {year}.'
+    r1[26].text = 'Организациона јединица:'
+
+    r2 = table.add_row().cells
+    r2[0].text = name                          # стварно име ИСПОД ознаке
+    r2[9].text = f'Радно место: {POSITION}'
+    r2[26].text = ORG_UNIT
+
+    r3 = table.add_row().cells                 # ред-заглавље (није први ред!)
+    r3[0].text = 'Датум'
+    for day in range(1, 32):
+        r3[day].text = str(day)
+    r3[32].text = 'Укупно:'
+
+    for code, lab in zip(CATEGORY_CODES, CYR_LABELS):
+        cells = table.add_row().cells
+        cells[0].text = lab
+        for day in range(1, 32):
+            if code in daily.get(day, {}):
+                cells[day].text = _fmt_hours(daily[day][code])
+
+    table.add_row().cells[0].text = 'Укупно:'
+
+    doc.add_paragraph('Обављени послови')
+    doc.add_paragraph(f'{_MONTH_NAMES_CYR.get(month, month).capitalize()} {year}.')
+    doc.add_paragraph('1. Рад у збиркама: (анонимизован опис за тест).')
+    return _to_bytes(doc)
+
+
 def build_latin_variant(name='Petar Petrović', month=MONTH, year=YEAR,
                         daily=None):
     """(c) Латиничне ознаке + месец као име („Septembar 2025")."""
@@ -237,6 +290,7 @@ CASES = {
     'correct_matrix_days_rows': build_correct_matrix_days_rows,
     'transposed_days_cols': build_transposed_days_cols,
     'latin_variant': build_latin_variant,
+    'app_export_header_in_table': build_app_export_header_in_table,
     'broken_no_matrix': build_broken_no_matrix,
     'broken_no_name': build_broken_no_name,
 }
