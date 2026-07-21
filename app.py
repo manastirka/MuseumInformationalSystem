@@ -443,6 +443,10 @@ obrisi_legacy_slike_cli.register_cli(app)
 import kr_dosije_cli
 kr_dosije_cli.register_cli(app)
 
+# CLI: flask uvezi-arhivske-liste <folder> (masovni arhivski uvoz radnih listi)
+import uvezi_arhivske_liste_cli
+uvezi_arhivske_liste_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(
