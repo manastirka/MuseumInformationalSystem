@@ -8,6 +8,7 @@ from psycopg.rows import dict_row
 
 import admin_system_views
 import app_ui_support
+import audit_support
 import dashboard_config_support
 import mail_client
 from observability import add_sentry_breadcrumb, capture_observability_exception
@@ -171,6 +172,13 @@ def grant_module_access(*, load_module_access, save_module_access, module_access
 
     if changed:
         save_module_access()
+        audit_support.record_audit(
+            action=audit_support.ACTION_PERMISSION_GRANT,
+            entity_type='module_access',
+            entity_id=user_email,
+            summary=f'Додат приступ модулу „{module_name}” ({module_key}) кориснику {user_email}',
+            new_values={'user_email': user_email, 'module_key': module_key, 'granted': True},
+        )
 
     return redirect(url_for('manage_user_access', selected_user=user_email))
 
@@ -211,6 +219,13 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
 
     if changed:
         save_module_access()
+        audit_support.record_audit(
+            action=audit_support.ACTION_PERMISSION_REVOKE,
+            entity_type='module_access',
+            entity_id=user_email,
+            summary=f'Укинут приступ модулу „{module_name}” ({module_key}) кориснику {user_email}',
+            new_values={'user_email': user_email, 'module_key': module_key, 'granted': False},
+        )
 
     return redirect(url_for('manage_user_access', selected_user=user_email))
 
@@ -574,6 +589,14 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
                 'force_change': force_change,
             },
         )
+        audit_support.record_audit(
+            action=audit_support.ACTION_USER_UPDATE,
+            entity_type='user',
+            entity_id=email,
+            summary=f'Админ ресетовао лозинку кориснику {email}'
+                    + (' (обавезна промена при пријави)' if force_change else ''),
+            new_values={'password_reset': True, 'force_change': bool(force_change)},
+        )
         logger.info("Password reset by admin for user: %s", email)
         return jsonify({'success': True, 'message': 'Лозинка је ресетована'})
     except Exception as exc:
@@ -636,6 +659,13 @@ def api_password_manager_force_change(*, log_security_event):
         log_security_event(
             'force_password_change',
             {'admin_email': session.get('user_email'), 'target_email': email},
+        )
+        audit_support.record_audit(
+            action=audit_support.ACTION_USER_UPDATE,
+            entity_type='user',
+            entity_id=email,
+            summary=f'Админ поставио обавезну промену лозинке кориснику {email}',
+            new_values={'force_password_change': True},
         )
         logger.info("Force password change set by admin for user: %s", email)
         return jsonify({'success': True, 'message': 'Захтев за промену лозинке је постављен'})
@@ -704,6 +734,13 @@ def api_password_manager_toggle_status(*, log_security_event):
                 'target_email': email,
                 'is_active': is_active,
             },
+        )
+        audit_support.record_audit(
+            action=audit_support.ACTION_USER_UPDATE,
+            entity_type='user',
+            entity_id=email,
+            summary=f'Админ {status_text} корисника {email}',
+            new_values={'is_active': bool(is_active)},
         )
         logger.info("User %s %s by admin", email, status_text)
         return jsonify({'success': True, 'message': f'Корисник је {status_text}'})

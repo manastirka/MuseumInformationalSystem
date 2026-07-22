@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Ревизиони траг - Администрација{% endblock %}
+
+{% set action_badge = {
+    'DELETE': 'danger',
+    'CREATE': 'success',
+    'UPDATE': 'primary',
+    'PERMISSION_GRANT': 'info',
+    'PERMISSION_REVOKE': 'warning',
+    'USER_CREATE': 'success',
+    'USER_UPDATE': 'secondary',
+    'USER_DELETE': 'danger',
+    'USER_ROLE_CHANGE': 'warning'
+} %}
+
+{% block content %}
+<div class="container-fluid py-4 page-transition">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-6">
+            <i class="bi bi-clock-history text-primary"></i> Ревизиони траг
+        </h1>
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-ripple btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+
+    <p class="text-muted">
+        Ко је, шта и када урадио — брисања у збиркама, промене дозвола, измене
+        корисника и финансије. Укупно записа (по филтеру): <strong>{{ total }}</strong>.
+    </p>
+
+    <!-- Филтери -->
+    <form method="get" class="card card-body mb-4">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Ентитет</label>
+                <select name="entity" class="form-select">
+                    <option value="">— сви —</option>
+                    {% for et in entity_types %}
+                    <option value="{{ et }}" {{ 'selected' if filters.entity == et else '' }}>{{ et }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Акција</label>
+                <select name="action" class="form-select">
+                    <option value="">— све —</option>
+                    {% for ac in actions %}
+                    <option value="{{ ac }}" {{ 'selected' if filters.action == ac else '' }}>{{ ac }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Корисник (email)</label>
+                <input type="text" name="actor" class="form-control" value="{{ filters.actor }}" placeholder="нпр. pera@nhmbeo.rs">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Претрага описа</label>
+                <input type="text" name="q" class="form-control" value="{{ filters.q }}" placeholder="текст у опису">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Од датума</label>
+                <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">До датума</label>
+                <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}">
+            </div>
+            <div class="col-md-6 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-ripple btn-primary">
+                    <i class="bi bi-funnel"></i> Примени
+                </button>
+                <a href="{{ url_for('admin_audit_log') }}" class="btn btn-ripple btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Поништи
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <!-- Резултати -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Време</th>
+                        <th>Корисник</th>
+                        <th>Акција</th>
+                        <th>Ентитет</th>
+                        <th>Опис</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entries %}
+                    <tr>
+                        <td class="text-nowrap">
+                            {{ e.performed_at.strftime('%d.%m.%Y %H:%M:%S') if e.performed_at else '' }}
+                        </td>
+                        <td>{{ e.actor or '—' }}</td>
+                        <td>
+                            <span class="badge bg-{{ action_badge.get(e.action, 'secondary') }}">{{ e.action }}</span>
+                        </td>
+                        <td class="text-nowrap">
+                            <code>{{ e.table_name }}</code>
+                            {% set ref = e.record_ref if e.record_ref else (e.record_id if e.record_id is not none else '') %}
+                            {% if ref %}<span class="text-muted">#{{ ref }}</span>{% endif %}
+                        </td>
+                        <td>{{ e.change_summary or '' }}</td>
+                        <td class="text-nowrap text-muted small">{{ e.ip_address or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Нема записа за задате филтере.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Пагинација -->
+    {% if total_pages > 1 %}
+    <nav class="mt-3" aria-label="Пагинација">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {{ 'disabled' if page <= 1 else '' }}">
+                <a class="page-link" href="{{ url_for('admin_audit_log', **dict(request.args, page=page-1)) }}">‹ Претходна</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Страна {{ page }} / {{ total_pages }}</span>
+            </li>
+            <li class="page-item {{ 'disabled' if page >= total_pages else '' }}">
+                <a class="page-link" href="{{ url_for('admin_audit_log', **dict(request.args, page=page+1)) }}">Следећа ›</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

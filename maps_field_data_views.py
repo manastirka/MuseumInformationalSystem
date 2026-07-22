@@ -6,6 +6,7 @@ from flask import jsonify, request, session
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
+import audit_support
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +304,14 @@ def api_delete_field_data(item_id, *, image_storage_factory):
                 cur.execute("DELETE FROM geo_field_data WHERE id = %s", (item_id,))
                 conn.commit()
 
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='geo_field_data',
+            entity_id=item_id,
+            summary=f'Обрисан теренски запис #{item_id}',
+            old_values=dict(row) if isinstance(row, dict) else None,
+            changed_by=user_email or None,
+        )
         return jsonify({'success': True})
     except Exception as exc:
         logger.error("Error deleting field data %s: %s", item_id, exc)

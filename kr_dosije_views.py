@@ -16,6 +16,7 @@ from flask import (
 )
 
 from postgres_service import get_postgres_connection
+import audit_support
 import kr_dosije_core as core
 import fototeka_views
 import fototeka_jobs
@@ -341,6 +342,15 @@ def handle_delete(dosije_id):
         # Саме фотографије у Фototeci остају (веза се само раскида).
         cur.execute('DELETE FROM kr_dosije WHERE id = %s', (dosije_id,))
         conn.commit()
+    audit_support.record_audit(
+        action=audit_support.ACTION_DELETE,
+        entity_type='kr_dosije',
+        entity_id=dosije_id,
+        summary=f'Обрисан К-Р досије #{dosije_id}'
+                + (f' — {dosije.get("naziv_predmeta")}' if dosije.get('naziv_predmeta') else ''),
+        old_values=dict(dosije) if isinstance(dosije, dict) else None,
+        changed_by=ctx.get('email') if isinstance(ctx, dict) else None,
+    )
     flash('Досије је обрисан.', 'success')
     return redirect(url_for('kr_dosije.lista'))
 

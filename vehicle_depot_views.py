@@ -3,6 +3,7 @@
 import logging
 
 from flask import flash, jsonify, make_response, redirect, render_template, request, session, url_for
+import audit_support
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
@@ -268,6 +269,12 @@ def handle_delete_vehicle(
         else:
             cur.execute("DELETE FROM vehicles WHERE id = %s", (vehicle_id,))
             conn.commit()
+            audit_support.record_audit(
+                action=audit_support.ACTION_DELETE,
+                entity_type='vehicle',
+                entity_id=vehicle_id,
+                summary=f'Обрисано возило #{vehicle_id}',
+            )
             flash('Возило је успешно обрисано!', 'success')
             get_museum_vehicles(force_reload=True)
 
