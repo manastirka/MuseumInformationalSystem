@@ -1338,41 +1338,21 @@ VISITOR_RECORDS = []
 # Research Projects Database
 RESEARCH_PROJECTS = []
 
-# Vehicle data files (fallback for legacy mode)
-VEHICLES_FILE = 'data/museum_vehicles.json'
-RESERVATIONS_FILE = 'data/vehicle_reservations.json'
+# Vozila i rezervacije: PostgreSQL je jedini izvor istine (ZADATAK #3).
+# Nema JSON fajl-fallback-a — pad baze se propagira kao jasna greška, a jedini
+# keš je in-memory keš ispod (invalidira se force_reload-om posle svakog upisa).
 
 def load_vehicles():
-    """Load vehicles from PostgreSQL or JSON file (fallback)."""
+    """Load vehicles from PostgreSQL (raises on failure — no silent fallback)."""
     return app_data_support.load_vehicles_data(
-        vehicles_file=VEHICLES_FILE,
-        database_url=os.environ.get('DATABASE_URL'),
         phase3a_databases=globals().get('phase3a_databases'),
-        vehicle_data_support=vehicle_data_support,
-    )
-
-def save_vehicles():
-    """Save vehicles to JSON file (fallback only)."""
-    return app_data_support.save_vehicles_data(
-        vehicles_file=VEHICLES_FILE,
-        vehicles=get_museum_vehicles(),
         vehicle_data_support=vehicle_data_support,
     )
 
 def load_reservations():
-    """Load reservations from PostgreSQL or JSON file (fallback)."""
+    """Load reservations from PostgreSQL (raises on failure — no silent fallback)."""
     return app_data_support.load_reservations_data(
-        reservations_file=RESERVATIONS_FILE,
-        database_url=os.environ.get('DATABASE_URL'),
         phase3a_databases=globals().get('phase3a_databases'),
-        vehicle_data_support=vehicle_data_support,
-    )
-
-def save_reservations():
-    """Save reservations to JSON file (fallback only)."""
-    return app_data_support.save_reservations_data(
-        reservations_file=RESERVATIONS_FILE,
-        reservations=get_vehicle_reservations(),
         vehicle_data_support=vehicle_data_support,
     )
 

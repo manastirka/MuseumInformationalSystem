@@ -74,12 +74,7 @@ def zahtev_sluzbeni_put():
 @login_required
 def api_field_trip_create():
     """Create field trip request with vehicle reservation and timesheet entries."""
-    import app as museum_app
-
-    return travel_finance_views.api_field_trip_create(
-        get_vehicle_reservations=museum_app.get_vehicle_reservations,
-        save_reservations=museum_app.save_reservations,
-    )
+    return travel_finance_views.api_field_trip_create()
 
 
 @travel_finance_bp.route('/api/route/calculate', methods=['POST'])

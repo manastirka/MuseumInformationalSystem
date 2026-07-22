@@ -132,6 +132,13 @@ static/*
 *.sqlite
 *.sqlite3
 
+# --- Vozila: PostgreSQL je jedini izvor istine (ZADATAK #3) ---
+# JSON više nije ni keš ni fallback — služi samo kao ulaz jednokratne
+# rekonciliacije (scripts/migration/migrate_vehicles_json_to_pg.py). Van gita
+# je da deploy ne bi mogao da vrati zastarelu kopiju preko baze.
+data/museum_vehicles.json
+data/vehicle_reservations.json
+
 # --- Logs ---
 logs/
 *.log

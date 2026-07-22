@@ -72,35 +72,15 @@ def get_exhibition_statistics(*, exhibitions_database, current_year, museum_cont
     )
 
 
-def load_vehicles_data(*, vehicles_file, database_url, phase3a_databases, vehicle_data_support):
-    """Load vehicles from PostgreSQL or JSON fallback."""
+def load_vehicles_data(*, phase3a_databases, vehicle_data_support):
+    """Load vehicles from PostgreSQL (single source of truth; raises on failure)."""
     return vehicle_data_support.load_vehicles(
-        vehicles_file=vehicles_file,
-        database_url=database_url,
         phase3a_databases=phase3a_databases,
     )
 
 
-def save_vehicles_data(*, vehicles_file, vehicles, vehicle_data_support):
-    """Persist vehicles to the JSON fallback file."""
-    return vehicle_data_support.save_vehicles(
-        vehicles_file=vehicles_file,
-        vehicles=vehicles,
-    )
-
-
-def load_reservations_data(*, reservations_file, database_url, phase3a_databases, vehicle_data_support):
-    """Load reservations from PostgreSQL or JSON fallback."""
+def load_reservations_data(*, phase3a_databases, vehicle_data_support):
+    """Load reservations from PostgreSQL (single source of truth; raises on failure)."""
     return vehicle_data_support.load_reservations(
-        reservations_file=reservations_file,
-        database_url=database_url,
         phase3a_databases=phase3a_databases,
-    )
-
-
-def save_reservations_data(*, reservations_file, reservations, vehicle_data_support):
-    """Persist reservations to the JSON fallback file."""
-    return vehicle_data_support.save_reservations(
-        reservations_file=reservations_file,
-        reservations=reservations,
     )

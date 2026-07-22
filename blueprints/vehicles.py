@@ -30,7 +30,6 @@ def add_vehicle_reservation():
     return vehicle_depot_views.handle_add_vehicle_reservation(
         phase3a_databases=getattr(museum_app, 'phase3a_databases', None),
         get_vehicle_reservations=museum_app.get_vehicle_reservations,
-        save_reservations=museum_app.save_reservations,
     )
 
 
@@ -55,7 +54,6 @@ def add_vehicle():
     return vehicle_depot_views.handle_add_vehicle(
         phase3a_databases=getattr(museum_app, 'phase3a_databases', None),
         get_museum_vehicles=museum_app.get_museum_vehicles,
-        save_vehicles=museum_app.save_vehicles,
     )
 
 
@@ -68,7 +66,6 @@ def edit_vehicle():
     return vehicle_depot_views.handle_edit_vehicle(
         phase3a_databases=getattr(museum_app, 'phase3a_databases', None),
         get_museum_vehicles=museum_app.get_museum_vehicles,
-        save_vehicles=museum_app.save_vehicles,
     )
 
 
@@ -81,8 +78,6 @@ def delete_vehicle():
     return vehicle_depot_views.handle_delete_vehicle(
         phase3a_databases=getattr(museum_app, 'phase3a_databases', None),
         get_museum_vehicles=museum_app.get_museum_vehicles,
-        get_vehicle_reservations=museum_app.get_vehicle_reservations,
-        save_vehicles=museum_app.save_vehicles,
     )
 
 

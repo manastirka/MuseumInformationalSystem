@@ -1074,10 +1074,7 @@ class BusinessTripSupportTests(unittest.TestCase):
             # ordinary users go through the approval framework.
             session['user_role'] = 'direktor'
 
-            response = travel_finance_views.api_field_trip_create(
-                get_vehicle_reservations=lambda: saved_reservations,
-                save_reservations=lambda: self.fail('Private vehicle must not create a museum reservation'),
-            )
+            response = travel_finance_views.api_field_trip_create()
 
         body = response.get_json()
         self.assertTrue(body['success'])

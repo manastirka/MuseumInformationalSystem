@@ -580,8 +580,7 @@ def render_business_trip_request_page(*, get_museum_vehicles):
     )
 
 
-def execute_field_trip(data, *, user_name, user_email,
-                       get_vehicle_reservations=None, save_reservations=None):
+def execute_field_trip(data, *, user_name, user_email):
     """Reserve the museum vehicle and book timesheet days for a business trip.
 
     Runs either directly (admin/direktor manual path) or as the deferred
@@ -596,8 +595,15 @@ def execute_field_trip(data, *, user_name, user_email,
 
     vehicle_id = data.get('vehicle_id')
     if vehicle_id and str(vehicle_id) != 'sopstveni':
-        try:
-            if os.environ.get('DATABASE_URL'):
+        if not os.environ.get('DATABASE_URL'):
+            # PostgreSQL je jedini izvor istine za rezervacije — nema tihog JSON
+            # fallback-a koji bi maskirao nedostupnu bazu (ZADATAK #3).
+            logger.error(
+                "Rezervacija terenskog rada nije kreirana: DATABASE_URL nije podešen"
+            )
+            result['vehicle_error'] = 'База података није доступна — резервација није сачувана.'
+        else:
+            try:
                 import psycopg
                 from psycopg.rows import dict_row
 
@@ -624,33 +630,9 @@ def execute_field_trip(data, *, user_name, user_email,
                         )
                         conn.commit()
                         result['vehicle_reserved'] = True
-            elif get_vehicle_reservations is not None and save_reservations is not None:
-                reservations = get_vehicle_reservations()
-                existing_ids = [
-                    res.get('id') for res in reservations
-                    if isinstance(res.get('id'), int)
-                ]
-                next_id = (max(existing_ids) + 1) if existing_ids else 1
-                reservations.append(
-                    {
-                        'id': next_id,
-                        'vehicle_id': int(vehicle_id),
-                        'employee_name': user_name,
-                        'start_date': data.get('start_date'),
-                        'end_date': data.get('end_date'),
-                        'purpose': f"Теренски рад: {data.get('purpose', '')}",
-                        'destination': data.get('location', ''),
-                        'created_by': user_email or 'system',
-                        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    }
-                )
-                save_reservations()
-                result['vehicle_reserved'] = True
-            else:
-                result['vehicle_error'] = 'Складиште резервација није доступно'
-        except Exception as exc:
-            logger.error("Vehicle reservation error: %s", exc)
-            result['vehicle_error'] = str(exc)
+            except Exception as exc:
+                logger.error("Vehicle reservation error: %s", exc)
+                result['vehicle_error'] = str(exc)
 
     if data.get('update_timesheet') and data.get('start_date') and data.get('end_date'):
         try:
@@ -713,7 +695,7 @@ def execute_field_trip(data, *, user_name, user_email,
     return result
 
 
-def api_field_trip_create(*, get_vehicle_reservations, save_reservations):
+def api_field_trip_create():
     """Directly create a field trip (reservation + timesheet).
 
     Ordinary users go through the approval framework instead — the trip is
@@ -736,8 +718,6 @@ def api_field_trip_create(*, get_vehicle_reservations, save_reservations):
             data,
             user_name=session.get('user_name', ''),
             user_email=session.get('user_email', ''),
-            get_vehicle_reservations=get_vehicle_reservations,
-            save_reservations=save_reservations,
         )
         return jsonify(result)
     except Exception as exc:

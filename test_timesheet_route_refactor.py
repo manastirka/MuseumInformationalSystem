@@ -2558,10 +2558,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.post('/api/field-trip/create', json={}, base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            get_vehicle_reservations=museum_app.get_vehicle_reservations,
-            save_reservations=museum_app.save_reservations,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_accommodation_search_api_is_not_registered(self):
         self._login(role='employee')
@@ -2772,7 +2769,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             phase3a_databases=museum_app.__dict__.get('phase3a_databases'),
             get_vehicle_reservations=museum_app.get_vehicle_reservations,
-            save_reservations=museum_app.save_reservations,
         )
 
     def test_vehicle_management_route_delegates_to_vehicle_module(self):
@@ -2805,7 +2801,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             phase3a_databases=museum_app.__dict__.get('phase3a_databases'),
             get_museum_vehicles=museum_app.get_museum_vehicles,
-            save_vehicles=museum_app.save_vehicles,
         )
 
     def test_edit_vehicle_route_delegates_to_vehicle_module(self):
@@ -2822,7 +2817,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             phase3a_databases=museum_app.__dict__.get('phase3a_databases'),
             get_museum_vehicles=museum_app.get_museum_vehicles,
-            save_vehicles=museum_app.save_vehicles,
         )
 
     def test_delete_vehicle_route_delegates_to_vehicle_module(self):
@@ -2839,8 +2833,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             phase3a_databases=museum_app.__dict__.get('phase3a_databases'),
             get_museum_vehicles=museum_app.get_museum_vehicles,
-            get_vehicle_reservations=museum_app.get_vehicle_reservations,
-            save_vehicles=museum_app.save_vehicles,
         )
 
     def test_virtual_depot_route_delegates_to_vehicle_module(self):

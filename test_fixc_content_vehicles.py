@@ -78,8 +78,8 @@ def _no_db_env():
 
 
 def test_add_reservation_missing_vehicle_id_no_500(app, monkeypatch):
-    """Missing vehicle_id in the JSON-fallback branch must not raise; it
-    should flash an error and redirect (HTTP 302), not crash with TypeError."""
+    """Missing vehicle_id must not raise; it should flash an error and
+    redirect (HTTP 302), not crash with TypeError."""
     monkeypatch.delenv('DATABASE_URL', raising=False)
     reservations = []
     form = {'employee_name': 'Pera', 'start_date': '2026-05-29', 'end_date': '2026-05-30'}
@@ -87,7 +87,6 @@ def test_add_reservation_missing_vehicle_id_no_500(app, monkeypatch):
         resp = vehicle_depot_views.handle_add_vehicle_reservation(
             phase3a_databases=mock.MagicMock(),
             get_vehicle_reservations=lambda *a, **k: reservations,
-            save_reservations=lambda: True,
         )
     status = resp[1] if isinstance(resp, tuple) else getattr(resp, 'status_code', 302)
     assert status == 302
@@ -103,16 +102,18 @@ def test_add_reservation_blank_vehicle_id_no_500(app, monkeypatch):
         resp = vehicle_depot_views.handle_add_vehicle_reservation(
             phase3a_databases=mock.MagicMock(),
             get_vehicle_reservations=lambda *a, **k: reservations,
-            save_reservations=lambda: True,
         )
     status = resp[1] if isinstance(resp, tuple) else getattr(resp, 'status_code', 302)
     assert status == 302
     assert reservations == []
 
 
-# --- Finding 4: JSON-fallback reservation record shape (status etc.) ------
+# --- ZADATAK #3: bez PostgreSQL backend-a nema tihog JSON fallback-a -------
 
-def test_add_reservation_json_fallback_includes_status(app, monkeypatch):
+def test_add_reservation_without_db_backend_is_clear_error_not_silent(app, monkeypatch):
+    """When the PostgreSQL backend is unavailable the reservation must NOT be
+    silently written to an in-memory/JSON list; the handler flashes an error
+    and redirects without creating anything."""
     monkeypatch.delenv('DATABASE_URL', raising=False)
     reservations = []
     form = {
@@ -120,27 +121,17 @@ def test_add_reservation_json_fallback_includes_status(app, monkeypatch):
         'employee_name': 'Pera',
         'start_date': '2026-05-29',
         'end_date': '2026-05-30',
-        'start_time': '08:00',
-        'end_time': '16:00',
-        'estimated_km': '120',
-        'driver_name': 'Mika',
-        'driver_license': 'B',
-        'passengers': '2',
         'purpose': 'Terenski rad',
     }
     with app.test_request_context('/vehicles/add-reservation', method='POST', data=form):
-        vehicle_depot_views.handle_add_vehicle_reservation(
-            phase3a_databases=mock.MagicMock(),
+        resp = vehicle_depot_views.handle_add_vehicle_reservation(
+            phase3a_databases=None,
             get_vehicle_reservations=lambda *a, **k: reservations,
-            save_reservations=lambda: True,
         )
-    assert len(reservations) == 1
-    record = reservations[0]
-    assert record['vehicle_id'] == 3
-    assert record['status'] == 'Активна'
-    for key in ('start_time', 'end_time', 'estimated_km', 'driver_name',
-                'driver_license', 'passengers'):
-        assert key in record, f"missing key {key} in JSON-fallback reservation"
+    status = resp[1] if isinstance(resp, tuple) else getattr(resp, 'status_code', 302)
+    assert status == 302
+    # No fallback store: nothing must have been created.
+    assert reservations == []
 
 
 # --- Finding 3: unread_count from COUNT, not LIMIT-50 page -----------------
