@@ -20,6 +20,7 @@ from flask import (
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
+import audit_support
 
 logger = logging.getLogger(__name__)
 
@@ -1403,6 +1404,17 @@ def api_admin_delete_timesheet_report(report_id, timesheet_repository):
                 cur.execute("DELETE FROM timesheet_reports WHERE id = %s", (report_id,))
                 conn.commit()
 
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='timesheet_report',
+            entity_id=report_id,
+            summary=(
+                f'Обрисан радни лист #{report_id} — {report.get("employee_name")} '
+                f'{report.get("month")}/{report.get("year")} '
+                f'({days_deleted} дана, {entries_deleted} уноса)'
+            ),
+            old_values=dict(report) if isinstance(report, dict) else None,
+        )
         return jsonify(
             {
                 'success': True,

@@ -4,6 +4,7 @@ from flask import Blueprint
 
 import admin_system_views
 import admin_user_management_views
+import audit_log_views
 import collection_statistics_views
 import core_app_views
 import employee_admin_views
@@ -30,6 +31,13 @@ def admin_panel():
 def admin_system_settings():
     """System settings page with full functionality."""
     return admin_system_views.render_admin_system_settings()
+
+
+@admin_bp.route('/admin/audit-log')
+@admin_or_director_required
+def admin_audit_log():
+    """Global audit trail viewer ('ko je ovo obrisao/promenio?')."""
+    return audit_log_views.render_audit_log()
 
 
 @admin_bp.route('/api/admin/settings/general', methods=['POST'])

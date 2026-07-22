@@ -11,6 +11,7 @@ from pathlib import Path
 from flask import current_app, flash, redirect, render_template, request, session, url_for
 from core_app_views import current_ui_language
 from werkzeug.utils import secure_filename
+import audit_support
 from collection_registry import get_collection_form_info, get_collection_route_map
 
 logger = logging.getLogger(__name__)
@@ -365,6 +366,13 @@ def _handle_bilja_collection_form(collection_key, collection_info, record_id=Non
         action = (request.form.get('_action') or '').strip()
         if is_edit and action == 'delete':
             bilja_db.delete_specimen(collection_key, int(record_id))
+            audit_support.record_audit(
+                action=audit_support.ACTION_DELETE,
+                entity_type=f'bilja:{collection_key}',
+                entity_id=int(record_id),
+                summary=f'Обрисан примерак #{record_id} из збирке „{collection_info["name"]}”',
+                old_values=item_data,
+            )
             flash('Примерак је обрисан.', 'success')
             return redirect(url_for(collection_info['route']))
 
@@ -945,7 +953,19 @@ def handle_edit_mineral(mineral_id, *, get_mineral_database):
 def handle_delete_mineral(mineral_id, *, get_mineral_database):
     """Delete a mineral from the collection."""
     mineral_db = get_mineral_database()
+    try:
+        old = mineral_db.get_mineral_by_id(mineral_id)
+    except Exception:
+        old = None
     if mineral_db.delete_mineral(mineral_id):
+        naziv = (old or {}).get('item_name') or (old or {}).get('inventory_number') or ''
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='mineral',
+            entity_id=mineral_id,
+            summary=f'Обрисан минерал #{mineral_id}' + (f' ({naziv})' if naziv else ''),
+            old_values=old,
+        )
         flash('Минерал је успешно обрисан!', 'success')
     else:
         flash('Грешка при брисању минерала!', 'error')

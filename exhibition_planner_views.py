@@ -7,6 +7,7 @@ from flask import jsonify, render_template, request, session
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
+import audit_support
 
 logger = logging.getLogger(__name__)
 
@@ -285,6 +286,15 @@ def api_delete_exhibition(exhibition_id):
                 cur.execute("DELETE FROM exhibitions WHERE id = %s RETURNING id", (exhibition_id,))
                 conn.commit()
 
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='exhibition',
+            entity_id=exhibition_id,
+            summary=f'Обрисана изложба #{exhibition_id}'
+                    + (f' — {exhibition.get("title")}' if exhibition.get('title') else ''),
+            old_values=dict(exhibition) if isinstance(exhibition, dict) else None,
+            changed_by=user_email or None,
+        )
         return jsonify({'success': True, 'message': 'Изложба је успешно обрисана'})
     except Exception as exc:
         logger.error("Error deleting exhibition: %s", exc)

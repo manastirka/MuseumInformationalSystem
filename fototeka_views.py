@@ -36,6 +36,7 @@ from flask import (
     url_for,
 )
 
+import audit_support
 import fototeka_jobs
 import image_matcher
 from collection_registry import iter_collection_list_entries
@@ -1319,6 +1320,15 @@ def handle_obrisi(fotografija_id):
                 """,
                 (fotografija_id,),
             )
+    naziv = (photo or {}).get('original_ime') or ''
+    audit_support.record_audit(
+        action=audit_support.ACTION_DELETE,
+        entity_type='fotografije',
+        entity_id=fotografija_id,
+        summary=f'Фотографија #{fotografija_id} уклоњена из Фототеке (soft delete)'
+                + (f' — {naziv}' if naziv else ''),
+        old_values={'id': fotografija_id, 'original_ime': naziv or None},
+    )
     flash('Фотографија је уклоњена из Фототеке (оригинал остаје у архиви).', 'success')
     return redirect(url_for('fototeka.fototeka_galerija'))
 

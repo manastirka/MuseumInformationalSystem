@@ -11,6 +11,8 @@ from io import BytesIO
 import requests as http_requests
 from flask import jsonify, render_template, request, send_file, session
 
+import audit_support
+
 logger = logging.getLogger(__name__)
 
 # Official K1 toll tariffs from the Putevi Srbije PDF price list,
@@ -1237,6 +1239,20 @@ def api_nabavka_save():
                     (archive_request_id, new_id),
                 )
                 conn.commit()
+        audit_support.record_audit(
+            action=audit_support.ACTION_CREATE,
+            entity_type='nabavka',
+            entity_id=new_id,
+            summary=f'Креиран захтев за набавку #{new_id} — {data.get("podnosilac", "")} '
+                    f'({data.get("datum", "")}), процена {data.get("totalEstimated", 0)}',
+            new_values={
+                'id': new_id,
+                'podnosilac': data.get('podnosilac'),
+                'datum': data.get('datum'),
+                'total_estimated': data.get('totalEstimated', 0),
+                'archive_request_id': archive_request_id,
+            },
+        )
         return jsonify({
             'success': True,
             'message': f'Захтев сачуван (ID: {new_id}) и послат на одобравање',
@@ -1502,6 +1518,20 @@ def api_finansijski_plan_save(*, get_postgres_connection):
                     plan_id = cur.fetchone()[0]
                     updated = False
                 conn.commit()
+        audit_support.record_audit(
+            action=audit_support.ACTION_UPDATE if updated else audit_support.ACTION_CREATE,
+            entity_type='finansijski_plan',
+            entity_id=plan_id,
+            summary=(f'{"Измењен" if updated else "Креиран"} финансијски план #{plan_id} — '
+                     f'{data.get("odeljenjeText") or data.get("odeljenje") or ""} '
+                     f'(укупно {grand_total})'),
+            new_values={
+                'id': plan_id,
+                'odeljenje': data.get('odeljenje'),
+                'kustos': data.get('kustos'),
+                'grand_total': grand_total,
+            },
+        )
         return jsonify({'success': True, 'id': plan_id, 'updated': updated})
     except Exception as exc:
         logger.error("Error saving financial plan: %s", exc)

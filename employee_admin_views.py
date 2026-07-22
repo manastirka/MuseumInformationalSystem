@@ -2,6 +2,8 @@
 
 from flask import flash, redirect, render_template, request, url_for
 
+import audit_support
+
 
 def render_employees_database(*, get_employee_directory):
     """Render the employee directory database."""
@@ -79,6 +81,16 @@ def handle_add_user(*, get_museum_employees, get_employee_directory, password_ha
             flash('Грешка при чувању корисника у базу. Корисник није додат.', 'error')
             return redirect(url_for('add_user'))
 
+        audit_support.record_audit(
+            action=audit_support.ACTION_USER_CREATE,
+            entity_type='user',
+            entity_id=new_user_id,
+            summary=f'Креиран корисник {full_name} <{email}> (улога: {role})',
+            new_values={
+                'id': new_user_id, 'email': email, 'full_name': full_name,
+                'role': role, 'department': department, 'position': position,
+            },
+        )
         flash(
             (
                 f'Корисник {full_name} је успешно додат у систем. '

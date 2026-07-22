@@ -113,6 +113,7 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
     'admin': (
         'admin_panel',
         'admin_system_settings',
+        'admin_audit_log',
         'api_save_general_settings',
         'api_save_security_settings',
         'api_database_backup',

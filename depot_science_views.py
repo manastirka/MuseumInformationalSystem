@@ -9,6 +9,7 @@ from datetime import datetime
 from flask import current_app, jsonify, request, session
 from runtime_lock_utils import load_json_file, update_json_file
 from postgres_service import get_postgres_connection
+import audit_support
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +255,12 @@ def api_delete_science_news(*, news_id):
             lambda all_news: [item for item in list(all_news or []) if item.get('id') != news_id],
             default=[],
         )
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='science_news',
+            entity_id=news_id,
+            summary=f'Обрисана научна вест #{news_id}',
+        )
         return jsonify({'success': True})
     except Exception as exc:
         logger.error("Error deleting science news: %s", exc)
@@ -360,6 +367,13 @@ def api_delete_locality(locality_id):
 
                 cur.execute('DELETE FROM localities WHERE id = %s', (locality_id,))
             conn.commit()
+        audit_support.record_audit(
+            action=audit_support.ACTION_DELETE,
+            entity_type='locality',
+            entity_id=locality_id,
+            summary=f'Обрисан локалитет #{locality_id} ({name})',
+            old_values={'id': locality_id, 'name': name},
+        )
         return jsonify({'success': True})
     except Exception as exc:
         logger.error('Error deleting locality %s: %s', locality_id, exc)
