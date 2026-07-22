@@ -50,10 +50,7 @@ def test_field_trip_no_database_url_does_not_claim_timesheet_updated(monkeypatch
     }
     with _ctx(body):
         _login_direktor()
-        resp = tfv.api_field_trip_create(
-            get_vehicle_reservations=lambda: [],
-            save_reservations=lambda: None,
-        )
+        resp = tfv.api_field_trip_create()
         payload = resp.get_json()
     assert payload['success'] is True
     # Must NOT falsely claim the timesheet was updated when nothing was written.
@@ -85,10 +82,7 @@ def test_field_trip_no_monthly_report_marks_skipped_not_updated(monkeypatch):
     }
     with _ctx(body):
         _login_direktor()
-        resp = tfv.api_field_trip_create(
-            get_vehicle_reservations=lambda: [],
-            save_reservations=lambda: None,
-        )
+        resp = tfv.api_field_trip_create()
         payload = resp.get_json()
 
     assert payload['success'] is True
@@ -121,10 +115,7 @@ def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
     }
     with _ctx(body):
         _login_direktor()
-        resp = tfv.api_field_trip_create(
-            get_vehicle_reservations=lambda: [],
-            save_reservations=lambda: None,
-        )
+        resp = tfv.api_field_trip_create()
         payload = resp.get_json()
 
     assert payload['success'] is True
@@ -133,13 +124,13 @@ def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Finding 3: stable reservation id in file-backed fallback
+# ZADATAK #3: PostgreSQL je jedini izvor istine za rezervacije — bez tihog
+# JSON fallback-a. Kad baza nije dostupna, rezervacija se NE kreira i greška
+# se prijavljuje (ne maskira se kao uspeh).
 # ---------------------------------------------------------------------------
 
-def test_file_reservation_id_is_stable_after_deletion(monkeypatch):
+def test_no_database_url_does_not_silently_reserve_vehicle(monkeypatch):
     monkeypatch.delenv('DATABASE_URL', raising=False)
-    # Existing reservations where ids are NOT contiguous (a record was deleted).
-    reservations = [{'id': 1}, {'id': 5}]
 
     body = {
         'vehicle_id': 7,
@@ -150,18 +141,13 @@ def test_file_reservation_id_is_stable_after_deletion(monkeypatch):
     }
     with _ctx(body):
         _login_direktor()
-        resp = tfv.api_field_trip_create(
-            get_vehicle_reservations=lambda: reservations,
-            save_reservations=lambda: None,
-        )
+        resp = tfv.api_field_trip_create()
         payload = resp.get_json()
 
-    assert payload['success'] is True
-    assert payload['vehicle_reserved'] is True
-    new_ids = [r['id'] for r in reservations]
-    # New id must be unique (not colliding with the existing id 5).
-    assert len(new_ids) == len(set(new_ids))
-    assert reservations[-1]['id'] == 6
+    # No JSON fallback: the museum vehicle reservation is not created and the
+    # unavailable database is surfaced as an error rather than a false success.
+    assert payload['vehicle_reserved'] is False
+    assert payload.get('vehicle_error')
 
 
 # ---------------------------------------------------------------------------
