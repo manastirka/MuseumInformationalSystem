@@ -1254,20 +1254,41 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="p-4 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 600px;">
-                        <i class="bi bi-facebook text-primary mb-3" style="font-size: 3rem;"></i>
-                        <h5 class="mb-2">Facebook садржај се отвара директно</h5>
-                        <p class="text-muted mb-4" style="max-width: 28rem;">
-                            Уграђени Facebook widget прави нестабилне console грешке у прегледачу.
-                            Отворите званичну страницу музеја у новом табу.
-                        </p>
-                        <div class="d-grid gap-2 w-100" style="max-width: 20rem;">
-                            <a href="https://www.facebook.com/prirodnjacki" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                                <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Facebook страницу
-                            </a>
-                            <a href="https://www.facebook.com/prirodnjacki/events" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
-                                <i class="bi bi-calendar-event me-2"></i>Догађаји
-                            </a>
+                    <!-- Facebook страница уграђена као ИЗОЛОВАН (sandbox) lazy iframe.
+                         FB грешке остају у facebook.com origin-у унутар iframe-а —
+                         наша конзола остаје чиста. Ако iframe не учита за ~5s или је
+                         блокиран (adblock/мрежа), приказује се fallback картица. -->
+                    <div class="social-embed" data-social-embed="facebook" style="position: relative; min-height: 600px;">
+                        <!-- iframe остаје видљив (реална ширина за FB adapt_container_width);
+                             спинер је преклоп преко њега док се не учита. src се поставља
+                             тек кад картица уђе у видокруг (lazy кроз IntersectionObserver). -->
+                        <iframe data-role="frame"
+                                data-fb-src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fprirodnjacki&tabs=timeline&width=500&height=600&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
+                                title="Facebook страница Природњачког музеја"
+                                class="social-embed-frame"
+                                style="display: block; border: none; width: 100%; height: 600px; overflow: hidden;"
+                                scrolling="no" frameborder="0" allowtransparency="true"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+                        <div class="social-embed-loading position-absolute top-0 start-0 w-100 h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center" data-role="loading" style="min-height: 600px; background: var(--bg-card, #ffffff);">
+                            <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Учитавање…</span></div>
+                            <p class="text-muted mb-0">Учитавање Facebook странице…</p>
+                        </div>
+                        <div class="social-embed-fallback p-4 d-flex flex-column justify-content-center align-items-center text-center d-none" data-role="fallback" style="min-height: 600px;">
+                            <i class="bi bi-facebook text-primary mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="mb-2">Facebook страница музеја</h5>
+                            <p class="text-muted mb-4" style="max-width: 28rem;">
+                                Уграђени приказ тренутно није доступан (мрежа или блокатор садржаја).
+                                Отворите званичну страницу музеја директно.
+                            </p>
+                            <div class="d-grid gap-2 w-100" style="max-width: 20rem;">
+                                <a href="https://www.facebook.com/prirodnjacki" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Facebook страницу
+                                </a>
+                                <a href="https://www.facebook.com/prirodnjacki/events" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
+                                    <i class="bi bi-calendar-event me-2"></i>Догађаји
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1297,10 +1318,10 @@
                     <div id="instagram-feed-container" class="h-100">
                         <div class="p-4 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 600px;">
                             <i class="bi bi-instagram mb-3" style="font-size: 3rem; color: #E1306C;"></i>
-                            <h5 class="mb-2">Instagram feed је отворен преко профила</h5>
+                            <h5 class="mb-2">Instagram профил музеја</h5>
                             <p class="text-muted mb-4" style="max-width: 28rem;">
-                                SnapWidget embed враћа 401 и Meta/Instagram JavaScript грешке.
-                                Отворите музејски Instagram профил директно.
+                                Instagram нема поуздан уграђени приказ без спољног SDK-а.
+                                Отворите музејски профил директно — увек ажурно и без грешака.
                             </p>
                             <div class="d-grid gap-2 w-100" style="max-width: 20rem;">
                                 <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" rel="noopener noreferrer" class="btn btn-danger">
@@ -2057,5 +2078,69 @@ function dashboard() {
         }
     };
 }
+
+// ── Друштвене мреже: sandbox lazy iframe са fallback-ом ──────────────
+// FB страница се учитава тек кад картица уђе у видокруг. FB грешке остају
+// у facebook.com origin-у унутар iframe-а (наша конзола чиста). Ако iframe
+// не учита за 5s или је блокиран (adblock/мрежа) → уредна fallback картица.
+(function () {
+    function initSocialEmbed(wrap) {
+        var frame = wrap.querySelector('[data-role="frame"]');
+        var loading = wrap.querySelector('[data-role="loading"]');
+        var fallback = wrap.querySelector('[data-role="fallback"]');
+        if (!frame) { return; }
+        var settled = false, timer = null;
+
+        function toFallback() {
+            if (settled) { return; } settled = true;
+            if (timer) { clearTimeout(timer); }
+            if (loading) { loading.classList.add('d-none'); }
+            frame.style.display = 'none';
+            if (fallback) { fallback.classList.remove('d-none'); }
+        }
+        function toFrame() {
+            if (settled) { return; } settled = true;
+            if (timer) { clearTimeout(timer); }
+            if (loading) { loading.classList.add('d-none'); }
+            frame.style.display = 'block';
+        }
+        function startLoad() {
+            if (frame.getAttribute('src')) { return; }
+            // Аборт/блокада iframe-а не емитује 'error' (емитује 'load' на празну
+            // error-страницу), а cross-origin садржај се не може прочитати — па
+            // се успех/неуспех iframe-а не разликује изнутра. Зато ПРЕ iframe-а
+            // проверимо достижност FB-а малом сликом (favicon): ако не стигне
+            // (мрежа/adblock/блокада) → уредан fallback без празне рупе; тек ако
+            // стигне, учитавамо прави sandbox iframe. FB грешке остају у његовом
+            // facebook.com origin-у — наша конзола остаје чиста.
+            timer = setTimeout(toFallback, 5000);   // укупни буџет ~5s
+            var probe = new Image();
+            probe.onerror = toFallback;
+            probe.onload = function () {
+                if (settled) { return; }
+                frame.addEventListener('load', toFrame);
+                frame.src = frame.getAttribute('data-fb-src');
+            };
+            probe.src = 'https://www.facebook.com/favicon.ico?_=' + Date.now();
+        }
+
+        if ('IntersectionObserver' in window) {
+            var io = new IntersectionObserver(function (entries, obs) {
+                entries.forEach(function (e) {
+                    if (e.isIntersecting) { startLoad(); obs.disconnect(); }
+                });
+            }, { rootMargin: '200px' });
+            io.observe(wrap);
+        } else {
+            startLoad();
+        }
+    }
+    function boot() {
+        document.querySelectorAll('[data-social-embed]').forEach(initSocialEmbed);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else { boot(); }
+})();
 </script>
 {% endblock %}

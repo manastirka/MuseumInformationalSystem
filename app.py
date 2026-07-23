@@ -522,9 +522,9 @@ if TALISMAN_AVAILABLE:
             "cdnjs.cloudflare.com",
             "unpkg.com",
             "cdn.plot.ly",      # Plotly.js for 3D terrain
-            "www.facebook.com",
-            "connect.facebook.net",
-            "snapwidget.com",
+            # Facebook/SnapWidget JS SDK више се НЕ учитава на нашој страни —
+            # друштвене мреже иду кроз sandbox iframe (види frame-src). Зато
+            # нема facebook/snapwidget у script-src (мање напада, чистија конзола).
         ],
         'style-src': [
             "'self'",
@@ -545,12 +545,11 @@ if TALISMAN_AVAILABLE:
             "blob:",
             "*.openstreetmap.org",
             "*.tile.openstreetmap.org",
-            "*.fbcdn.net",
-            "*.facebook.com",
-            "*.instagram.com",
-            "*.cdninstagram.com",
-            "scontent.cdninstagram.com",
-            "snapwidget.com",
+            # Једина сврха: мала слика (favicon) којом табла проверава ДОСТИЖНОСТ
+            # Facebook-а пре уграђивања iframe-а (graceful fallback). Без овога би
+            # блокирана провера сама била CSP-грешка на НАШЕМ origin-у. FB feed
+            # слике се учитавају унутар facebook iframe-а (њихов origin), не овде.
+            "www.facebook.com",
             "nhmbeo.rs",
             "*.nhmbeo.rs",
             "www.nhmbeo.rs",
@@ -560,7 +559,6 @@ if TALISMAN_AVAILABLE:
             "blob:",
             "localhost:11434",  # Ollama API
             "api.open-meteo.com",
-            "www.facebook.com",
             "cdn.plot.ly",
             "cdnjs.cloudflare.com",
             "cdn.jsdelivr.net",
@@ -571,10 +569,11 @@ if TALISMAN_AVAILABLE:
             "blob:",
         ],
         'frame-src': [
+            # Једина facebook дозвола: уграђивање Facebook page plugin-а у
+            # sandbox iframe на табли. Минимум потребан да iframe ради.
             "'self'",
             "www.facebook.com",
             "*.facebook.com",
-            "snapwidget.com",
         ],
         'frame-ancestors': "'self'",
         'form-action': "'self'",
