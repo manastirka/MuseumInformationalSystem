@@ -1,6 +1,7 @@
 {
   "admin": {
     "enabled_widgets": [
+      "social_feeds",
       "timesheet",
       "museum_databases",
       "news",
@@ -33,6 +34,7 @@
   },
   "admin@nhmbeo.rs": {
     "enabled_widgets": [
+      "social_feeds",
       "timesheet",
       "museum_databases",
       "mineral_database",
