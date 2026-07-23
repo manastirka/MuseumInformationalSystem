@@ -1965,7 +1965,9 @@ function submitForReview() {
 .ts-entry-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4, 1rem);
+    /* Један „празан ред" размака: важи и као размак ИЗМЕЂУ стубова (десктоп)
+       и као размак ИЗМЕЂУ секција при слагању (уско). Кроз spacing токен. */
+    gap: var(--space-8, 2rem);
     align-items: flex-start;
 }
 .ts-entry-grid > .row {
