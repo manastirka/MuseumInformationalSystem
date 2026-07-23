@@ -60,7 +60,7 @@
                                 <div class="plate-text">{{ vehicle.registration }}</div>
                             </div>
                         </div>
-                        <span class="badge bg-success">{{ vehicle.status }}</span>
+                        <span class="badge {% if vehicle.status == 'Активно' %}vehicle-status-free{% else %}vehicle-status-busy{% endif %}">{{ vehicle.status }}</span>
                     </div>
                     <div class="row mt-3">
                         <div class="col-6">
@@ -134,12 +134,12 @@
                     <h6 class="mb-3">Легенда:</h6>
                     <div class="d-flex gap-4 flex-wrap">
                         <div class="d-flex align-items-center">
-                            <div class="legend-box bg-success me-2"></div>
+                            <div class="legend-box vehicle-status-free me-2"></div>
                             <span>Слободно</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <div class="legend-box bg-warning me-2"></div>
-                            <span>Резервисано</span>
+                            <div class="legend-box vehicle-status-busy me-2"></div>
+                            <span>Заузето</span>
                         </div>
                         <div class="d-flex align-items-center">
                             <div class="legend-box bg-secondary me-2"></div>
@@ -336,7 +336,7 @@ function renderCalendar() {
                 cell.classList.add('bg-secondary', 'bg-opacity-25');
                 cell.innerHTML = '<small class="text-muted">-</small>';
             } else if (reservation) {
-                cell.classList.add('bg-warning', 'bg-opacity-25', 'reservation-cell');
+                cell.classList.add('vehicle-status-busy', 'reservation-cell');
                 cell.innerHTML = `
                     <small class="fw-bold">${reservation.employee_name}</small><br>
                     <small class="text-muted">${reservation.purpose}</small>
@@ -347,8 +347,8 @@ function renderCalendar() {
                 cell.classList.add('bg-info', 'bg-opacity-10');
                 cell.innerHTML = '<small class="text-muted">Викенд</small>';
             } else {
-                cell.classList.add('bg-success', 'bg-opacity-10');
-                cell.innerHTML = '<small class="text-success">Слободно</small>';
+                cell.classList.add('vehicle-status-free');
+                cell.innerHTML = '<small>Слободно</small>';
             }
 
             row.appendChild(cell);

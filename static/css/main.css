@@ -74,6 +74,16 @@
     --danger-soft: #fee2e2;
     --info-soft: #dbeafe;
 
+    /* Статус доступности возила (слободно/заузето) — нежне пастелне површине
+       на белој основи; текст задовољава WCAG AA. Тамна и високо-контрастна
+       варијанта су ниже (исти семантички токени, друга подлога/текст). */
+    --status-free-bg: #e4f7ec;
+    --status-free-border: #b3e3c6;
+    --status-free-text: #0f5027;
+    --status-busy-bg: #fde7e7;
+    --status-busy-border: #f3c2c2;
+    --status-busy-text: #8a1818;
+
     /* Typography */
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-size-xs: 0.75rem;
@@ -154,6 +164,14 @@
     --warning-soft: #33270e;
     --danger-soft: #351515;
     --info-soft: #142238;
+    /* Статус возила у тамној теми: пригушене тамнозелене/тамноцрвене површине
+       (никако пастел на тамном), светли текст за AA. */
+    --status-free-bg: #16351f;
+    --status-free-border: #2c5a3a;
+    --status-free-text: #8ef0b0;
+    --status-busy-bg: #3a1719;
+    --status-busy-border: #6b2a2c;
+    --status-busy-text: #fbb4b4;
     --bg-body: #111827;
     --bg-card: #1f2937;
     --bg-nav: #111827;
@@ -228,6 +246,33 @@
     --bs-table-striped-color: var(--text-primary);
     --bs-table-active-color: var(--text-primary);
 }
+
+/* Статус доступности возила — једна дефиниција кроз токене, доследно у свим
+   темама (табела резервација, картице возила, легенда, hover). !important
+   надјачава Bootstrap-ове `bg-*`/`.badge`/`.text-*` утилити класе на истом
+   елементу; сав текст унутра прати статусни токен да контраст остане AA. */
+.vehicle-status-free {
+    background-color: var(--status-free-bg) !important;
+    /* heritage-shell слика градијент преко `.badge` — гаси се да остане чиста
+       пастелна подлога (heritage background shorthand гази bg-color). */
+    background-image: none !important;
+    color: var(--status-free-text) !important;
+    border-color: var(--status-free-border) !important;
+}
+.vehicle-status-busy {
+    background-color: var(--status-busy-bg) !important;
+    background-image: none !important;
+    color: var(--status-busy-text) !important;
+    border-color: var(--status-busy-border) !important;
+}
+.vehicle-status-free,
+.vehicle-status-free small,
+.vehicle-status-free .text-success,
+.vehicle-status-free .text-muted { color: var(--status-free-text) !important; }
+.vehicle-status-busy,
+.vehicle-status-busy small,
+.vehicle-status-busy .fw-bold,
+.vehicle-status-busy .text-muted { color: var(--status-busy-text) !important; }
 
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {
@@ -3376,6 +3421,14 @@ html[data-density="kompakt"][data-style="terenska"] {
     --warning-soft: #ffe8c2;
     --danger-soft: #ffd9d9;
     --info-soft: #d5e4ff;
+    /* Статус возила у високом контрасту: јасна подлога + готово црн текст и
+       дебела ивица боје (семантика кроз боју подлоге/ивице, максималан контраст). */
+    --status-free-bg: #d6f2e0;
+    --status-free-border: #003318;
+    --status-free-text: #003318;
+    --status-busy-bg: #ffd7d7;
+    --status-busy-border: #6a0000;
+    --status-busy-text: #6a0000;
     --shadow-sm: none;
     --shadow-md: none;
     --shadow-lg: none;
