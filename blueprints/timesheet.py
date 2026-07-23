@@ -227,45 +227,52 @@ def timesheet_view():
     return timesheet_employee_views.render_timesheet_view()
 
 
-# --- Увоз радне листе из Word-а (запослени: текућа листа) ---
-@timesheet_bp.route('/timesheet/uvoz')
-@login_required
+# --- Увоз радних листа из Word-а (ИСКЉУЧИВО админ; обједињено у Администрацији) ---
+@timesheet_bp.route('/admin/timesheet/uvoz')
+@admin_required
 def uvoz_radne():
-    """Форма за увоз текуће радне листе из .docx."""
-    return timesheet_uvoz_views.render_uvoz_form()
+    """Обједињена админ страница: појединачни + архивски увоз из Word-а."""
+    return timesheet_uvoz_views.render_uvoz_hub()
+
+
+@timesheet_bp.route('/timesheet/uvoz')
+@admin_required
+def uvoz_radne_legacy():
+    """Стара путања појединачног увоза → обједињена админ страница."""
+    return redirect(url_for('timesheet.uvoz_radne'))
 
 
 @timesheet_bp.route('/timesheet/uvoz/pregled', methods=['POST'])
-@login_required
+@admin_required
 def uvoz_pregled():
-    """Парсирај отпремљени .docx и прикажи преглед пре потврде."""
+    """Парсирај отпремљени .docx и прикажи преглед + избор запосленог."""
     return timesheet_uvoz_views.handle_uvoz_pregled()
 
 
 @timesheet_bp.route('/timesheet/uvoz/potvrdi', methods=['POST'])
-@login_required
+@admin_required
 def uvoz_potvrdi():
-    """Потврди увоз текуће листе (иде у ланац одобравања)."""
+    """Потврди појединачни увоз за изабраног запосленог (иде у ланац одобравања)."""
     return timesheet_uvoz_views.handle_uvoz_potvrdi()
 
 
-# --- Архивски масовни увоз (админ/шеф) ---
+# --- Архивски масовни увоз (иста обједињена админ страница) ---
 @timesheet_bp.route('/admin/timesheet/uvoz-arhiva')
-@admin_or_department_head_required
+@admin_required
 def uvoz_arhiva():
-    """Форма за масовни архивски увоз .docx радних листа."""
-    return timesheet_uvoz_views.render_uvoz_arhiva_form()
+    """Стари улаз архивског увоза → обједињена админ страница."""
+    return redirect(url_for('timesheet.uvoz_radne'))
 
 
 @timesheet_bp.route('/admin/timesheet/uvoz-arhiva/pregled', methods=['POST'])
-@admin_or_department_head_required
+@admin_required
 def uvoz_arhiva_pregled():
     """Dry-run извештај архивског увоза (поклапања/упозорења/одбијања)."""
     return timesheet_uvoz_views.handle_uvoz_arhiva_pregled()
 
 
 @timesheet_bp.route('/admin/timesheet/uvoz-arhiva/potvrdi', methods=['POST'])
-@admin_or_department_head_required
+@admin_required
 def uvoz_arhiva_potvrdi():
     """Потврди архивски увоз (уписује као одобрене)."""
     return timesheet_uvoz_views.handle_uvoz_arhiva_potvrdi()
