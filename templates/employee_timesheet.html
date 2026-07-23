@@ -305,8 +305,9 @@
 </div>
 {% endif %}
 
-<!-- Timesheet Table -->
-<div class="row stagger-children">
+<!-- Timesheet Table (+ Обављени послови: two-column entry layout on wide screens) -->
+{% if is_entry_page %}<div class="ts-entry-grid">{% endif %}
+<div class="row stagger-children ts-matrix-row">
     <div class="col-12">
         {% if is_entry_page %}
         <!-- Entry Mode - Editable Table -->
@@ -484,7 +485,7 @@
 </div>
 
 <!-- Work Descriptions Section -->
-<div class="row stagger-children">
+<div class="row stagger-children ts-work-row">
     <div class="col-12">
         {% if is_entry_page %}
         <!-- Entry Mode - Editable Form -->
@@ -712,6 +713,7 @@
         {% endif %}
     </div>
 </div>
+{% if is_entry_page %}</div>{# /.ts-entry-grid #}{% endif %}
 
 {% if is_entry_page %}
 <!-- Instructions (only shown in entry mode) -->
@@ -1954,6 +1956,56 @@ function submitForReview() {
 
 [data-theme="dark"] .px-3.py-2 .form-check-label {
     color: #cbd5e1 !important;
+}
+
+/* ── Two-column entry layout (matrix left, work right) ─────────
+   Циљ: типичан унос стане на један екран — компактна матрица лево,
+   обављени послови десно. Испод ~1200px се слаже вертикално (као пре).
+   Боје се НЕ дирају (ослањамо се на постојеће токене) — само распоред.  */
+.ts-entry-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4, 1rem);
+    align-items: flex-start;
+}
+.ts-entry-grid > .row {
+    /* mobile-first: пуна ширина, слаже се — ништа горе него сад */
+    flex: 1 1 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+@media (min-width: 1200px) {
+    .ts-entry-grid {
+        flex-wrap: nowrap;
+    }
+    .ts-entry-grid > .ts-matrix-row {
+        flex: 7 1 0;
+        min-width: 0;   /* дозволи матрици да се стисне уместо да прелива */
+    }
+    .ts-entry-grid > .ts-work-row {
+        flex: 5 1 0;
+        min-width: 0;
+    }
+
+    /* Компактна матрица на широком екрану (читљиво + кликабилно) */
+    .ts-entry-grid .ts-entry-table { font-size: 0.78rem; }
+    .ts-entry-grid .ts-entry-table .ts-header th {
+        padding: 0.35rem 0.1rem;
+        font-size: 0.6rem;
+        white-space: normal;   /* пренос у 2 реда уместо скраћивања (…) */
+        line-height: 1.15;
+    }
+    .ts-entry-grid .ts-entry-table tbody td { padding: 0.1rem 0.12rem; }
+    .ts-entry-grid .ts-entry-table .timesheet-input {
+        padding: 0.25rem 0.1rem;
+        font-size: 0.8rem;
+        min-height: 32px;      /* дадир остаје употребљив */
+    }
+    .ts-entry-grid .ts-col-day     { width: 32px; }
+    .ts-entry-grid .ts-col-dayname { width: 44px; }
+    .ts-entry-grid .ts-col-total   { width: 40px; }
+    .ts-entry-grid .ts-total-row td { padding: 0.4rem 0.15rem; font-size: 0.78rem; }
 }
 
 /* Loading Overlay Styles */
