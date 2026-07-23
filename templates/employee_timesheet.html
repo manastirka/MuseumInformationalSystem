@@ -1965,9 +1965,8 @@ function submitForReview() {
 .ts-entry-grid {
     display: flex;
     flex-wrap: wrap;
-    /* Један „празан ред" размака: важи и као размак ИЗМЕЂУ стубова (десктоп)
-       и као размак ИЗМЕЂУ секција при слагању (уско). Кроз spacing токен. */
-    gap: var(--space-8, 2rem);
+    column-gap: var(--space-8, 2rem);  /* хоризонтални канал између стубова */
+    row-gap: 0;                        /* вертикални размак иде кроз margin-top доле */
     align-items: flex-start;
 }
 .ts-entry-grid > .row {
@@ -1975,6 +1974,14 @@ function submitForReview() {
     flex: 1 1 100%;
     margin-left: 0;
     margin-right: 0;
+}
+/* Видљив празан ред (висина реда табеле) ИЗНАД ОБА блока — одваја их од
+   зоне изнад (заглавље/контроле форме). Важи и двостубачно (обе колоне
+   добијају размак одозго и остају поравнате) и уско сложено (размак пре
+   сваке секције). Кроз spacing токен, без хардкод px. */
+.ts-entry-grid > .ts-matrix-row,
+.ts-entry-grid > .ts-work-row {
+    margin-top: var(--space-12, 3rem);
 }
 
 @media (min-width: 1200px) {
