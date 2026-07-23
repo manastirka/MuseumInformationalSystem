@@ -1,9 +1,9 @@
-"""Увоз радних листа из Word-а — view хендлери (ток запосленог + админ архива).
+"""Увоз радних листа из Word-а — view хендлери (ИСКЉУЧИВО админ функција).
 
-Токови:
-  * Запослени: једна .docx → ПРЕГЛЕД парсираног → потврда → import_current
-    (SUBMITTED, у ланац одобравања).
-  * Админ: више .docx → dry-run извештај (поклапања/упозорења/одбијања) →
+Обе токове покреће искључиво администрација, са једне обједињене странице:
+  * Појединачни: једна .docx → ПРЕГЛЕД парсираног + избор запосленог за кога
+    се уводи → потврда → import_current (SUBMITTED, у ланац одобравања).
+  * Архивски: више .docx → dry-run извештај (поклапања/упозорења/одбијања) →
     потврда → import_archive (APPROVED, архива).
 
 Парсирани подаци се чувају у сесији између прегледа и потврде (JSON).
@@ -35,12 +35,15 @@ def _parse_upload(file_storage):
 
 
 # ---------------------------------------------------------------------------
-# Ток запосленог — текућа листа
+# Обједињена админ страница увоза
 # ---------------------------------------------------------------------------
-def render_uvoz_form():
-    return render_template('timesheet_uvoz.html')
+def render_uvoz_hub():
+    return render_template('admin_timesheet_uvoz.html')
 
 
+# ---------------------------------------------------------------------------
+# Појединачни увоз (текућа листа) — админ бира запосленог
+# ---------------------------------------------------------------------------
 def handle_uvoz_pregled():
     f = request.files.get('docx')
     if f is None or not _is_word(f.filename):
@@ -52,13 +55,12 @@ def handle_uvoz_pregled():
         flash(f'Датотека није препозната као радна листа: {exc}', 'danger')
         return redirect(url_for('timesheet.uvoz_radne'))
 
-    # Упозори ако име из документа не личи на пријављеног корисника (можда туђа
-    # датотека) — али увоз иде као текућа листа ПРИЈАВЉЕНОГ корисника.
-    session_name = session.get('user_name') or ''
-    name_ok = _slican(parsed.get('employee_name'), session_name)
-    session[_SESSION_KEY_TEKUCA] = json.dumps(parsed)
-    return render_template('timesheet_uvoz_pregled.html', parsed=parsed,
-                           name_ok=name_ok, session_name=session_name)
+    # Админ уводи туђе листе: име из документа се мапира на запосленог, а избор
+    # се потврђује ручно пре уписа (никад тихо не бирамо погрешног).
+    with get_postgres_connection() as conn, conn.cursor() as cur:
+        match = tsimport.match_employee(cur, parsed.get('employee_name'))
+    session[_SESSION_KEY_TEKUCA] = json.dumps({'parsed': parsed, 'match': match})
+    return render_template('timesheet_uvoz_pregled.html', parsed=parsed, match=match)
 
 
 def handle_uvoz_potvrdi():
@@ -66,27 +68,28 @@ def handle_uvoz_potvrdi():
     if not raw:
         flash('Нема података за увоз — поновите отпремање.', 'warning')
         return redirect(url_for('timesheet.uvoz_radne'))
-    parsed = json.loads(raw)
-    user_email = session.get('user_email')
-    user_name = session.get('user_name')
-    ok, msg, _rid = tsimport.import_current(user_email, user_name, parsed)
+    data = json.loads(raw)
+    parsed = data.get('parsed') or {}
+    match = data.get('match') or {}
+    email = (request.form.get('employee_email') or match.get('email') or '').strip() or None
+    if not email:
+        flash('Изаберите запосленог за кога се радна листа увози.', 'warning')
+        return redirect(url_for('timesheet.uvoz_radne'))
+    name = _name_for_email(email, match) or parsed.get('employee_name')
+    ok, msg, _rid = tsimport.import_current(email, name, parsed)
     flash(msg, 'success' if ok else 'danger')
-    return redirect(url_for('timesheet.timesheet_entry'))
+    return redirect(url_for('timesheet.uvoz_radne'))
 
 
 # ---------------------------------------------------------------------------
-# Ток админа — архивски масовни увоз
+# Архивски масовни увоз
 # ---------------------------------------------------------------------------
-def render_uvoz_arhiva_form():
-    return render_template('timesheet_uvoz_arhiva.html')
-
-
 def handle_uvoz_arhiva_pregled():
     files = [f for f in request.files.getlist('docx')
              if f and (f.filename or '').strip()]
     if not files:
         flash('Изаберите једну или више .docx датотека.', 'warning')
-        return redirect(url_for('timesheet.uvoz_arhiva'))
+        return redirect(url_for('timesheet.uvoz_radne'))
 
     stavke = []
     with get_postgres_connection() as conn, conn.cursor() as cur:
@@ -123,7 +126,7 @@ def handle_uvoz_arhiva_potvrdi():
     raw = session.pop(_SESSION_KEY_ARHIVA, None)
     if not raw:
         flash('Нема података за увоз — поновите отпремање.', 'warning')
-        return redirect(url_for('timesheet.uvoz_arhiva'))
+        return redirect(url_for('timesheet.uvoz_radne'))
     payload = json.loads(raw)
     # Админ може поименично да изабере/потврди email по ставци (form: email_<i>).
     admin_email = session.get('user_email')
@@ -141,15 +144,16 @@ def handle_uvoz_arhiva_potvrdi():
             preskoceno += 1
     flash(f'Архивски увоз: уписано {uvezeno}, прескочено {preskoceno} '
           f'(без поклопљеног запосленог).', 'success' if uvezeno else 'warning')
-    return redirect(url_for('timesheet.uvoz_arhiva'))
+    return redirect(url_for('timesheet.uvoz_radne'))
 
 
 # ---------------------------------------------------------------------------
-def _slican(a, b):
-    """Груба провера да два имена личе (за упозорење о туђој датотеци)."""
-    import difflib
-    na = tsimport._norm_name(a)
-    nb = tsimport._norm_name(b)
-    if not na or not nb:
-        return True  # без поређења не дижемо лажну узбуну
-    return difflib.SequenceMatcher(None, na, nb).ratio() >= 0.7
+def _name_for_email(email, match):
+    """Пуно име за изабрани email из мапирања (кандидати из прегледа)."""
+    target = (email or '').lower()
+    for c in (match.get('candidates') or []):
+        if (c.get('email') or '').lower() == target:
+            return c.get('full_name')
+    if (match.get('email') or '').lower() == target:
+        return match.get('full_name')
+    return None

@@ -8,13 +8,6 @@
 <div class="container py-4" style="max-width: 900px;">
   <h2 class="mb-3"><i class="bi bi-eye me-2"></i>Преглед прочитане радне листе</h2>
 
-  {% if not name_ok %}
-  <div class="alert alert-warning">
-    Име из документа (<b>{{ parsed.employee_name }}</b>) не изгледа као ваше име
-    (<b>{{ session_name }}</b>). Листа ће се увести као ВАША текућа листа —
-    проверите да ли сте отпремили праву датотеку.
-  </div>
-  {% endif %}
   {% for w in parsed.warnings %}
     <div class="alert alert-warning py-2 mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ w }}</div>
   {% endfor %}
@@ -50,10 +43,28 @@
   </div>
   {% endif %}
 
-  <form method="post" action="{{ url_for('timesheet.uvoz_potvrdi') }}" class="d-flex gap-2">
+  <form method="post" action="{{ url_for('timesheet.uvoz_potvrdi') }}" class="card card-body">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Потврди и пошаљи на одобравање</button>
-    <a href="{{ url_for('timesheet.uvoz_radne') }}" class="btn btn-outline-secondary">Одустани</a>
+    <div class="mb-3" style="max-width: 520px;">
+      <label class="form-label" for="employee_email"><b>Увези за запосленог:</b></label>
+      <select name="employee_email" id="employee_email" class="form-select">
+        <option value="">— изаберите запосленог —</option>
+        {% for c in match.candidates %}
+        <option value="{{ c.email }}" {% if c.email == match.email %}selected{% endif %}>
+          {{ c.full_name }} ({{ (c.score*100)|round|int }}%)
+        </option>
+        {% endfor %}
+      </select>
+      {% if not match.confident %}
+      <div class="text-warning small mt-1"><i class="bi bi-exclamation-triangle me-1"></i>
+        Име из документа (<b>{{ parsed.employee_name }}</b>) није поуздано мапирано —
+        проверите избор пре потврде.</div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Потврди и пошаљи на одобравање</button>
+      <a href="{{ url_for('timesheet.uvoz_radne') }}" class="btn btn-outline-secondary">Одустани</a>
+    </div>
   </form>
 </div>
 {% endblock %}

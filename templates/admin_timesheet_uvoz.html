@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Увоз радних листа из Word-а{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 960px;">
+  <h2 class="mb-1"><i class="bi bi-file-earmark-word me-2"></i>Увоз радних листа из Word-а</h2>
+  <p class="text-muted">Функција администрације. Изаберите ток увоза.</p>
+
+  <div class="row g-4">
+    <!-- Појединачни увоз -->
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <b><i class="bi bi-file-earmark-arrow-up me-1"></i>Појединачни увоз (текућа листа)</b>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <p class="text-muted small">Једна .doc/.docx листа. Пре уписа видите преглед и
+             бирате <b>за ког запосленог</b> се уводи (мапирање по имену из фајла, уз потврду).
+             Улази у ланац одобравања (шеф → директор).</p>
+          <form method="post" action="{{ url_for('timesheet.uvoz_pregled') }}"
+                enctype="multipart/form-data" class="mt-auto">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="mb-3">
+              <label class="form-label" for="docx_one">Word датотека (.doc или .docx)</label>
+              <input class="form-control" type="file" id="docx_one" name="docx" accept=".doc,.docx" required>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-eye me-1"></i>Прегледај</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Архивски масовни увоз -->
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <b><i class="bi bi-archive me-1"></i>Архивски масовни увоз</b>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <p class="text-muted small">Више .doc/.docx листа претходних периода. Добијате
+             dry-run извештај и мапирање на запослене; тек по потврди се уписују као
+             <b>одобрене архивске</b> листе.</p>
+          <form method="post" action="{{ url_for('timesheet.uvoz_arhiva_pregled') }}"
+                enctype="multipart/form-data" class="mt-auto">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="mb-3">
+              <label class="form-label" for="docx_many">Word датотеке (.doc/.docx, више одједном)</label>
+              <input class="form-control" type="file" id="docx_many" name="docx" accept=".doc,.docx" multiple required>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Прегледај (dry-run)</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <a href="{{ url_for('timesheet.admin_timesheet_main') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Назад на администрацију радних листа
+    </a>
+  </div>
+</div>
+{% endblock %}

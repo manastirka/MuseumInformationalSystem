@@ -115,6 +115,34 @@
             </div>
         </div>
 
+        <!-- Word Import -->
+        <div class="col-lg-12">
+            <div class="card h-100 border-0 shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-word me-2"></i>
+                        Увоз радних листа из Word-а
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-4">
+                        Појединачни увоз (текућа листа за изабраног запосленог) и архивски
+                        масовни увоз старијих периода — на једном месту.
+                    </p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('timesheet.uvoz_radne') }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-file-earmark-word me-2"></i>
+                            Увоз радних листа
+                        </a>
+                    </div>
+                    <div class="alert alert-info mb-0 mt-3" style="font-size: 0.9rem;">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Функције:</strong> Појединачни увоз са прегледом и избором запосленог, архивски масовни увоз
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Analytics Dashboard -->
         <div class="col-lg-12">
             <div class="card border-0 shadow">
