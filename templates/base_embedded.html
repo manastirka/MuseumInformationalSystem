@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="sr"{% if current_theme_mode|default('system') in ('dark', 'contrast') %} data-theme="{{ current_theme_mode }}"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}{% if current_theme_style|default('institucionalna') != 'institucionalna' %} data-style="{{ current_theme_style }}"{% endif %}{% if current_theme_density|default('komforno') != 'komforno' %} data-density="{{ current_theme_density }}"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>{% block title %}Систем — Природњачки музеј{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=PT+Serif:wght@400;700&family=PT+Sans:wght@400;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Тема: исти механизам као base.html — сервер рендерује data-theme/data-accent,
+         овај скрипт разрешава 'system' режим и прати OS промену (без Leaflet/Chart зависности). -->
+    <script>
+        (function () {
+            var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+            function applyResolved(mode) {
+                var root = document.documentElement;
+                if (mode === 'contrast') {
+                    root.setAttribute('data-theme', 'contrast');
+                    root.setAttribute('data-bs-theme', 'light');
+                    return;
+                }
+                var dark = mode === 'dark' || (mode === 'system' && mq && mq.matches);
+                if (dark) {
+                    root.setAttribute('data-theme', 'dark');
+                } else {
+                    root.removeAttribute('data-theme');
+                }
+                root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+            }
+            window.MuseumTheme = {
+                mode: '{{ current_theme_mode|default('system') }}',
+                accent: '{{ current_theme_accent|default('zelena') }}',
+                style: '{{ current_theme_style|default('institucionalna') }}',
+                density: '{{ current_theme_density|default('komforno') }}',
+                applyResolved: applyResolved
+            };
+            applyResolved(window.MuseumTheme.mode);
+            if (mq && mq.addEventListener) {
+                mq.addEventListener('change', function () {
+                    if (window.MuseumTheme.mode === 'system') applyResolved('system');
+                });
+            }
+        })();
+    </script>
+    <!-- Main Stylesheet -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    <!-- Alpine.js (mail settings tab користи x-data) -->
+    <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js" integrity="sha384-Rpe/8orFUm5Q1GplYBHxbuA8Az8O8C5sAoOsdbRWkqPjKFaxPgGZipj4zeHL7lxX" crossorigin="anonymous"></script>
+    {% block head_extra %}{% endblock %}
+    <style>
+        /* Уграђени приказ (iframe таба): без навигације/подножја, само садржај
+           странице у heritage-shell токенима. Подлога иста као тело апликације. */
+        html, body { background: var(--bg-body); }
+        /* КЉУЧНО: угаси min-height:100vh (main.css body) унутар iframe-а — иначе
+           аутоматска висина улази у повратну петљу (виши iframe → већи 100vh →
+           виши iframe) и оставља велики празан простор. */
+        body.embedded-shell { margin: 0; min-height: 0 !important; }
+        .embedded-shell .main-content,
+        .embedded-shell .content-wrapper { min-height: 0 !important; }
+        .embedded-wrap { padding: 1rem 1.25rem 1.5rem; }
+    </style>
+</head>
+<body class="heritage-shell embedded-shell">
+    <div class="embedded-wrap container-fluid">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+
+    <!-- Global Security Utilities (иста дефиниција као base.html) -->
+    <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const CURRENT_USER_EMAIL = {{ (session.get('user_email') or '') | tojson }};
+
+        function secureFetch(url, options = {}) {
+            const method = (options.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                options.headers = options.headers || {};
+                if (options.headers instanceof Headers) {
+                    if (!options.headers.has('X-CSRFToken')) {
+                        options.headers.set('X-CSRFToken', CSRF_TOKEN);
+                    }
+                } else {
+                    options.headers['X-CSRFToken'] = options.headers['X-CSRFToken'] || CSRF_TOKEN;
+                }
+            }
+            return fetch(url, options);
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        function buildUserScopedStorageKey(namespace, scope = '') {
+            const parts = ['mis', namespace, CURRENT_USER_EMAIL || 'anonymous'];
+            if (scope) parts.push(scope);
+            return parts.join(':');
+        }
+        function saveUserScopedDraft(namespace, data, scope = '') {
+            try { localStorage.setItem(buildUserScopedStorageKey(namespace, scope), JSON.stringify(data)); return true; }
+            catch (error) { console.warn('Unable to persist draft data', error); return false; }
+        }
+        function loadUserScopedDraft(namespace, scope = '') {
+            try { const raw = localStorage.getItem(buildUserScopedStorageKey(namespace, scope)); return raw ? JSON.parse(raw) : null; }
+            catch (error) { console.warn('Unable to read persisted draft data', error); return null; }
+        }
+        function removeUserScopedDraft(namespace, scope = '') {
+            try { localStorage.removeItem(buildUserScopedStorageKey(namespace, scope)); return true; }
+            catch (error) { console.warn('Unable to remove persisted draft data', error); return false; }
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+
+    <!-- Ћирилица/латиница транслитерација (исти механизам као апликација) -->
+    <script src="{{ url_for('static', filename='js/translator.js') }}"></script>
+
+    <!-- Auto-height: јави висину родитељу (hub подешава висину iframe-а). Исти origin. -->
+    <script>
+        (function () {
+            function reportHeight() {
+                // body.scrollHeight прати стварну висину садржаја; documentElement
+                // уме да укључи празан простор до висине viewport-а iframe-а.
+                var h = document.body ? document.body.scrollHeight : document.documentElement.scrollHeight;
+                try { parent.postMessage({ type: 'mis-embedded-height', height: h }, window.location.origin); } catch (e) {}
+            }
+            window.addEventListener('load', reportHeight);
+            window.addEventListener('resize', reportHeight);
+            if (window.ResizeObserver) {
+                try { new ResizeObserver(reportHeight).observe(document.documentElement); } catch (e) {}
+            }
+            setTimeout(reportHeight, 300);
+            setTimeout(reportHeight, 1200);
+        })();
+    </script>
+</body>
+</html>

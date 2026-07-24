@@ -1,6 +1,6 @@
 """Content and overview routes extracted from app.py."""
 
-from flask import Blueprint
+from flask import Blueprint, redirect, request, url_for
 
 import bird_ringing_views
 import collection_management_views
@@ -17,7 +17,11 @@ content_bp = Blueprint('content', __name__)
 @content_bp.route('/admin/reports')
 @admin_required
 def system_reports():
-    """Generate system reports and analytics."""
+    """Generate system reports and analytics. Standalone URL redirects to the unified
+    hub tab; ?embedded=1 renders bare content for the iframe (bookmarks keep working)."""
+    if not request.args.get('embedded'):
+        return redirect(url_for('admin.admin_system_hub') + '#izvestaji')
+
     import app as museum_app
 
     return museum_content_views.render_system_reports(

@@ -320,14 +320,6 @@
                         </span>
                         <i class="bi bi-chevron-right module-arrow"></i>
                     </a>
-                    <a href="{{ url_for('admin_audit_log') }}" class="admin-module-item" data-module-search="ревизиони траг аудит историја">
-                        <span class="module-icon"><i class="bi bi-clock-history"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Ревизиони траг</span>
-                            <span class="module-desc">Ко је шта мењао и брисао у систему</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
                     {% endif %}
                 </div>
             </div>
@@ -428,51 +420,11 @@
             </div>
             <div class="card-body">
                 <div class="admin-module-list">
-                    <a href="{{ url_for('admin_system_settings') }}" class="admin-module-item" data-module-search="системска подешавања општа">
-                        <span class="module-icon"><i class="bi bi-sliders"></i></span>
+                    <a href="{{ url_for('admin_system_hub') }}" class="admin-module-item" data-module-search="систем подешавања пошта извештаји ревизиони траг логови безбедност база">
+                        <span class="module-icon"><i class="bi bi-gear-wide-connected"></i></span>
                         <span class="module-text">
-                            <span class="module-name">Системска подешавања</span>
-                            <span class="module-desc">Општа подешавања система</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
-                    <a href="{{ url_for('admin_system_settings') }}#database" class="admin-module-item" data-module-search="управљање базом података backup">
-                        <span class="module-icon"><i class="bi bi-hdd-stack"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Управљање базом података</span>
-                            <span class="module-desc">Одржавање и резервне копије базе</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
-                    <a href="{{ url_for('admin_system_settings') }}#logs" class="admin-module-item" data-module-search="системски логови">
-                        <span class="module-icon"><i class="bi bi-file-earmark-code"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Системски логови</span>
-                            <span class="module-desc">Преглед системских логова</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
-                    <a href="{{ url_for('admin_system_settings') }}#security" class="admin-module-item" data-module-search="безбедносна подешавања сигурност">
-                        <span class="module-icon"><i class="bi bi-shield-lock"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Безбедносна подешавања</span>
-                            <span class="module-desc">Сигурносне поставке система</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
-                    <a href="{{ url_for('system_reports') }}" class="admin-module-item" data-module-search="извештаји система аналитика">
-                        <span class="module-icon"><i class="bi bi-bar-chart-line"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Извештаји система</span>
-                            <span class="module-desc">Аналитика и извештаји система</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
-                    </a>
-                    <a href="{{ url_for('admin_mail_configuration') }}" class="admin-module-item" data-module-search="администрација поште мејл">
-                        <span class="module-icon"><i class="bi bi-envelope-fill"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">Администрација поште</span>
-                            <span class="module-desc">Подешавања и налози е-поште</span>
+                            <span class="module-name">Систем</span>
+                            <span class="module-desc">Подешавања, пошта, извештаји и ревизиони траг — све на једном месту</span>
                         </span>
                         <i class="bi bi-chevron-right module-arrow"></i>
                     </a>

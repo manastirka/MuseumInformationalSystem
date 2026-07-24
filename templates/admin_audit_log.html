@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_embedded.html" if request.args.get('embedded') else "base.html" %}
 
 {% block title %}Ревизиони траг - Администрација{% endblock %}
 
@@ -32,6 +32,7 @@
 
     <!-- Филтери -->
     <form method="get" class="card card-body mb-4">
+        {% if request.args.get('embedded') %}<input type="hidden" name="embedded" value="1">{% endif %}
         <div class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Ентитет</label>
@@ -71,7 +72,7 @@
                 <button type="submit" class="btn btn-ripple btn-primary">
                     <i class="bi bi-funnel"></i> Примени
                 </button>
-                <a href="{{ url_for('admin_audit_log') }}" class="btn btn-ripple btn-outline-secondary">
+                <a href="{{ url_for('admin_audit_log', embedded=1) if request.args.get('embedded') else url_for('admin_audit_log') }}" class="btn btn-ripple btn-outline-secondary">
                     <i class="bi bi-x-circle"></i> Поништи
                 </a>
             </div>

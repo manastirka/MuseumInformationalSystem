@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_embedded.html" if request.args.get('embedded') else "base.html" %}
 
 {% block title %}Извештаји система - Администрација{% endblock %}
 

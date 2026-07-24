@@ -1,6 +1,6 @@
 """Admin and access-management routes extracted from app.py."""
 
-from flask import Blueprint
+from flask import Blueprint, redirect, render_template, request, url_for
 
 import admin_system_views
 import admin_user_management_views
@@ -26,17 +26,33 @@ def admin_panel():
     return core_app_views.render_admin_panel()
 
 
+@admin_bp.route('/admin/sistem')
+@admin_or_director_required
+def admin_system_hub():
+    """Обједињена системска страница са табовима: Подешавања / Пошта / Извештаји /
+    Ревизиони траг. Сваки таб је iframe ка постојећој рути са ?embedded=1, која
+    задржава СВОЈУ проверу приступа (права се не мењају). Шаблон приказује таб само
+    ако корисник сме да га види (is_admin/is_director)."""
+    return render_template('admin_sistem.html')
+
+
 @admin_bp.route('/admin/system-settings')
 @admin_required
 def admin_system_settings():
-    """System settings page with full functionality."""
+    """System settings page. Standalone URL redirects to the unified hub tab;
+    ?embedded=1 renders the content bare for the hub iframe (bookmarks keep working)."""
+    if not request.args.get('embedded'):
+        return redirect(url_for('admin.admin_system_hub') + '#podesavanja')
     return admin_system_views.render_admin_system_settings()
 
 
 @admin_bp.route('/admin/audit-log')
 @admin_or_director_required
 def admin_audit_log():
-    """Global audit trail viewer ('ko je ovo obrisao/promenio?')."""
+    """Global audit trail viewer ('ko je ovo obrisao/promenio?'). Standalone URL
+    redirects to the hub tab; ?embedded=1 renders bare content for the iframe."""
+    if not request.args.get('embedded'):
+        return redirect(url_for('admin.admin_system_hub') + '#revizija')
     return audit_log_views.render_audit_log()
 
 
@@ -164,7 +180,10 @@ def admin_password_manager():
 @admin_bp.route('/admin/mail-settings')
 @admin_required
 def admin_mail_configuration():
-    """Centralized mail configuration for all user accounts."""
+    """Centralized mail configuration. Standalone URL redirects to the unified hub
+    tab; ?embedded=1 renders bare content for the iframe (bookmarks keep working)."""
+    if not request.args.get('embedded'):
+        return redirect(url_for('admin.admin_system_hub') + '#posta')
     return admin_user_management_views.render_admin_mail_configuration()
 
 

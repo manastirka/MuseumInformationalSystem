@@ -359,7 +359,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             'render_admin_system_settings',
             return_value=museum_app.app.response_class('ok', status=200),
         ) as mocked_handler:
-            response = self.client.get('/admin/system-settings', base_url=self.base_url)
+            response = self.client.get('/admin/system-settings?embedded=1', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
@@ -936,7 +936,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             'render_system_reports',
             return_value=museum_app.app.response_class('ok', status=200),
         ) as mocked_handler:
-            response = self.client.get('/admin/reports', base_url=self.base_url)
+            response = self.client.get('/admin/reports?embedded=1', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with(
@@ -2925,7 +2925,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             'render_admin_mail_configuration',
             return_value=museum_app.app.response_class('ok', status=200),
         ) as mocked_handler:
-            response = self.client.get('/admin/mail-settings', base_url=self.base_url)
+            response = self.client.get('/admin/mail-settings?embedded=1', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with()
