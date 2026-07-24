@@ -127,6 +127,109 @@
     line-height: 1.25;
 }
 
+/* Vertical admin sections */
+.admin-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.admin-section-header {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-section-header h5 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 700;
+}
+
+.admin-section-header .section-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-md, 8px);
+    background: var(--primary);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.admin-module-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.admin-module-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-primary);
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-module-item:hover,
+.admin-module-item:focus-visible {
+    background: var(--bg-hover);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.admin-module-item .module-icon {
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-elevated);
+    color: var(--primary);
+    font-size: 1.05rem;
+}
+
+.admin-module-item .module-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.admin-module-item .module-name {
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.admin-module-item .module-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.admin-module-item .module-arrow {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+@media (max-width: 576px) {
+    .admin-module-item .module-desc {
+        font-size: 0.75rem;
+    }
+    .admin-section-header .section-badge {
+        width: 1.75rem;
+        height: 1.75rem;
+    }
+}
+
 /* Alpine.js */
 [x-cloak] {
     display: none !important;
@@ -167,197 +270,212 @@
         </div>
     </div>
 
-    <!-- Admin Sections -->
-    <div class="row g-4 stagger-children">
-        <!-- Museum Databases Admin -->
-        <div class="col-lg-6">
-            <div class="card h-100 card-minimizable card-glass card-shine" data-card-id="museum-databases">
-                <div class="card-header bg-success text-white" @click="toggleCard('museum-databases')">
-                    <h5>
-                        <i class="bi bi-database me-2"></i>
-                        Музејске базе података
-                    </h5>
-                    <div class="window-controls">
-                        <button class="btn-window btn-minimize" @click.stop="toggleCard('museum-databases')" title="Минимизуј/Врати">
-                            <i class="bi bi-dash minimize-icon"></i>
-                        </button>
-                    </div>
+    <!-- Admin Sections (vertical, grouped by domain) -->
+    <div class="admin-sections stagger-children">
+        <!-- Section: Users & access -->
+        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="users-access">
+            <div class="card-header admin-section-header" @click="toggleCard('users-access')">
+                <h5>
+                    <span class="section-badge"><i class="bi bi-people"></i></span>
+                    Корисници и приступ
+                </h5>
+                <div class="window-controls">
+                    <button class="btn-window btn-minimize" @click.stop="toggleCard('users-access')" title="Минимизуј/Врати">
+                        <i class="bi bi-dash minimize-icon"></i>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <p class="card-text mb-4">
-                        Управљајте свим базама података музеја и колекцијама.
-                    </p>
-
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('admin_statistics') }}" class="btn btn-info">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Статистика збирки
-                        </a>
-                        <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-success">
-                            <i class="bi bi-qr-code me-2"></i>
-                            QR у збиркама
-                        </a>
-                        <a href="{{ url_for('museum_databases') }}" class="btn btn-success">
-                            <i class="bi bi-view-list me-2"></i>
-                            Преглед свих база
-                        </a>
-                        {% if endpoint_exists('exhibits_database') %}
-                        <a href="{{ url_for('exhibits_database') }}" class="btn btn-outline-warning">
-                            <i class="bi bi-collection me-2"></i>
-                            База експоната
-                        </a>
-                        {% endif %}
-                        {% if endpoint_exists('exhibitions_database') %}
-                        <a href="{{ url_for('exhibitions_database') }}" class="btn btn-outline-danger">
-                            <i class="bi bi-easel me-2"></i>
-                            База изложби
-                        </a>
-                        {% endif %}
-                        <a href="{{ url_for('employees_database') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-people-fill me-2"></i>
-                            База запослених
-                        </a>
-                        <a href="{{ url_for('employee_profiles_database') }}" class="btn btn-outline-info">
-                            <i class="bi bi-person-badge me-2"></i>
-                            Профили запослених
-                        </a>
-                    </div>
+            </div>
+            <div class="card-body">
+                <div class="admin-module-list">
+                    <a href="{{ url_for('manage_user_access') }}" class="admin-module-item" data-module-search="приступ модулима дозволе корисник">
+                        <span class="module-icon"><i class="bi bi-shield-check"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">{% if is_admin() or is_director() %}Управљај приступом модулима{% else %}Преглед приступа модулима{% endif %}</span>
+                            <span class="module-desc">Дозволе корисника по модулима система</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('employees_database') }}" class="admin-module-item" data-module-search="листа корисника налози">
+                        <span class="module-icon"><i class="bi bi-list-ul"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Листа корисника</span>
+                            <span class="module-desc">Преглед свих корисничких налога</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    {% if is_admin() or is_director() %}
+                    <a href="{{ url_for('add_user') }}" class="admin-module-item" data-module-search="додај корисника нови налог">
+                        <span class="module-icon"><i class="bi bi-person-plus"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Додај корисника</span>
+                            <span class="module-desc">Креирање новог корисничког налога</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_password_manager') }}" class="admin-module-item" data-module-search="менаџер лозинки шифре">
+                        <span class="module-icon"><i class="bi bi-key"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Менаџер лозинки</span>
+                            <span class="module-desc">Управљање лозинкама корисника</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_audit_log') }}" class="admin-module-item" data-module-search="ревизиони траг аудит историја">
+                        <span class="module-icon"><i class="bi bi-clock-history"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Ревизиони траг</span>
+                            <span class="module-desc">Ко је шта мењао и брисао у систему</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- User Management -->
-        <div class="col-lg-6">
-            <div class="card h-100 card-minimizable card-glass card-shine" data-card-id="user-management">
-                <div class="card-header bg-warning text-dark" @click="toggleCard('user-management')">
-                    <h5>
-                        <i class="bi bi-people me-2"></i>
-                        Управљање корисницима
-                    </h5>
-                    <div class="window-controls">
-                        <button class="btn-window btn-minimize" @click.stop="toggleCard('user-management')" title="Минимизуј/Врати">
-                            <i class="bi bi-dash minimize-icon"></i>
-                        </button>
-                    </div>
+        <!-- Section: Collections & content -->
+        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="collections-content">
+            <div class="card-header admin-section-header" @click="toggleCard('collections-content')">
+                <h5>
+                    <span class="section-badge"><i class="bi bi-database"></i></span>
+                    Збирке и садржај
+                </h5>
+                <div class="window-controls">
+                    <button class="btn-window btn-minimize" @click.stop="toggleCard('collections-content')" title="Минимизуј/Врати">
+                        <i class="bi bi-dash minimize-icon"></i>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <p class="card-text mb-4">
-                        Управљајте корисничким налозима и приступом модулима.
-                    </p>
-
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('manage_user_access') }}" class="btn btn-warning">
-                            <i class="bi bi-shield-check me-2"></i>
-                            {% if is_admin() or is_director() %}Управљај приступом модулима{% else %}Преглед приступа модулима{% endif %}
-                        </a>
-                        {% if is_admin() or is_director() %}
-                        <a href="{{ url_for('admin_password_manager') }}" class="btn btn-danger">
-                            <i class="bi bi-key-fill me-2"></i>
-                            Менаџер лозинки
-                        </a>
-                        <a href="{{ url_for('admin_mail_configuration') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-envelope-gear me-2"></i>
-                            Администрација поште
-                        </a>
-                        <a href="{{ url_for('add_user') }}" class="btn btn-outline-warning">
-                            <i class="bi bi-person-plus me-2"></i>
-                            Додај корисника
-                        </a>
-                        <a href="{{ url_for('admin_audit_log') }}" class="btn btn-outline-info">
-                            <i class="bi bi-clock-history me-2"></i>
-                            Ревизиони траг
-                        </a>
-                        {% endif %}
-                        <a href="{{ url_for('employees_database') }}" class="btn btn-outline-secondary">
-                            <i class="bi bi-list me-2"></i>
-                            Листа корисника
-                        </a>
-                        {% if is_admin() or is_director() %}
-                        <a href="{{ url_for('system_reports') }}" class="btn btn-outline-info">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Извештаји система
-                        </a>
-                        {% endif %}
-                    </div>
+            </div>
+            <div class="card-body">
+                <div class="admin-module-list">
+                    <a href="{{ url_for('admin_statistics') }}" class="admin-module-item" data-module-search="статистика збирки бројеви">
+                        <span class="module-icon"><i class="bi bi-graph-up"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Статистика збирки</span>
+                            <span class="module-desc">Бројеви и преглед по збиркама</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('museum_databases') }}" class="admin-module-item" data-module-search="преглед свих база музејске">
+                        <span class="module-icon"><i class="bi bi-view-list"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Преглед свих база</span>
+                            <span class="module-desc">Све музејске базе на једном месту</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('museum_databases') }}" class="admin-module-item" data-module-search="qr у збиркама кодови етикете">
+                        <span class="module-icon"><i class="bi bi-qr-code"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">QR у збиркама</span>
+                            <span class="module-desc">QR етикете и кодови збирки</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    {% if endpoint_exists('exhibits_database') %}
+                    <a href="{{ url_for('exhibits_database') }}" class="admin-module-item" data-module-search="база експоната">
+                        <span class="module-icon"><i class="bi bi-collection"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">База експоната</span>
+                            <span class="module-desc">Евиденција музејских експоната</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    {% endif %}
+                    {% if endpoint_exists('exhibitions_database') %}
+                    <a href="{{ url_for('exhibitions_database') }}" class="admin-module-item" data-module-search="база изложби">
+                        <span class="module-icon"><i class="bi bi-easel"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">База изложби</span>
+                            <span class="module-desc">Евиденција изложби музеја</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('employees_database') }}" class="admin-module-item" data-module-search="база запослених матични">
+                        <span class="module-icon"><i class="bi bi-people-fill"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">База запослених</span>
+                            <span class="module-desc">Матични подаци запослених</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('employee_profiles_database') }}" class="admin-module-item" data-module-search="профили запослених детаљи">
+                        <span class="module-icon"><i class="bi bi-person-badge"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Профили запослених</span>
+                            <span class="module-desc">Профили и детаљи запослених</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Image Management -->
-        <div class="col-lg-6">
-            <div class="card h-100 card-minimizable card-glass card-shine" data-card-id="image-management">
-                <div class="card-header bg-danger text-white" @click="toggleCard('image-management')">
-                    <h5>
-                        <i class="bi bi-images me-2"></i>
-                        Управљање сликама
-                    </h5>
-                    <div class="window-controls">
-                        <button class="btn-window btn-minimize" @click.stop="toggleCard('image-management')" title="Минимизуј/Врати">
-                            <i class="bi bi-dash minimize-icon"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <p class="card-text mb-4">
-                        Групно отпремање слика је премештено у сваку појединачну збирку.
-                    </p>
-
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('museum_databases') }}" class="btn btn-danger">
-                            <i class="bi bi-collection me-2"></i>
-                            Слике у збиркама
-                        </a>
-                        <a href="/api/images/stats" class="btn btn-outline-danger" target="_blank">
-                            <i class="bi bi-pie-chart me-2"></i>
-                            Статистика слика
-                        </a>
-                        <a href="#" class="btn btn-outline-secondary" onclick="alert('Отворите жељену збирку и изаберите опцију Слике.')">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Помоћ
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- System Settings -->
+        <!-- Section: System & logs (admin/director only) -->
         {% if is_admin() or is_director() %}
-        <div class="col-lg-6">
-            <div class="card h-100 card-minimizable card-glass card-shine" data-card-id="system-settings">
-                <div class="card-header bg-info text-white" @click="toggleCard('system-settings')">
-                    <h5>
-                        <i class="bi bi-gear me-2"></i>
-                        Системска подешавања
-                    </h5>
-                    <div class="window-controls">
-                        <button class="btn-window btn-minimize" @click.stop="toggleCard('system-settings')" title="Минимизуј/Врати">
-                            <i class="bi bi-dash minimize-icon"></i>
-                        </button>
-                    </div>
+        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="system-logs">
+            <div class="card-header admin-section-header" @click="toggleCard('system-logs')">
+                <h5>
+                    <span class="section-badge"><i class="bi bi-gear"></i></span>
+                    Систем и логови
+                </h5>
+                <div class="window-controls">
+                    <button class="btn-window btn-minimize" @click.stop="toggleCard('system-logs')" title="Минимизуј/Врати">
+                        <i class="bi bi-dash minimize-icon"></i>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <p class="card-text mb-4">
-                        Конфигуришите општа подешавања система.
-                    </p>
-
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('admin_system_settings') }}" class="btn btn-info">
-                            <i class="bi bi-sliders me-2"></i>
-                            Системска подешавања
-                        </a>
-                        <a href="{{ url_for('admin_system_settings') }}#database" class="btn btn-outline-success">
-                            <i class="bi bi-database me-2"></i>
-                            Управљање базом података
-                        </a>
-                        <a href="{{ url_for('admin_system_settings') }}#logs" class="btn btn-outline-dark">
-                            <i class="bi bi-file-earmark-code me-2"></i>
-                            Системски логови
-                        </a>
-                        <a href="{{ url_for('admin_system_settings') }}#security" class="btn btn-outline-danger">
-                            <i class="bi bi-shield-lock me-2"></i>
-                            Безбедносна подешавања
-                        </a>
-                    </div>
+            </div>
+            <div class="card-body">
+                <div class="admin-module-list">
+                    <a href="{{ url_for('admin_system_settings') }}" class="admin-module-item" data-module-search="системска подешавања општа">
+                        <span class="module-icon"><i class="bi bi-sliders"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Системска подешавања</span>
+                            <span class="module-desc">Општа подешавања система</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_system_settings') }}#database" class="admin-module-item" data-module-search="управљање базом података backup">
+                        <span class="module-icon"><i class="bi bi-hdd-stack"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Управљање базом података</span>
+                            <span class="module-desc">Одржавање и резервне копије базе</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_system_settings') }}#logs" class="admin-module-item" data-module-search="системски логови">
+                        <span class="module-icon"><i class="bi bi-file-earmark-code"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Системски логови</span>
+                            <span class="module-desc">Преглед системских логова</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_system_settings') }}#security" class="admin-module-item" data-module-search="безбедносна подешавања сигурност">
+                        <span class="module-icon"><i class="bi bi-shield-lock"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Безбедносна подешавања</span>
+                            <span class="module-desc">Сигурносне поставке система</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('system_reports') }}" class="admin-module-item" data-module-search="извештаји система аналитика">
+                        <span class="module-icon"><i class="bi bi-bar-chart-line"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Извештаји система</span>
+                            <span class="module-desc">Аналитика и извештаји система</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
+                    <a href="{{ url_for('admin_mail_configuration') }}" class="admin-module-item" data-module-search="администрација поште мејл">
+                        <span class="module-icon"><i class="bi bi-envelope-fill"></i></span>
+                        <span class="module-text">
+                            <span class="module-name">Администрација поште</span>
+                            <span class="module-desc">Подешавања и налози е-поште</span>
+                        </span>
+                        <i class="bi bi-chevron-right module-arrow"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -658,15 +776,18 @@ function adminPanel() {
             }
         },
 
-        // Filter cards based on search
+        // Filter module items based on search; hide sections with no matches
         filterCards() {
-            const query = this.searchQuery.toLowerCase();
-            this.getCards().forEach(card => {
-                const text = card.textContent.toLowerCase();
-                const col = card.closest('.col-lg-6');
-                if (col) {
-                    col.style.display = text.includes(query) ? '' : 'none';
-                }
+            const query = this.searchQuery.toLowerCase().trim();
+            this.$root.querySelectorAll('.admin-section').forEach(section => {
+                let anyVisible = false;
+                section.querySelectorAll('.admin-module-item').forEach(item => {
+                    const text = (item.dataset.moduleSearch || item.textContent).toLowerCase();
+                    const match = text.includes(query);
+                    item.style.display = match ? '' : 'none';
+                    if (match) anyVisible = true;
+                });
+                section.style.display = (anyVisible || query === '') ? '' : 'none';
             });
         },
 
