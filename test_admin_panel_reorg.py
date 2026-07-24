@@ -39,7 +39,7 @@ class AdminPanelReorgTests(unittest.TestCase):
         self.assertIn('admin-module-list', self.content)
         self.assertIn('admin-module-item', self.content)
 
-    # --- All live modules still present (nothing lost in the reshuffle) ---
+    # --- Non-system modules still present (nothing lost in the reshuffle) ---
     def test_live_modules_preserved(self):
         for endpoint in (
             "url_for('admin_statistics')",
@@ -48,13 +48,21 @@ class AdminPanelReorgTests(unittest.TestCase):
             "url_for('employee_profiles_database')",
             "url_for('manage_user_access')",
             "url_for('admin_password_manager')",
-            "url_for('admin_mail_configuration')",
             "url_for('add_user')",
-            "url_for('admin_audit_log')",
-            "url_for('system_reports')",
-            "url_for('admin_system_settings')",
         ):
             self.assertIn(endpoint, self.content, f'Lost module link: {endpoint}')
+
+    # --- System/logs modules consolidated into the single "Систем" hub item ---
+    # (settings/mail/reports/audit now live under /admin/sistem — see test_sistem_hub)
+    def test_system_section_is_single_hub_item(self):
+        self.assertIn("url_for('admin_system_hub')", self.content)
+        for moved in (
+            "url_for('admin_system_settings')",
+            "url_for('admin_mail_configuration')",
+            "url_for('system_reports')",
+            "url_for('admin_audit_log')",
+        ):
+            self.assertNotIn(moved, self.content, f'{moved} should have moved to the hub')
 
     # --- Do not regress notification wiring (see test_production_readiness) ---
     def test_notification_api_preserved(self):

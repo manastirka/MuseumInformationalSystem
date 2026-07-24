@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Систем - Информациони систем Природњачког музеја{% endblock %}
+
+{% block content %}
+{# Видљивост табова прати ПОСТОЈЕЋУ проверу сваке руте — не мења ко сме шта.
+   Обе провере (admin_required и admin_or_director_required) дозвољавају и
+   'admin' и 'direktor' (директор има админ-паритет, одлука 2026-06), па сва
+   четири таба виде и админ и директор. Сама уграђена рута свакако поново
+   проверава приступ (iframe добија 403 ако корисник нема право). #}
+{% set can_settings = is_admin() or is_director() %}
+{% set can_mail = is_admin() or is_director() %}
+{% set can_reports = is_admin() or is_director() %}
+{% set can_audit = is_admin() or is_director() %}
+{% set tabs = [] %}
+{% if can_settings %}{% set _ = tabs.append(('podesavanja', 'Подешавања', 'bi-sliders', url_for('admin_system_settings', embedded=1))) %}{% endif %}
+{% if can_mail %}{% set _ = tabs.append(('posta', 'Пошта', 'bi-envelope-fill', url_for('admin_mail_configuration', embedded=1))) %}{% endif %}
+{% if can_reports %}{% set _ = tabs.append(('izvestaji', 'Извештаји', 'bi-bar-chart-line', url_for('system_reports', embedded=1))) %}{% endif %}
+{% if can_audit %}{% set _ = tabs.append(('revizija', 'Ревизиони траг', 'bi-clock-history', url_for('admin_audit_log', embedded=1))) %}{% endif %}
+
+<style>
+.sistem-header {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card, 12px);
+}
+.sistem-header .section-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md, 8px);
+    background: var(--primary); color: #fff; font-size: 1.25rem;
+}
+.sistem-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card, 12px);
+    overflow: hidden;
+}
+.sistem-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    margin: 0;
+}
+.sistem-tabs .nav-link {
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+}
+.sistem-tabs .nav-link:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.sistem-tabs .nav-link.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.sistem-frame {
+    width: 100%;
+    border: 0;
+    display: block;
+    min-height: 640px;
+    background: var(--bg-body);
+}
+@media (max-width: 576px) {
+    .sistem-tabs .nav-link { padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+}
+</style>
+
+<div class="container-main fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="sistem-header p-4">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="section-badge"><i class="bi bi-gear-wide-connected"></i></span>
+                        <div>
+                            <h1 class="h4 mb-1 fw-bold">Систем</h1>
+                            <p class="mb-0 text-muted">Подешавања, пошта, извештаји и ревизиони траг на једном месту</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Админ панел
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if tabs %}
+    <div class="sistem-card" data-sistem-hub>
+        <ul class="nav nav-pills sistem-tabs" role="tablist">
+            {% for key, label, icon, src in tabs %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link{% if loop.first %} active{% endif %}"
+                        id="tab-{{ key }}"
+                        data-bs-toggle="pill"
+                        data-bs-target="#pane-{{ key }}"
+                        data-key="{{ key }}"
+                        type="button" role="tab"
+                        aria-controls="pane-{{ key }}"
+                        aria-selected="{{ 'true' if loop.first else 'false' }}">
+                    <i class="bi {{ icon }}"></i> {{ label }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="tab-content">
+            {% for key, label, icon, src in tabs %}
+            <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="pane-{{ key }}" role="tabpanel" aria-labelledby="tab-{{ key }}">
+                <iframe class="sistem-frame"
+                        title="{{ label }}"
+                        {% if loop.first %}src="{{ src }}"{% else %}data-src="{{ src }}"{% endif %}
+                        data-src="{{ src }}"></iframe>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">Немате приступ ниједном системском одељку.</div>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    const hub = document.querySelector('[data-sistem-hub]');
+    if (!hub) return;
+    const ORIGIN = window.location.origin;
+
+    // Ленива иницијализација iframe-а: src се поставља тек кад се таб први пут отвори.
+    function ensureLoaded(pane) {
+        const frame = pane.querySelector('iframe.sistem-frame');
+        if (frame && !frame.getAttribute('src') && frame.dataset.src) {
+            frame.setAttribute('src', frame.dataset.src);
+        }
+    }
+
+    // Активирај таб по кључу (из хеша), уз fallback на први видљиви.
+    function activateFromHash() {
+        const key = (window.location.hash || '').replace('#', '');
+        const btn = key && hub.querySelector('#tab-' + CSS.escape(key));
+        if (btn) {
+            bootstrap.Tab.getOrCreateInstance(btn).show();
+        } else {
+            const firstPane = hub.querySelector('.tab-pane.active');
+            if (firstPane) ensureLoaded(firstPane);
+        }
+    }
+
+    hub.querySelectorAll('button[data-bs-toggle="pill"]').forEach(function (btn) {
+        btn.addEventListener('shown.bs.tab', function () {
+            const target = document.querySelector(btn.dataset.bsTarget);
+            if (target) ensureLoaded(target);
+            // одрази активни таб у УРЛ хешу (bookmark-friendly), без скрола
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + btn.dataset.key);
+            }
+        });
+    });
+
+    // Аутоматска висина: свака уграђена страница јавља своју висину (исти origin).
+    window.addEventListener('message', function (event) {
+        if (event.origin !== ORIGIN) return;
+        const data = event.data || {};
+        if (data.type !== 'mis-embedded-height' || !data.height) return;
+        hub.querySelectorAll('iframe.sistem-frame').forEach(function (frame) {
+            if (frame.contentWindow === event.source) {
+                frame.style.height = (data.height + 8) + 'px';
+            }
+        });
+    });
+
+    // Прати промену хеша (нпр. redirect са старе руте на #posta) и на учитавању.
+    window.addEventListener('hashchange', activateFromHash);
+    activateFromHash();
+})();
+</script>
+{% endblock %}
