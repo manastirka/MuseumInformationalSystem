@@ -1,4 +1,4 @@
-// Контраст НОВИХ статусних површина возила (слободно/заузето) кроз токене.
+// Контраст НОВИХ статусних површина возила (слободно/заузето/недоступно) кроз токене.
 // Мери СТВАРНЕ пикселе (helpers/kontrast.js) на обе површине + текст, у свим
 // режимима (светла/тамна/високи контраст) и стиловима. Тако „ново" не пролази
 // испод AA, а постојећи sweep остаје независан.
@@ -28,7 +28,8 @@ async function ubaciPanel(page) {
     panel.style.cssText = 'padding:24px; display:flex; gap:16px; position:relative; z-index:1;';
     panel.innerHTML =
       '<span class="badge vehicle-status-free" style="font-size:16px; padding:10px 16px;">Слободно возило</span>' +
-      '<span class="badge vehicle-status-busy" style="font-size:16px; padding:10px 16px;">Заузето возило</span>';
+      '<span class="badge vehicle-status-busy" style="font-size:16px; padding:10px 16px;">Заузето возило</span>' +
+      '<span class="badge vehicle-status-unavailable" style="font-size:16px; padding:10px 16px;">Недоступно возило</span>';
     const c = document.querySelector('.container, .container-fluid, main, body');
     c.insertBefore(panel, c.firstChild);
   });
@@ -67,6 +68,9 @@ test('табела резервација: слободно=зелена, зау
   const rootFree = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--status-free-bg').trim());
   expect(rootFree).not.toEqual('');           // токен дефинисан
+  const rootUnavail = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--status-unavail-bg').trim());
+  expect(rootUnavail).not.toEqual('');        // недоступно токен дефинисан
   // Легенда носи обе површине.
   await expect(page.locator('.legend-box.vehicle-status-free')).toBeVisible();
   await expect(page.locator('.legend-box.vehicle-status-busy')).toBeVisible();

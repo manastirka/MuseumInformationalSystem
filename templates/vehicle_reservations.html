@@ -60,7 +60,7 @@
                                 <div class="plate-text">{{ vehicle.registration }}</div>
                             </div>
                         </div>
-                        <span class="badge {% if vehicle.status == 'Активно' %}vehicle-status-free{% else %}vehicle-status-busy{% endif %}">{{ vehicle.status }}</span>
+                        <span class="badge {% if vehicle.status == 'Активно' %}vehicle-status-free{% else %}vehicle-status-unavailable{% endif %}">{{ vehicle.status }}</span>
                     </div>
                     <div class="row mt-3">
                         <div class="col-6">
