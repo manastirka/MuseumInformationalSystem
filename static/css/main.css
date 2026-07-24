@@ -83,6 +83,11 @@
     --status-busy-bg: #fde7e7;
     --status-busy-border: #f3c2c2;
     --status-busy-text: #8a1818;
+    /* Недоступно возило (сервис/неактивно): неутрална светлосива површина —
+       ни слободно (зелена) ни заузето (црвена); текст задовољава WCAG AA. */
+    --status-unavail-bg: #edeff2;
+    --status-unavail-border: #cfd5dd;
+    --status-unavail-text: #3f4753;
 
     /* Typography */
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -172,6 +177,10 @@
     --status-busy-bg: #3a1719;
     --status-busy-border: #6b2a2c;
     --status-busy-text: #fbb4b4;
+    /* Недоступно: пригушена тамносива површина + светлосиви текст (AA). */
+    --status-unavail-bg: #2b2f36;
+    --status-unavail-border: #464c56;
+    --status-unavail-text: #c4cad3;
     --bg-body: #111827;
     --bg-card: #1f2937;
     --bg-nav: #111827;
@@ -265,6 +274,12 @@
     color: var(--status-busy-text) !important;
     border-color: var(--status-busy-border) !important;
 }
+.vehicle-status-unavailable {
+    background-color: var(--status-unavail-bg) !important;
+    background-image: none !important;
+    color: var(--status-unavail-text) !important;
+    border-color: var(--status-unavail-border) !important;
+}
 .vehicle-status-free,
 .vehicle-status-free small,
 .vehicle-status-free .text-success,
@@ -273,6 +288,9 @@
 .vehicle-status-busy small,
 .vehicle-status-busy .fw-bold,
 .vehicle-status-busy .text-muted { color: var(--status-busy-text) !important; }
+.vehicle-status-unavailable,
+.vehicle-status-unavailable small,
+.vehicle-status-unavailable .text-muted { color: var(--status-unavail-text) !important; }
 
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {
@@ -3429,6 +3447,10 @@ html[data-density="kompakt"][data-style="terenska"] {
     --status-busy-bg: #ffd7d7;
     --status-busy-border: #6a0000;
     --status-busy-text: #6a0000;
+    /* Недоступно у високом контрасту: јасна светлосива подлога + готово црн текст. */
+    --status-unavail-bg: #e6e6e6;
+    --status-unavail-border: #2a2a2a;
+    --status-unavail-text: #1a1a1a;
     --shadow-sm: none;
     --shadow-md: none;
     --shadow-lg: none;
