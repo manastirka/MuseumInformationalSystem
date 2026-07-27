@@ -1374,8 +1374,13 @@ function loadExistingData() {
     console.log('- selected_year:', {{ selected_year }});
     
     // This would fetch from the server
-    {% if timesheet_data and not is_entry_page %}
-        // Load existing timesheet data (ONLY in view mode, NOT in entry mode)
+    {% if timesheet_data %}
+        // Учитај постојеће дане И у режиму уноса И у прегледу. РАНИЈЕ је ово
+        // било гейтовано на „not is_entry_page", па форма уноса НИЈЕ приказивала
+        // већ сачуване дане — свако поновно чување је слало празну матрицу и
+        // ТИХО брисало податке (DELETE па нема поновног INSERT-а). Ово је узрок
+        // бага „матрица се не чува / све нуле". Попуна циља иста поља по имену
+        // (у уносу — уредива, у прегледу — скривена).
         const existingData = {{ timesheet_data | tojson }};
         console.log('📊 Existing data:', existingData);
         console.log('📊 Full object keys:', Object.keys(existingData));
