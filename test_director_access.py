@@ -501,9 +501,10 @@ class ReportListAnnotationTests(unittest.TestCase):
             sess['is_department_head'] = False
 
     def test_list_annotation_director(self):
-        """Director listing: annotate helper should flag bio-employee report
-        as non-verifiable, head-own report as verifiable, edu report as
-        verifiable."""
+        """Двостепено: директор МОЖЕ да потпише (одобри) сваки поднети извештај —
+        и регуларног запосленог (директорски слот), и листу шефа, и одељење без
+        шефа. `can_verify` контролише приказ дугмета „Одобри"; раније је био
+        погрешно False за регуларне запослене → директор није имао дугме."""
         from timesheet_admin_views import _annotate_reports_with_verify_flag
         reports = [
             {'id': 100},  # regular biology employee
@@ -556,7 +557,7 @@ class ReportListAnnotationTests(unittest.TestCase):
                        lambda **kw: _Conn()):
                 _annotate_reports_with_verify_flag(reports)
 
-        self.assertFalse(reports[0]['can_verify'], "director should NOT verify regular bio employee")
+        self.assertTrue(reports[0]['can_verify'], "директор СМЕ да потпише регуларног био запосленог (директорски слот)")
         self.assertTrue(reports[1]['can_verify'], "director SHOULD verify biljana (head) own report")
         self.assertTrue(reports[2]['can_verify'], "director SHOULD verify edu report (no head)")
 
@@ -668,8 +669,8 @@ class OnlyVerifiableFilterTests(unittest.TestCase):
             sess['is_department_head'] = False
 
     def test_filter_keeps_only_verifiable(self):
-        """Given 3 reports, 2 non-verifiable for director, 2 verifiable, the
-        filtered view shows only the verifiable ones."""
+        """Двостепено: директор потписује све поднете извештаје (директорски
+        слот кроз сва одељења), па „само моји за одобравање" задржава сва три."""
         fake_repo = MagicMock()
         fake_repo.available = True
         fake_repo.list_reports.return_value = {
@@ -742,10 +743,10 @@ class OnlyVerifiableFilterTests(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 200)
         body = response.get_data(as_text=True)
-        # 603 (Edu, no head) and 602 (head's own) stay; 601 filtered out.
+        # Двостепено: директор потписује сва три (директорски слот).
+        self.assertIn('timesheet-report-approve-601', body)
         self.assertIn('timesheet-report-approve-602', body)
         self.assertIn('timesheet-report-approve-603', body)
-        self.assertNotIn('timesheet-report-approve-601', body)
         self.assertIn('Филтер активан', body)
 
 
@@ -915,8 +916,9 @@ class NotificationFlowTests(unittest.TestCase):
         return _Conn
 
     def test_notify_bio_employee_submission(self):
-        """Bio employee submits → Верица (bio head) + admin get notified.
-        Director does NOT (bio has a head; submitter is not a head)."""
+        """Двостепено: bio запослени поднесе → admin + Верица (bio шеф) + ДИРЕКТОР
+        добијају обавештење (директор мора да да други потпис). Шефови ДРУГИХ
+        одељења се не обавештавају."""
         from timesheet_employee_views import _notify_verifiers_about_submission
 
         candidates = [
@@ -954,14 +956,13 @@ class NotificationFlowTests(unittest.TestCase):
                    if 'INSERT INTO user_notifications' in sql]
         recipients = {p[0] for p in inserts}
 
-        # Bio employee in a dept WITH a head — only admin + bio head notified.
+        # Двостепено: admin + bio шеф + директор (оба потписника + админ).
         self.assertEqual(
             recipients,
-            {'admin@nhmbeo.rs', 'verica.stojanovic@nhmbeo.rs'},
+            {'admin@nhmbeo.rs', 'verica.stojanovic@nhmbeo.rs', 'slavko.spasic@nhmbeo.rs'},
             f"wrong recipients; got {recipients}",
         )
-        # Director and other dept heads must NOT be pinged.
-        self.assertNotIn('slavko.spasic@nhmbeo.rs', recipients)
+        # Шеф ДРУГОГ одељења се не обавештава.
         self.assertNotIn('biljana.mitrovic@nhmbeo.rs', recipients)
 
     def test_notify_edu_employee_submission_includes_director(self):

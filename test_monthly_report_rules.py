@@ -726,12 +726,13 @@ class TestNotifyPolicy(unittest.TestCase):
         return {params[0] for q, params in cursor.executed
                 if 'INSERT INTO user_notifications' in q}
 
-    def test_regular_employee_notifies_admin_and_own_head_only(self):
+    def test_regular_employee_notifies_admin_head_and_director(self):
+        # Dvostepeno: za zaposlenog iz odseka sa šefom obaveštavaju se admin,
+        # NJEGOV šef I direktor (direktor daje drugi potpis). Tuđi šefovi ne.
         got = self._notified('zaposleni@nhmbeo.rs', 'Biologija')
         self.assertEqual(
-            got, {'admin@nhmbeo.rs', 'sef.bio@nhmbeo.rs'},
-            'Za zaposlenog iz odseka sa šefom: obaveštavaju se admin i NJEGOV '
-            'šef; direktor i tuđi šefovi ne',
+            got, {'admin@nhmbeo.rs', 'sef.bio@nhmbeo.rs', 'direktor@nhmbeo.rs'},
+            'Dvostepeno: admin + njegov šef + direktor',
         )
 
     def test_head_submission_notifies_admin_and_director(self):

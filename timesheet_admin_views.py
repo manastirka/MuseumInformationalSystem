@@ -272,6 +272,20 @@ def _signature_plan(session_data, target_department, target_employee_email,
     return _deny()
 
 
+def can_user_sign_report_for_department(session_data, target_department,
+                                        target_employee_email=None,
+                                        department_heads=None):
+    """Двостепено: сме ли корисник да ПОТПИШЕ ову листу — тј. да је одобри
+    (свој слот) или врати на допуну. True ако _signature_plan даје неки слот
+    (шеф ИЛИ директор ИЛИ админ). Замена за can_user_verify_report_for_department
+    у путањама одобравања/враћања: под старим правилом директор је био блокиран
+    за регуларне запослене одељења са шефом, па није имао дугме „Одобри" ни
+    могућност враћања."""
+    return _signature_plan(
+        session_data, target_department, target_employee_email, department_heads
+    )['allowed']
+
+
 def _department_scope_for_session() -> Optional[str]:
     """Return the department to scope the reports list to, or None for no scope.
 
@@ -492,7 +506,11 @@ def _annotate_reports_with_verify_flag(report_list):
 
     for report in report_list:
         meta = meta_by_id.get(report.get('id'), {})
-        report['can_verify'] = can_user_verify_report_for_department(
+        # Двостепено: дугме „Одобри" се приказује сваком ко сме да ПОТПИШЕ листу
+        # (шеф ИЛИ директор). Раније је коришћена стара верификациона политика
+        # која је блокирала директора за регуларне запослене → директор није
+        # видео дугме ни у једном одељењу.
+        report['can_verify'] = can_user_sign_report_for_department(
             session,
             meta.get('employee_department'),
             target_employee_email=meta.get('employee_email'),
@@ -527,7 +545,7 @@ def render_admin_timesheet_report_detail(report_id, timesheet_repository, timesh
         if not can_user_view_report_for_department(session, report_department):
             flash('Немате дозволу да прегледате овај извештај.', 'danger')
             return redirect(url_for('admin_timesheet_reports'))
-        can_verify = can_user_verify_report_for_department(
+        can_verify = can_user_sign_report_for_department(
             session, report_department,
             target_employee_email=employee_email,
             department_heads=heads,
@@ -1085,7 +1103,7 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                     return jsonify({'success': True, 'message': message,
                                     'approved': approved_now})
                 else:
-                    if not can_user_verify_report_for_department(
+                    if not can_user_sign_report_for_department(
                         session,
                         report.get('employee_department'),
                         target_employee_email=employee_email,
@@ -1256,7 +1274,7 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                 if not _session_is_admin(session):
                     existing_reports = [
                         row for row in existing_reports
-                        if can_user_verify_report_for_department(
+                        if can_user_sign_report_for_department(
                             session, row.get('employee_department'),
                             target_employee_email=row.get('employee_email'),
                             department_heads=heads,

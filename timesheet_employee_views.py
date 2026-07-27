@@ -301,16 +301,15 @@ def _notify_verifiers_about_submission(
     submitter_department,
     is_resubmission: bool = False,
 ):
-    """Notify only the leadership users who can ACTUALLY verify THIS report.
+    """Notify every leadership user who can SIGN this report (two-signature).
 
-    Rule (reuses `can_user_verify_report_for_department` so policy lives in
-    one place):
+    Rule (reuses `can_user_sign_report_for_department` so policy lives in one
+    place):
     - Admin: always.
-    - Department head: only if their own department == submitter's department
-      (and they are not the submitter themselves).
-    - Director: only when the submission is one the director verifies —
-      i.e., the submitter's department has no designated head, OR the
-      submitter IS a department head (director signs off head reports).
+    - Department head: only their own department (not the submitter themselves).
+    - Director: сваки регуларан запослени (директорски потпис) + листе шефова +
+      одељења без шефа. (Раније је директор био изостављен за регуларне
+      запослене одељења са шефом — па није ни знао да треба да потпише.)
 
     The submitter is always excluded.
     """
@@ -319,7 +318,7 @@ def _notify_verifiers_about_submission(
         # this helper self-contained.
         from timesheet_admin_views import (
             _get_department_heads,
-            can_user_verify_report_for_department,
+            can_user_sign_report_for_department,
         )
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
@@ -356,7 +355,7 @@ def _notify_verifiers_about_submission(
                             'sef_odeljenja', 'sef_pravne_sluzbe', 'sef_racunovodstva'
                         ),
                     }
-                    if not can_user_verify_report_for_department(
+                    if not can_user_sign_report_for_department(
                         cand_session,
                         submitter_department,
                         target_employee_email=submitter_email,
@@ -969,7 +968,7 @@ def api_timesheet_reject(report_id):
     from timesheet_admin_views import (
         _get_department_heads,
         _lookup_report_department,
-        can_user_verify_report_for_department,
+        can_user_sign_report_for_department,
     )
 
     note = (request.get_json() or {}).get('note', '').strip()
@@ -986,7 +985,8 @@ def api_timesheet_reject(report_id):
             logger.error("reject scope lookup failed: %s", exc)
             return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
 
-        if not can_user_verify_report_for_department(
+        # Двостепено: сваки потписник (шеф ИЛИ директор) сме да врати на допуну.
+        if not can_user_sign_report_for_department(
             session, report_department,
             target_employee_email=employee_email,
             department_heads=heads,
@@ -1016,7 +1016,7 @@ def api_timesheet_force_edit(report_id):
     from timesheet_admin_views import (
         _get_department_heads,
         _lookup_report_department,
-        can_user_verify_report_for_department,
+        can_user_sign_report_for_department,
     )
 
     # Per-report authorization. Admin short-circuits via the decorator; we
@@ -1040,7 +1040,8 @@ def api_timesheet_force_edit(report_id):
             logger.error("force_edit scope lookup failed: %s", exc)
             return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
 
-        if not can_user_verify_report_for_department(
+        # Двостепено: сваки потписник (шеф ИЛИ директор) сме да врати листу.
+        if not can_user_sign_report_for_department(
             session, report_department,
             target_employee_email=employee_email,
             department_heads=heads,
