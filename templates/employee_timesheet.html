@@ -192,25 +192,20 @@
 {% endif %}
 
 <!-- Date Restriction Warning (only in entry mode) -->
-{% if is_entry_page and not can_edit %}
+{# Кад је унос закључан (прошао рок), јасна порука без дугмета за захтев —
+   откључавање сада иде преко администратора (по кориснику/месецу). Статуси
+   SUBMITTED/APPROVED имају сопствене банере, па се овде не дуплирају. #}
+{% if is_entry_page and not can_edit and status not in ['SUBMITTED', 'APPROVED'] %}
 <div class="row">
     <div class="col-12">
-        {% if has_pending_request %}
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                <i class="bi bi-hourglass-split"></i>
-                <strong>Захтев послат!</strong> {{ edit_restriction_message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% else %}
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <i class="bi bi-calendar-x"></i>
-                <strong>Ограничено време за унос!</strong> {{ edit_restriction_message }}
-                <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#approvalRequestModal">
-                    <i class="bi bi-envelope"></i> Пошаљи захтев
-                </button>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endif %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-calendar-x"></i>
+            <strong>Унос за овај месец је затворен</strong> — обратите се администратору да вам откључа унос.
+            {% if edit_restriction_message %}
+            <small class="d-block mt-1">{{ edit_restriction_message }}</small>
+            {% endif %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -2567,53 +2562,9 @@ function submitForReview() {
 }
 </style>
 
-<!-- Approval Request Modal -->
-<div class="modal fade" id="approvalRequestModal" tabindex="-1" aria-labelledby="approvalRequestModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content card-glass">
-            <div class="modal-header">
-                <h5 class="modal-title" id="approvalRequestModalLabel">
-                    <i class="bi bi-envelope"></i> Захтев за одобрење измене
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="approvalRequestForm">
-                    <input type="hidden" id="requestMonth" value="{{ selected_month }}">
-                    <input type="hidden" id="requestYear" value="{{ selected_year }}">
-                    
-                    <div class="mb-3">
-                        <label for="requestReason" class="form-label">Разлог за измену радне листе:</label>
-                        <textarea class="form-control" id="requestReason" rows="4" 
-                                  placeholder="Објасните зашто вам је потребна измена радне листе за {{ months[selected_month-1][1] }} {{ selected_year }}..." 
-                                  required></textarea>
-                    </div>
-                    
-                    <div class="alert alert-info">
-                        <small>
-                            <i class="bi bi-info-circle"></i>
-                            Захтев ће бити послат администратору на разматрање. Бићете обавештени о одлуци.
-                        </small>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-ripple btn-secondary" data-bs-dismiss="modal">Откажи</button>
-                <button type="button" class="btn btn-ripple btn-primary" onclick="submitApprovalRequest()">
-                    <i class="bi bi-send"></i> Пошаљи захтев
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-function submitApprovalRequest() {
-    // Experimental feature - not yet available
-    showWarningToast('Функција у развоју - биће доступна ускоро');
-    const modal = bootstrap.Modal.getInstance(document.getElementById('approvalRequestModal'));
-    if (modal) modal.hide();
-}
+// Механизам „захтева за унос" је уклоњен — откључавање сада ради администратор
+// по кориснику/месецу (Администрација → Откључавање уноса).
 
 // Disable form inputs if editing is not allowed
 {% if not can_edit %}

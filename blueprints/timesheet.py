@@ -80,20 +80,22 @@ def admin_timesheet_users():
     )
 
 
-@timesheet_bp.route('/admin/timesheet/pending')
-@admin_or_department_head_required
-def admin_timesheet_pending():
-    """Pending edit requests list.
+@timesheet_bp.route('/admin/timesheet/otkljucaj-unos')
+@admin_required
+def admin_timesheet_unlock():
+    """Админ/директор откључава унос радне листе изабраном запосленом.
 
-    Admin + director + department heads are allowed (heads approve unlock
-    requests for their own department, so they must see them). The per-role
-    department scoping happens inside the view.
+    Замена за уклоњени механизам „захтева за унос" — уместо да запослени шаље
+    захтев, администратор директно откључава унос по кориснику/месецу/периоду.
     """
-    import app as museum_app
+    return timesheet_admin_views.render_admin_unlock_entry()
 
-    return timesheet_admin_views.render_admin_timesheet_pending(
-        timesheet_repository=museum_app.timesheet_repository,
-    )
+
+@timesheet_bp.route('/api/admin/timesheet/unlock', methods=['POST'])
+@admin_required
+def api_admin_timesheet_unlock():
+    """Изврши откључавање уноса (JSON). Само admin/direktor (403 иначе)."""
+    return timesheet_admin_views.handle_admin_unlock_entry()
 
 
 @timesheet_bp.route('/admin/timesheet/analytics')
@@ -173,21 +175,9 @@ def api_admin_delete_timesheet_report(report_id):
     )
 
 
-@timesheet_bp.route('/admin/timesheet/pending/approve/<int:request_id>', methods=['POST'])
-@admin_or_department_head_required
-def admin_approve_edit_request(request_id):
-    """Approve or reject an unlock/edit request.
-
-    Admin + director + department heads are allowed. The per-request
-    department scope is enforced inside the view (dept head only for their
-    own department's requests; director for heads-less depts and heads).
-    """
-    import app as museum_app
-
-    return timesheet_admin_views.admin_approve_edit_request(
-        request_id=request_id,
-        timesheet_repository=museum_app.timesheet_repository,
-    )
+# Механизам „захтева за унос/измену" је уклоњен (2026-07-27): админ сада
+# директно откључава унос преко /admin/timesheet/otkljucaj-unos. Табела
+# timesheet_edit_requests се задржава као историја, али се више не користи.
 
 
 @timesheet_bp.route('/api/notifications')
@@ -285,11 +275,6 @@ def api_load_timesheet():
     return timesheet_employee_views.api_load_timesheet()
 
 
-@timesheet_bp.route('/request_approval', methods=['POST'])
-@login_required
-def request_approval():
-    """Request approval to edit a submitted report."""
-    return timesheet_employee_views.request_approval()
 
 
 @timesheet_bp.route('/api/timesheet/save', methods=['POST'])

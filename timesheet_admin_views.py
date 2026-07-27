@@ -485,107 +485,6 @@ def render_admin_timesheet_users(timesheet_repository):
     return redirect(url_for('manage_user_access'))
 
 
-def render_admin_timesheet_pending(timesheet_repository):
-    """Admin/director/department-head view for pending edit requests.
-
-    Admins and the director see every request; a department head only sees
-    requests whose report belongs to an employee of their own department
-    (same scope as the reports list).
-    """
-    department_scope = _department_scope_for_session()
-
-    try:
-        if department_scope == '__no_department__':
-            pending_requests = []
-        else:
-            with get_postgres_connection(row_factory=dict_row) as conn:
-                with conn.cursor() as cur:
-                    if department_scope is None:
-                        cur.execute(
-                            """
-                            SELECT
-                                ter.id,
-                                ter.report_id,
-                                ter.requester_email,
-                                ter.reason,
-                                ter.status,
-                                ter.requested_at,
-                                ter.processed_at,
-                                ter.processed_by,
-                                ter.notes,
-                                tr.employee_name,
-                                tr.month,
-                                tr.year,
-                                tr.is_verified,
-                                tr.is_locked
-                            FROM timesheet_edit_requests ter
-                            JOIN timesheet_reports tr ON ter.report_id = tr.id
-                            ORDER BY
-                                CASE ter.status
-                                    WHEN 'pending' THEN 1
-                                    WHEN 'approved' THEN 2
-                                    WHEN 'rejected' THEN 3
-                                END,
-                                ter.requested_at DESC
-                            """
-                        )
-                    else:
-                        cur.execute(
-                            """
-                            SELECT
-                                ter.id,
-                                ter.report_id,
-                                ter.requester_email,
-                                ter.reason,
-                                ter.status,
-                                ter.requested_at,
-                                ter.processed_at,
-                                ter.processed_by,
-                                ter.notes,
-                                tr.employee_name,
-                                tr.month,
-                                tr.year,
-                                tr.is_verified,
-                                tr.is_locked
-                            FROM timesheet_edit_requests ter
-                            JOIN timesheet_reports tr ON ter.report_id = tr.id
-                            JOIN employee_profiles ep
-                              ON LOWER(ep.email) = LOWER(tr.employee_email)
-                            WHERE LOWER(TRIM(ep.department)) = LOWER(TRIM(%s))
-                            ORDER BY
-                                CASE ter.status
-                                    WHEN 'pending' THEN 1
-                                    WHEN 'approved' THEN 2
-                                    WHEN 'rejected' THEN 3
-                                END,
-                                ter.requested_at DESC
-                            """,
-                            (department_scope,),
-                        )
-                    pending_requests = cur.fetchall()
-
-        for pending_request in pending_requests:
-            month_idx = pending_request['month'] - 1
-            if 0 <= month_idx < 12:
-                pending_request['month_name'] = SERBIAN_MONTHS[month_idx]
-            else:
-                pending_request['month_name'] = str(pending_request['month'])
-
-        return render_template(
-            'admin_timesheet_pending.html',
-            pending_requests=pending_requests,
-            message=None,
-        )
-    except Exception as exc:
-        logger.error('Error loading timesheet requests: %s', exc)
-        flash('Грешка при учитавању захтева.', 'error')
-        return render_template(
-            'admin_timesheet_pending.html',
-            pending_requests=[],
-            message=f'Грешка: {str(exc)}',
-        )
-
-
 def render_admin_timesheet_analytics(timesheet_repository):
     """Admin analytics dashboard for the timesheet system."""
     unavailable = _timesheet_repository_redirect(timesheet_repository, 'admin_panel')
@@ -1425,88 +1324,102 @@ def api_admin_delete_timesheet_report(report_id, timesheet_repository):
         return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
 
 
-def admin_approve_edit_request(request_id, timesheet_repository):
-    """Approve or reject an unlock / edit request.
+# ---------------------------------------------------------------------------
+# Откључавање уноса радне листе (админ/директор) — по кориснику/месецу/периоду
+# Замена за уклоњени механизам „захтева за унос": админ директно откључава.
+# ---------------------------------------------------------------------------
+def render_admin_unlock_entry():
+    """Страница: админ бира запосленог и откључава му унос за месец или период."""
+    from datetime import datetime
 
-    Authorization: admin always; director and department heads only for
-    requests whose report is in their verification scope (same rule as the
-    verify flow). When approved, the target report's is_locked flips to
-    FALSE and a 24 h editable_until is granted so the employee can fix and
-    resubmit within a day.
-    """
+    employees = []
     try:
-        if not _timesheet_repository_available(timesheet_repository):
-            return jsonify({'success': False, 'message': 'База података није доступна'})
-
-        data = request.get_json() or request.form.to_dict()
-        action = data.get('action')
-        notes = data.get('notes', '').strip()
-
-        if action not in ['approve', 'reject']:
-            return jsonify({'success': False, 'message': 'Неважећа акција'})
-
-        admin_email = session.get('user_email', 'Unknown Admin')
-        status = 'approved' if action == 'approve' else 'rejected'
-
         with get_postgres_connection(row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                # Resolve the target report's department so we can apply
-                # the per-scope authorization. Admin skips this check.
                 cur.execute(
-                    """
-                    SELECT ter.report_id, tr.employee_email,
-                           ep.department AS employee_department
-                      FROM timesheet_edit_requests ter
-                      JOIN timesheet_reports tr ON tr.id = ter.report_id
-                      LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
-                     WHERE ter.id = %s
-                    """,
-                    (request_id,),
+                    "SELECT email, full_name FROM users "
+                    "WHERE is_active AND full_name IS NOT NULL AND email IS NOT NULL "
+                    "ORDER BY full_name"
                 )
-                request_row = cur.fetchone()
-                if not request_row:
-                    return jsonify({'success': False, 'message': 'Захтев није пронађен'})
-
-                if not _session_is_admin(session):
-                    heads = _get_department_heads(cur)
-                    if not can_user_verify_report_for_department(
-                        session,
-                        request_row.get('employee_department'),
-                        target_employee_email=request_row.get('employee_email'),
-                        department_heads=heads,
-                    ):
-                        return _forbidden_json()
-
-                cur.execute(
-                    """
-                    UPDATE timesheet_edit_requests
-                    SET status = %s,
-                        processed_at = NOW(),
-                        processed_by = %s,
-                        notes = %s
-                    WHERE id = %s
-                    """,
-                    (status, admin_email, notes, request_id),
-                )
-
-                if cur.rowcount == 0:
-                    return jsonify({'success': False, 'message': 'Захтев није пронађен'})
-
-                if action == 'approve':
-                    cur.execute(
-                        """
-                        UPDATE timesheet_reports tr
-                        SET is_locked = FALSE,
-                            editable_until = NOW() + INTERVAL '24 hours'
-                        FROM timesheet_edit_requests ter
-                        WHERE ter.id = %s AND ter.report_id = tr.id
-                        """,
-                        (request_id,),
-                    )
-
-                conn.commit()
-
-        message = 'Захтев је одобрен (откључано 24 часа)' if action == 'approve' else 'Захтев је одбијен'
-        return jsonify({'success': True, 'message': message})
+                employees = cur.fetchall()
     except Exception as exc:
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+        logger.error("Unlock page: employee load failed: %s", exc)
+
+    now = datetime.now()
+    return render_template(
+        'admin_timesheet_otkljucaj.html',
+        employees=employees,
+        months=list(enumerate(SERBIAN_MONTHS, start=1)),
+        years=list(range(now.year, now.year - 5, -1)),
+        current_month=now.month,
+        current_year=now.year,
+    )
+
+
+def handle_admin_unlock_entry():
+    """POST (JSON): откључава унос за изабраног запосленог — један месец или
+    период [од..до]. Само admin/direktor (гарантује декоратор руте). Свако
+    откључавање се уписује у audit траг."""
+    from timesheet_postgres import admin_unlock_entry
+
+    data = request.get_json(silent=True) or request.form
+    employee_email = (data.get('employee_email') or '').strip()
+    admin_email = session.get('user_email', '')
+
+    def _int(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    from_month = _int(data.get('from_month') or data.get('month'))
+    from_year = _int(data.get('from_year') or data.get('year'))
+    to_month = _int(data.get('to_month')) or from_month
+    to_year = _int(data.get('to_year')) or from_year
+    expires = (data.get('expires') or '').strip()
+
+    if not employee_email or not from_month or not from_year:
+        return jsonify({'success': False,
+                        'message': 'Изаберите запосленог, месец и годину.'}), 400
+    if not (1 <= from_month <= 12) or not (1 <= to_month <= 12):
+        return jsonify({'success': False, 'message': 'Неисправан месец.'}), 400
+
+    start_idx = from_year * 12 + (from_month - 1)
+    end_idx = to_year * 12 + (to_month - 1)
+    if end_idx < start_idx:
+        return jsonify({'success': False,
+                        'message': 'Крај периода је пре почетка.'}), 400
+    if end_idx - start_idx > 24:
+        return jsonify({'success': False,
+                        'message': 'Период је предугачак (макс. 24 месеца).'}), 400
+
+    expires_at = (expires + ' 23:59:59') if expires else None
+
+    unlocked, errors = [], []
+    for idx in range(start_idx, end_idx + 1):
+        year, month = idx // 12, idx % 12 + 1
+        result = admin_unlock_entry(employee_email, month, year, admin_email, expires_at)
+        if result.success:
+            editable_until = result.data.get('editable_until')
+            unlocked.append({'month': month, 'year': year,
+                             'editable_until': str(editable_until)})
+            audit_support.record_audit(
+                action='TIMESHEET_UNLOCK',
+                entity_type='timesheet_report',
+                entity_id=result.data.get('report_id'),
+                summary=(f'Откључан унос радне листе {month}/{year} за '
+                         f'{employee_email} до {editable_until}'),
+                new_values={'employee_email': employee_email, 'month': month,
+                            'year': year, 'editable_until': str(editable_until)},
+                changed_by=admin_email,
+            )
+        else:
+            errors.append({'month': month, 'year': year,
+                           'message': result.error.message if result.error else 'грешка'})
+
+    ok = len(unlocked) > 0
+    message = f'Откључан унос: {len(unlocked)} месец(и) за {employee_email}.'
+    if errors:
+        message += f' Прескочено: {len(errors)}.'
+    return jsonify({'success': ok, 'message': message,
+                    'unlocked': unlocked, 'errors': errors}), (200 if ok else 400)

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Откључавање уноса радне листе - Природњачки музеј{% endblock %}
+
+{% block content %}
+<div class="container-main">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-unlock me-2"></i>
+                        Откључавање уноса радне листе
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Изаберите запосленог и месец (или период) да му привремено
+                        омогућите унос листе после истека редовног рока.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form id="unlockForm" onsubmit="return false;">
+                        <div class="mb-3">
+                            <label for="employeeSelect" class="form-label">Запослени</label>
+                            <select class="form-select" id="employeeSelect" data-testid="unlock-employee" required>
+                                <option value="">— изаберите запосленог —</option>
+                                {% for e in employees %}
+                                <option value="{{ e.email }}">{{ e.full_name }} ({{ e.email }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="fromMonth" class="form-label">Месец</label>
+                                <select class="form-select" id="fromMonth" data-testid="unlock-from-month">
+                                    {% for idx, name in months %}
+                                    <option value="{{ idx }}" {% if idx == current_month %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fromYear" class="form-label">Година</label>
+                                <select class="form-select" id="fromYear" data-testid="unlock-from-year">
+                                    {% for y in years %}
+                                    <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="periodToggle" data-testid="unlock-period-toggle">
+                            <label class="form-check-label" for="periodToggle">Откључај цео период (до)</label>
+                        </div>
+
+                        <div class="row g-3 mt-0 d-none" id="periodRow">
+                            <div class="col-md-6">
+                                <label for="toMonth" class="form-label">До месеца</label>
+                                <select class="form-select" id="toMonth" data-testid="unlock-to-month">
+                                    {% for idx, name in months %}
+                                    <option value="{{ idx }}" {% if idx == current_month %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="toYear" class="form-label">До године</label>
+                                <select class="form-select" id="toYear" data-testid="unlock-to-year">
+                                    {% for y in years %}
+                                    <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label for="expiresInput" class="form-label">
+                                Откључано важи до <small class="text-muted">(празно = 7 дана)</small>
+                            </label>
+                            <input type="date" class="form-control" id="expiresInput" data-testid="unlock-expires">
+                        </div>
+
+                        <button type="submit" class="btn btn-success" id="unlockBtn" data-testid="unlock-submit"
+                                onclick="submitUnlock()">
+                            <i class="bi bi-unlock"></i> Откључај унос
+                        </button>
+                    </form>
+
+                    <div id="unlockResult" class="mt-3" data-testid="unlock-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="alert alert-secondary">
+                <h6><i class="bi bi-info-circle"></i> Како ради</h6>
+                <ul class="mb-0 small">
+                    <li>Откључавање важи за изабраног запосленог и месец/период.</li>
+                    <li>Запослени тада нормално уноси и подноси листу у ланац одобравања.</li>
+                    <li>Откључавање аутоматски истиче на изабрани датум (подразумевано 7 дана).</li>
+                    <li>Већ поднете/одобрене листе се не дирају.</li>
+                    <li>Свако откључавање се бележи у ревизиони траг.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('periodToggle').addEventListener('change', function () {
+    document.getElementById('periodRow').classList.toggle('d-none', !this.checked);
+});
+
+function submitUnlock() {
+    const email = document.getElementById('employeeSelect').value;
+    const resultBox = document.getElementById('unlockResult');
+    if (!email) {
+        resultBox.innerHTML = '<div class="alert alert-warning">Изаберите запосленог.</div>';
+        return;
+    }
+    const usePeriod = document.getElementById('periodToggle').checked;
+    const payload = {
+        employee_email: email,
+        from_month: document.getElementById('fromMonth').value,
+        from_year: document.getElementById('fromYear').value,
+        to_month: usePeriod ? document.getElementById('toMonth').value : document.getElementById('fromMonth').value,
+        to_year: usePeriod ? document.getElementById('toYear').value : document.getElementById('fromYear').value,
+        expires: document.getElementById('expiresInput').value || ''
+    };
+    const btn = document.getElementById('unlockBtn');
+    btn.disabled = true;
+
+    secureFetch('/api/admin/timesheet/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            const cls = data.success ? 'alert-success' : 'alert-danger';
+            let html = `<div class="alert ${cls}">${data.message || ''}</div>`;
+            if (data.errors && data.errors.length) {
+                html += '<ul class="small text-danger">' +
+                    data.errors.map(e => `<li>${e.month}/${e.year}: ${e.message}</li>`).join('') +
+                    '</ul>';
+            }
+            resultBox.innerHTML = html;
+        })
+        .catch(() => {
+            btn.disabled = false;
+            resultBox.innerHTML = '<div class="alert alert-danger">Грешка при комуникацији са сервером.</div>';
+        });
+}
+</script>
+{% endblock %}
