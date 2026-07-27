@@ -763,6 +763,35 @@ def save_timesheet_to_postgres(
                         )
                     new_version = updated_row['version']
 
+                    # Заштита од ТИХОГ брисања: ако долазна матрица нема ниједан
+                    # унет сат, а листа већ садржи дане, скоро сигурно је реч о
+                    # грешци (форма се отворила празна) — не бриши тихо, врати
+                    # јасну грешку уместо да прикажеш „успешно сачувано".
+                    def _positive(value):
+                        try:
+                            return float(value) > 0
+                        except (TypeError, ValueError):
+                            return False
+                    incoming_has_data = any(
+                        _positive(v)
+                        for dv in (daily_data or {}).values()
+                        if isinstance(dv, dict)
+                        for v in dv.values()
+                    )
+                    if not incoming_has_data:
+                        cur.execute(
+                            "SELECT COUNT(*) AS n FROM timesheet_report_days "
+                            "WHERE report_id = %s", (report_id,))
+                        existing_days = cur.fetchone()['n']
+                        if existing_days > 0:
+                            return TimesheetResult.fail(
+                                TimesheetErrorType.VALIDATION_ERROR,
+                                "Форма нема унетих сати, а листа већ садржи "
+                                "податке. Освежите страницу (Ctrl+F5) и покушајте "
+                                "поново — чување празне форме би избрисало већ "
+                                "унете дане."
+                            )
+
                     # Delete old daily entries
                     cur.execute("""
                         DELETE FROM timesheet_report_days
