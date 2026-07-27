@@ -141,8 +141,21 @@
     <div class="col-12">
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
             <i class="bi bi-hourglass-split"></i>
-            <strong>Поднето на преглед</strong> Ваша радна листа за {{ months[selected_month-1][1] }} {{ selected_year }} чека одобрење администратора.
-            <small class="d-block mt-1">Бићете обавештени о резултату прегледа.</small>
+            <strong>Поднето на преглед</strong> Ваша радна листа за {{ months[selected_month-1][1] }} {{ selected_year }} чека одобрење.
+            {# Двостепено одобрење: приказ у којој је фази (шеф → директор). #}
+            <div class="mt-2 d-flex flex-wrap gap-2" data-testid="signature-phase">
+                {% if timesheet_data.head_verified_by %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Шеф одељења потврдио</span>
+                {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис шефа одељења</span>
+                {% endif %}
+                {% if timesheet_data.director_verified_by %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Директор потврдио</span>
+                {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис директора</span>
+                {% endif %}
+            </div>
+            <small class="d-block mt-1">Листа је одобрена тек кад је потврде И шеф И директор.</small>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     </div>

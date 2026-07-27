@@ -259,6 +259,19 @@
                                         <i class="bi bi-arrow-repeat"></i> реевалуација
                                     </span>
                                     {% endif %}
+                                    {# Двостепено одобрење: ко је потврдио, ко још не. #}
+                                    <div class="mt-1" style="font-size:.8em">
+                                        {% if report.head_verified_by %}
+                                        <span class="badge bg-success" title="Шеф: {{ report.head_verified_by }} {{ report.head_verified_at.strftime('%d.%m.%Y') if report.head_verified_at else '' }}"><i class="bi bi-check"></i> шеф</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary" title="Чека потпис шефа"><i class="bi bi-hourglass"></i> шеф</span>
+                                        {% endif %}
+                                        {% if report.director_verified_by %}
+                                        <span class="badge bg-success" title="Директор: {{ report.director_verified_by }} {{ report.director_verified_at.strftime('%d.%m.%Y') if report.director_verified_at else '' }}"><i class="bi bi-check"></i> директор</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary" title="Чека потпис директора"><i class="bi bi-hourglass"></i> директор</span>
+                                        {% endif %}
+                                    </div>
                                 {% elif report.status is defined and report.status == 'REJECTED' %}
                                     <span class="badge bg-danger">
                                         <i class="bi bi-x-circle"></i> Враћено
@@ -693,6 +706,20 @@ function displayReportDetails(report) {
             </div>
             <div class="col-md-6">
                 <strong>Позиција:</strong> ${header.position || 'N/A'}
+            </div>
+        </div>
+
+        <div class="row mb-3" data-testid="detail-signatures">
+            <div class="col-12">
+                <strong>Потписи (двостепено одобрење):</strong>
+                <div class="mt-1 d-flex flex-wrap gap-2">
+                    ${header.head_verified_by
+                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Шеф: ${header.head_verified_by}${header.head_verified_at ? ' · ' + new Date(header.head_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
+                        : `<span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис шефа одељења</span>`}
+                    ${header.director_verified_by
+                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Директор: ${header.director_verified_by}${header.director_verified_at ? ' · ' + new Date(header.director_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
+                        : `<span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис директора</span>`}
+                </div>
             </div>
         </div>
 

@@ -207,6 +207,71 @@ def can_user_verify_report_for_department(
     return True
 
 
+def _signature_plan(session_data, target_department, target_employee_email,
+                    department_heads):
+    """Одреди план двостепеног потписа за дату листу и тренутног корисника.
+
+    Враћа dict: ``{allowed, slot, head_required, head_email}`` где је
+    ``slot`` ∈ {'head', 'director', 'both', None}.
+
+    Правила (задржавају постојеће понашање за изузетке):
+    - Регуларан запослени у одељењу СА шефом → траже се ОБА потписа: шеф ('head')
+      и директор ('director').
+    - Одељење БЕЗ шефа, или листа самог шефа → head се не тражи, потписује
+      директор ('director') — као и досад.
+    - Админ → override, једним потезом попуњава све потребне слотове ('both').
+    - Иста особа = шеф И директор овог одељења → њен потпис попуњава оба ('both').
+    - Нико не потписује сопствену листу (ту улогу преузима надлежни изнад/админ).
+    """
+    target = _norm_dept(target_department)
+    target_email = (target_employee_email or '').strip().lower()
+    heads_by_dept = {}
+    if department_heads:
+        heads_by_dept = {
+            _norm_dept(dept): (email or '').strip().lower()
+            for dept, email in department_heads.items()
+        }
+    head_email = heads_by_dept.get(target) or None
+    is_employee_head = bool(head_email) and target_email == head_email
+    head_required = bool(head_email) and not is_employee_head
+
+    user_email = (session_data.get('user_email') or '').strip().lower()
+
+    def _deny():
+        return {'allowed': False, 'slot': None,
+                'head_required': head_required, 'head_email': head_email}
+
+    def _allow(slot):
+        return {'allowed': True, 'slot': slot,
+                'head_required': head_required, 'head_email': head_email}
+
+    # Админ: пуно овлашћење — попуни све потребне потписе одједном.
+    if _session_is_admin(session_data):
+        return _allow('both')
+
+    is_director = _session_is_director(session_data)
+    is_head_here = (
+        _session_is_department_head(session_data)
+        and bool(target)
+        and _norm_dept(session_data.get('user_department')) == target
+    )
+    signs_own = bool(user_email) and bool(target_email) and user_email == target_email
+
+    # Иста особа је и шеф овог одељења и директор → један потпис = оба слота.
+    if head_required and head_email and user_email == head_email and is_director:
+        return _allow('both')
+
+    if is_director:
+        # Директор не потписује сопствену листу — то ради админ.
+        return _deny() if signs_own else _allow('director')
+
+    # Шеф одељења потписује 'head' слот регуларних запослених свог одељења.
+    if is_head_here and head_required and not signs_own:
+        return _allow('head')
+
+    return _deny()
+
+
 def _department_scope_for_session() -> Optional[str]:
     """Return the department to scope the reports list to, or None for no scope.
 
@@ -921,7 +986,6 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                     FROM timesheet_reports tr
                     LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
                     WHERE tr.id = %s
-                    FOR UPDATE OF tr
                     """,
                     (report_id,),
                 )
@@ -942,13 +1006,6 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                     }), 400
 
                 heads = _get_department_heads(cur)
-                if not can_user_verify_report_for_department(
-                    session,
-                    report.get('employee_department'),
-                    target_employee_email=report.get('employee_email'),
-                    department_heads=heads,
-                ):
-                    return _forbidden_json()
 
                 month_name = (
                     SERBIAN_MONTHS_LOWER[report['month'] - 1]
@@ -958,45 +1015,68 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                 employee_email = report.get('employee_email')
 
                 if approve:
-                    cur.execute(
-                        """
-                        UPDATE timesheet_reports
-                        SET is_verified = TRUE,
-                            verified_by = %s,
-                            verified_at = NOW(),
-                            verified_role = %s,
-                            is_locked = TRUE,
-                            status = 'APPROVED',
-                            reviewed_at = NOW(),
-                            reviewed_by_email = %s,
-                            editable_until = NULL
-                        WHERE id = %s
-                        """,
-                        (admin_email, session.get('user_role'), admin_email, report_id),
+                    # Двостепено одобрење: одреди слот потписа (шеф/директор) и
+                    # забележи га. Листа постаје APPROVED тек кад су оба потписа
+                    # присутна (осим изузетака — види _signature_plan).
+                    plan = _signature_plan(
+                        session,
+                        report.get('employee_department'),
+                        employee_email,
+                        heads,
                     )
-                    cur.execute(
-                        """
-                        INSERT INTO timesheet_status_history
-                        (report_id, old_status, new_status, changed_by, note)
-                        VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено')
-                        """,
-                        (report_id, admin_email),
-                    )
-                    message = 'Извештај је одобрен и закључан'
+                    if not plan['allowed']:
+                        return _forbidden_json()
 
-                    if employee_email:
-                        cur.execute(
-                            """
-                            INSERT INTO user_notifications (user_email, title, message, icon, type)
-                            VALUES (%s, %s, %s, 'bi-check-circle', 'success')
-                            """,
-                            (
-                                employee_email,
-                                'Радна листа верификована',
-                                f"Ваша радна листа за {month_name} {report['year']}. је верификована.",
-                            ),
-                        )
+                    from timesheet_postgres import confirm_timesheet_signature
+                    sig = confirm_timesheet_signature(
+                        report_id, admin_email, plan['slot'], plan['head_required'],
+                    )
+                    if not sig.success:
+                        return jsonify(
+                            {'success': False, 'message': sig.error.message}
+                        ), 400
+
+                    approved_now = bool(sig.data.get('approved'))
+                    if approved_now:
+                        message = 'Извештај је одобрен и закључан (оба потписа присутна).'
+                        if employee_email:
+                            cur.execute(
+                                """
+                                INSERT INTO user_notifications (user_email, title, message, icon, type)
+                                VALUES (%s, %s, %s, 'bi-check-circle', 'success')
+                                """,
+                                (
+                                    employee_email,
+                                    'Радна листа одобрена',
+                                    f"Ваша радна листа за {month_name} {report['year']}. је одобрена (шеф и директор).",
+                                ),
+                            )
+                    else:
+                        message = ('Потпис забележен. Радна листа чека још један '
+                                   'потпис пре коначног одобрења.')
+                        if employee_email:
+                            cur.execute(
+                                """
+                                INSERT INTO user_notifications (user_email, title, message, icon, type)
+                                VALUES (%s, %s, %s, 'bi-hourglass-split', 'info')
+                                """,
+                                (
+                                    employee_email,
+                                    'Радна листа — потпис забележен',
+                                    f"Ваша радна листа за {month_name} {report['year']}. има један потпис и чека још један.",
+                                ),
+                            )
+                    conn.commit()
+                    return jsonify({'success': True, 'message': message,
+                                    'approved': approved_now})
                 else:
+                    if not can_user_verify_report_for_department(
+                        session,
+                        report.get('employee_department'),
+                        target_employee_email=employee_email,
+                        department_heads=heads,
+                    ):
+                        return _forbidden_json()
                     # The report returns to SUBMITTED, which the save path
                     # hard-blocks — so no edit window is opened and the
                     # report stays locked awaiting re-verification.
@@ -1007,6 +1087,10 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                             verified_by = NULL,
                             verified_at = NULL,
                             verified_role = NULL,
+                            head_verified_by = NULL,
+                            head_verified_at = NULL,
+                            director_verified_by = NULL,
+                            director_verified_at = NULL,
                             is_locked = TRUE,
                             status = 'SUBMITTED',
                             reviewed_at = NULL,
@@ -1082,7 +1166,6 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                     FROM timesheet_reports tr
                     LEFT JOIN employee_profiles ep ON LOWER(ep.email) = LOWER(tr.employee_email)
                     WHERE tr.id = ANY(%s)
-                    FOR UPDATE OF tr
                     """,
                     (report_ids,),
                 )
@@ -1092,141 +1175,134 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                     row for row in existing_reports
                     if (row.get('status') or 'SUBMITTED') == required_status
                 ]
+                heads = _get_department_heads(cur)
 
-                # Drop any report the current user cannot verify under the
-                # per-role rules (director head-vs-employee, dept head own-dept
-                # only). Admins keep everything.
+                def _month_name(report):
+                    return (
+                        SERBIAN_MONTHS_LOWER[report['month'] - 1]
+                        if 1 <= report['month'] <= 12
+                        else str(report['month'])
+                    )
+
+                if approve:
+                    # Двостепено одобрење: свака листа иде кроз исти пут као
+                    # појединачно одобрење (потпис по слоту, APPROVED тек кад су
+                    # оба потписа присутна). confirm ради у сопственој трансакцији.
+                    from timesheet_postgres import confirm_timesheet_signature
+                    approved_ids, partial_ids = [], []
+                    for report in existing_reports:
+                        plan = _signature_plan(
+                            session, report.get('employee_department'),
+                            report.get('employee_email'), heads,
+                        )
+                        if not plan['allowed']:
+                            continue
+                        sig = confirm_timesheet_signature(
+                            report['id'], admin_email, plan['slot'], plan['head_required'],
+                        )
+                        if not sig.success:
+                            continue
+                        fully = bool(sig.data.get('approved'))
+                        (approved_ids if fully else partial_ids).append(report['id'])
+                        employee_email = report.get('employee_email')
+                        if employee_email:
+                            if fully:
+                                cur.execute(
+                                    """
+                                    INSERT INTO user_notifications (user_email, title, message, icon, type)
+                                    VALUES (%s, %s, %s, 'bi-check-circle', 'success')
+                                    """,
+                                    (employee_email, 'Радна листа одобрена',
+                                     f"Ваша радна листа за {_month_name(report)} {report['year']}. је одобрена (шеф и директор)."),
+                                )
+                            else:
+                                cur.execute(
+                                    """
+                                    INSERT INTO user_notifications (user_email, title, message, icon, type)
+                                    VALUES (%s, %s, %s, 'bi-hourglass-split', 'info')
+                                    """,
+                                    (employee_email, 'Радна листа — потпис забележен',
+                                     f"Ваша радна листа за {_month_name(report)} {report['year']}. има један потпис и чека још један."),
+                                )
+                    conn.commit()
+                    processed_count = len(approved_ids) + len(partial_ids)
+                    skipped_count = len(report_ids) - processed_count
+                    message = (f'Обрађено {processed_count}: одобрено {len(approved_ids)}, '
+                               f'чека други потпис {len(partial_ids)}')
+                    if skipped_count > 0:
+                        message += f' (прескочено: {skipped_count})'
+                    return jsonify({
+                        'success': True, 'message': message,
+                        'processed': processed_count, 'approved': len(approved_ids),
+                        'skipped': skipped_count,
+                    })
+
+                # Повлачење верификације (групно) — само за оне које корисник сме.
                 if not _session_is_admin(session):
-                    heads = _get_department_heads(cur)
                     existing_reports = [
                         row for row in existing_reports
                         if can_user_verify_report_for_department(
-                            session,
-                            row.get('employee_department'),
+                            session, row.get('employee_department'),
                             target_employee_email=row.get('employee_email'),
                             department_heads=heads,
                         )
                     ]
-
                 existing_ids = {row['id'] for row in existing_reports}
-
                 if not existing_ids:
                     return jsonify(
                         {'success': False, 'message': 'Ниједан од изабраних извештаја није пронађен'}
                     )
-
-                if approve:
-                    cur.execute(
-                        """
-                        UPDATE timesheet_reports
-                        SET is_verified = TRUE,
-                            verified_by = %s,
-                            verified_at = NOW(),
-                            verified_role = %s,
-                            is_locked = TRUE,
-                            status = 'APPROVED',
-                            reviewed_at = NOW(),
-                            reviewed_by_email = %s,
-                            editable_until = NULL
-                        WHERE id = ANY(%s)
-                        """,
-                        (admin_email, session.get('user_role'), admin_email, list(existing_ids)),
-                    )
-                    cur.executemany(
-                        """
-                        INSERT INTO timesheet_status_history
-                        (report_id, old_status, new_status, changed_by, note)
-                        VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено (групно)')
-                        """,
-                        [(rid, admin_email) for rid in existing_ids],
-                    )
-                    action_msg = 'верификовано и закључано'
-
-                    for report in existing_reports:
-                        month_name = (
-                            SERBIAN_MONTHS_LOWER[report['month'] - 1]
-                            if 1 <= report['month'] <= 12
-                            else str(report['month'])
+                cur.execute(
+                    """
+                    UPDATE timesheet_reports
+                    SET is_verified = FALSE,
+                        verified_by = NULL,
+                        verified_at = NULL,
+                        verified_role = NULL,
+                        head_verified_by = NULL,
+                        head_verified_at = NULL,
+                        director_verified_by = NULL,
+                        director_verified_at = NULL,
+                        is_locked = TRUE,
+                        status = 'SUBMITTED',
+                        reviewed_at = NULL,
+                        reviewed_by_email = NULL,
+                        editable_until = NULL
+                    WHERE id = ANY(%s)
+                    """,
+                    (list(existing_ids),),
+                )
+                cur.executemany(
+                    """
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by, note)
+                    VALUES (%s, 'APPROVED', 'SUBMITTED', %s, 'Верификација повучена (групно)')
+                    """,
+                    [(rid, admin_email) for rid in existing_ids],
+                )
+                for report in existing_reports:
+                    employee_email = report.get('employee_email')
+                    if employee_email:
+                        cur.execute(
+                            """
+                            INSERT INTO user_notifications (user_email, title, message, icon, type)
+                            VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
+                            """,
+                            (employee_email, 'Верификација повучена',
+                             f"Верификација ваше радне листе за {_month_name(report)} {report['year']}. је повучена. "
+                             f"Извештај чека поновну верификацију."),
                         )
-                        employee_email = report.get('employee_email')
-                        if employee_email:
-                            cur.execute(
-                                """
-                                INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                VALUES (%s, %s, %s, 'bi-check-circle', 'success')
-                                """,
-                                (
-                                    employee_email,
-                                    'Радна листа верификована',
-                                    f"Ваша радна листа за {month_name} {report['year']}. је верификована.",
-                                ),
-                            )
-                else:
-                    # Same semantics as the single revoke: back to SUBMITTED,
-                    # locked, no edit window — awaiting re-verification.
-                    cur.execute(
-                        """
-                        UPDATE timesheet_reports
-                        SET is_verified = FALSE,
-                            verified_by = NULL,
-                            verified_at = NULL,
-                            verified_role = NULL,
-                            is_locked = TRUE,
-                            status = 'SUBMITTED',
-                            reviewed_at = NULL,
-                            reviewed_by_email = NULL,
-                            editable_until = NULL
-                        WHERE id = ANY(%s)
-                        """,
-                        (list(existing_ids),),
-                    )
-                    cur.executemany(
-                        """
-                        INSERT INTO timesheet_status_history
-                        (report_id, old_status, new_status, changed_by, note)
-                        VALUES (%s, 'APPROVED', 'SUBMITTED', %s, 'Верификација повучена (групно)')
-                        """,
-                        [(rid, admin_email) for rid in existing_ids],
-                    )
-                    action_msg = 'верификација повучена'
-
-                    for report in existing_reports:
-                        month_name = (
-                            SERBIAN_MONTHS_LOWER[report['month'] - 1]
-                            if 1 <= report['month'] <= 12
-                            else str(report['month'])
-                        )
-                        employee_email = report.get('employee_email')
-                        if employee_email:
-                            cur.execute(
-                                """
-                                INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
-                                """,
-                                (
-                                    employee_email,
-                                    'Верификација повучена',
-                                    f"Верификација ваше радне листе за {month_name} {report['year']}. је повучена. "
-                                    f"Извештај чека поновну верификацију.",
-                                ),
-                            )
-
                 conn.commit()
 
         processed_count = len(existing_ids)
         skipped_count = len(report_ids) - processed_count
-        message = f'Успешно {action_msg}: {processed_count} извештај(а)'
+        message = f'Верификација повучена: {processed_count} извештај(а)'
         if skipped_count > 0:
             message += f' (прескочено: {skipped_count})'
-
-        return jsonify(
-            {
-                'success': True,
-                'message': message,
-                'processed': processed_count,
-                'skipped': skipped_count,
-            }
-        )
+        return jsonify({
+            'success': True, 'message': message,
+            'processed': processed_count, 'skipped': skipped_count,
+        })
     except Exception as exc:
         return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
 

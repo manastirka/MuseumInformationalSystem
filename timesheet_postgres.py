@@ -1395,6 +1395,119 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
         )
 
 
+def confirm_timesheet_signature(report_id: int, verifier_email: str,
+                                slot: str, head_required: bool) -> TimesheetResult:
+    """Забележи потпис (шеф одељења и/или директор) на ПОДНЕТОЈ листи.
+
+    Двостепено одобрење: листа постаје APPROVED тек кад су присутни СВИ потребни
+    потписи — потпис директора је увек потребан, а потпис шефа само ако
+    ``head_required`` (регуларан запослени у одељењу са шефом). До тада статус
+    остаје SUBMITTED (делимично потврђено, закључано).
+
+    ``slot`` бира који слот овај потпис попуњава:
+      * 'head'     — потпис шефа одељења,
+      * 'director' — потпис директора,
+      * 'both'     — оба (админ override, или иста особа = шеф и директор).
+
+    Идемпотентно по слоту (поновни потпис истог слота само освежи ко/када).
+    Ради само из статуса SUBMITTED.
+    """
+    if slot not in ('head', 'director', 'both'):
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR, f"Неисправан слот потписа: {slot}"
+        )
+    set_head = slot in ('head', 'both')
+    set_dir = slot in ('director', 'both')
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, COALESCE(status, 'DRAFT') AS status,
+                           head_verified_at, director_verified_at
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND, "Радна листа није пронађена"
+                    )
+                if report['status'] != 'SUBMITTED':
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Само поднете радне листе могу бити потврђене. "
+                        f"Тренутни статус: '{report['status']}'"
+                    )
+
+                # Забележи потпис(е) за тражени слот.
+                sets, params = [], []
+                if set_head:
+                    sets.append("head_verified_by = %s")
+                    sets.append("head_verified_at = NOW()")
+                    params.append(verifier_email)
+                if set_dir:
+                    sets.append("director_verified_by = %s")
+                    sets.append("director_verified_at = NOW()")
+                    params.append(verifier_email)
+                params.append(report_id)
+                cur.execute(
+                    f"UPDATE timesheet_reports SET {', '.join(sets)} WHERE id = %s "
+                    "RETURNING head_verified_at, director_verified_at, "
+                    "head_verified_by, director_verified_by",
+                    tuple(params),
+                )
+                row = cur.fetchone()
+                head_done = row['head_verified_at'] is not None
+                director_done = row['director_verified_at'] is not None
+                approved = director_done and (head_done or not head_required)
+
+                if approved:
+                    cur.execute("""
+                        UPDATE timesheet_reports
+                        SET status = 'APPROVED',
+                            is_verified = TRUE,
+                            verified_by = %s,
+                            verified_at = NOW(),
+                            is_locked = TRUE,
+                            reviewed_at = NOW(),
+                            reviewed_by_email = %s,
+                            editable_until = NULL
+                        WHERE id = %s
+                    """, (verifier_email, verifier_email, report_id))
+                    cur.execute("""
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'SUBMITTED', 'APPROVED', %s, %s)
+                    """, (report_id, verifier_email,
+                          'Одобрено (оба потписа присутна)'))
+                else:
+                    note = ('Потпис шефа одељења' if set_head and not set_dir
+                            else 'Потпис директора' if set_dir and not set_head
+                            else 'Потпис')
+                    cur.execute("""
+                        INSERT INTO timesheet_status_history
+                        (report_id, old_status, new_status, changed_by, note)
+                        VALUES (%s, 'SUBMITTED', 'SUBMITTED', %s, %s)
+                    """, (report_id, verifier_email, note + ' — чека други потпис'))
+
+                conn.commit()
+                return TimesheetResult.ok({
+                    'report_id': report_id,
+                    'approved': approved,
+                    'status': 'APPROVED' if approved else 'SUBMITTED',
+                    'head_verified': head_done,
+                    'director_verified': director_done,
+                    'head_verified_by': row['head_verified_by'],
+                    'director_verified_by': row['director_verified_by'],
+                })
+    except psycopg.Error as e:
+        logger.error(f"Database error confirming signature: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR, "Грешка при потврђивању листе."
+        )
+
+
 def approve_timesheet(report_id: int, admin_email: str,
                       verifier_role: Optional[str] = None) -> TimesheetResult:
     """
@@ -1535,6 +1648,10 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
                         rejection_note = %s,
                         reviewed_at = NOW(),
                         reviewed_by_email = %s,
+                        head_verified_by = NULL,
+                        head_verified_at = NULL,
+                        director_verified_by = NULL,
+                        director_verified_at = NULL,
                         editable_until = NOW() + INTERVAL '24 hours'
                     WHERE id = %s
                 """, (note, admin_email, report_id))
@@ -1615,6 +1732,10 @@ def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
                         verified_by = NULL,
                         verified_at = NULL,
                         verified_role = NULL,
+                        head_verified_by = NULL,
+                        head_verified_at = NULL,
+                        director_verified_by = NULL,
+                        director_verified_at = NULL,
                         editable_until = NOW() + INTERVAL '24 hours'
                     WHERE id = %s
                 """, (report_id,))

@@ -28,9 +28,19 @@ from unittest.mock import MagicMock, patch
 import flask
 
 import timesheet_admin_views as views
+import timesheet_postgres as tp
 
 
 SERBIAN_MONTHS = views.SERBIAN_MONTHS
+
+
+def _fake_confirm_sig(report_id, verifier_email, slot, head_required):
+    """Stub confirm_timesheet_signature (real one uses its own DB connection)."""
+    head_done = slot in ('head', 'both')
+    director_done = slot in ('director', 'both')
+    approved = director_done and (head_done or not head_required)
+    return tp.TimesheetResult.ok({'report_id': report_id, 'approved': approved,
+                                  'status': 'APPROVED' if approved else 'SUBMITTED'})
 
 
 @contextmanager
@@ -233,14 +243,17 @@ def test_batch_approve_dedup_reports_no_false_skip():
     session_stub = {'user_role': 'admin', 'user_email': 'admin@example.com'}
 
     with _request_context():
-        with patch.object(views, 'get_postgres_connection', _conn_for(cursor)):
-            with patch.object(views, 'session', session_stub):
-                with patch.object(
+        with patch.object(views, 'get_postgres_connection', _conn_for(cursor)), \
+                patch.object(views, 'session', session_stub), \
+                patch.object(views, '_get_department_heads', return_value={}), \
+                patch.object(tp, 'confirm_timesheet_signature',
+                             side_effect=_fake_confirm_sig), \
+                patch.object(
                     views.request,
                     'get_json',
                     lambda silent=False: {'report_ids': [5, 5], 'approve': True},
                 ):
-                    response = views.api_admin_batch_approve_timesheet_reports(repo)
+            response = views.api_admin_batch_approve_timesheet_reports(repo)
 
     payload = response.get_json() if hasattr(response, 'get_json') else response
     assert payload['success'] is True

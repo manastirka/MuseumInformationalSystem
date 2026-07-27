@@ -221,7 +221,22 @@ class DepartmentHeadAuthTests(unittest.TestCase):
             return_value=True,
         )
 
-        combined = _CombinedPatch(pg_patch, repo_patch)
+        # Двостепено одобрење: рута сада рачуна slot преко _signature_plan
+        # (треба мапа шефова) и делегира упис у confirm_timesheet_signature
+        # (сопствена конекција — заобилази горњи mock). Мокуј оба да тест
+        # проверава АУТОРИЗАЦИЈУ, не праву базу.
+        import timesheet_postgres
+        heads_patch = patch.object(
+            timesheet_admin_views, '_get_department_heads',
+            return_value={GEOLOGY: 'biljana.mitrovic@nhmbeo.rs'},
+        )
+        confirm_patch = patch.object(
+            timesheet_postgres, 'confirm_timesheet_signature',
+            return_value=timesheet_postgres.TimesheetResult.ok(
+                {'approved': False, 'status': 'SUBMITTED'}),
+        )
+
+        combined = _CombinedPatch(pg_patch, repo_patch, heads_patch, confirm_patch)
         return combined, cursor
 
     def test_approve_endpoint_allows_department_head_for_own_department(self):
