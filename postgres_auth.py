@@ -78,6 +78,7 @@ class PostgresAuthSystem:
                             u.theme_accent,
                             u.theme_style,
                             u.theme_density,
+                            u.theme_palette,
                             r.name as role,
                             COALESCE(d.name, ep.department) as department
                         FROM users u
@@ -136,7 +137,8 @@ class PostgresAuthSystem:
                         'theme_mode': user['theme_mode'],
                         'theme_accent': user['theme_accent'],
                         'theme_style': user['theme_style'],
-                        'theme_density': user['theme_density']
+                        'theme_density': user['theme_density'],
+                        'theme_palette': user['theme_palette']
                     }
 
         except Exception as e:
@@ -248,8 +250,9 @@ class PostgresAuthSystem:
 
     def save_theme_preferences(self, email: str, theme_mode: str, theme_accent: str,
                                theme_style: str = 'institucionalna',
-                               theme_density: str = 'komforno') -> bool:
-        """Persist the user's UI theme preference (mode + accent + style + density)"""
+                               theme_density: str = 'komforno',
+                               theme_palette: str = 'plava-klasicna') -> bool:
+        """Persist the user's UI theme preference (mode + accent + style + density + palette)"""
         if not self.available:
             return False
 
@@ -264,10 +267,11 @@ class PostgresAuthSystem:
                             theme_accent = %s,
                             theme_style = %s,
                             theme_density = %s,
+                            theme_palette = %s,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                     """, (theme_mode, theme_accent, theme_style, theme_density,
-                          datetime.now(), email))
+                          theme_palette, datetime.now(), email))
 
                     conn.commit()
                     return True

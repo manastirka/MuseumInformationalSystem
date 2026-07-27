@@ -3659,6 +3659,374 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 
 /* ============================================
+   ПЛАВЕ ТЕМЕ (data-palette) — фаза 1
+   --------------------------------------------
+   Пет самосталних плаво-белих тема преко heritage-shell слоја. Свака тема
+   даје само `--pal-*` вредности; заједнички блок мапира их у стварне токене
+   (на нивоу <body>, да надјача heritage token shadowing — види мемо
+   heritage-shell-token-shadowing) и „изравнава" пергамент у равне површине.
+   Све су СВЕТЛЕ основе (беле картице, таман текст); „тамноплав" карактер
+   носе рам/заглавље/бочни мени. Долази ПОСЛЕ акцентних/контраст/стил блокова
+   да победи у каскади, а ПРЕ @media print (штампа остаје бела).
+   ============================================ */
+
+/* 1) Сирове вредности по теми (namespaced --pal-*) */
+[data-palette="plava-klasicna"] {
+    --pal-primary: #1d5fab; --pal-primary-dark: #17497f; --pal-primary-light: #3f80cf;
+    --pal-bg-body: #f1f5fb; --pal-bg-card: #ffffff; --pal-bg-nav: #16375d;
+    --pal-elevated: #eef3fb;
+    --pal-text: #1f2a37; --pal-text2: #4c5a6b; --pal-muted: #5e6b7c;
+    --pal-border: #d5dde9;
+    --pal-thead-bg: #16375d; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #d9e7fa; --pal-sel-text: #143257;
+    --pal-stripe: #f4f7fc; --pal-hover: #e7f0fb;
+    --pal-side-bg: #143257; --pal-side-text: #eaf1fb;
+    --pal-radius-card: 10px; --pal-radius-btn: 8px;
+}
+[data-palette="plava-windows"] {
+    --pal-primary: #005fb8; --pal-primary-dark: #004c95; --pal-primary-light: #2680d8;
+    --pal-bg-body: #f3f3f3; --pal-bg-card: #ffffff; --pal-bg-nav: #084b88;
+    --pal-elevated: #f0f2f5;
+    --pal-text: #1b1b1b; --pal-text2: #444444; --pal-muted: #5c5c5c;
+    --pal-border: #e0e0e0;
+    --pal-thead-bg: #084b88; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #cfe4f7; --pal-sel-text: #093863;
+    --pal-stripe: #f7f9fb; --pal-hover: #eaf2fb;
+    --pal-side-bg: #0a2f55; --pal-side-text: #eef4fb;
+    --pal-radius-card: 6px; --pal-radius-btn: 4px;
+}
+[data-palette="plava-tamna"] {
+    --pal-primary: #24557f; --pal-primary-dark: #1a4266; --pal-primary-light: #3f75a3;
+    --pal-bg-body: #eceff4; --pal-bg-card: #ffffff; --pal-bg-nav: #0c2740;
+    --pal-elevated: #eef2f7;
+    --pal-text: #1c2530; --pal-text2: #46535f; --pal-muted: #5b6875;
+    --pal-border: #d3dae2;
+    --pal-thead-bg: #12314f; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #dbe6f2; --pal-sel-text: #12314f;
+    --pal-stripe: #f3f6fa; --pal-hover: #e6edf5;
+    --pal-side-bg: #081d31; --pal-side-text: #dfe8f2;
+    --pal-radius-card: 8px; --pal-radius-btn: 6px;
+}
+[data-palette="plava-ledena"] {
+    --pal-primary: #2b6cb0; --pal-primary-dark: #21568c; --pal-primary-light: #4a8fd4;
+    --pal-bg-body: #e8f1fb; --pal-bg-card: #ffffff; --pal-bg-nav: #1c3f66;
+    --pal-elevated: #e6f0fb;
+    --pal-text: #1e2a38; --pal-text2: #4a5a6b; --pal-muted: #5c6c7d;
+    --pal-border: #cfe0f0;
+    --pal-thead-bg: #1c3f66; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #d3e6f8; --pal-sel-text: #123a63;
+    --pal-stripe: #f0f6fd; --pal-hover: #e2eefb;
+    --pal-side-bg: #17406a; --pal-side-text: #eaf3fc;
+    --pal-radius-card: 12px; --pal-radius-btn: 10px;
+}
+[data-palette="plava-muzejska"] {
+    --pal-primary: #2a4f7a; --pal-primary-dark: #1e3c5f; --pal-primary-light: #5b7fa8;
+    --pal-bg-body: #e7ebf1; --pal-bg-card: #ffffff; --pal-bg-nav: #10233d;
+    --pal-elevated: #eaeef4;
+    --pal-text: #1d2733; --pal-text2: #47535f; --pal-muted: #5a6673;
+    --pal-border: #d0d7e0;
+    --pal-thead-bg: #1a3557; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #dde5ef; --pal-sel-text: #17324f;
+    --pal-stripe: #f2f5f9; --pal-hover: #e5ebf3;
+    --pal-side-bg: #0d1e35; --pal-side-text: #dde6f1;
+    --pal-radius-card: 10px; --pal-radius-btn: 8px;
+}
+
+/* 2) Мапирање --pal-* → стварни токени. На <html> (за Chart.js/JS који чита
+      computed стил корена) И на <body>.heritage-shell (специфичност 0,2,1 >
+      heritage 0,1,1, па надјача token shadowing). Семантика и геометрија су
+      исте за све плаве теме. */
+[data-palette^="plava"],
+[data-palette^="plava"] body.heritage-shell {
+    --primary: var(--pal-primary);
+    --primary-dark: var(--pal-primary-dark);
+    --primary-light: var(--pal-primary-light);
+    --accent: var(--pal-primary);
+    --accent-strong: var(--pal-primary-dark);
+    --accent-light: var(--pal-primary-light);
+    --on-accent: #ffffff;
+    --on-accent-soft: rgba(255, 255, 255, 0.85);
+    --navbar-text: #ffffff;
+    --focus-ring: rgba(37, 99, 176, 0.35);
+
+    --bg-body: var(--pal-bg-body);
+    --bg-card: var(--pal-bg-card);
+    --bg-nav: var(--pal-bg-nav);
+    --bg-elevated: var(--pal-elevated);
+    --bg-hover: var(--pal-hover);
+    --text-primary: var(--pal-text);
+    --text-secondary: var(--pal-text2);
+    --text-muted: var(--pal-muted);
+    --border-color: var(--pal-border);
+
+    /* Семантичке боје — приступачне тамне нијансе (провозане WCAG AA) */
+    --success: #0b7a48; --success-text: #04613f;
+    --warning: #8a5606; --danger: #b02a37; --info: var(--pal-primary);
+    --success-soft: #d8f2e5; --warning-soft: #f7edd6;
+    --danger-soft: #f7dedf; --info-soft: #dfeafa;
+
+    /* heritage градијент дугмади → плаво (btn-primary/success/login) */
+    --heritage-accent-hi: var(--pal-primary);
+    --heritage-accent-lo: var(--pal-primary-dark);
+    --heritage-accent-hover-hi: var(--pal-primary-dark);
+    --heritage-accent-hover-lo: var(--pal-primary-dark);
+    --heritage-ink: var(--pal-text);
+    --heritage-parchment: var(--pal-bg-card);
+    --heritage-parchment-deep: var(--pal-elevated);
+    --museum-primary: var(--pal-thead-bg);
+    --museum-secondary: var(--pal-primary);
+
+    /* Геометрија: благо заобљени углови, минималне сенке */
+    --radius-card: var(--pal-radius-card);
+    --radius-btn: var(--pal-radius-btn);
+    --radius-input: var(--pal-radius-btn);
+    --shadow-card: 0 1px 3px rgba(15, 40, 74, 0.08), 0 1px 2px rgba(15, 40, 74, 0.06);
+    --shadow-btn: none;
+
+    /* Бочни мени → тамноплав рам, светли текст */
+    --sidebar-wood-top: var(--pal-side-bg);
+    --sidebar-wood-mid: var(--pal-side-bg);
+    --sidebar-wood-bottom: var(--pal-side-bg);
+    --sidebar-ink: var(--pal-side-text);
+    --sidebar-card: rgba(255, 255, 255, 0.08);
+    --sidebar-card-strong: rgba(255, 255, 255, 0.12);
+    --sidebar-border-soft: rgba(255, 255, 255, 0.16);
+    --sidebar-shadow: rgba(8, 22, 40, 0.4);
+}
+
+/* 3) Изравнавање пергамента у равне површине (token-driven) */
+[data-palette^="plava"] body.heritage-shell {
+    background: var(--bg-body);
+    color: var(--text-primary);
+}
+/* Чист, професионалан безсерифни наслов уместо heritage антикве */
+[data-palette^="plava"] body.heritage-shell h1,
+[data-palette^="plava"] body.heritage-shell h2,
+[data-palette^="plava"] body.heritage-shell h3,
+[data-palette^="plava"] body.heritage-shell h4,
+[data-palette^="plava"] body.heritage-shell h5,
+[data-palette^="plava"] body.heritage-shell h6,
+[data-palette^="plava"] body.heritage-shell .page-header,
+[data-palette^="plava"] body.heritage-shell .card-header,
+[data-palette^="plava"] body.heritage-shell .modal-title {
+    font-family: var(--font-family);
+    letter-spacing: normal;
+}
+[data-palette^="plava"] body.heritage-shell .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+[data-palette^="plava"] body.heritage-shell .card.bg-dark {
+    background: var(--pal-bg-nav);
+    border: 1px solid var(--pal-bg-nav);
+}
+[data-palette^="plava"] body.heritage-shell .card-header {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+[data-palette^="plava"] body.heritage-shell .card-footer {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+}
+/* Поља */
+[data-palette^="plava"] body.heritage-shell .form-control,
+[data-palette^="plava"] body.heritage-shell .form-select,
+[data-palette^="plava"] body.heritage-shell textarea.form-control {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    box-shadow: none;
+}
+[data-palette^="plava"] body.heritage-shell .form-control::placeholder,
+[data-palette^="plava"] body.heritage-shell textarea.form-control::placeholder {
+    color: var(--text-muted);
+}
+[data-palette^="plava"] body.heritage-shell .form-control:focus,
+[data-palette^="plava"] body.heritage-shell .form-select:focus,
+[data-palette^="plava"] body.heritage-shell textarea.form-control:focus {
+    background: var(--bg-card);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+    color: var(--text-primary);
+}
+[data-palette^="plava"] body.heritage-shell .form-select option,
+[data-palette^="plava"] body.heritage-shell .form-control option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}
+[data-palette^="plava"] body.heritage-shell .input-group-text {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+/* Модал / алерт */
+[data-palette^="plava"] body.heritage-shell .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 24px 46px rgba(15, 40, 74, 0.18);
+}
+[data-palette^="plava"] body.heritage-shell .modal-header,
+[data-palette^="plava"] body.heritage-shell .modal-footer {
+    border-color: var(--border-color);
+}
+[data-palette^="plava"] body.heritage-shell .alert {
+    border: 1px solid var(--border-color);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+[data-palette^="plava"] body.heritage-shell .alert-success { background: var(--success-soft); border-color: #a7e0c4; color: var(--success-text); }
+[data-palette^="plava"] body.heritage-shell .alert-warning { background: var(--warning-soft); border-color: #e6cf9a; color: #6e4405; }
+[data-palette^="plava"] body.heritage-shell .alert-danger  { background: var(--danger-soft); border-color: #e6b3b7; color: #8f222d; }
+[data-palette^="plava"] body.heritage-shell .alert-info    { background: var(--info-soft); border-color: #b9d3f2; color: var(--pal-primary-dark); }
+
+/* Дугмад: heritage хардкодује крем текст на градијенту — плаве површине траже
+   бело; outline варијанте добијају плави текст/оквир. */
+[data-palette^="plava"] body.heritage-shell .btn-primary,
+[data-palette^="plava"] body.heritage-shell .btn-success,
+[data-palette^="plava"] body.heritage-shell .btn-login {
+    color: #ffffff;
+    border: 1px solid var(--pal-primary-dark);
+    box-shadow: var(--shadow-btn);
+}
+[data-palette^="plava"] body.heritage-shell .btn-primary:hover,
+[data-palette^="plava"] body.heritage-shell .btn-primary:focus,
+[data-palette^="plava"] body.heritage-shell .btn-success:hover,
+[data-palette^="plava"] body.heritage-shell .btn-success:focus,
+[data-palette^="plava"] body.heritage-shell .btn-login:hover,
+[data-palette^="plava"] body.heritage-shell .btn-login:focus {
+    color: #ffffff;
+}
+[data-palette^="plava"] body.heritage-shell .btn-outline-primary,
+[data-palette^="plava"] body.heritage-shell .btn-outline-success,
+[data-palette^="plava"] body.heritage-shell .btn-outline-secondary {
+    color: var(--pal-primary);
+    border: 1px solid var(--pal-primary);
+    background: transparent;
+}
+[data-palette^="plava"] body.heritage-shell .btn-outline-primary:hover,
+[data-palette^="plava"] body.heritage-shell .btn-outline-success:hover,
+[data-palette^="plava"] body.heritage-shell .btn-outline-secondary:hover,
+[data-palette^="plava"] body.heritage-shell .btn-outline-primary.active,
+[data-palette^="plava"] body.heritage-shell .btn-outline-success.active,
+[data-palette^="plava"] body.heritage-shell .btn-outline-secondary.active {
+    color: #ffffff;
+    background: var(--pal-primary);
+    border-color: var(--pal-primary);
+}
+/* Заглавље календара резервација носи ID-правило (background: var(--museum-primary));
+   осим token override горе, држимо и експлицитно тамноплаво + бело. */
+[data-palette^="plava"] body.heritage-shell #calendarTable th {
+    background: var(--pal-thead-bg) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    --bs-table-bg: var(--pal-thead-bg);
+}
+
+/* 4) ТАБЕЛЕ по спецификацији: тамноплаво заглавље, парни/непарни редови,
+      hover, селектован ред светлоплаво, линије ћелија, активна колона
+      сортирања (DataTables .sorting_1). */
+[data-palette^="plava"] body.heritage-shell .table {
+    color: var(--text-primary);
+    --bs-table-bg: transparent;
+    border-color: var(--border-color);
+}
+[data-palette^="plava"] body.heritage-shell .table thead th {
+    background: var(--pal-thead-bg) !important;
+    color: var(--pal-thead-text) !important;
+    border-bottom: 2px solid var(--pal-thead-bg);
+    border-right: 1px solid rgba(255, 255, 255, 0.14);
+    font-weight: 600;
+    box-shadow: none !important;
+    --bs-table-bg: var(--pal-thead-bg);
+    --bs-table-color: var(--pal-thead-text);
+}
+[data-palette^="plava"] body.heritage-shell .table tbody td,
+[data-palette^="plava"] body.heritage-shell .table tbody th {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+[data-palette^="plava"] body.heritage-shell .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: var(--pal-stripe);
+}
+[data-palette^="plava"] body.heritage-shell .table-hover > tbody > tr:hover > * {
+    background-color: var(--pal-hover);
+}
+/* Селектован ред (Bootstrap .table-active или ручна .selected класа) */
+[data-palette^="plava"] body.heritage-shell .table > tbody > tr.table-active > *,
+[data-palette^="plava"] body.heritage-shell .table > tbody > tr.selected > * {
+    background-color: var(--pal-sel-bg) !important;
+    color: var(--pal-sel-text);
+}
+/* Активна колона сортирања (DataTables) */
+[data-palette^="plava"] body.heritage-shell .table > tbody > tr > td.sorting_1 {
+    background-color: var(--pal-hover);
+}
+[data-palette^="plava"] body.heritage-shell .table thead th.sorting_asc,
+[data-palette^="plava"] body.heritage-shell .table thead th.sorting_desc {
+    background: var(--pal-primary-dark);
+}
+
+/* 5) ФОТОГРАФИЈЕ: дискретна подлога приказа, селектована фотографија плави оквир */
+[data-palette^="plava"] body.heritage-shell .fototeka-card,
+[data-palette^="plava"] body.heritage-shell .dokumenti-card,
+[data-palette^="plava"] body.heritage-shell .search-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+[data-palette^="plava"] body.heritage-shell .foto-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+}
+[data-palette^="plava"] body.heritage-shell .foto-item:has(.foto-check:checked),
+[data-palette^="plava"] body.heritage-shell .foto-item.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Заглавље увоза фототеке носи хардкодован зелени градијент (page-scoped) —
+   у плавим темама га мапирамо на тамноплаво, а `code` на бело (AA). */
+[data-palette^="plava"] body.heritage-shell .fototeka-header {
+    background: linear-gradient(135deg, var(--pal-thead-bg) 0%, var(--pal-primary) 100%);
+}
+[data-palette^="plava"] body.heritage-shell .fototeka-header code {
+    color: #ffffff;
+}
+
+/* Контролна табла: насловни банер (page-scoped бордо градијент) и златне
+   иконице модула — у плавим темама тамноплаво заглавље с белим насловом и
+   плаве иконице на светлој плочици. */
+[data-palette^="plava"] body.heritage-shell .dashboard-header {
+    background: linear-gradient(135deg, var(--pal-thead-bg) 0%, var(--pal-primary) 100%);
+    border: 1px solid var(--pal-primary-dark);
+}
+[data-palette^="plava"] body.heritage-shell .dashboard-header h1 { color: #ffffff; }
+[data-palette^="plava"] body.heritage-shell .dashboard-header p { color: rgba(255, 255, 255, 0.9); }
+[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-desc,
+[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-wind,
+[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-location,
+[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-temp,
+[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-temp-placeholder {
+    color: #ffffff !important;
+}
+[data-palette^="plava"] body.heritage-shell .module-card .module-icon {
+    background: var(--pal-elevated) !important;
+    border: 1px solid var(--pal-border);
+    box-shadow: none;
+}
+[data-palette^="plava"] body.heritage-shell .module-card .module-icon i { color: var(--pal-primary) !important; }
+
+/* 6) Топ навигација (ако користи --bg-nav) и дугме теме */
+[data-palette^="plava"] body.heritage-shell .navbar {
+    background: var(--bg-nav);
+}
+
+/* ============================================
    ŠTAMPA — uvek svetla, bez obzira na temu
    ============================================ */
 @media print {
@@ -3702,6 +4070,12 @@ html[data-density="kompakt"][data-style="terenska"] {
     [data-theme="dark"] body.heritage-shell .table,
     [data-theme="dark"] body.heritage-shell .table thead th,
     [data-theme="dark"] body.heritage-shell .table tbody td {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }
+
+    /* Плаве теме: тело на белу, тамноплаво заглавље табеле остаје као ознака */
+    [data-palette^="plava"] body.heritage-shell {
         background: #ffffff !important;
         color: #1f2937 !important;
     }

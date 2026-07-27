@@ -1,5 +1,15 @@
 <!DOCTYPE html>
-<html lang="sr"{% if current_theme_mode|default('system') in ('dark', 'contrast') %} data-theme="{{ current_theme_mode }}"{% endif %} data-bs-theme="{% if current_theme_mode|default('system') == 'dark' %}dark{% else %}light{% endif %}"{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}{% if current_theme_style|default('institucionalna') != 'institucionalna' %} data-style="{{ current_theme_style }}"{% endif %}{% if current_theme_density|default('komforno') != 'komforno' %} data-density="{{ current_theme_density }}"{% endif %}>
+{#- Named blue palette (migration 033) is a self-contained look: it carries its
+    own light/dark base, so it drives data-theme/data-bs-theme itself and the
+    accent/style axes are suppressed. 'heritage' keeps the classic mode/accent/
+    style behavior. Density applies to both families. -#}
+{%- set _palette = current_theme_palette|default('plava-klasicna') -%}
+{%- set _blue = _palette != 'heritage' -%}
+{#- Sve plave palete imaju svetlu radnu površinu (bele kartice, taman tekst);
+    „tamnoplav" karakter nose ram/zaglavlje/bočni meni kroz tokene, ne data-theme. -#}
+{%- set _dark = (not _blue) and current_theme_mode|default('system') == 'dark' -%}
+{%- set _contrast = (not _blue) and current_theme_mode|default('system') == 'contrast' -%}
+<html lang="sr"{% if _contrast %} data-theme="contrast"{% elif _dark %} data-theme="dark"{% endif %} data-bs-theme="{% if _dark %}dark{% else %}light{% endif %}"{% if _blue %} data-palette="{{ _palette }}"{% else %}{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}{% if current_theme_style|default('institucionalna') != 'institucionalna' %} data-style="{{ current_theme_style }}"{% endif %}{% endif %}{% if current_theme_density|default('komforno') != 'komforno' %} data-density="{{ current_theme_density }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,6 +34,17 @@
             var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
             function applyResolved(mode) {
                 var root = document.documentElement;
+                // A named blue palette is self-contained: light work surface with
+                // dark-navy chrome via tokens, so it never needs the dark base.
+                // The mode axis stays available for the classic heritage family.
+                var pal = window.MuseumTheme && window.MuseumTheme.palette;
+                if (pal && pal !== 'heritage') {
+                    root.removeAttribute('data-theme');
+                    root.setAttribute('data-bs-theme', 'light');
+                    root.setAttribute('data-palette', pal);
+                    return;
+                }
+                root.removeAttribute('data-palette');
                 if (mode === 'contrast') {
                     root.setAttribute('data-theme', 'contrast');
                     root.setAttribute('data-bs-theme', 'light');
@@ -49,6 +70,7 @@
                 accent: '{{ current_theme_accent|default('zelena') }}',
                 style: '{{ current_theme_style|default('institucionalna') }}',
                 density: '{{ current_theme_density|default('komforno') }}',
+                palette: '{{ current_theme_palette|default('plava-klasicna') }}',
                 applyResolved: applyResolved
             };
             applyResolved(window.MuseumTheme.mode);
@@ -1221,6 +1243,9 @@
                                 <i class="bi bi-person-circle me-1"></i>{{ user_name }}
                             </a>
                             <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('core.izgled_personalizacija') }}">
+                                    <i class="bi bi-palette me-2"></i>Изглед и персонализација
+                                </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('change_password') }}">
                                     <i class="bi bi-key me-2"></i>Промени лозинку
                                 </a></li>

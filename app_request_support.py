@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from flask import current_app, render_template, request, session
-from core_app_views import current_theme_accent, current_theme_density, current_theme_mode, current_theme_style, current_ui_language
+from core_app_views import current_theme_accent, current_theme_density, current_theme_mode, current_theme_palette, current_theme_style, current_ui_language
 
 
 def register_error_handlers(flask_app) -> None:
@@ -109,6 +109,7 @@ def register_template_context(
             current_theme_accent=current_theme_accent(),
             current_theme_style=current_theme_style(),
             current_theme_density=current_theme_density(),
+            current_theme_palette=current_theme_palette(),
         )
 
 
