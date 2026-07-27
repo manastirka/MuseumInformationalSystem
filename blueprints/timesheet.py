@@ -36,12 +36,27 @@ def admin_timesheet_main():
 @timesheet_bp.route('/admin/timesheet_reports')
 @admin_or_department_head_required
 def admin_timesheet_reports():
-    """Admin view for centralized timesheet reports."""
+    """Admin view for centralized timesheet reports (само ТЕКУЋЕ листе)."""
     import app as museum_app
 
     return timesheet_admin_views.render_admin_timesheet_reports(
         timesheet_repository=museum_app.timesheet_repository,
         timesheet_repository_cls=TimesheetRepository,
+        scope='current',
+    )
+
+
+@timesheet_bp.route('/admin/timesheet/arhiva')
+@admin_or_department_head_required
+def admin_timesheet_archive():
+    """Архива радних листа: увезене архивске + старије године (филтер по
+    години/кориснику). Ништа се не брише — само посебан приказ."""
+    import app as museum_app
+
+    return timesheet_admin_views.render_admin_timesheet_reports(
+        timesheet_repository=museum_app.timesheet_repository,
+        timesheet_repository_cls=TimesheetRepository,
+        scope='archive',
     )
 
 

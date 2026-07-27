@@ -378,11 +378,22 @@ def render_admin_timesheet_main():
     return render_template('admin_timesheet_admin.html')
 
 
-def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cls):
-    """Admin view for centralized timesheet reports."""
+def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cls,
+                                   scope='current'):
+    """Admin view for centralized timesheet reports.
+
+    ``scope='current'`` (подразумевано) приказује само ТЕКУЋЕ листе — ручно
+    унете, текуће године; увезене архивске и старије године иду у АРХИВУ
+    (``scope='archive'``). Раздвајање је само приказ — ништа се не брише.
+    """
+    from datetime import datetime
+
     unavailable = _timesheet_repository_redirect(timesheet_repository, 'timesheet_app')
     if unavailable is not None:
         return unavailable
+
+    archived = scope == 'archive'
+    current_year = datetime.now().year
 
     month = _parse_int(request.args.get('month'))
     year = _parse_int(request.args.get('year'))
@@ -405,6 +416,8 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         year=year,
         search=search,
         department=department_scope,
+        scope=scope,
+        current_year=current_year,
     )
     month_summary = timesheet_repository.get_month_summary(month=month, year=year)
     overall_summary = timesheet_repository.get_overall_summary()
@@ -428,6 +441,8 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         year=year,
         search=search or '',
         only_verifiable=only_verifiable,
+        archived=archived,
+        current_year=current_year,
         month_options=_month_options(),
         # Године за филтер се изводе из података (глобално, за админа/шефа) —
         # архивски увоз старих година одмах постаје доступан.

@@ -204,6 +204,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             timesheet_repository=museum_app.timesheet_repository,
             timesheet_repository_cls=museum_app.TimesheetRepository,
+            scope='current',
         )
 
     def test_admin_report_api_delegates_to_extracted_module(self):
