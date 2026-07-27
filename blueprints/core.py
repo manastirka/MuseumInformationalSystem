@@ -56,8 +56,16 @@ def set_language():
 
 @core_bp.route('/set_theme', methods=['POST'])
 def set_theme():
-    """Set the user's UI theme preference (mode + accent)."""
+    """Set the user's UI theme preference (mode + accent + palette)."""
     return core_app_views.set_theme_preference()
+
+
+@core_bp.route('/podesavanja/izgled')
+@login_required
+def izgled_personalizacija():
+    """Izgled i personalizacija — birač imenovanih tema (faza 1: plavo-bele)."""
+    from flask import render_template
+    return render_template('podesavanja_izgled.html')
 
 
 @core_bp.route('/')

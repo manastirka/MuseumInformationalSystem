@@ -64,10 +64,22 @@ THEME_MODES = ('light', 'dark', 'system', 'contrast')
 THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
 THEME_STYLES = ('institucionalna', 'moderna', 'arhivska', 'terenska')
 THEME_DENSITIES = ('komforno', 'kompakt')
+# Named theme palettes (migration 033). 'heritage' = classic museum look that
+# keeps the mode/accent/style axes; the 'plava-*' palettes are self-contained
+# blue-white looks that carry their own light/dark surfaces. DARK_PALETTES ride
+# the existing dark base so they inherit the dark Bootstrap component rules.
+THEME_PALETTES = ('heritage', 'plava-klasicna', 'plava-windows',
+                  'plava-tamna', 'plava-ledena', 'plava-muzejska')
+DARK_PALETTES = ('plava-tamna', 'plava-muzejska')
+DEFAULT_PALETTE = 'plava-klasicna'
 
 
 def normalize_theme_mode(mode):
     return mode if mode in THEME_MODES else 'system'
+
+
+def normalize_theme_palette(palette):
+    return palette if palette in THEME_PALETTES else DEFAULT_PALETTE
 
 
 def normalize_theme_style(style):
@@ -102,6 +114,11 @@ def current_theme_density():
     return normalize_theme_density(saved)
 
 
+def current_theme_palette():
+    saved = session.get('museum_palette', request.cookies.get('museum_palette', DEFAULT_PALETTE))
+    return normalize_theme_palette(saved)
+
+
 def set_theme_preference():
     """Store the user's theme preference in session, cookies and (if logged in) the database."""
     data = request.get_json(silent=True) or {}
@@ -109,25 +126,30 @@ def set_theme_preference():
     accent = data.get('accent', 'zelena')
     style = data.get('style', 'institucionalna')
     density = data.get('density', 'komforno')
+    # palette defaults to the current choice, not the app default — a partial
+    # POST (e.g. only changing density) must not silently reset the palette.
+    palette = data.get('palette', current_theme_palette())
     if (mode not in THEME_MODES or accent not in THEME_ACCENTS
-            or style not in THEME_STYLES or density not in THEME_DENSITIES):
+            or style not in THEME_STYLES or density not in THEME_DENSITIES
+            or palette not in THEME_PALETTES):
         return jsonify({'status': 'error', 'message': 'Invalid theme'}), 400
 
     session['museum_theme'] = mode
     session['museum_accent'] = accent
     session['museum_style'] = style
     session['museum_density'] = density
+    session['museum_palette'] = palette
 
     if session.get('user_email'):
         from postgres_auth import get_postgres_auth
         try:
             get_postgres_auth().save_theme_preferences(
-                session['user_email'], mode, accent, style, density)
+                session['user_email'], mode, accent, style, density, palette)
         except Exception:
             logger.warning('Theme preference DB persist failed', exc_info=True)
 
     response = jsonify({'status': 'ok', 'mode': mode, 'accent': accent,
-                        'style': style, 'density': density})
+                        'style': style, 'density': density, 'palette': palette})
     cookie_kwargs = dict(
         max_age=31536000,
         samesite='Lax',
@@ -139,6 +161,7 @@ def set_theme_preference():
     response.set_cookie('museum_accent', accent, **cookie_kwargs)
     response.set_cookie('museum_style', style, **cookie_kwargs)
     response.set_cookie('museum_density', density, **cookie_kwargs)
+    response.set_cookie('museum_palette', palette, **cookie_kwargs)
     return response
 
 
@@ -243,6 +266,7 @@ def handle_login(
             session['museum_accent'] = normalize_theme_accent(authenticated_user.get('theme_accent'))
             session['museum_style'] = normalize_theme_style(authenticated_user.get('theme_style'))
             session['museum_density'] = normalize_theme_density(authenticated_user.get('theme_density'))
+            session['museum_palette'] = normalize_theme_palette(authenticated_user.get('theme_palette'))
             session.permanent = True
 
             tracker.record_attempt(email, success=True)

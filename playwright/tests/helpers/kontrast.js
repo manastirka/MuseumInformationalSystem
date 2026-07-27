@@ -19,6 +19,11 @@
 const REZIMI = ['dark', 'contrast'];
 const SVI_REZIMI = ['light', 'dark', 'contrast'];
 const STILOVI = ['institucionalna', 'moderna', 'arhivska', 'terenska'];
+// Именоване плаво-беле теме (миграција 033, фаза 1). Све су светле основе
+// (data-palette без data-theme=dark); мери се и у комфорној и у компактној
+// густини јер густина мења паддинг/оквире.
+const PALETE = ['plava-klasicna', 'plava-windows', 'plava-tamna', 'plava-ledena', 'plava-muzejska'];
+const GUSTINE = ['komforno', 'kompakt'];
 
 async function postaviTemu(page, rezim, stil) {
   // Промена теме покреће CSS transition на боји. На тешким странама (нпр.
@@ -36,6 +41,28 @@ async function postaviTemu(page, rezim, stil) {
     if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
     else document.documentElement.setAttribute('data-style', s);
   }, [rezim, stil]);
+  await page.waitForTimeout(200);
+}
+
+// Примени именовану плаву палету исто како то ради base.html скрипт: скини
+// data-theme/accent/style осе, постави data-palette + светли data-bs-theme.
+async function postaviPaletu(page, paleta, gustina) {
+  await page.addStyleTag({
+    content: `*, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }`,
+  });
+  await page.evaluate(([p, g]) => {
+    const root = document.documentElement;
+    root.removeAttribute('data-theme');
+    root.removeAttribute('data-accent');
+    root.removeAttribute('data-style');
+    root.setAttribute('data-bs-theme', 'light');
+    root.setAttribute('data-palette', p);
+    if (g === 'komforno') root.removeAttribute('data-density');
+    else root.setAttribute('data-density', g);
+  }, [paleta, gustina]);
   await page.waitForTimeout(200);
 }
 
@@ -94,12 +121,32 @@ async function izmeriUStanju(page, korenSelektor) {
       return false;
     };
 
+    // Хоризонтално исечени елементи: десне колоне широке табеле у
+    // `.table-responsive` (overflow-x:auto) излазе ван видљивог оквира
+    // контејнера. `screenshot({fullPage})` хвата само висину документа, не и
+    // хоризонтални скрол унутар контејнера — па се за исечену ћелију очита
+    // пиксел ПОРЕД ње (позадина стране). Бело мастило на тамноплавом заглављу
+    // тако лажно испадне „бело на светлом". Досад је пролазило само зато што
+    // heritage заглавља имају ТАМАН текст, који и на погрешно очитаној светлој
+    // позадини задовољава AA. Исти разлог за прескакање као код lepljivih.
+    const isecenHscroll = (el) => {
+      const r = el.getBoundingClientRect();
+      for (let n = el.parentElement; n && n.nodeType === 1; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (/(auto|scroll)/.test(cs.overflowX)) {
+          const nr = n.getBoundingClientRect();
+          if (r.right > nr.left + n.clientWidth + 1 || r.left < nr.left - 1) return true;
+        }
+      }
+      return false;
+    };
+
     const out = [];
     const svi = [...new Set(koreni.flatMap((k) => [k, ...k.querySelectorAll('*')]))];
     for (const el of svi) {
       const tekst = [...el.childNodes]
         .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
-      if (!tekst || samoEmoji(tekst) || uLepljivom(el)) continue;
+      if (!tekst || samoEmoji(tekst) || uLepljivom(el) || isecenHscroll(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue;
       const r = el.getBoundingClientRect();
@@ -236,4 +283,7 @@ async function izmeriUStanju(page, korenSelektor) {
   return padovi;
 }
 
-module.exports = { REZIMI, SVI_REZIMI, STILOVI, postaviTemu, izmeriKontrast };
+module.exports = {
+  REZIMI, SVI_REZIMI, STILOVI, PALETE, GUSTINE,
+  postaviTemu, postaviPaletu, izmeriKontrast,
+};

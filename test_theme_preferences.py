@@ -68,8 +68,9 @@ def test_set_theme_persists_to_db_for_logged_in_user(theme_app, monkeypatch):
     calls = []
 
     class FakeAuth:
-        def save_theme_preferences(self, email, mode, accent, style, density):
-            calls.append((email, mode, accent, style, density))
+        def save_theme_preferences(self, email, mode, accent, style, density,
+                                   palette='plava-klasicna'):
+            calls.append((email, mode, accent, style, density, palette))
             return True
 
     import postgres_auth
@@ -83,7 +84,10 @@ def test_set_theme_persists_to_db_for_logged_in_user(theme_app, monkeypatch):
         session['user_email'] = 'kustos@nhmbeo.rs'
         core_app_views.set_theme_preference()
 
-    assert calls == [('kustos@nhmbeo.rs', 'dark', 'petrolej', 'institucionalna', 'komforno')]
+    # palette omitted from the POST -> falls back to the current choice, which
+    # in a fresh request context is the app default 'plava-klasicna'.
+    assert calls == [('kustos@nhmbeo.rs', 'dark', 'petrolej',
+                      'institucionalna', 'komforno', 'plava-klasicna')]
 
 
 def test_set_theme_skips_db_for_anonymous_user(theme_app, monkeypatch):
@@ -189,8 +193,9 @@ def test_set_theme_stores_style_and_density(theme_app, monkeypatch):
     calls = []
 
     class FakeAuth:
-        def save_theme_preferences(self, email, mode, accent, style, density):
-            calls.append((email, mode, accent, style, density))
+        def save_theme_preferences(self, email, mode, accent, style, density,
+                                   palette='plava-klasicna'):
+            calls.append((email, mode, accent, style, density, palette))
             return True
 
     import postgres_auth
@@ -206,7 +211,8 @@ def test_set_theme_stores_style_and_density(theme_app, monkeypatch):
         assert session['museum_style'] == 'terenska'
         assert session['museum_density'] == 'kompakt'
 
-    assert calls == [('kustos@nhmbeo.rs', 'dark', 'bordo', 'terenska', 'kompakt')]
+    assert calls == [('kustos@nhmbeo.rs', 'dark', 'bordo', 'terenska',
+                      'kompakt', 'plava-klasicna')]
     cookies = response.headers.getlist('Set-Cookie')
     assert any('museum_style=terenska' in c for c in cookies)
     assert any('museum_density=kompakt' in c for c in cookies)
@@ -236,3 +242,53 @@ def test_set_theme_defaults_axes_when_absent(theme_app):
         assert session['museum_density'] == 'komforno'
 
     assert response.status_code == 200
+
+
+def test_set_theme_stores_named_palette(theme_app):
+    """Imenovana plava paleta (migracija 033) se čuva u sesiji i kolačiću."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'zelena', 'palette': 'plava-muzejska'},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_palette'] == 'plava-muzejska'
+
+    cookies = response.headers.getlist('Set-Cookie')
+    assert any('museum_palette=plava-muzejska' in c for c in cookies)
+
+
+def test_set_theme_rejects_invalid_palette(theme_app):
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'zelena', 'palette': 'plava-neonska'},
+    ):
+        response = core_app_views.set_theme_preference()
+
+    status = response[1] if isinstance(response, tuple) else response.status_code
+    assert status == 400
+
+
+def test_set_theme_palette_falls_back_to_current(theme_app):
+    """Delimičan POST (bez palette) ne resetuje već izabranu paletu."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'zelena'},
+    ):
+        session['museum_palette'] = 'plava-tamna'
+        core_app_views.set_theme_preference()
+        assert session['museum_palette'] == 'plava-tamna'
+
+
+def test_current_theme_palette_defaults(theme_app):
+    with theme_app.test_request_context('/'):
+        assert core_app_views.current_theme_palette() == 'plava-klasicna'
+
+
+def test_normalize_theme_palette_rejects_unknown():
+    assert core_app_views.normalize_theme_palette('heritage') == 'heritage'
+    assert core_app_views.normalize_theme_palette('plava-tamna') == 'plava-tamna'
+    assert core_app_views.normalize_theme_palette('nepostojeca') == 'plava-klasicna'
+    assert core_app_views.normalize_theme_palette(None) == 'plava-klasicna'

@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block title %}Изглед и персонализација{% endblock %}
+
+{% block head_extra %}
+<style>
+    .izgled-page { padding-top: 1.5rem; padding-bottom: 5rem; }
+    .izgled-page .page-lead { color: var(--text-secondary); max-width: 60ch; }
+
+    .theme-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+    }
+    .theme-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-card);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-card);
+        transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+    .theme-card.is-current {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--focus-ring);
+    }
+
+    /* Минијатурни приказ интерфејса — свака картица у СВОЈИМ бојама */
+    .theme-mini {
+        height: 132px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+    .tm-top { height: 20px; flex: 0 0 auto; }
+    .tm-row { flex: 1; display: flex; }
+    .tm-side { width: 26%; }
+    .tm-main { flex: 1; padding: 8px; }
+    .tm-card {
+        height: 100%;
+        border: 1px solid;
+        border-radius: 6px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .tm-th { height: 11px; border-radius: 2px; }
+    .tm-tr { height: 8px; border-radius: 2px; }
+    .tm-btn { height: 12px; width: 44px; border-radius: 3px; margin-top: auto; }
+
+    .theme-card-body { padding: 0.9rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.55rem; flex: 1; }
+    .theme-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .theme-name { font-weight: 600; color: var(--text-primary); }
+    .theme-tip { font-size: 0.7rem; font-weight: 600; }
+    .theme-tip.svetla { background: #e5edf7; color: #1d4e89; }
+    .theme-tip.tamna { background: #1f2937; color: #e5edf7; }
+    .theme-desc { font-size: 0.83rem; color: var(--text-secondary); margin: 0; min-height: 2.4em; }
+    .theme-swatches { display: flex; gap: 6px; }
+    .theme-swatch { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
+    .theme-actions { display: flex; gap: 0.5rem; margin-top: 0.35rem; }
+    .theme-actions .btn { flex: 1; }
+    .theme-current-flag {
+        font-size: 0.78rem; color: var(--primary); font-weight: 600;
+        display: none;
+    }
+    .theme-card.is-current .theme-current-flag { display: block; }
+    .theme-card.is-current [data-apply] { display: none; }
+
+    .izgled-density { margin-top: 2.5rem; }
+    .izgled-density h2 { font-size: 1.15rem; }
+
+    /* Трака режима прегледа */
+    .preview-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 1.25rem;
+        transform: translateX(-50%);
+        z-index: 1080;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 1rem;
+        background: #16233b;
+        color: #fff;
+        border-radius: 999px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+        max-width: calc(100vw - 2rem);
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .preview-bar[hidden] { display: none; }
+    .preview-bar .pb-label { font-size: 0.9rem; }
+    .preview-bar .pb-label strong { color: #cfe0f7; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-main izgled-page">
+    <h1>Изглед и персонализација</h1>
+    <p class="page-lead">
+        Изаберите тему апликације. Кликните <strong>Прегледај</strong> да привремено
+        видите како изгледа (без чувања), па <strong>Примени</strong> да је сачувате.
+        Избор се памти уз ваш налог.
+    </p>
+
+    {%- set current = current_theme_palette|default('plava-klasicna') -%}
+    {%- set themes = [
+        {'key': 'plava-klasicna', 'naziv': 'Класична плаво-бела', 'tip': 'Светла',
+         'opis': 'Тамноплаво заглавље, бела радна површина — подразумевана тема.',
+         'header': '#16375d', 'sidebar': '#143257', 'body': '#f1f5fb', 'surface': '#ffffff',
+         'stripe': '#f4f7fc', 'thead': '#16375d', 'primary': '#1d5fab', 'border': '#d5dde9'},
+        {'key': 'plava-windows', 'naziv': 'Windows плава', 'tip': 'Светла',
+         'opis': 'Чисте беле површине, MS плави акценти, дискретне ивице.',
+         'header': '#084b88', 'sidebar': '#0a2f55', 'body': '#f3f3f3', 'surface': '#ffffff',
+         'stripe': '#f7f9fb', 'thead': '#084b88', 'primary': '#005fb8', 'border': '#e0e0e0'},
+        {'key': 'plava-tamna', 'naziv': 'Тамноплава формална', 'tip': 'Тамна',
+         'opis': 'Тамноплави бочни мени и заглавље, формалан тон, бела површина.',
+         'header': '#0c2740', 'sidebar': '#081d31', 'body': '#eceff4', 'surface': '#ffffff',
+         'stripe': '#f3f6fa', 'thead': '#12314f', 'primary': '#24557f', 'border': '#d3dae2'},
+        {'key': 'plava-ledena', 'naziv': 'Ледено плава', 'tip': 'Светла',
+         'opis': 'Ведра, хладна плава с белим картицама и средњеплавим акцентима.',
+         'header': '#1c3f66', 'sidebar': '#17406a', 'body': '#e8f1fb', 'surface': '#ffffff',
+         'stripe': '#f0f6fd', 'thead': '#1c3f66', 'primary': '#2b6cb0', 'border': '#cfe0f0'},
+        {'key': 'plava-muzejska', 'naziv': 'Музејска плава', 'tip': 'Тамна',
+         'opis': 'Елегантна тамноплава основа са сребрним детаљима, бела садржина.',
+         'header': '#10233d', 'sidebar': '#0d1e35', 'body': '#e7ebf1', 'surface': '#ffffff',
+         'stripe': '#f2f5f9', 'thead': '#1a3557', 'primary': '#2a4f7a', 'border': '#d0d7e0'},
+        {'key': 'heritage', 'naziv': 'Класична музејска', 'tip': 'Светла',
+         'opis': 'Изворни музејски изглед (пергамент) са режимом, акцентом и стилом.',
+         'header': '#4d1617', 'sidebar': '#561719', 'body': '#efe0c3', 'surface': '#f5ead4',
+         'stripe': '#efe3cd', 'thead': '#bfa06f', 'primary': '#21473d', 'border': '#c7a47d'}
+    ] -%}
+
+    <div class="theme-card-grid">
+        {% for t in themes %}
+        <div class="theme-card {% if t.key == current %}is-current{% endif %}" data-palette-key="{{ t.key }}">
+            <div class="theme-mini" style="background:{{ t.body }};" aria-hidden="true">
+                <div class="tm-top" style="background:{{ t.header }};"></div>
+                <div class="tm-row">
+                    <div class="tm-side" style="background:{{ t.sidebar }};"></div>
+                    <div class="tm-main">
+                        <div class="tm-card" style="background:{{ t.surface }}; border-color:{{ t.border }};">
+                            <div class="tm-th" style="background:{{ t.thead }};"></div>
+                            <div class="tm-tr" style="background:{{ t.surface }};"></div>
+                            <div class="tm-tr" style="background:{{ t.stripe }};"></div>
+                            <div class="tm-btn" style="background:{{ t.primary }};"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="theme-card-body">
+                <div class="theme-card-head">
+                    <span class="theme-name">{{ t.naziv }}</span>
+                    <span class="badge theme-tip {{ 'tamna' if t.tip == 'Тамна' else 'svetla' }}">{{ t.tip }}</span>
+                </div>
+                <p class="theme-desc">{{ t.opis }}</p>
+                <div class="theme-swatches" aria-hidden="true">
+                    <span class="theme-swatch" style="background:{{ t.header }};" title="Заглавље"></span>
+                    <span class="theme-swatch" style="background:{{ t.primary }};" title="Акцент"></span>
+                    <span class="theme-swatch" style="background:{{ t.surface }};" title="Површина"></span>
+                    <span class="theme-swatch" style="background:{{ t.body }};" title="Позадина"></span>
+                </div>
+                <div class="theme-current-flag"><i class="bi bi-check-circle-fill"></i> Тренутно изабрано</div>
+                <div class="theme-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-preview="{{ t.key }}" data-name="{{ t.naziv }}">Прегледај</button>
+                    <button type="button" class="btn btn-sm btn-primary" data-apply="{{ t.key }}">Примени</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <section class="izgled-density">
+        <h2>Густина приказа</h2>
+        <p class="text-muted" style="font-size:0.88rem;">Размак између елемената примењује се на сваку тему.</p>
+        <div class="btn-group" role="group" aria-label="Густина приказа">
+            <button type="button" class="btn btn-outline-secondary" data-density="komforno">Комфорно</button>
+            <button type="button" class="btn btn-outline-secondary" data-density="kompakt">Компакт</button>
+        </div>
+    </section>
+</div>
+
+<div id="previewBar" class="preview-bar" hidden role="region" aria-label="Режим прегледа теме">
+    <span class="pb-label">Преглед: <strong id="previewName"></strong></span>
+    <button type="button" id="previewApply" class="btn btn-primary btn-sm">Примени тему</button>
+    <button type="button" id="previewRevert" class="btn btn-light btn-sm">Врати претходни изглед</button>
+    <button type="button" id="previewCancel" class="btn btn-outline-light btn-sm">Откажи преглед</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var T = window.MuseumTheme || {};
+    var savedPalette = T.palette || 'plava-klasicna';   // тренутно сачувана тема
+    var previewing = null;                                // тема у прегледу (или null)
+
+    var bar = document.getElementById('previewBar');
+    var barName = document.getElementById('previewName');
+
+    function applyPaletteVisual(pal) {
+        // искористи постојећу логику из base.html (примена + Chart/Leaflet)
+        window.MuseumTheme.palette = pal;
+        window.MuseumTheme.applyResolved(window.MuseumTheme.mode);
+    }
+
+    function markCurrentCard(pal) {
+        document.querySelectorAll('.theme-card').forEach(function (c) {
+            c.classList.toggle('is-current', c.getAttribute('data-palette-key') === pal);
+        });
+    }
+
+    function showBar(name) {
+        barName.textContent = name;
+        bar.hidden = false;
+    }
+    function hideBar() { bar.hidden = true; }
+
+    function startPreview(pal, name) {
+        previewing = pal;
+        applyPaletteVisual(pal);
+        showBar(name);
+    }
+
+    function revertVisual() {
+        previewing = null;
+        applyPaletteVisual(savedPalette);
+        hideBar();
+    }
+
+    function persist(pal, onDone) {
+        var request = window.secureFetch || fetch;
+        request('/set_theme', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: T.mode, accent: T.accent, style: T.style,
+                density: T.density, palette: pal
+            })
+        }).then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+          .then(function () {
+              savedPalette = pal;
+              window.MuseumTheme.palette = pal;
+              // рефлектуј у колачић одмах (пре-рендер друге странице)
+              document.cookie = 'museum_palette=' + pal + ';path=/;max-age=31536000;samesite=Lax';
+              markCurrentCard(pal);
+              if (onDone) onDone();
+          })
+          .catch(function () { alert('Чување теме није успело. Покушајте поново.'); });
+    }
+
+    document.querySelectorAll('[data-preview]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            startPreview(btn.getAttribute('data-preview'), btn.getAttribute('data-name'));
+        });
+    });
+    document.querySelectorAll('[data-apply]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var pal = btn.getAttribute('data-apply');
+            applyPaletteVisual(pal);
+            persist(pal, function () { previewing = null; hideBar(); });
+        });
+    });
+
+    document.getElementById('previewApply').addEventListener('click', function () {
+        if (previewing) persist(previewing, function () { previewing = null; hideBar(); });
+    });
+    document.getElementById('previewRevert').addEventListener('click', revertVisual);
+    document.getElementById('previewCancel').addEventListener('click', revertVisual);
+
+    // Густина — примени одмах и сачувај
+    document.querySelectorAll('[data-density]').forEach(function (btn) {
+        if (btn.getAttribute('data-density') === (T.density || 'komforno')) {
+            btn.classList.add('active');
+        }
+        btn.addEventListener('click', function () {
+            var d = btn.getAttribute('data-density');
+            window.MuseumTheme.density = d; T.density = d;
+            if (d === 'komforno') document.documentElement.removeAttribute('data-density');
+            else document.documentElement.setAttribute('data-density', d);
+            document.querySelectorAll('[data-density]').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            var request = window.secureFetch || fetch;
+            request('/set_theme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: T.mode, accent: T.accent, style: T.style,
+                    density: d, palette: savedPalette
+                })
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}
