@@ -172,7 +172,8 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
     header_fields = (
         "id, employee_name, special_tasks, extraordinary_tasks, duties_summary, "
         "is_verified, is_locked, verified_by, verified_at, version, status, "
-        "submitted_at, rejection_note"
+        "submitted_at, rejection_note, "
+        "(editable_until IS NOT NULL AND NOW() < editable_until) AS edit_window_active"
     )
     header = _load_report_header(user_full_name, month, year, header_fields)
     if not header:
@@ -200,6 +201,7 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
         'status': header.get('status', 'DRAFT'),
         'submitted_at': header.get('submitted_at'),
         'rejection_note': header.get('rejection_note', ''),
+        'edit_window_active': bool(header.get('edit_window_active')),
         'report_id': header['id'],
     }
 
@@ -484,6 +486,18 @@ def render_timesheet_entry():
             edit_restriction_message = (
                 "Радна листа је закључана. Потребно је одобрење администратора за измене."
             )
+
+    # Враћена радна листа (REJECTED) носи 24 h прозор за измену
+    # (editable_until) који важи ЗА ТАЈ извештај и превазилази календарски
+    # рок — исто правило као window_active у save_timesheet, да се приказ и
+    # слој снимања слажу. Без овога запослени види сва поља и дугме „Сачувај"
+    # као disabled и не може да унесе исправку коју је шеф/админ затражио.
+    if (not report_locked
+            and timesheet_data
+            and timesheet_data.get('edit_window_active')):
+        can_edit = True
+        edit_restriction_message = ""
+        show_submit_button = status in ('DRAFT', 'REJECTED')
 
     if status == 'APPROVED':
         is_approved = True
