@@ -331,7 +331,9 @@ class QASmokeFlowTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn('Радна листа је закључана. Потребно је одобрење администратора за измене.', html)
+        # Механизам „захтева за унос" је уклоњен — закључана листа сада упућује
+        # на администратора за откључавање (без дугмета за захтев).
+        self.assertIn('Унос за овај месец је затворен', html)
         self.assertIn('data-testid="timesheet-save"', html)
         self.assertIn('disabled', html)
         self.assertNotIn('onclick="saveTimesheet()"', html)

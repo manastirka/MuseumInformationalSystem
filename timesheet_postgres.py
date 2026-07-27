@@ -1753,3 +1753,104 @@ def ensure_draft_exists(
     except Exception as e:
         logger.error(f"Unexpected error ensuring draft exists: {e}")
         return None
+
+
+def admin_unlock_entry(employee_email: str, month: int, year: int,
+                       admin_email: str, expires_at=None) -> TimesheetResult:
+    """Админ/директор откључава УНОС радне листе конкретном запосленом за
+    дати месец, кад је прошао редовни рок (унос само за претходни месец).
+
+    Намерно поново користи ``editable_until`` — исти механизам као 24 h прозор
+    после враћања: save_timesheet/submit_timesheet и приказ уноса већ поштују
+    ``window_active`` и премошћују календарски рок за тај извештај. Тако
+    откључавање ради кроз СВА три слоја без нове гранања логике, и само
+    ИСТИЧЕ (нема потребе за посебном „затвори" акцијом).
+
+    ``expires_at`` (datetime/ISO) → до када важи; None → подразумевано 7 дана.
+    Не дира SUBMITTED/APPROVED листе (оне су већ у току одобравања).
+    """
+    if not employee_email:
+        return TimesheetResult.fail(
+            TimesheetErrorType.VALIDATION_ERROR, "Недостаје запослени."
+        )
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT full_name FROM users WHERE LOWER(email) = LOWER(%s)",
+                    (employee_email,),
+                )
+                urow = cur.fetchone()
+                if not urow:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND,
+                        f"Запослени '{employee_email}' није пронађен."
+                    )
+                employee_name = urow['full_name']
+
+        department, position = get_user_department_and_position(employee_email)
+        report_id = ensure_draft_exists(
+            employee_email, employee_name or '', month, year,
+            department, position,
+        )
+        if not report_id:
+            return TimesheetResult.fail(
+                TimesheetErrorType.DATABASE_ERROR,
+                "Није могуће припремити листу за откључавање."
+            )
+
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COALESCE(status, 'DRAFT') AS status FROM timesheet_reports "
+                    "WHERE id = %s FOR UPDATE",
+                    (report_id,),
+                )
+                status = cur.fetchone()['status']
+                if status in ('SUBMITTED', 'APPROVED'):
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Листа за {month}/{year} је већ у току одобравања "
+                        f"(статус {status}) — откључавање уноса се не примењује."
+                    )
+
+                if expires_at is not None:
+                    cur.execute(
+                        "UPDATE timesheet_reports "
+                        "SET editable_until = %s, is_locked = FALSE "
+                        "WHERE id = %s RETURNING editable_until",
+                        (expires_at, report_id),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE timesheet_reports "
+                        "SET editable_until = NOW() + INTERVAL '7 days', is_locked = FALSE "
+                        "WHERE id = %s RETURNING editable_until",
+                        (report_id,),
+                    )
+                editable_until = cur.fetchone()['editable_until']
+
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by, note)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (report_id, status, status, admin_email,
+                      f'Админ откључао унос до {editable_until}'))
+
+                conn.commit()
+
+        return TimesheetResult.ok({
+            'report_id': report_id,
+            'employee_email': employee_email,
+            'employee_name': employee_name,
+            'month': month,
+            'year': year,
+            'status': status,
+            'editable_until': editable_until,
+        })
+
+    except psycopg.Error as e:
+        logger.error(f"Database error unlocking entry: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR, "Грешка при откључавању уноса."
+        )

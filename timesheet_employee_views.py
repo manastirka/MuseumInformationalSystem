@@ -528,15 +528,10 @@ def render_timesheet_entry():
         can_edit = False
         can_submit = False
         show_submit_button = False
-        if has_pending_request:
-            edit_restriction_message = (
-                "Захтев за измену је послат и радна листа остаје закључана "
-                "док администратор не обради захтев."
-            )
-        else:
-            edit_restriction_message = (
-                "Радна листа је закључана. Потребно је одобрење администратора за измене."
-            )
+        edit_restriction_message = (
+            "Унос за овај месец је затворен. Обратите се администратору "
+            "да вам откључа унос."
+        )
 
     # Враћена радна листа (REJECTED) носи 24 h прозор за измену
     # (editable_until) који важи ЗА ТАЈ извештај и превазилази календарски
@@ -703,105 +698,6 @@ def api_load_timesheet():
     except Exception as exc:
         logger.error("API load timesheet error: %s", exc)
         return jsonify({'success': False, 'message': str(exc)})
-
-
-def request_approval():
-    """Create an approval request for editing a locked timesheet."""
-    try:
-        payload = request.get_json(silent=True) or {}
-        month = payload.get('month') or request.form.get('month')
-        year = payload.get('year') or request.form.get('year')
-        reason = (payload.get('reason') or request.form.get('reason', '') or '').strip()
-
-        if not month or not year or not reason:
-            return jsonify({'success': False, 'message': 'Месец, година и разлог су обавезни!'})
-
-        user_email = session.get('user_email')
-        user_name = session.get('user_name', 'Unknown')
-        if not user_email:
-            return jsonify({'success': False, 'message': 'Корисник није пријављен'})
-
-        with get_postgres_connection(row_factory=dict_row) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id, is_verified, is_locked
-                    FROM timesheet_reports
-                    WHERE (employee_email = %s OR (employee_email IS NULL AND employee_name = %s))
-                      AND month = %s
-                      AND year = %s
-                    ORDER BY id DESC
-                    LIMIT 1
-                    """,
-                    (user_email, user_name, month, year),
-                )
-                report = cur.fetchone()
-
-                if not report:
-                    cur.execute(
-                        """
-                        INSERT INTO timesheet_reports
-                        (employee_email, employee_name, month, year, organization_unit, position, is_verified, is_locked, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, FALSE, FALSE, NOW())
-                        RETURNING id
-                        """,
-                        (
-                            user_email,
-                            user_name,
-                            month,
-                            year,
-                            'Природњачки музеј',
-                            session.get('user_position', session.get('position', 'Запослени')),
-                        ),
-                    )
-                    report = cur.fetchone()
-                    conn.commit()
-
-                report_id = report['id']
-
-                cur.execute(
-                    """
-                    SELECT id, status
-                    FROM timesheet_edit_requests
-                    WHERE report_id = %s
-                      AND requester_email = %s
-                      AND status = 'pending'
-                    """,
-                    (report_id, user_email),
-                )
-                existing_request = cur.fetchone()
-                if existing_request:
-                    return jsonify(
-                        {
-                            'success': False,
-                            'message': 'Већ постоји захтев на чекању за овај месец',
-                        }
-                    )
-
-                cur.execute(
-                    """
-                    INSERT INTO timesheet_edit_requests
-                    (report_id, requester_email, reason, status, requested_at)
-                    VALUES (%s, %s, %s, 'pending', NOW())
-                    RETURNING id
-                    """,
-                    (report_id, user_email, reason),
-                )
-                request_id = cur.fetchone()['id']
-                conn.commit()
-
-        return jsonify(
-            {
-                'success': True,
-                'message': (
-                    f'Захтев је успешно послат! (ID: {request_id})\n'
-                    'Бићете обавештени када администратор обради захтев.'
-                ),
-            }
-        )
-    except Exception as exc:
-        logger.error("Error submitting edit request: %s", exc)
-        return jsonify({'success': False, 'message': f'Грешка при слању захтева: {str(exc)}'})
 
 
 def api_save_timesheet():
