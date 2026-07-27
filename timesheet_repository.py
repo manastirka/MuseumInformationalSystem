@@ -99,6 +99,8 @@ class TimesheetRepository:
             "tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, "
             "COALESCE(tr.status, 'DRAFT') AS status, tr.reviewed_at, "
             "tr.rejection_note, "
+            "tr.head_verified_by, tr.head_verified_at, "
+            "tr.director_verified_by, tr.director_verified_at, "
             "SUM(CASE WHEN te.category = 'rad_na_mestu' THEN te.hours ELSE 0 END) AS work_in_museum, "
             "SUM(CASE WHEN te.category = 'van_muzeja' THEN te.hours ELSE 0 END) AS work_outside, "
             "SUM(CASE WHEN te.category = 'godisnji_odmor' THEN te.hours ELSE 0 END) AS vacation, "
@@ -112,7 +114,8 @@ class TimesheetRepository:
             "LEFT JOIN timesheet_entries te ON te.report_id = tr.id "
             "WHERE " + where_sql + " "
             "GROUP BY tr.id, tr.employee_name, tr.month, tr.year, tr.organization_unit, "
-            "tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at, tr.rejection_note "
+            "tr.position, tr.is_verified, tr.verified_by, tr.verified_at, tr.is_locked, tr.status, tr.reviewed_at, tr.rejection_note, "
+            "tr.head_verified_by, tr.head_verified_at, tr.director_verified_by, tr.director_verified_at "
             "ORDER BY tr.year DESC, tr.month DESC, tr.employee_name "
             "LIMIT :limit OFFSET :offset"
         )
@@ -322,6 +325,10 @@ class TimesheetRepository:
             'is_locked': bool(row.is_locked) if hasattr(row, 'is_locked') else False,
             'verified_by': row.verified_by if hasattr(row, 'verified_by') else None,
             'verified_at': row.verified_at if hasattr(row, 'verified_at') else None,
+            'head_verified_by': row.head_verified_by if hasattr(row, 'head_verified_by') else None,
+            'head_verified_at': row.head_verified_at if hasattr(row, 'head_verified_at') else None,
+            'director_verified_by': row.director_verified_by if hasattr(row, 'director_verified_by') else None,
+            'director_verified_at': row.director_verified_at if hasattr(row, 'director_verified_at') else None,
             'status': row.status if hasattr(row, 'status') else 'DRAFT',
             'rejection_note': row.rejection_note if hasattr(row, 'rejection_note') else None,
             'work_in_museum': self._to_float(row.work_in_museum),

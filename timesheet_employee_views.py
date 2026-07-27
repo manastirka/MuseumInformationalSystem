@@ -173,6 +173,7 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
         "id, employee_name, special_tasks, extraordinary_tasks, duties_summary, "
         "is_verified, is_locked, verified_by, verified_at, version, status, "
         "submitted_at, rejection_note, "
+        "head_verified_by, head_verified_at, director_verified_by, director_verified_at, "
         "(editable_until IS NOT NULL AND NOW() < editable_until) AS edit_window_active"
     )
     header = _load_report_header(user_full_name, month, year, header_fields)
@@ -201,6 +202,10 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
         'status': header.get('status', 'DRAFT'),
         'submitted_at': header.get('submitted_at'),
         'rejection_note': header.get('rejection_note', ''),
+        'head_verified_by': header.get('head_verified_by'),
+        'head_verified_at': header.get('head_verified_at'),
+        'director_verified_by': header.get('director_verified_by'),
+        'director_verified_at': header.get('director_verified_at'),
         'edit_window_active': bool(header.get('edit_window_active')),
         'report_id': header['id'],
     }
@@ -898,11 +903,11 @@ def api_timesheet_approve(report_id):
     the primary admin route: the director may not approve a regular
     employee of a department that has a head (admin passes automatically).
     """
-    from timesheet_postgres import approve_timesheet
+    from timesheet_postgres import confirm_timesheet_signature
     from timesheet_admin_views import (
         _get_department_heads,
         _lookup_report_department,
-        can_user_verify_report_for_department,
+        _signature_plan,
     )
 
     try:
@@ -914,24 +919,40 @@ def api_timesheet_approve(report_id):
         logger.error("approve scope lookup failed: %s", exc)
         return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
 
-    if not can_user_verify_report_for_department(
+    # Двостепено одобрење: одреди слот потписа (шеф/директор). APPROVED тек кад
+    # су оба потписа присутна.
+    plan = _signature_plan(
         session, report_department,
         target_employee_email=employee_email,
         department_heads=heads,
-    ):
+    )
+    if not plan['allowed']:
         return jsonify(
             {'success': False, 'message': 'Немате овлашћење за оверу овог извештаја.'}
         ), 403
 
-    result = approve_timesheet(report_id, session.get('user_email'))
+    result = confirm_timesheet_signature(
+        report_id, session.get('user_email'), plan['slot'], plan['head_required'],
+    )
     if result.success:
-        _notify_employee_about_review_outcome(
-            report_id,
-            'Радна листа одобрена',
-            'bi-check-circle',
-            lambda month_name, year: f'Ваша радна листа за {month_name} {year}. је одобрена.',
-        )
-        return jsonify({'success': True, 'message': result.data.get('message', 'Одобрено')})
+        approved_now = bool(result.data.get('approved'))
+        if approved_now:
+            _notify_employee_about_review_outcome(
+                report_id,
+                'Радна листа одобрена',
+                'bi-check-circle',
+                lambda month_name, year: f'Ваша радна листа за {month_name} {year}. је одобрена (шеф и директор).',
+            )
+            message = 'Извештај је одобрен (оба потписа присутна).'
+        else:
+            _notify_employee_about_review_outcome(
+                report_id,
+                'Радна листа — потпис забележен',
+                'bi-hourglass-split',
+                lambda month_name, year: f'Ваша радна листа за {month_name} {year}. има један потпис и чека још један.',
+            )
+            message = 'Потпис забележен. Листа чека још један потпис.'
+        return jsonify({'success': True, 'message': message, 'approved': approved_now})
     return jsonify({'success': False, 'message': result.error.message}), 400
 
 

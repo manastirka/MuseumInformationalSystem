@@ -22,12 +22,28 @@ os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-flask-session')
 
 import app as museum_app
 import timesheet_admin_views
+import timesheet_postgres
 
 
 BIOLOGY = 'БИОЛОШКО ОДЕЉЕЊЕ'
 GEOLOGY = 'ГЕОЛОШКО ОДЕЉЕЊЕ'
 EDUCATION = 'ГРУПА ЗА ЕДУКАЦИЈУ, КОМУНИКАЦИЈУ И МАРКЕТИНГ'
 GALLERY = 'ГРУПА ЗА ИЗЛОЖБЕНЕ ПОСЛОВЕ – ГАЛЕРИЈА'
+
+
+def _fake_confirm_signature(report_id, verifier_email, slot, head_required):
+    """Stub of timesheet_postgres.confirm_timesheet_signature that mirrors the
+    real approval math without a live DB (the real one opens its own
+    connection, bypassing these tests' cursor mocks). APPROVED only when both
+    required signatures are present."""
+    head_done = slot in ('head', 'both')
+    director_done = slot in ('director', 'both')
+    approved = director_done and (head_done or not head_required)
+    return timesheet_postgres.TimesheetResult.ok({
+        'report_id': report_id,
+        'approved': approved,
+        'status': 'APPROVED' if approved else 'SUBMITTED',
+    })
 
 
 class _FakeCursor:
@@ -195,8 +211,14 @@ class DirectorTimesheetScopingTests(unittest.TestCase):
         museum_app.app.config['WTF_CSRF_ENABLED'] = False
         self.client = museum_app.app.test_client()
         self.base_url = 'https://localhost'
+        self._confirm_patcher = patch.object(
+            timesheet_postgres, 'confirm_timesheet_signature',
+            side_effect=_fake_confirm_signature,
+        )
+        self._confirm_patcher.start()
 
     def tearDown(self):
+        self._confirm_patcher.stop()
         museum_app.app.config['WTF_CSRF_ENABLED'] = self._prev_csrf
 
     def _login_as_director(self):
@@ -231,9 +253,10 @@ class DirectorTimesheetScopingTests(unittest.TestCase):
         )
         return pg_patch, repo_patch
 
-    def test_director_blocked_for_regular_biology_employee(self):
-        """Biology has a head (Верица). Director must NOT verify a regular
-        Biology employee's report — that's the head's job."""
+    def test_director_partial_signature_for_regular_biology_employee(self):
+        """Двостепено: Biology има шефа (Верица). Директор СМЕ да потпише свој
+        (директорски) слот регуларног запосленог, али то НИЈЕ коначно одобрење
+        док и шеф не потпише — статус остаје поднет (approved=False)."""
         self._login_as_director()
         row = {'id': 10, 'employee_name': 'X', 'employee_email': 'employee.bio@nhmbeo.rs',
                'employee_department': BIOLOGY, 'month': 1, 'year': 2026}
@@ -244,7 +267,11 @@ class DirectorTimesheetScopingTests(unittest.TestCase):
                 '/api/admin/timesheet/report/10/approve',
                 json={'approve': True}, base_url=self.base_url,
             )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertTrue(body.get('success'))
+        self.assertFalse(body.get('approved'),
+                         'директор сам не сме да коначно одобри — чека потпис шефа')
 
     def test_director_can_approve_biology_head_own_report(self):
         """Director DOES verify the Biology head's (Верица) own report —
@@ -293,9 +320,9 @@ class DirectorTimesheetScopingTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json().get('success'))
 
-    def test_director_blocked_for_regular_legal_affairs_employee(self):
-        """Legal Affairs has a head (Ана Живановић). Regular employees there
-        are her responsibility, not the director's."""
+    def test_director_partial_signature_for_regular_legal_affairs_employee(self):
+        """Двостепено: Legal Affairs има шефа. Директор потписује директорски
+        слот (approved=False док шеф не потпише)."""
         self._login_as_director()
         legal = 'ОДСЕК ОПШТИХ И ПРАВНИХ ПОСЛОВА'
         row = {'id': 30, 'employee_name': 'Legal Employee',
@@ -308,7 +335,10 @@ class DirectorTimesheetScopingTests(unittest.TestCase):
                 '/api/admin/timesheet/report/30/approve',
                 json={'approve': True}, base_url=self.base_url,
             )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertTrue(body.get('success'))
+        self.assertFalse(body.get('approved'))
 
 
 class EducationGalleryApprovalRuleTests(unittest.TestCase):
@@ -594,22 +624,10 @@ class VerifiedRoleAuditTests(unittest.TestCase):
             )
         return response, captured
 
-    def test_approve_sets_verified_role(self):
-        row = {'id': 501, 'employee_name': 'Edu Worker',
-               'employee_email': 'edu@nhmbeo.rs',
-               'employee_department': EDUCATION, 'month': 3, 'year': 2026}
-        response, captured = self._run_approve(row, heads=[], approve=True)
-        self.assertEqual(response.status_code, 200)
-        # Find the UPDATE ... SET is_verified = TRUE ... verified_role = %s
-        update_calls = [c for c in captured
-                        if 'UPDATE timesheet_reports' in c[0]
-                        and 'verified_role' in c[0]
-                        and 'is_verified = TRUE' in c[0]]
-        self.assertTrue(update_calls, f"no verify UPDATE captured; got {[c[0][:60] for c in captured]}")
-        # verified_role is the second param (see SQL order)
-        params = update_calls[0][1]
-        self.assertIn('direktor', params,
-                      f"expected director role in UPDATE params, got {params}")
+    # NB: приликом двостепеног одобрења approve више НЕ уписује verified_role
+    # (замењено са head_verified_by/director_verified_by — види
+    # test_dvostepeno_odobrenje.py). Стари test_approve_sets_verified_role је
+    # уклоњен као застарео. disapprove и даље чисти verified_role:
 
     def test_unapprove_clears_verified_role(self):
         row = {'id': 502, 'employee_name': 'Edu Worker',
@@ -747,8 +765,16 @@ class NotificationFlowTests(unittest.TestCase):
         museum_app.app.config['WTF_CSRF_ENABLED'] = False
         self.client = museum_app.app.test_client()
         self.base_url = 'https://localhost'
+        # Двостепено: approve делегира у confirm_timesheet_signature (сопствена
+        # конекција). Мокуј га да тестови нотификација остану без живе базе.
+        self._confirm_patcher = patch.object(
+            timesheet_postgres, 'confirm_timesheet_signature',
+            side_effect=_fake_confirm_signature,
+        )
+        self._confirm_patcher.start()
 
     def tearDown(self):
+        self._confirm_patcher.stop()
         museum_app.app.config['WTF_CSRF_ENABLED'] = self._prev_csrf
 
     def _login_as_director(self):
