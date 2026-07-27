@@ -79,17 +79,23 @@ class TimesheetRepository:
         year: Optional[int] = None,
         search: Optional[str] = None,
         department: Optional[str] = None,
+        scope: Optional[str] = None,
+        current_year: Optional[int] = None,
     ) -> Dict:
         """Return paginated list of reports with category totals.
 
         When `department` is supplied, only reports whose employee (matched by
         full_name in `employee_profiles`) belongs to that department are
         returned. This supports department-head-scoped verification.
+
+        `scope`/`current_year` split current vs archived reports — see
+        `_build_filters`.
         """
         if not self.available:
             return {'reports': [], 'total': 0, 'page': page, 'total_pages': 0}
 
-        where_sql, params = self._build_filters(month, year, search, department)
+        where_sql, params = self._build_filters(
+            month, year, search, department, scope=scope, current_year=current_year)
         offset = (page - 1) * per_page
 
         query = text(
@@ -288,13 +294,30 @@ class TimesheetRepository:
         year: Optional[int],
         search: Optional[str],
         department: Optional[str] = None,
+        scope: Optional[str] = None,
+        current_year: Optional[int] = None,
     ) -> Tuple[str, Dict]:
+        """`scope` splits current vs archived reports:
+        - 'current': само ручно унете листе текуће године (imported_from IS NULL
+          AND year = current_year) — „чист сто" од текуће године;
+        - 'archive': све остало (увезене архивске ИЛИ друге године);
+        - None: без раздвајања (сви — задржано ради компатибилности).
+        Кориснички `year` филтер важи у 'archive' и у None режиму (у 'current'
+        је година фиксирана на текућу)."""
         clauses = []
         params: Dict[str, object] = {}
+        if scope == 'current' and current_year is not None:
+            clauses.append("tr.imported_from IS NULL")
+            clauses.append("tr.year = :f_current_year")
+            params['f_current_year'] = current_year
+        elif scope == 'archive' and current_year is not None:
+            clauses.append("(tr.imported_from IS NOT NULL OR tr.year <> :f_current_year)")
+            params['f_current_year'] = current_year
         if month:
             clauses.append("tr.month = :f_month")
             params['f_month'] = month
-        if year:
+        # У 'current' режиму година је фиксирана скоп-клаузулом; иначе поштуј избор.
+        if year and scope != 'current':
             clauses.append("tr.year = :f_year")
             params['f_year'] = year
         if search:

@@ -84,6 +84,7 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
         'timesheet_app',
         'admin_timesheet_main',
         'admin_timesheet_reports',
+        'admin_timesheet_archive',
         'admin_timesheet_report_detail',
         'admin_timesheet_employees',
         'admin_timesheet_users',
