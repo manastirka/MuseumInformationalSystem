@@ -206,6 +206,26 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
     }
 
 
+def _load_returned_reports(user_email, user_full_name):
+    """Све листе овог власника у статусу REJECTED (враћено на допуну), од
+    најновије. Служи за истакнуту навигацију ка враћеним листама из старијих
+    месеци — да запослени не остане заглављен на подразумеваном месецу."""
+    query = (
+        "SELECT id, month, year, rejection_note, "
+        "(editable_until IS NOT NULL AND NOW() < editable_until) AS edit_window_active "
+        "FROM timesheet_reports "
+        "WHERE COALESCE(status, 'DRAFT') = 'REJECTED' "
+        "  AND (employee_email = %s "
+        "       OR (employee_email IS NULL "
+        "           AND LOWER(TRIM(employee_name)) = LOWER(TRIM(%s)))) "
+        "ORDER BY year DESC, month DESC"
+    )
+    with get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (user_email or '', user_full_name or ''))
+            return cur.fetchall() or []
+
+
 def _load_timesheet_view_data(user_full_name, month, year):
     header_fields = (
         "id, employee_name, special_tasks, extraordinary_tasks, duties_summary, "
@@ -400,7 +420,21 @@ def _notify_employee_about_review_outcome(report_id, title, icon, message_templa
 
 def render_timesheet_entry():
     """Employee timesheet entry page."""
-    month, year = _default_entry_period()
+    # Подразумевано се уноси ПРЕТХОДНИ месец. Али ако admin/шеф врати старију
+    # листу НА ДОПУНУ, запослени мора моћи да је отвори преко ?month=&year=
+    # без обзира на старост — измена такве (REJECTED) листе је дозвољена кроз
+    # активни 24 h прозор (види can_edit логику ниже). За НОРМАЛАН унос
+    # (DRAFT) месечни рок и даље важи, па стара празна листа остаје незизменљива.
+    default_month, default_year = _default_entry_period()
+    now = datetime.now()
+    month_param = request.args.get('month', '').strip()
+    year_param = request.args.get('year', '').strip()
+    if (month_param.isdigit() and 1 <= int(month_param) <= 12
+            and year_param.isdigit() and 2000 <= int(year_param) <= now.year + 1):
+        month, year = int(month_param), int(year_param)
+    else:
+        month, year = default_month, default_year
+    explicit_period = (month, year) != (default_month, default_year)
     months = _month_choices()
     years = _year_choices()
     calendar_data = _build_calendar_data(year, month)
@@ -417,6 +451,18 @@ def render_timesheet_entry():
             error_message = f"Грешка при учитавању података: {str(exc)}"
             logger.error("Timesheet load error: %s", exc)
 
+    try:
+        returned_reports = _load_returned_reports(user_email, user_full_name)
+    except Exception as exc:
+        returned_reports = []
+        logger.warning("Could not load returned reports: %s", exc)
+    # Тренутно отворени месец се већ приказује сопственим банером — у навигацију
+    # стављамо само ОСТАЛЕ враћене листе.
+    returned_reports_other = [
+        r for r in returned_reports
+        if not (r.get('month') == month and r.get('year') == year)
+    ]
+
     report_id = None
     status = 'DRAFT'
     rejection_note = ''
@@ -424,14 +470,19 @@ def render_timesheet_entry():
     try:
         from timesheet_postgres import ensure_draft_exists, can_edit_timesheet_by_status, can_submit_for_review
 
-        report_id = ensure_draft_exists(
-            user_email,
-            user_full_name or '',
-            month,
-            year,
-            session.get('user_department', 'Природњачки музеј'),
-            session.get('user_position', 'Запослени'),
-        )
+        # Празан DRAFT се аутоматски прави САМО за подразумевани месец (нормалан
+        # унос). Кад је експлицитно тражен старији месец (нпр. отварање враћене
+        # листе), не правимо празне листе за месеце који не постоје — само
+        # учитавамо постојећу ако је има.
+        if not explicit_period:
+            report_id = ensure_draft_exists(
+                user_email,
+                user_full_name or '',
+                month,
+                year,
+                session.get('user_department', 'Природњачки музеј'),
+                session.get('user_position', 'Запослени'),
+            )
     except Exception as exc:
         logger.warning("Could not ensure draft exists: %s", exc)
         can_edit_timesheet_by_status = None
@@ -548,6 +599,7 @@ def render_timesheet_entry():
                 submit_message=submit_message,
                 rejection_note=rejection_note,
                 report_id=report_id,
+                returned_reports_other=returned_reports_other,
             )
         )
     )

@@ -7,8 +7,11 @@ window (``editable_until`` in the future) and a šef's rejection note — i.e. a
 list returned NA DOPUNU after the calendar deadline has passed.
 
 Usage:
-    python seed_vracena_lista.py seed  [email]   # prints report_id
-    python seed_vracena_lista.py clean [email]
+    python seed_vracena_lista.py seed  [email] [months_back]   # prints report_id
+    python seed_vracena_lista.py clean [email] [months_back]
+
+``months_back`` (default: previous month) shifts the target period further into
+the past, to exercise returning an OLDER list (e.g. 3 for three months ago).
 """
 
 import os
@@ -41,13 +44,20 @@ def _clean(cur, email, name, month, year):
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'seed'
-    email = (sys.argv[2] if len(sys.argv) > 2
+    email = (sys.argv[2] if len(sys.argv) > 2 and sys.argv[2].strip()
              else os.environ.get('CYPRESS_EMPLOYEE_EMAIL', ''))
     if not email:
         print('ERROR: no employee email', file=sys.stderr)
         sys.exit(2)
 
-    month, year = tp.default_entry_period()
+    if len(sys.argv) > 3 and sys.argv[3].strip():
+        from datetime import datetime
+        now = datetime.now()
+        offset = int(sys.argv[3])
+        idx = (now.year * 12 + (now.month - 1)) - offset
+        year, month = idx // 12, idx % 12 + 1
+    else:
+        month, year = tp.default_entry_period()
 
     with tp.get_pg_connection() as conn:
         with conn.cursor() as cur:
