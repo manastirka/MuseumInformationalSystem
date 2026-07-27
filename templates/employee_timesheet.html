@@ -166,6 +166,31 @@
 {% endif %}
 {# DRAFT status - no banner, user is just working on it #}
 
+{# Навигација ка враћеним листама из ДРУГИХ месеци — да враћена стара листа
+   не остане недоступна док страна подразумевано отвара претходни месец. #}
+{% if is_entry_page and returned_reports_other %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-danger" role="alert" data-testid="returned-lists-nav">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            <strong>Враћене листе на допуну</strong> — отворите их и допуните:
+            <ul class="mb-0 mt-2">
+            {% for r in returned_reports_other %}
+                <li>
+                    <a href="{{ url_for('timesheet_entry') }}?month={{ r.month }}&year={{ r.year }}">
+                        {{ months[r.month-1][1] }} {{ r.year }}
+                    </a>
+                    {% if r.rejection_note %}
+                    — <small>{{ r.rejection_note }}</small>
+                    {% endif %}
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Date Restriction Warning (only in entry mode) -->
 {% if is_entry_page and not can_edit %}
 <div class="row">
@@ -1672,6 +1697,17 @@ function saveTimesheet() {
     .then(data => {
         hideLoading();
         if (data.success) {
+            // Чување ВРАЋЕНЕ листе је уједно и поновно подношење (server
+            // auto-resubmit → SUBMITTED). Освежи страницу да црвени „Враћено
+            // на допуну" банер одмах нестане и прикаже се „Поднето на преглед",
+            // уместо да стоји док корисник ручно не освежи.
+            if (data.auto_resubmitted) {
+                const key = `timesheet_draft_${month}_${year}`;
+                localStorage.removeItem(key);
+                showSuccessToast(data.message || 'Измене сачуване и извештај је поново поднет на преглед.');
+                setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
             showSuccessToast('Радна листа је успешно сачувана!');
 
             // Update version from response for next save
