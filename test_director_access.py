@@ -1179,9 +1179,10 @@ class SaveAutoResubmitTests(unittest.TestCase):
                 self._call = 0
             def execute(self, sql, params=None):
                 captured.append((sql, params))
-                # The status pre-check in api_save_timesheet
-                if 'SELECT status FROM timesheet_reports' in sql:
-                    self._pending = {'status': 'REJECTED'}
+                # The status pre-check in api_save_timesheet (ревизија #4 added
+                # a window_active column to this query).
+                if 'FROM timesheet_reports' in sql and 'window_active' in sql:
+                    self._pending = {'status': 'REJECTED', 'window_active': False}
                 elif 'FROM users u' in sql and 'JOIN roles r' in sql:
                     # Candidate recipients for the notification
                     self._pending = [

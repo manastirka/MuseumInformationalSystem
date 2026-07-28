@@ -453,8 +453,12 @@ def render_admin_timesheet_reports(timesheet_repository, timesheet_repository_cl
         scope=scope,
         current_year=current_year,
     )
-    month_summary = timesheet_repository.get_month_summary(month=month, year=year)
-    overall_summary = timesheet_repository.get_overall_summary()
+    # Исти department scope као за листу — иначе би шеф одељења видео
+    # музејске збирне сате/број запослених у сажецима (ревизија #3).
+    month_summary = timesheet_repository.get_month_summary(
+        month=month, year=year, department=department_scope)
+    overall_summary = timesheet_repository.get_overall_summary(
+        department=department_scope)
 
     report_list = reports.get('reports', [])
     _annotate_reports_with_verify_flag(report_list)
