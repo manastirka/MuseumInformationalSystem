@@ -34,8 +34,13 @@ import timesheet_postgres as tp
 SERBIAN_MONTHS = views.SERBIAN_MONTHS
 
 
-def _fake_confirm_sig(report_id, verifier_email, slot, head_required):
+def _fake_confirm_sig(report_id, verifier_email, slot, head_required,
+                      administrative=False):
     """Stub confirm_timesheet_signature (real one uses its own DB connection)."""
+    if administrative:
+        # Административно одобрење → одмах APPROVED (ван двостепеног ланца).
+        return tp.TimesheetResult.ok({'report_id': report_id, 'approved': True,
+                                      'administrative': True})
     head_done = slot in ('head', 'both')
     director_done = slot in ('director', 'both')
     approved = director_done and (head_done or not head_required)

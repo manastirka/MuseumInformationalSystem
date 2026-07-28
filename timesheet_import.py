@@ -116,13 +116,15 @@ def import_current(user_email, user_name, parsed):
         position=parsed.get('position') or '',
     )
     if not res.success:
-        return False, res.message, None
+        # TimesheetResult нема .message — порука је у .error.message.
+        return False, (res.error.message if res.error else 'Грешка при чувању'), None
     report_id = res.data.get('report_id')
     _mark_imported(report_id, 'word-tekuca')
     sub = submit_timesheet(report_id, user_email)
     if not sub.success:
         # Сачувано као DRAFT, али слање у ланац није успело (нпр. рок).
-        return True, f'Увезено као нацрт; слање није успело: {sub.message}', report_id
+        sub_msg = sub.error.message if sub.error else 'непознат разлог'
+        return True, f'Увезено као нацрт; слање није успело: {sub_msg}', report_id
     return True, 'Увезено и послато на одобравање.', report_id
 
 
@@ -136,16 +138,37 @@ def _mark_imported(report_id, source):
 
 
 # ---------------------------------------------------------------------------
-# Ток 2: АРХИВСКА листа → директно APPROVED (заобилази рок за унос)
+# Ток 2: АРХИВСКА листа → посебна класификација status='ARHIVA'
 # ---------------------------------------------------------------------------
 def import_archive(parsed, employee_email, employee_name, admin_email):
-    """Упис архивске листе као већ одобрене. Заобилази прозор за унос (историја).
-    Идемпотентно по (email|name, month, year): постојећи ред се ажурира.
+    """Упис архивске листе са посебном класификацијом status='ARHIVA'.
+
+    Архива НИЈЕ званично одобрен извештај — не улази у листу/статистику
+    одобрених, приказује се неутрално („Архива"). Заобилази прозор за унос
+    (историја), али не производи APPROVED ни за један месец.
+
+    Идемпотентно по (email|name, month, year): ажурира се САМО постојећи
+    архивски ред. Ако за тај месец већ постоји ручно унета/редовна листа (нпр.
+    DRAFT/SUBMITTED/APPROVED из редовног тока), архивски увоз се ОДБИЈА да не би
+    преписао стварне податке.
     Враћа (ok, message, report_id)."""
     month, year = parsed['month'], parsed['year']
     name = employee_name or parsed.get('employee_name')
     with get_postgres_connection() as conn, conn.cursor() as cur:
         report_id = _find_report(cur, employee_email, name, month, year)
+        if report_id is not None:
+            # Не преписуј постојећу НЕ-архивску листу (редован ток).
+            cur.execute(
+                "SELECT COALESCE(imported_from, '') AS imported_from "
+                "FROM timesheet_reports WHERE id=%s", (report_id,))
+            row = cur.fetchone()
+            existing_source = row[0] if row else ''
+            if existing_source != 'word-arhiva':
+                return (False,
+                        'За овај месец већ постоји редовна (не-архивска) радна '
+                        'листа — архивски увоз је одбијен да не би преписао '
+                        'постојеће податке.',
+                        None)
         if report_id is None:
             cur.execute(
                 """
@@ -176,16 +199,16 @@ def import_archive(parsed, employee_email, employee_name, admin_email):
         cur.execute(
             """
             UPDATE timesheet_reports SET
-                status='APPROVED', is_locked=TRUE, is_verified=TRUE,
-                verified_by=%s, verified_at=NOW(), verified_role='uvoz-arhiva',
+                status='ARHIVA', is_locked=TRUE, is_verified=FALSE,
+                verified_by=NULL, verified_at=NULL, verified_role='arhiva',
                 reviewed_at=NOW(), reviewed_by_email=%s, editable_until=NULL,
                 imported_from='word-arhiva', imported_at=NOW(), updated_at=NOW()
             WHERE id=%s
             """,
-            (admin_email, admin_email, report_id),
+            (admin_email, report_id),
         )
         conn.commit()
-    return True, 'Уписано као одобрена архивска листа.', report_id
+    return True, 'Уписано као архивска листа (није званично одобрена).', report_id
 
 
 def _find_report(cur, email, name, month, year):

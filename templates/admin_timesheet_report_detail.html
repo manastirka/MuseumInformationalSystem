@@ -13,7 +13,13 @@
                             <i class="bi bi-person-workspace me-2"></i>
                             {{ report.header.employee_name }}
                             {% if report.header.status is defined and report.header.status %}
-                                {% if report.header.status == 'APPROVED' %}
+                                {# ARHIVA (Word-увоз) НИЈЕ званично одобрен — неутрална ознака. #}
+                                {% if report.header.status == 'ARHIVA' %}
+                                    <span class="badge bg-secondary ms-2" title="Архивски увоз — није званично одобрен извештај"><i class="bi bi-archive"></i> Архива</span>
+                                {# Административно одобрење (ван двостепеног ланца) — жута ознака. #}
+                                {% elif report.header.admin_approved_by %}
+                                    <span class="badge bg-warning text-dark ms-2" title="Одобрено административно: {{ report.header.admin_approved_by }} {{ report.header.admin_approved_at.strftime('%d.%m.%Y') if report.header.admin_approved_at else '' }}"><i class="bi bi-shield-check"></i> Одобрено административно</span>
+                                {% elif report.header.status == 'APPROVED' %}
                                     <span class="badge bg-success ms-2">Одобрено</span>
                                 {% elif report.header.status == 'SUBMITTED' %}
                                     <span class="badge bg-warning text-dark ms-2">Поднето</span>

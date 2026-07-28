@@ -170,7 +170,9 @@ def generate_word_document(report_id, database_url):
                 SELECT id, employee_name, month, year,
                        organization_unit, position,
                        special_tasks, extraordinary_tasks, duties_summary,
-                       created_at
+                       created_at,
+                       COALESCE(status, 'DRAFT') AS status,
+                       admin_approved_by, admin_approved_at
                 FROM timesheet_reports
                 WHERE id = %s
             """, (report_id,))
@@ -196,6 +198,20 @@ def generate_word_document(report_id, database_url):
 
     month = header['month']
     year = header['year']
+
+    # Ознака одобрења за потписну зону: административно одобрење (ван двостепеног
+    # ланца) или архивски увоз се приказују уместо места за потпис шефа/директора.
+    _report_status = header.get('status')
+    _admin_approved_by = header.get('admin_approved_by')
+    _admin_approved_at = header.get('admin_approved_at')
+    if _report_status == 'ARHIVA':
+        approval_marker = 'АРХИВА — није званично одобрен извештај'
+    elif _admin_approved_by:
+        _aa_date = _admin_approved_at.strftime('%d.%m.%Y') if _admin_approved_at else ''
+        approval_marker = 'ОДОБРЕНО АДМИНИСТРАТИВНО: {}{}'.format(
+            _admin_approved_by, ', ' + _aa_date if _aa_date else '')
+    else:
+        approval_marker = ''
     if not isinstance(month, int) or not 1 <= month <= 12:
         raise ValueError(f"Извештај {report_id} има неисправан месец: {month}")
     days_in_month = calendar.monthrange(year, month)[1]
@@ -505,7 +521,9 @@ def generate_word_document(report_id, database_url):
     cell_label27 = _merge_cells_in_row(table, 27, 0, 3)
     _add_cell_text(cell_label27, 'Потпис шефа', font_size=9, alignment=WD_ALIGN_PARAGRAPH.LEFT)
     cell_val27 = _merge_cells_in_row(table, 27, 4, num_cols - 1)
-    _add_cell_text(cell_val27, '', font_size=9)
+    # Административно одобрен / архивски извештај нема двостепени потпис — уместо
+    # места за потпис исписује се ознака одобрења.
+    _add_cell_text(cell_val27, approval_marker, font_size=9, alignment=WD_ALIGN_PARAGRAPH.LEFT)
     _set_row_height(table.rows[27], 230)
 
     # Rows 28-29: continuation

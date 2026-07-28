@@ -50,14 +50,20 @@ class SignaturePlanTests(unittest.TestCase):
         self.assertEqual(plan['slot'], 'director')
         self.assertTrue(plan['head_required'])
 
-    def test_admin_fills_both(self):
+    def test_admin_gets_administrative(self):
+        # Ревизија ланца (fix/revizija-lanca): админ више НЕ попуњава лажни
+        # двостепени ланац ('both'), него одобрава АДМИНИСТРАТИВНО (посебан траг).
         plan = _signature_plan(_sess('admin', 'admin@nhmbeo.rs'), DEPT, EMPLOYEE, HEADS)
-        self.assertEqual(plan['slot'], 'both')
+        self.assertTrue(plan['allowed'])
+        self.assertTrue(plan['administrative'])
 
-    def test_headless_department_needs_only_director(self):
+    def test_headless_department_director_administrative(self):
+        # Ревизија ланца: одељење/шеф није поуздано разрешен (одељења још нису
+        # сва формирана) → нема тихог редовног одобрења; директор одобрава
+        # АДМИНИСТРАТИВНО (обележено), никад као редован 'director' слот.
         plan = _signature_plan(_sess('direktor', DIRECTOR), 'Едукација', EMPLOYEE, {})
         self.assertTrue(plan['allowed'])
-        self.assertEqual(plan['slot'], 'director')
+        self.assertTrue(plan['administrative'])
         self.assertFalse(plan['head_required'])
 
     def test_head_own_report_needs_only_director(self):

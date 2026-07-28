@@ -94,27 +94,42 @@ def _default_entry_period():
     return default_entry_period()
 
 
-def _load_report_header(employee_name, month, year, header_fields):
-    query = (
+def _load_report_header(employee_name, month, year, header_fields,
+                        employee_email=None):
+    # Email је примарни кључ: два истоимена запослена не смеју да виде туђе
+    # податке. Тек ако email није познат или ред нема email, пада се на име
+    # (уз толеранцију само за размак/величину слова — никад substring match,
+    # који би могао вратити ДРУГОГ запосленог чије име само садржи ово).
+    email_query = (
         f"SELECT {header_fields} FROM timesheet_reports "
-        "WHERE employee_name = %s AND month = %s AND year = %s "
+        "WHERE LOWER(employee_email) = LOWER(%s) AND month = %s AND year = %s "
         "ORDER BY id DESC LIMIT 1"
     )
-    # Fallback tolerates ONLY whitespace/case differences in the stored name —
-    # never a substring match, which could otherwise return a DIFFERENT
-    # employee whose name merely contains this one. Deterministic ordering.
-    fallback_query = (
+    name_query = (
         f"SELECT {header_fields} FROM timesheet_reports "
-        "WHERE LOWER(TRIM(employee_name)) = LOWER(TRIM(%s)) AND month = %s AND year = %s "
+        "WHERE employee_email IS NULL AND employee_name = %s "
+        "AND month = %s AND year = %s "
+        "ORDER BY id DESC LIMIT 1"
+    )
+    name_fallback_query = (
+        f"SELECT {header_fields} FROM timesheet_reports "
+        "WHERE employee_email IS NULL "
+        "AND LOWER(TRIM(employee_name)) = LOWER(TRIM(%s)) "
+        "AND month = %s AND year = %s "
         "ORDER BY id DESC LIMIT 1"
     )
 
     with get_postgres_connection(row_factory=dict_row) as conn:
         with conn.cursor() as cur:
-            cur.execute(query, (employee_name, month, year))
+            if employee_email:
+                cur.execute(email_query, (employee_email, month, year))
+                header = cur.fetchone()
+                if header:
+                    return header
+            cur.execute(name_query, (employee_name, month, year))
             header = cur.fetchone()
             if not header:
-                cur.execute(fallback_query, (employee_name, month, year))
+                cur.execute(name_fallback_query, (employee_name, month, year))
                 header = cur.fetchone()
             return header
 
@@ -176,7 +191,8 @@ def _load_timesheet_entry_data(user_full_name, user_email, month, year):
         "head_verified_by, head_verified_at, director_verified_by, director_verified_at, "
         "(editable_until IS NOT NULL AND NOW() < editable_until) AS edit_window_active"
     )
-    header = _load_report_header(user_full_name, month, year, header_fields)
+    header = _load_report_header(user_full_name, month, year, header_fields,
+                                 employee_email=user_email)
     if not header:
         return None
 
@@ -231,12 +247,13 @@ def _load_returned_reports(user_email, user_full_name):
             return cur.fetchall() or []
 
 
-def _load_timesheet_view_data(user_full_name, month, year):
+def _load_timesheet_view_data(user_full_name, month, year, user_email=None):
     header_fields = (
         "id, employee_name, special_tasks, extraordinary_tasks, duties_summary, "
         "is_verified, is_locked, verified_by, verified_at, version"
     )
-    header = _load_report_header(user_full_name, month, year, header_fields)
+    header = _load_report_header(user_full_name, month, year, header_fields,
+                                 employee_email=user_email)
     if not header:
         return None
 
@@ -619,7 +636,8 @@ def render_timesheet_view():
 
     if user_full_name:
         try:
-            timesheet_data = _load_timesheet_view_data(user_full_name, month, year)
+            timesheet_data = _load_timesheet_view_data(
+                user_full_name, month, year, user_email=session.get('user_email'))
         except Exception as exc:
             error_message = f"Грешка при учитавању података: {str(exc)}"
             logger.error("Timesheet load error: %s", exc)
@@ -735,7 +753,8 @@ def api_save_timesheet():
                     cur.execute(
                         """
                         SELECT status FROM timesheet_reports
-                        WHERE (employee_email = %s OR employee_name = %s)
+                        WHERE (employee_email = %s
+                               OR (employee_email IS NULL AND employee_name = %s))
                           AND month = %s AND year = %s
                         """,
                         (
@@ -795,7 +814,10 @@ def api_save_timesheet():
             # SUBMITTED and ping the head/director with the re-evaluation
             # notification so the return-and-fix cycle closes in one click.
             auto_resubmitted = False
-            if report_row and report_row['status'] == 'REJECTED':
+            resubmit_failed = False
+            resubmit_error = ''
+            was_rejected = bool(report_row and report_row['status'] == 'REJECTED')
+            if was_rejected:
                 try:
                     from timesheet_postgres import submit_timesheet
                     submit_result = submit_timesheet(
@@ -811,16 +833,28 @@ def api_save_timesheet():
                             is_resubmission=True,
                         )
                     else:
+                        resubmit_failed = True
+                        resubmit_error = (submit_result.error.message
+                                          if submit_result.error else '')
                         logger.warning(
                             "Auto-resubmit after save of REJECTED report failed: %s",
-                            submit_result.error.message if submit_result.error else '',
+                            resubmit_error,
                         )
                 except Exception as exc:
+                    resubmit_failed = True
+                    resubmit_error = str(exc)
                     logger.warning("Auto-resubmit after save failed: %s", exc)
 
             message = result.data.get('message', 'Сачувано')
             if auto_resubmitted:
                 message = 'Измене сачуване и извештај је поново поднет на преглед.'
+            elif resubmit_failed:
+                # Не лажирај успех: сачувано ЈЕСТЕ, али листа је остала REJECTED
+                # (није поново поднета). Корисник мора знати да лист НИЈЕ у току
+                # одобравања и да мора ручно да поднесе.
+                message = ('Измене су сачуване, али извештај НИЈЕ поново поднет на '
+                           'преглед — поднесите га ручно. '
+                           + (f'Разлог: {resubmit_error}' if resubmit_error else ''))
             return jsonify(
                 {
                     'success': True,
@@ -828,6 +862,7 @@ def api_save_timesheet():
                     'version': result.data.get('version'),
                     'report_id': result.data.get('report_id'),
                     'auto_resubmitted': auto_resubmitted,
+                    'resubmit_failed': resubmit_failed,
                 }
             )
 
@@ -1065,6 +1100,17 @@ def api_timesheet_force_edit(report_id):
 
     result = force_edit_timesheet(report_id, session.get('user_email'))
     if result.success:
+        # Откључавање већ ОВЕРЕНЕ листе је осетљива радња — остави траг.
+        if (status_row and status_row.get('status') == 'APPROVED'):
+            try:
+                from audit_support import record_audit
+                record_audit(
+                    action='reopen_approved', entity_type='timesheet_report',
+                    entity_id=report_id, changed_by=session.get('user_email'),
+                    summary='Оверена радна листа враћена на измену (откључана)',
+                )
+            except Exception:
+                pass
         return jsonify({'success': True, 'message': result.data.get('message', 'Враћено на измену')})
     return jsonify({'success': False, 'message': result.error.message}), 400
 

@@ -187,7 +187,11 @@ def _delete_report(report_id):
 
 
 @_DB_SKIP
-def test_import_archive_upisuje_approved_i_dane():
+def test_import_archive_upisuje_arhiva_i_dane():
+    # Ревизија ланца (fix/revizija-lanca): архива НИЈЕ званично одобрен извештај.
+    # Уместо APPROVED/is_verified, уписује се посебна класификација
+    # status='ARHIVA' (is_verified=FALSE) — да не улази у листу/статистику
+    # одобрених.
     from postgres_service import get_postgres_connection
 
     fake_email = 'qa.word.arhiva.2099@example.invalid'
@@ -207,10 +211,10 @@ def test_import_archive_upisuje_approved_i_dane():
             row = cur.fetchone()
             assert row is not None
             status, is_locked, is_verified, verified_role, imported_from = row
-            assert status == 'APPROVED'
+            assert status == 'ARHIVA'
             assert is_locked is True
-            assert is_verified is True
-            assert verified_role == 'uvoz-arhiva'
+            assert is_verified is False
+            assert verified_role == 'arhiva'
             assert imported_from == 'word-arhiva'
 
             cur.execute(
