@@ -217,11 +217,20 @@ def _signature_plan(session_data, target_department, target_employee_email,
     Правила (задржавају постојеће понашање за изузетке):
     - Регуларан запослени у одељењу СА шефом → траже се ОБА потписа: шеф ('head')
       и директор ('director').
-    - Одељење БЕЗ шефа, или листа самог шефа → head се не тражи, потписује
-      директор ('director') — као и досад.
-    - Админ → override, једним потезом попуњава све потребне слотове ('both').
+    - Листа самог шефа (одељење има шефа, а листа је баш његова) → head се не
+      тражи, потписује директор ('director').
+    - Одељење/шеф НИЈЕ поуздано разрешен (нема шефа у мапи — одељења још нису сва
+      формирана) → редован ланац НЕ може да се комплетира, па нема тихог редовног
+      одобрења: једини пут напред је АДМИНИСТРАТИВНО одобрење (админ увек;
+      директор такође, али обележено као административно, никад као редован
+      ланац). Остали немају овлашћење → deny (обичан forbidden).
+    - Админ → АДМИНИСТРАТИВНО одобрење (посебан траг, не изгледа као два потписа).
     - Иста особа = шеф И директор овог одељења → њен потпис попуњава оба ('both').
     - Нико не потписује сопствену листу (ту улогу преузима надлежни изнад/админ).
+
+    Кључеви повратног dict-а: ``allowed``, ``slot``, ``head_required``,
+    ``head_email`` и ``administrative`` (True → одобри административно, слот се
+    игнорише).
     """
     target = _norm_dept(target_department)
     target_email = (target_employee_email or '').strip().lower()
@@ -238,16 +247,17 @@ def _signature_plan(session_data, target_department, target_employee_email,
     user_email = (session_data.get('user_email') or '').strip().lower()
 
     def _deny():
-        return {'allowed': False, 'slot': None,
+        return {'allowed': False, 'slot': None, 'administrative': False,
                 'head_required': head_required, 'head_email': head_email}
 
-    def _allow(slot):
-        return {'allowed': True, 'slot': slot,
+    def _allow(slot, administrative=False):
+        return {'allowed': True, 'slot': slot, 'administrative': administrative,
                 'head_required': head_required, 'head_email': head_email}
 
-    # Админ: пуно овлашћење — попуни све потребне потписе одједном.
+    # Админ: пуно овлашћење — али као АДМИНИСТРАТИВНО одобрење (посебан траг),
+    # не као лажни двостепени ланац.
     if _session_is_admin(session_data):
-        return _allow('both')
+        return _allow(None, administrative=True)
 
     is_director = _session_is_director(session_data)
     is_head_here = (
@@ -256,6 +266,16 @@ def _signature_plan(session_data, target_department, target_employee_email,
         and _norm_dept(session_data.get('user_department')) == target
     )
     signs_own = bool(user_email) and bool(target_email) and user_email == target_email
+
+    # Одељење/шеф НИЈЕ поуздано разрешен (нема шефа у мапи — одељења још нису сва
+    # формирана). Не смемо тихо да прескочимо шефа и прогласимо листу редовно
+    # одобреном. Директор (као и админ горе) може да одобри АДМИНИСТРАТИВНО
+    # (обележено, са трагом — резултат јасно каже „административно"), никад као
+    # редован двостепени ланац. Остали немају овлашћење → обичан forbidden.
+    if head_email is None:
+        if is_director and not signs_own:
+            return _allow(None, administrative=True)
+        return _deny()
 
     # Иста особа је и шеф овог одељења и директор → један потпис = оба слота.
     if head_required and head_email and user_email == head_email and is_director:
@@ -1063,6 +1083,7 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                     from timesheet_postgres import confirm_timesheet_signature
                     sig = confirm_timesheet_signature(
                         report_id, admin_email, plan['slot'], plan['head_required'],
+                        administrative=plan.get('administrative', False),
                     )
                     if not sig.success:
                         return jsonify(
@@ -1070,8 +1091,17 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                         ), 400
 
                     approved_now = bool(sig.data.get('approved'))
+                    administrative = bool(sig.data.get('administrative'))
                     if approved_now:
-                        message = 'Извештај је одобрен и закључан (оба потписа присутна).'
+                        if administrative:
+                            message = ('Извештај је одобрен АДМИНИСТРАТИВНО '
+                                       '(ван двостепеног ланца) и закључан.')
+                            notif_msg = (f"Ваша радна листа за {month_name} "
+                                         f"{report['year']}. је одобрена административно.")
+                        else:
+                            message = 'Извештај је одобрен и закључан (оба потписа присутна).'
+                            notif_msg = (f"Ваша радна листа за {month_name} "
+                                         f"{report['year']}. је одобрена (шеф и директор).")
                         if employee_email:
                             cur.execute(
                                 """
@@ -1081,7 +1111,7 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                                 (
                                     employee_email,
                                     'Радна листа одобрена',
-                                    f"Ваша радна листа за {month_name} {report['year']}. је одобрена (шеф и директор).",
+                                    notif_msg,
                                 ),
                             )
                     else:
@@ -1232,6 +1262,7 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                             continue
                         sig = confirm_timesheet_signature(
                             report['id'], admin_email, plan['slot'], plan['head_required'],
+                            administrative=plan.get('administrative', False),
                         )
                         if not sig.success:
                             continue

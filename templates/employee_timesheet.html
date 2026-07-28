@@ -1405,43 +1405,43 @@ function loadExistingData() {
                 
                 // Check if input fields exist before setting values (round to integers)
                 if (hasValue(dayData.rad_na_mestu) && $(`input[name="rad_na_mestu_${dayData.dan}"]`).length) {
-                    $(`input[name="rad_na_mestu_${dayData.dan}"]`).val(Math.round(dayData.rad_na_mestu));
-                    console.log(`Set rad_na_mestu_${dayData.dan} = ${Math.round(dayData.rad_na_mestu)}`);
+                    $(`input[name="rad_na_mestu_${dayData.dan}"]`).val(dayData.rad_na_mestu);
+                    console.log(`Set rad_na_mestu_${dayData.dan} = ${dayData.rad_na_mestu}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.van_muzeja) && $(`input[name="van_muzeja_${dayData.dan}"]`).length) {
-                    $(`input[name="van_muzeja_${dayData.dan}"]`).val(Math.round(dayData.van_muzeja));
-                    console.log(`Set van_muzeja_${dayData.dan} = ${Math.round(dayData.van_muzeja)}`);
+                    $(`input[name="van_muzeja_${dayData.dan}"]`).val(dayData.van_muzeja);
+                    console.log(`Set van_muzeja_${dayData.dan} = ${dayData.van_muzeja}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.godisnji_odmor) && $(`input[name="godisnji_odmor_${dayData.dan}"]`).length) {
-                    $(`input[name="godisnji_odmor_${dayData.dan}"]`).val(Math.round(dayData.godisnji_odmor));
-                    console.log(`Set godisnji_odmor_${dayData.dan} = ${Math.round(dayData.godisnji_odmor)}`);
+                    $(`input[name="godisnji_odmor_${dayData.dan}"]`).val(dayData.godisnji_odmor);
+                    console.log(`Set godisnji_odmor_${dayData.dan} = ${dayData.godisnji_odmor}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.drzavni_praznik) && $(`input[name="drzavni_praznik_${dayData.dan}"]`).length) {
-                    $(`input[name="drzavni_praznik_${dayData.dan}"]`).val(Math.round(dayData.drzavni_praznik));
-                    console.log(`Set drzavni_praznik_${dayData.dan} = ${Math.round(dayData.drzavni_praznik)}`);
+                    $(`input[name="drzavni_praznik_${dayData.dan}"]`).val(dayData.drzavni_praznik);
+                    console.log(`Set drzavni_praznik_${dayData.dan} = ${dayData.drzavni_praznik}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.placeno_odsustvo) && $(`input[name="placeno_odsustvo_${dayData.dan}"]`).length) {
-                    $(`input[name="placeno_odsustvo_${dayData.dan}"]`).val(Math.round(dayData.placeno_odsustvo));
-                    console.log(`Set placeno_odsustvo_${dayData.dan} = ${Math.round(dayData.placeno_odsustvo)}`);
+                    $(`input[name="placeno_odsustvo_${dayData.dan}"]`).val(dayData.placeno_odsustvo);
+                    console.log(`Set placeno_odsustvo_${dayData.dan} = ${dayData.placeno_odsustvo}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.ostalo_odsustvo) && $(`input[name="ostalo_odsustvo_${dayData.dan}"]`).length) {
-                    $(`input[name="ostalo_odsustvo_${dayData.dan}"]`).val(Math.round(dayData.ostalo_odsustvo));
-                    console.log(`Set ostalo_odsustvo_${dayData.dan} = ${Math.round(dayData.ostalo_odsustvo)}`);
+                    $(`input[name="ostalo_odsustvo_${dayData.dan}"]`).val(dayData.ostalo_odsustvo);
+                    console.log(`Set ostalo_odsustvo_${dayData.dan} = ${dayData.ostalo_odsustvo}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.bolovanje_manje_30) && $(`input[name="bolovanje_manje_30_${dayData.dan}"]`).length) {
-                    $(`input[name="bolovanje_manje_30_${dayData.dan}"]`).val(Math.round(dayData.bolovanje_manje_30));
-                    console.log(`Set bolovanje_manje_30_${dayData.dan} = ${Math.round(dayData.bolovanje_manje_30)}`);
+                    $(`input[name="bolovanje_manje_30_${dayData.dan}"]`).val(dayData.bolovanje_manje_30);
+                    console.log(`Set bolovanje_manje_30_${dayData.dan} = ${dayData.bolovanje_manje_30}`);
                     loadedFields++;
                 }
                 if (hasValue(dayData.bolovanje_vece_30) && $(`input[name="bolovanje_vece_30_${dayData.dan}"]`).length) {
-                    $(`input[name="bolovanje_vece_30_${dayData.dan}"]`).val(Math.round(dayData.bolovanje_vece_30));
-                    console.log(`Set bolovanje_vece_30_${dayData.dan} = ${Math.round(dayData.bolovanje_vece_30)}`);
+                    $(`input[name="bolovanje_vece_30_${dayData.dan}"]`).val(dayData.bolovanje_vece_30);
+                    console.log(`Set bolovanje_vece_30_${dayData.dan} = ${dayData.bolovanje_vece_30}`);
                     loadedFields++;
                 }
             });
@@ -1631,7 +1631,7 @@ function saveTimesheet() {
         categories.forEach(category => {
             const value = $(`input[name="${category}_${day}"]`).val();
             if (value) {
-                dayData[category] = parseInt(value);
+                dayData[category] = parseFloat(value);
             }
         });
 

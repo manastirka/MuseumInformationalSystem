@@ -269,10 +269,24 @@
                                        value="{{ report.id }}" onchange="updateBatchSelection()">
                             </td>
                             <td class="col-status">
+                                {# ARHIVA (увоз из Word-а) НИЈЕ званично одобрен извештај —
+                                   неутрална ознака, никад зелено «Одобрено». Мора пре
+                                   is_verified гране. #}
+                                {% if report.status is defined and report.status == 'ARHIVA' %}
+                                    <span class="badge bg-secondary" title="Архивски увоз — није званично одобрен извештај">
+                                        <i class="bi bi-archive"></i> Архива
+                                    </span>
+                                {# Административно одобрење (админ/директор ван двостепеног
+                                   ланца) — жута ознака, БЕЗ лажних шеф/директор под-ознака
+                                   (та поља су NULL). Мора пре is_verified гране. #}
+                                {% elif report.admin_approved_by %}
+                                    <span class="badge bg-warning text-dark" title="Одобрено административно: {{ report.admin_approved_by }} {{ report.admin_approved_at.strftime('%d.%m.%Y') if report.admin_approved_at else '' }}">
+                                        <i class="bi bi-shield-check"></i> Одобрено административно
+                                    </span>
                                 {# is_verified takes precedence — a report marked verified
                                    always shows the green badge, even if the legacy `status`
                                    column hasn't been bumped to 'APPROVED' yet. #}
-                                {% if report.is_verified %}
+                                {% elif report.is_verified %}
                                     <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
                                         <i class="bi bi-check-circle-fill"></i> Одобрено
                                     </span>
@@ -737,7 +751,17 @@ function displayReportDetails(report) {
 
         <div class="row mb-3" data-testid="detail-signatures">
             <div class="col-12">
-                <strong>Потписи (двостепено одобрење):</strong>
+                ${header.status === 'ARHIVA'
+                    ? `<strong>Статус:</strong>
+                <div class="mt-1 d-flex flex-wrap gap-2">
+                    <span class="badge bg-secondary" title="Архивски увоз — није званично одобрен извештај"><i class="bi bi-archive"></i> Архива — није званично одобрен извештај</span>
+                </div>`
+                    : header.admin_approved_by
+                    ? `<strong>Одобрење:</strong>
+                <div class="mt-1 d-flex flex-wrap gap-2">
+                    <span class="badge bg-warning text-dark" title="Одобрено административно — ван двостепеног ланца потписа"><i class="bi bi-shield-check"></i> Одобрено административно: ${header.admin_approved_by}${header.admin_approved_at ? ' · ' + new Date(header.admin_approved_at).toLocaleDateString('sr-RS') : ''}</span>
+                </div>`
+                    : `<strong>Потписи (двостепено одобрење):</strong>
                 <div class="mt-1 d-flex flex-wrap gap-2">
                     ${header.head_verified_by
                         ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Шеф: ${header.head_verified_by}${header.head_verified_at ? ' · ' + new Date(header.head_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
@@ -745,7 +769,7 @@ function displayReportDetails(report) {
                     ${header.director_verified_by
                         ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Директор: ${header.director_verified_by}${header.director_verified_at ? ' · ' + new Date(header.director_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
                         : `<span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис директора</span>`}
-                </div>
+                </div>`}
             </div>
         </div>
 

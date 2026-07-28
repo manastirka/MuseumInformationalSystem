@@ -104,7 +104,9 @@ class ArchiveSeparationTests(unittest.TestCase):
         """Employee history is not lost: their own read-only loader finds the
         2015 report when they select that month/year."""
         import timesheet_employee_views as ev
-        data = ev._load_timesheet_view_data(EMP_NAME, 6, 2015)
+        # Учитавач је email-first (штити истоимене) — рута прослеђује email из
+        # сесије, па и тест мора да га проследи.
+        data = ev._load_timesheet_view_data(EMP_NAME, 6, 2015, user_email=EMP_EMAIL)
         self.assertIsNotNone(data, 'запослени мора да нађе своју листу из 2015 по избору године')
         self.assertTrue(data.get('exists'))
 

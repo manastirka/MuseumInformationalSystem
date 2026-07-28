@@ -114,6 +114,9 @@ class TimesheetStatus(Enum):
     SUBMITTED = 'SUBMITTED'
     APPROVED = 'APPROVED'
     REJECTED = 'REJECTED'
+    # Листа увезена из Word-архиве. НИЈЕ званично одобрен извештај — посебна
+    # класификација да не улази у листу/статистику одобрених (види миграцију 035).
+    ARHIVA = 'ARHIVA'
 
 
 # Actionable guidance for each error type (defined early for use in TimesheetError)
@@ -1424,8 +1427,82 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
         )
 
 
+def _approve_administratively(report_id: int, verifier_email: str) -> TimesheetResult:
+    """Одобри ПОДНЕТУ листу АДМИНИСТРАТИВНО (ван редовног двостепеног ланца).
+
+    Попуњава посебан траг ``admin_approved_by/at`` и ``verified_role``, а
+    head/director слотови остају NULL — да административно одобрење никад не
+    изгледа као два стварна потписа. Ради само из статуса SUBMITTED.
+    """
+    try:
+        with get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, COALESCE(status, 'DRAFT') AS status
+                    FROM timesheet_reports
+                    WHERE id = %s
+                    FOR UPDATE
+                """, (report_id,))
+                report = cur.fetchone()
+                if not report:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.NOT_FOUND, "Радна листа није пронађена"
+                    )
+                if report['status'] != 'SUBMITTED':
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.VALIDATION_ERROR,
+                        f"Само поднете радне листе могу бити одобрене. "
+                        f"Тренутни статус: '{report['status']}'"
+                    )
+                cur.execute("""
+                    UPDATE timesheet_reports
+                    SET status = 'APPROVED',
+                        is_verified = TRUE,
+                        is_locked = TRUE,
+                        verified_by = %s,
+                        verified_at = NOW(),
+                        verified_role = 'administrativno',
+                        admin_approved_by = %s,
+                        admin_approved_at = NOW(),
+                        reviewed_at = NOW(),
+                        reviewed_by_email = %s,
+                        editable_until = NULL
+                    WHERE id = %s
+                """, (verifier_email, verifier_email, verifier_email, report_id))
+                cur.execute("""
+                    INSERT INTO timesheet_status_history
+                    (report_id, old_status, new_status, changed_by, note)
+                    VALUES (%s, 'SUBMITTED', 'APPROVED', %s, %s)
+                """, (report_id, verifier_email,
+                      'ОДОБРЕНО АДМИНИСТРАТИВНО (ван двостепеног ланца)'))
+                conn.commit()
+        try:
+            from audit_support import record_audit
+            record_audit(
+                action='approve_administrative', entity_type='timesheet_report',
+                entity_id=report_id, changed_by=verifier_email,
+                summary='Радна листа одобрена административно (ван двостепеног ланца)',
+            )
+        except Exception:
+            pass
+        return TimesheetResult.ok({
+            'report_id': report_id,
+            'approved': True,
+            'administrative': True,
+            'status': 'APPROVED',
+            'head_verified': False,
+            'director_verified': False,
+        })
+    except psycopg.Error as e:
+        logger.error(f"Database error in administrative approval: {e}")
+        return TimesheetResult.fail(
+            TimesheetErrorType.DATABASE_ERROR, "Грешка при административном одобравању."
+        )
+
+
 def confirm_timesheet_signature(report_id: int, verifier_email: str,
-                                slot: str, head_required: bool) -> TimesheetResult:
+                                slot: str, head_required: bool,
+                                administrative: bool = False) -> TimesheetResult:
     """Забележи потпис (шеф одељења и/или директор) на ПОДНЕТОЈ листи.
 
     Двостепено одобрење: листа постаје APPROVED тек кад су присутни СВИ потребни
@@ -1436,11 +1513,19 @@ def confirm_timesheet_signature(report_id: int, verifier_email: str,
     ``slot`` бира који слот овај потпис попуњава:
       * 'head'     — потпис шефа одељења,
       * 'director' — потпис директора,
-      * 'both'     — оба (админ override, или иста особа = шеф и директор).
+      * 'both'     — оба (иста особа = шеф И директор овог одељења).
+
+    Кад је ``administrative`` True, листа се одобрава АДМИНИСТРАТИВНО (админ, или
+    директор кад одељење/шеф није поуздано разрешен): status постаје APPROVED,
+    али се НЕ попуњавају head/director слотови — уместо тога се бележи посебан
+    траг ``admin_approved_by/at`` да одобрење никад не изгледа као два стварна
+    потписа. ``slot``/``head_required`` се тада игноришу.
 
     Идемпотентно по слоту (поновни потпис истог слота само освежи ко/када).
     Ради само из статуса SUBMITTED.
     """
+    if administrative:
+        return _approve_administratively(report_id, verifier_email)
     if slot not in ('head', 'director', 'both'):
         return TimesheetResult.fail(
             TimesheetErrorType.VALIDATION_ERROR, f"Неисправан слот потписа: {slot}"
@@ -1539,88 +1624,19 @@ def confirm_timesheet_signature(report_id: int, verifier_email: str,
 
 def approve_timesheet(report_id: int, admin_email: str,
                       verifier_role: Optional[str] = None) -> TimesheetResult:
+    """Одобри поднету листу ЈЕДНИМ потезом — АДМИНИСТРАТИВНО.
+
+    Раније је ова функција постављала APPROVED без иједног потписа (мина: сваки
+    позивалац је могао да заобиђе двостепени ланац). Сада делегира на
+    административно одобравање: листа се јасно бележи као ОДОБРЕНА
+    АДМИНИСТРАТИВНО (``admin_approved_by/at``, ``verified_role``), а не као
+    редован двостепени ланац. Редовно одобравање иде искључиво кроз
+    ``confirm_timesheet_signature`` (потпис по слоту).
+
+    ``verifier_role`` се задржава ради компатибилности потписа, али
+    административно одобрење увек носи улогу 'administrativno'.
     """
-    Approve a submitted timesheet. Changes status from SUBMITTED to APPROVED.
-
-    Args:
-        report_id: ID of the timesheet report
-        admin_email: Email of the approving admin
-        verifier_role: Optional role recorded in verified_role
-
-    Returns:
-        TimesheetResult with success status
-    """
-    try:
-        with get_pg_connection() as conn:
-            with conn.cursor() as cur:
-                # Get current report state
-                cur.execute("""
-                    SELECT id, COALESCE(status, 'DRAFT') as status
-                    FROM timesheet_reports
-                    WHERE id = %s
-                    FOR UPDATE
-                """, (report_id,))
-
-                report = cur.fetchone()
-                if not report:
-                    return TimesheetResult.fail(
-                        TimesheetErrorType.NOT_FOUND,
-                        "Радна листа није пронађена"
-                    )
-
-                # Validate status
-                if report['status'] != 'SUBMITTED':
-                    return TimesheetResult.fail(
-                        TimesheetErrorType.VALIDATION_ERROR,
-                        f"Само поднете радне листе могу бити одобрене. Тренутни статус: '{report['status']}'"
-                    )
-
-                # Update status. verified_by/verified_at feed the Word export
-                # and audit; editable_until is cleared so an approved report
-                # cannot retain a stale 24 h edit window.
-                cur.execute("""
-                    UPDATE timesheet_reports
-                    SET status = 'APPROVED',
-                        is_locked = TRUE,
-                        is_verified = TRUE,
-                        reviewed_at = NOW(),
-                        reviewed_by_email = %s,
-                        verified_by = %s,
-                        verified_at = NOW(),
-                        verified_role = COALESCE(%s, verified_role),
-                        editable_until = NULL
-                    WHERE id = %s
-                """, (admin_email, admin_email, verifier_role, report_id))
-
-                # Log to status history
-                cur.execute("""
-                    INSERT INTO timesheet_status_history
-                    (report_id, old_status, new_status, changed_by, note)
-                    VALUES (%s, 'SUBMITTED', 'APPROVED', %s, 'Одобрено')
-                """, (report_id, admin_email))
-
-                conn.commit()
-
-                return TimesheetResult.ok({
-                    'report_id': report_id,
-                    'status': 'APPROVED',
-                    'message': 'Радна листа је успешно одобрена'
-                })
-
-    except psycopg.Error as e:
-        logger.error(f"Database error approving timesheet: {e}")
-        return TimesheetResult.fail(
-            TimesheetErrorType.DATABASE_ERROR,
-            f"Грешка базе података: {str(e)}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error approving timesheet: {e}")
-        import traceback
-        traceback.print_exc()
-        return TimesheetResult.fail(
-            TimesheetErrorType.DATABASE_ERROR,
-            f"Неочекивана грешка: {str(e)}"
-        )
+    return _approve_administratively(report_id, admin_email)
 
 
 def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetResult:

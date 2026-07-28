@@ -80,7 +80,7 @@ def test_plan_dry_run(arhiva):
 
 # --- стваран упис + чишћење ---
 @_DB
-def test_execute_upisuje_approved(arhiva):
+def test_execute_upisuje_arhiva(arhiva):
     try:
         with get_postgres_connection() as conn, conn.cursor() as cur:
             results = cli.plan_import(arhiva, None, cur)
@@ -96,8 +96,9 @@ def test_execute_upisuje_approved(arhiva):
             )
             rows = cur.fetchall()
         assert len(rows) == 2
+        # Ревизија ланца: архива се уписује као класификација 'ARHIVA', не APPROVED.
         for _m, _y, status, src in rows:
-            assert status == 'APPROVED' and src == 'word-arhiva'
+            assert status == 'ARHIVA' and src == 'word-arhiva'
     finally:
         with get_postgres_connection() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM timesheet_reports WHERE employee_email=%s "

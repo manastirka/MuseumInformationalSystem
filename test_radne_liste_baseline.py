@@ -578,9 +578,10 @@ def _delete_report(report_id):
 
 
 @_DB
-def test_uvoz_arhivski_upisuje_approved():
-    """ФУНКЦИЈА (2026-07-20-8): архивски увоз уписује директно APPROVED листу
-    (закључану, верификовану, imported_from='word-arhiva'), идемпотентно."""
+def test_uvoz_arhivski_upisuje_arhiva_ne_odobreno():
+    """ОДЛУКА (fix/revizija-lanca): архивски увоз НИЈЕ званично одобрен извештај.
+    Уписује се посебна класификација status='ARHIVA' (is_verified=FALSE,
+    imported_from='word-arhiva'), идемпотентно — да не улази у одобрене."""
     email = 'baseline.uvoz.arhiva.2099@example.invalid'
     name = 'Базелина Архивски'
     parsed = rl.parse_radna_lista(
@@ -593,8 +594,9 @@ def test_uvoz_arhivski_upisuje_approved():
                 cur.execute("SELECT status, is_locked, is_verified, imported_from "
                             "FROM timesheet_reports WHERE id=%s", (rid,))
                 row = cur.fetchone()
-        assert row['status'] == 'APPROVED'
-        assert row['is_locked'] and row['is_verified']
+        assert row['status'] == 'ARHIVA'
+        assert row['is_locked']
+        assert not row['is_verified'], 'архива се не сме водити као верификована/одобрена'
         assert row['imported_from'] == 'word-arhiva'
         # Идемпотентно: поновни увоз враћа ИСТИ ред.
         ok2, _m2, rid2 = ti.import_archive(parsed, email, name, 'admin@nhmbeo.rs')
@@ -680,7 +682,9 @@ def test_zaposleni_dohvata_arhivsku_godinu_po_izboru():
     try:
         _seed_report(_ARH_EMAIL, _ARH_NAME, 6, 2015,
                      status='APPROVED', imported_from='word-arhiva')
-        data = ev._load_timesheet_view_data(_ARH_NAME, 6, 2015)
+        # Учитавач је email-first (штити од истоимених) — рута прослеђује email
+        # из сесије, па и тест мора (иначе ред са email-ом није досежан по имену).
+        data = ev._load_timesheet_view_data(_ARH_NAME, 6, 2015, user_email=_ARH_EMAIL)
         assert data is not None and data.get('exists')
     finally:
         _delete_by_email(_ARH_EMAIL)
@@ -711,6 +715,168 @@ def test_birac_godina_izveden_iz_podataka_ukljucuje_2011():
         assert 2011 in tp.available_report_years()
     finally:
         _delete_by_email(_YEAR_EMAIL)
+
+
+# ===========================================================================
+# 9) РЕВИЗИЈА ЛАНЦА ОДОБРАВАЊА (fix/revizija-lanca)
+#    Независна адверсаријална ревизија је нашла тихе рупе у ланцу. Закључане
+#    гаранције:
+#      * админ/директор одобравају АДМИНИСТРАТИВНО (посебан траг), никад као
+#        лажни двостепени ланац (шеф+директор);
+#      * нераз­решено одељење → нема тихог редовног одобрења (само административно);
+#      * архива није званично одобрен извештај (status='ARHIVA'), не улази у
+#        листу одобрених;
+#      * архивски увоз не сме да препише постојећу редовну листу;
+#      * учитавач заглавља је email-first (истоимени не виде туђе).
+# ===========================================================================
+_REV_EMAIL = 'baseline.revizija@example.invalid'
+_REV_NAME = 'Базелина Ревизија'
+_REV_ADMIN = 'admin.revizija@example.invalid'
+
+
+@_DB
+def test_admin_odobrenje_je_administrativno_ne_dvostepeni_lanac():
+    """РЕВИЗИЈА: административно одобрење поставља APPROVED, али бележи посебан
+    траг admin_approved_by — а head/director слотови остају NULL (не сме да
+    изгледа као два стварна потписа)."""
+    month, year = _months_ago(2)
+    _delete_by_email(_REV_EMAIL)
+    try:
+        rid = _seed_report(_REV_EMAIL, _REV_NAME, month, year, status='SUBMITTED')
+        sig = tp.confirm_timesheet_signature(rid, _REV_ADMIN, None,
+                                             head_required=False, administrative=True)
+        assert sig.success and sig.data['approved'] and sig.data['administrative']
+        with tp.get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status, is_verified, admin_approved_by, "
+                            "head_verified_by, director_verified_by, verified_role "
+                            "FROM timesheet_reports WHERE id=%s", (rid,))
+                row = cur.fetchone()
+        assert row['status'] == 'APPROVED' and row['is_verified']
+        assert row['admin_approved_by'] == _REV_ADMIN
+        assert row['head_verified_by'] is None
+        assert row['director_verified_by'] is None
+        assert row['verified_role'] == 'administrativno'
+    finally:
+        _delete_by_email(_REV_EMAIL)
+
+
+@_DB
+def test_legacy_approve_timesheet_je_administrativno():
+    """РЕВИЗИЈА (налаз #4): legacy approve_timesheet() више не поставља APPROVED
+    без потписа тихо — делегира на административно одобрење (обележено трагом)."""
+    month, year = _months_ago(2)
+    _delete_by_email(_REV_EMAIL)
+    try:
+        rid = _seed_report(_REV_EMAIL, _REV_NAME, month, year, status='SUBMITTED')
+        res = tp.approve_timesheet(rid, _REV_ADMIN)
+        assert res.success
+        with tp.get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status, admin_approved_by, head_verified_by, "
+                            "director_verified_by FROM timesheet_reports WHERE id=%s",
+                            (rid,))
+                row = cur.fetchone()
+        assert row['status'] == 'APPROVED'
+        assert row['admin_approved_by'] == _REV_ADMIN
+        assert row['head_verified_by'] is None and row['director_verified_by'] is None
+    finally:
+        _delete_by_email(_REV_EMAIL)
+
+
+def test_nerazreseno_odeljenje_nema_tihog_redovnog_odobrenja():
+    """РЕВИЗИЈА (налаз #2): кад одељење/шеф није разрешен (нема шефа у мапи),
+    директор НЕ добија тихи редован 'director' слот — једини пут је
+    АДМИНИСТРАТИВНО (обележено). Шеф/запослени немају овлашћење (deny)."""
+    # Директор, непознато одељење (празна мапа шефова) → административно, не 'director'.
+    plan = tav._signature_plan(_sess('direktor', _DIRECTOR), 'Нераз­решено', 'emp@x', {})
+    assert plan['allowed'] and plan['administrative']
+    assert plan['slot'] != 'director'
+    # Шеф туђег/непознатог одељења → нема овлашћење (обичан deny, не административно).
+    plan2 = tav._signature_plan(
+        _sess('sef_odeljenja', 'sef@x', is_head=True, dept='Друго'),
+        'Нераз­решено', 'emp@x', {})
+    assert not plan2['allowed']
+    # Обичан запослени → deny.
+    plan3 = tav._signature_plan(_sess('employee', 'e@x'), 'Нераз­решено', 'emp@x', {})
+    assert not plan3['allowed']
+
+
+@_DB
+def test_arhivski_uvoz_ne_prepisuje_redovnu_listu():
+    """РЕВИЗИЈА (налаз b1): архивски увоз преко ПОСТОЈЕЋЕ редовне (не-архивске)
+    листе се ОДБИЈА — не сме да обрише/препише стварне податке."""
+    email = 'baseline.rev.overwrite@example.invalid'
+    name = 'Базелина Оверврајт'
+    _delete_by_email(email)
+    try:
+        # Постојећа редовна листа (ручни унос) са једним даном.
+        rid = _seed_report(email, name, 9, 2098, status='DRAFT', is_locked=False)
+        with tp.get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO timesheet_report_days (report_id, day, "
+                            "work_in_museum) VALUES (%s, 5, 8)", (rid,))
+                conn.commit()
+        parsed = rl.parse_radna_lista(
+            mk.build_correct_matrix_days_rows(name=name, month=9, year=2098))
+        ok, msg, out_id = ti.import_archive(parsed, email, name, 'admin@nhmbeo.rs')
+        assert not ok and out_id is None, 'увоз преко редовне листе мора да се одбије'
+        # Постојећа листа нетакнута: и даље DRAFT са својим даном.
+        with tp.get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status FROM timesheet_reports WHERE id=%s", (rid,))
+                assert cur.fetchone()['status'] == 'DRAFT'
+                cur.execute("SELECT COUNT(*) AS n FROM timesheet_report_days "
+                            "WHERE report_id=%s", (rid,))
+                assert cur.fetchone()['n'] == 1
+    finally:
+        _delete_by_email(email)
+
+
+@_DB
+def test_load_header_email_first_ne_vraca_tudje_po_imenu():
+    """РЕВИЗИЈА (налаз c1): два ИСТОИМЕНА запослена са различитим email-овима —
+    учитавач заглавља враћа СВОЈ ред по email-у, никад туђи по имену."""
+    name = 'Истоимени Баз'
+    email_a = 'baseline.rev.imenjak.a@example.invalid'
+    email_b = 'baseline.rev.imenjak.b@example.invalid'
+    _delete_by_email(email_a)
+    _delete_by_email(email_b)
+    try:
+        rid_a = _seed_report(email_a, name, 8, 2098, status='APPROVED')
+        rid_b = _seed_report(email_b, name, 8, 2098, status='APPROVED')
+        fields = "id, employee_name"
+        hdr_a = ev._load_report_header(name, 8, 2098, fields, employee_email=email_a)
+        hdr_b = ev._load_report_header(name, 8, 2098, fields, employee_email=email_b)
+        assert hdr_a['id'] == rid_a
+        assert hdr_b['id'] == rid_b
+        assert hdr_a['id'] != hdr_b['id']
+    finally:
+        _delete_by_email(email_a)
+        _delete_by_email(email_b)
+
+
+@_DB
+def test_arhiva_nije_u_listi_odobrenih():
+    """РЕВИЗИЈА (контекст А): архивска листа (status='ARHIVA') се НЕ рачуна као
+    одобрена — is_verified је FALSE, па не носи зелену ознаку „Одобрено"."""
+    email = 'baseline.rev.arhiva.stat@example.invalid'
+    name = 'Базелина Архива Стат'
+    _delete_by_email(email)
+    try:
+        parsed = rl.parse_radna_lista(
+            mk.build_correct_matrix_days_rows(name=name, month=7, year=2097))
+        ok, _msg, rid = ti.import_archive(parsed, email, name, 'admin@nhmbeo.rs')
+        assert ok and rid is not None
+        with tp.get_pg_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status, is_verified FROM timesheet_reports "
+                            "WHERE id=%s", (rid,))
+                row = cur.fetchone()
+        assert row['status'] == 'ARHIVA'
+        assert not row['is_verified']
+    finally:
+        _delete_by_email(email)
 
 
 if __name__ == '__main__':

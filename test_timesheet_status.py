@@ -160,7 +160,8 @@ class TestTimesheetStatusEnum(unittest.TestCase):
         self.assertEqual(TimesheetStatus.REJECTED.value, 'REJECTED')
 
     def test_enum_count(self):
-        self.assertEqual(len(TimesheetStatus), 4)
+        # +ARHIVA (fix/revizija-lanca): архива није званично одобрен извештај.
+        self.assertEqual(len(TimesheetStatus), 5)
 
 
 class _SubmitCursor:

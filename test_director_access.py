@@ -31,11 +31,18 @@ EDUCATION = 'ГРУПА ЗА ЕДУКАЦИЈУ, КОМУНИКАЦИЈУ И М�
 GALLERY = 'ГРУПА ЗА ИЗЛОЖБЕНЕ ПОСЛОВЕ – ГАЛЕРИЈА'
 
 
-def _fake_confirm_signature(report_id, verifier_email, slot, head_required):
+def _fake_confirm_signature(report_id, verifier_email, slot, head_required,
+                            administrative=False):
     """Stub of timesheet_postgres.confirm_timesheet_signature that mirrors the
     real approval math without a live DB (the real one opens its own
     connection, bypassing these tests' cursor mocks). APPROVED only when both
-    required signatures are present."""
+    required signatures are present, or immediately on administrative approval
+    (ван двостепеног ланца — нпр. неразрешено одељење)."""
+    if administrative:
+        return timesheet_postgres.TimesheetResult.ok({
+            'report_id': report_id, 'approved': True, 'administrative': True,
+            'status': 'APPROVED',
+        })
     head_done = slot in ('head', 'both')
     director_done = slot in ('director', 'both')
     approved = director_done and (head_done or not head_required)
