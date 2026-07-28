@@ -38,10 +38,16 @@ def _login_direktor():
 
 
 # ---------------------------------------------------------------------------
-# Finding 1: timesheet_updated honesty
+# Ревизија Codex #1: модул службених путовања ВИШЕ НЕ ДИРА радну листу.
+# Раније је ``update_timesheet`` радио аутоматски UPSERT дана; сада се то
+# поље свесно игнорише — дане „рад ван музеја" запослени уноси ручно у форми
+# радне листе. Ови тестови закључавају нови уговор: никакав timesheet_* сигнал
+# и никакав упис у timesheet_report_days из ове руте.
 # ---------------------------------------------------------------------------
 
-def test_field_trip_no_database_url_does_not_claim_timesheet_updated(monkeypatch):
+def test_field_trip_ignores_update_timesheet_flag(monkeypatch):
+    """Са update_timesheet=True руте службеног пута НЕ смеју да тврде да су
+    ажурирале радну листу нити да су је прескочиле — поље је инертно."""
     monkeypatch.delenv('DATABASE_URL', raising=False)
     body = {
         'update_timesheet': True,
@@ -53,48 +59,19 @@ def test_field_trip_no_database_url_does_not_claim_timesheet_updated(monkeypatch
         resp = tfv.api_field_trip_create()
         payload = resp.get_json()
     assert payload['success'] is True
-    # Must NOT falsely claim the timesheet was updated when nothing was written.
-    assert payload['timesheet_updated'] is False
+    # Ниједан timesheet сигнал — модул више не додирује радну листу.
+    assert 'timesheet_updated' not in payload
+    assert 'timesheet_skipped' not in payload
+    assert 'timesheet_error' not in payload
 
 
-def test_field_trip_no_monthly_report_marks_skipped_not_updated(monkeypatch):
+def test_field_trip_never_connects_for_timesheet(monkeypatch):
+    """Чак и кад је DATABASE_URL постављен и постоји месечни извештај, руте
+    службеног пута не отварају везу ради уписа у радну листу (нема SELECT/
+    INSERT над timesheet_report_days)."""
     monkeypatch.setenv('DATABASE_URL', 'postgresql://u:p@localhost/db')
 
     fake_cur = MagicMock()
-    # SELECT timesheet_reports -> no monthly report row exists.
-    fake_cur.fetchone.return_value = None
-
-    fake_conn = MagicMock()
-    fake_conn.cursor.return_value.__enter__.return_value = fake_cur
-
-    @contextmanager
-    def fake_connect(*args, **kwargs):
-        yield fake_conn
-
-    fake_psycopg = MagicMock()
-    fake_psycopg.connect.side_effect = fake_connect
-    monkeypatch.setitem(__import__('sys').modules, 'psycopg', fake_psycopg)
-
-    body = {
-        'update_timesheet': True,
-        'start_date': '2026-05-01',
-        'end_date': '2026-05-01',
-    }
-    with _ctx(body):
-        _login_direktor()
-        resp = tfv.api_field_trip_create()
-        payload = resp.get_json()
-
-    assert payload['success'] is True
-    assert payload['timesheet_updated'] is False
-    assert payload.get('timesheet_skipped') is True
-
-
-def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
-    monkeypatch.setenv('DATABASE_URL', 'postgresql://u:p@localhost/db')
-
-    fake_cur = MagicMock()
-    # SELECT timesheet_reports -> a monthly report row exists.
     fake_cur.fetchone.return_value = {'id': 42}
 
     fake_conn = MagicMock()
@@ -109,6 +86,9 @@ def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
     monkeypatch.setitem(__import__('sys').modules, 'psycopg', fake_psycopg)
 
     body = {
+        # Само службени пут (сопствено возило → нема ни резервације) са
+        # захтеваним update_timesheet: не сме да дира радну листу.
+        'vehicle_id': 'sopstveni',
         'update_timesheet': True,
         'start_date': '2026-05-01',
         'end_date': '2026-05-01',
@@ -119,8 +99,11 @@ def test_field_trip_timesheet_updated_when_day_written(monkeypatch):
         payload = resp.get_json()
 
     assert payload['success'] is True
-    assert payload['timesheet_updated'] is True
-    assert payload.get('timesheet_skipped') is not True
+    assert 'timesheet_updated' not in payload
+    executed_sql = ' '.join(
+        str(call.args[0]) for call in fake_cur.execute.call_args_list
+    )
+    assert 'timesheet_report_days' not in executed_sql
 
 
 # ---------------------------------------------------------------------------

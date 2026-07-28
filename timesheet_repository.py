@@ -153,8 +153,15 @@ class TimesheetRepository:
             logger.error("Error listing timesheet reports: %s", exc)
             return {'reports': [], 'total': 0, 'page': page, 'total_pages': 0}
 
-    def get_month_summary(self, month: Optional[int] = None, year: Optional[int] = None) -> Optional[Dict]:
-        """Return aggregated totals for a specific month/year (defaults to latest)."""
+    def get_month_summary(self, month: Optional[int] = None, year: Optional[int] = None,
+                          department: Optional[str] = None) -> Optional[Dict]:
+        """Return aggregated totals for a specific month/year (defaults to latest).
+
+        When `department` is supplied, only reports whose employee belongs to
+        that department are aggregated — the summary must honor the SAME scope
+        as the reports list, or a department head would see museum-wide totals
+        (ревизија #3).
+        """
         if not self.available:
             return None
         if month is None or year is None:
@@ -163,6 +170,7 @@ class TimesheetRepository:
                 return None
             year, month = latest
 
+        dept_sql, dept_params = self._department_scope_sql(department)
         query = text("""
             SELECT
                 SUM(CASE WHEN te.category = 'rad_na_mestu' THEN te.hours ELSE 0 END) AS work_in_museum,
@@ -176,12 +184,13 @@ class TimesheetRepository:
                 COUNT(DISTINCT tr.id) AS reports_count
             FROM timesheet_reports tr
             LEFT JOIN timesheet_entries te ON te.report_id = tr.id
-            WHERE tr.month = :month AND tr.year = :year
+            WHERE tr.month = :month AND tr.year = :year""" + dept_sql + """
         """)
 
         try:
             with self.engine.connect() as conn:
-                row = conn.execute(query, {'month': month, 'year': year}).mappings().first()
+                row = conn.execute(
+                    query, {'month': month, 'year': year, **dept_params}).mappings().first()
                 if not row:
                     return None
                 totals = self._coerce_hours_row(row)
@@ -200,26 +209,34 @@ class TimesheetRepository:
             logger.error("Error fetching monthly timesheet summary: %s", exc)
         return None
 
-    def get_overall_summary(self) -> Optional[Dict]:
-        """Return global totals for dashboard widgets."""
+    def get_overall_summary(self, department: Optional[str] = None) -> Optional[Dict]:
+        """Return global totals for dashboard widgets.
+
+        When `department` is supplied, counts and hours are scoped to that
+        department — same reasoning as `get_month_summary` (ревизија #3).
+        """
         if not self.available:
             return None
+        dept_sql, dept_params = self._department_scope_sql(department)
         query = text("""
             SELECT
                 COUNT(*) AS report_count,
-                COUNT(DISTINCT employee_name) AS unique_employees
-            FROM timesheet_reports
+                COUNT(DISTINCT tr.employee_name) AS unique_employees
+            FROM timesheet_reports tr
+            WHERE TRUE""" + dept_sql + """
         """)
         try:
             with self.engine.connect() as conn:
-                counts = conn.execute(query).mappings().first()
+                counts = conn.execute(query, dept_params).mappings().first()
             totals_query = text("""
-                SELECT category, SUM(hours) AS total
-                FROM timesheet_entries
-                GROUP BY category
+                SELECT te.category, SUM(te.hours) AS total
+                FROM timesheet_entries te
+                JOIN timesheet_reports tr ON tr.id = te.report_id
+                WHERE TRUE""" + dept_sql + """
+                GROUP BY te.category
             """)
             with self.engine.connect() as conn:
-                totals_rows = conn.execute(totals_query).mappings().all()
+                totals_rows = conn.execute(totals_query, dept_params).mappings().all()
             category_totals = {cat: 0.0 for cat in self.CATEGORY_LABELS.keys()}
             for row in totals_rows:
                 category_totals[row.category] = self._to_float(row.total)
@@ -337,6 +354,19 @@ class TimesheetRepository:
             params['f_department'] = department
         where_sql = " AND ".join(clauses) if clauses else "TRUE"
         return where_sql, params
+
+    def _department_scope_sql(self, department: Optional[str]) -> Tuple[str, Dict]:
+        """Return an `` AND …`` clause (+ params) scoping ``tr`` rows to a
+        department, matched by canonical ``employee_email`` — the same rule
+        `_build_filters` uses for the reports list. Empty when no department."""
+        if not department:
+            return "", {}
+        clause = (
+            " AND LOWER(tr.employee_email) IN "
+            "(SELECT LOWER(ep.email) FROM employee_profiles ep "
+            " WHERE ep.department = :scope_department)"
+        )
+        return clause, {'scope_department': department}
 
     def _normalize_report_row(self, row) -> Dict:
         return {

@@ -1732,7 +1732,8 @@ def reject_timesheet(report_id: int, admin_email: str, note: str) -> TimesheetRe
         )
 
 
-def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
+def force_edit_timesheet(report_id: int, admin_email: str,
+                         *, allow_approved_reopen: bool = True) -> TimesheetResult:
     """
     Force a timesheet back to DRAFT status. Any status -> DRAFT.
     Allowed for admin, director, and department heads (per-report scope
@@ -1740,6 +1741,13 @@ def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
 
     Bounces the report back with a 24-hour temporary edit window so the
     employee can correct and resubmit without needing an unlock request.
+
+    ``allow_approved_reopen``: закључавање TOCTOU трке (ревизија #2). Статус
+    се чита ПОД истим ``FOR UPDATE`` локом под којим се и мења, па ако
+    директор одобри листу између провере у рути и овог позива, поновна
+    провера овде то види. Кад је позивалац шеф одељења (нема право да отвара
+    ОВЕРЕНУ листу), проследи ``False`` — оверена листа се тада одбија уместо
+    да се тихо спусти на DRAFT. Админ/директор шаљу ``True``.
 
     Args:
         report_id: ID of the timesheet report
@@ -1767,6 +1775,17 @@ def force_edit_timesheet(report_id: int, admin_email: str) -> TimesheetResult:
                     )
 
                 old_status = report['status']
+
+                # Re-авторизација ПОД локом: оверену листу сме да отвори само
+                # админ/директор. Ово затвара трку — статус је прочитан истом
+                # трансакцијом која ради UPDATE, па директорово одобрење у
+                # међувремену не може да пропусти шефов захтев.
+                if old_status == 'APPROVED' and not allow_approved_reopen:
+                    return TimesheetResult.fail(
+                        TimesheetErrorType.PERMISSION_DENIED,
+                        "Оверен извештај може да врати само администратор или "
+                        "директор — поднесите захтев за откључавање."
+                    )
 
                 # Update status to DRAFT, open the 24 h edit window.
                 cur.execute("""

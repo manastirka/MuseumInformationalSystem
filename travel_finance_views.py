@@ -5,7 +5,7 @@ import logging
 import math
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from io import BytesIO
 
 import requests as http_requests
@@ -583,7 +583,14 @@ def render_business_trip_request_page(*, get_museum_vehicles):
 
 
 def execute_field_trip(data, *, user_name, user_email):
-    """Reserve the museum vehicle and book timesheet days for a business trip.
+    """Reserve the museum vehicle for a business trip.
+
+    NOTE (ревизија Codex, 2026-07-28): овај модул НАМЕРНО више НЕ уписује
+    дане у радну листу. Радна листа се мења ИСКЉУЧИВО кроз свој сопствени
+    ток — запослени у форми уноса (категорија „рад ван музеја") и увоз из
+    Word-а. Ранији аутоматски UPSERT дана је уклоњен јер је могао тихо да
+    измени чак и већ поднету/потписану листу мимо ланца одобравања (шеф
+    потпише једно, а садржај се после промени).
 
     Runs either directly (admin/direktor manual path) or as the deferred
     side effect once an approved trip request is finalized — `user_name`/
@@ -591,7 +598,6 @@ def execute_field_trip(data, *, user_name, user_email):
     result = {
         'success': True,
         'vehicle_reserved': False,
-        'timesheet_updated': False,
         'message': 'Захтев за службени пут је креиран',
     }
 
@@ -603,6 +609,8 @@ def execute_field_trip(data, *, user_name, user_email):
             logger.error(
                 "Rezervacija terenskog rada nije kreirana: DATABASE_URL nije podešen"
             )
+            # Тражена резервација није извршена — не пријављуј тихи успех (ревизија #6).
+            result['success'] = False
             result['vehicle_error'] = 'База података није доступна — резервација није сачувана.'
         else:
             try:
@@ -634,65 +642,14 @@ def execute_field_trip(data, *, user_name, user_email):
                         result['vehicle_reserved'] = True
             except Exception as exc:
                 logger.error("Vehicle reservation error: %s", exc)
+                # Резервација је тражена али је пала — success мора то да одрази
+                # (ревизија #6: без тихог success=true уз погрешан упис).
+                result['success'] = False
                 result['vehicle_error'] = str(exc)
 
-    if data.get('update_timesheet') and data.get('start_date') and data.get('end_date'):
-        try:
-            start = datetime.strptime(data['start_date'], '%Y-%m-%d')
-            end = datetime.strptime(data['end_date'], '%Y-%m-%d')
-
-            if os.environ.get('DATABASE_URL'):
-                import psycopg
-                from psycopg.rows import dict_row
-
-                pg_url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
-
-                with psycopg.connect(pg_url, row_factory=dict_row) as conn:
-                    with conn.cursor() as cur:
-                        days_recorded = 0
-                        current = start
-                        while current <= end:
-                            # Resolve the report by email first (the canonical
-                            # key); only fall back to an exact name match. Skip
-                            # APPROVED reports so a field trip never overwrites a
-                            # finalized official document, and order
-                            # deterministically so a duplicate can't match the
-                            # wrong row.
-                            cur.execute(
-                                """
-                                SELECT id FROM timesheet_reports
-                                WHERE (
-                                    (employee_email IS NOT NULL AND LOWER(employee_email) = LOWER(%s))
-                                    OR (employee_email IS NULL AND employee_name = %s)
-                                )
-                                  AND month = %s AND year = %s
-                                  AND COALESCE(status, 'DRAFT') <> 'APPROVED'
-                                ORDER BY id DESC
-                                LIMIT 1
-                                """,
-                                (user_email, user_name, current.month, current.year),
-                            )
-                            report = cur.fetchone()
-                            if report:
-                                cur.execute(
-                                    """
-                                    INSERT INTO timesheet_report_days (report_id, day, work_outside)
-                                    VALUES (%s, %s, 8)
-                                    ON CONFLICT (report_id, day)
-                                    DO UPDATE SET work_outside = 8, work_in_museum = 0
-                                    """,
-                                    (report['id'], current.day),
-                                )
-                                days_recorded += 1
-                            current += timedelta(days=1)
-                        conn.commit()
-                        if days_recorded > 0:
-                            result['timesheet_updated'] = True
-                        else:
-                            result['timesheet_skipped'] = True
-        except Exception as exc:
-            logger.error("Timesheet update error: %s", exc)
-            result['timesheet_error'] = str(exc)
+    # НАПОМЕНА: модул службених путовања више НЕ уписује дане у радну листу.
+    # Ако захтев носи ``update_timesheet``, то поље се свесно игнорише — дане
+    # „рад ван музеја" запослени уноси ручно у форми радне листе. (ревизија #1)
 
     return result
 

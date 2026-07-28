@@ -752,7 +752,10 @@ def api_save_timesheet():
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT status FROM timesheet_reports
+                        SELECT COALESCE(status, 'DRAFT') AS status,
+                               (editable_until IS NOT NULL AND NOW() < editable_until)
+                                   AS window_active
+                        FROM timesheet_reports
                         WHERE (employee_email = %s
                                OR (employee_email IS NULL AND employee_name = %s))
                           AND month = %s AND year = %s
@@ -776,6 +779,37 @@ def api_save_timesheet():
                                 {
                                     'success': False,
                                     'message': f'Радна листа је {status_label} и не може се мењати.',
+                                    'error_type': 'locked',
+                                }
+                            ),
+                            423,
+                        )
+
+                    # Обичан запослени попуњава ПРЕТХОДНИ месец. Текући/будући
+                    # месец се самоуносом не сме отварати без активног
+                    # административног откључавања (editable_until у будућности)
+                    # или враћене (REJECTED) листе — иначе би се радна листа
+                    # предала пре краја месеца, мимо процедуре (ревизија #4).
+                    # Админ/директор нису ограничени (оператерски унос).
+                    now = datetime.now()
+                    is_current_or_future = (
+                        year_check > now.year
+                        or (year_check == now.year and month_check >= now.month)
+                    )
+                    window_active = bool(report_row and report_row.get('window_active'))
+                    is_rejected = bool(report_row and report_row['status'] == 'REJECTED')
+                    if (is_current_or_future
+                            and session.get('user_role') not in ('admin', 'direktor')
+                            and not window_active and not is_rejected):
+                        return (
+                            jsonify(
+                                {
+                                    'success': False,
+                                    'message': (
+                                        'Унос радне листе за текући/будући месец није '
+                                        'омогућен. Попуњава се претходни месец; за унос '
+                                        'текућег затражите откључавање од администратора.'
+                                    ),
                                     'error_type': 'locked',
                                 }
                             ),
@@ -1098,7 +1132,15 @@ def api_timesheet_force_edit(report_id):
                 }
             ), 403
 
-    result = force_edit_timesheet(report_id, session.get('user_email'))
+    # Оверену листу сме да отвори само админ/директор. Ова провера је СЕДА
+    # ауторитативна унутар force_edit_timesheet (под FOR UPDATE локом) —
+    # горња провера на основу застарелог status_row остаје као брза грана,
+    # али коначну реч даје лок, чиме се затвара TOCTOU трка (ревизија #2).
+    allow_approved_reopen = session.get('user_role') in ('admin', 'direktor')
+    result = force_edit_timesheet(
+        report_id, session.get('user_email'),
+        allow_approved_reopen=allow_approved_reopen,
+    )
     if result.success:
         # Откључавање већ ОВЕРЕНЕ листе је осетљива радња — остави траг.
         if (status_row and status_row.get('status') == 'APPROVED'):

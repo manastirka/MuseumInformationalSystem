@@ -287,7 +287,8 @@ def _auto_archive_request(cur, request_id, user_email, user_name, *, assign_refe
 
 def _execute_post_approval_side_effects(request_type, request_data, *, creator_email, creator_name):
     """Run the deferred actions of a finally approved request (a business trip
-    reserves its vehicle and books timesheet days only at this point)."""
+    reserves its vehicle only — it no longer books timesheet days; the work
+    list is edited exclusively through its own flow. See ревизија #1)."""
     field_trip = (request_data or {}).get('field_trip')
     if request_type != 'terenska_aktivnost' or not isinstance(field_trip, dict):
         return None
@@ -308,10 +309,6 @@ def _describe_side_effects(side_effects):
         parts.append('возило резервисано')
     if side_effects.get('vehicle_error'):
         parts.append(f"грешка резервације: {side_effects['vehicle_error']}")
-    if side_effects.get('timesheet_updated'):
-        parts.append('месечни извештај ажуриран')
-    if side_effects.get('timesheet_error'):
-        parts.append(f"грешка извештаја: {side_effects['timesheet_error']}")
     if side_effects.get('error'):
         parts.append(f"грешка: {side_effects['error']}")
     return 'Извршено по одобрењу: ' + (', '.join(parts) if parts else 'нема пропратних акција')
