@@ -106,3 +106,42 @@ for (const url of ACC_STRANE) {
     }
   }
 }
+
+// --- 3) ЗАГЛАВЉА ВЕЛИКИХ ТАБЕЛА × палета × режим --------------------------
+// Заглавље табеле у палети иде на структурну (тамноплаву/сиву/…) површину, па
+// сав ТЕКСТ у ћелији заглавља — укључујући сортабилне линкове (`.text-dark`) и
+// иконе стрелица — мора бити читљив (бела на тамноплавом). Продукцијски баг:
+// зглавље минералне збирке остало таман текст на тамноплавом (1.26:1).
+// Мери се само `thead`; `tbody` се сакрије јер веома високе табеле руше
+// fullPage декодовање снимка (није баг производа, него ограничење мерача).
+const TABELE_STRANE = [
+  '/admin/mineral_collection', // пријављени баг: сортабилни .text-dark линкови
+  '/admin/inventory_book',
+  '/admin/library_database',
+  '/admin/employees_database',
+  '/admin/visitors_database',
+  '/kr-dosije',
+  '/fototeka',
+];
+for (const url of TABELE_STRANE) {
+  for (const paleta of PALETE) {
+    for (const rezim of PALETE_REZIMI) {
+      test(`контраст заглавља табеле (${paleta} × ${rezim}): ${url}`, async ({ page }) => {
+        test.skip(!EMAIL || !PASS, 'QA креденцијали су потребни.');
+        await login(page);
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+        test.skip(!resp || resp.status() !== 200, `Стране ${url} нема на овом окружењу.`);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(600);
+        await postaviPaletu(page, paleta, 'komforno', rezim);
+        await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
+        await page.waitForTimeout(150);
+
+        const padovi = await izmeriKontrast(page, 'thead');
+        expect(padovi,
+          `Заглавље табеле испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
+          .toEqual([]);
+      });
+    }
+  }
+}
