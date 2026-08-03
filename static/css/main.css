@@ -4025,6 +4025,60 @@ html[data-density="kompakt"][data-style="terenska"] {
 [data-palette] body.heritage-shell .navbar {
     background: var(--bg-nav);
 }
+/* Фаза 2: navbar пилуле (језик/тема) и падајући менији прате палету, не heritage.
+   Пилула = провидна светла површина на тамном рам-у (бело мастило); мени =
+   токен површина. Специфичност (0,3,1)/(0,4,1) надјача heritage крем/браон. */
+[data-palette] body.heritage-shell #langSwitcherBtn,
+[data-palette] body.heritage-shell #themeSwitcherBtn,
+[data-palette] body.heritage-shell .navbar .dropdown-toggle.btn-outline-light {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.30) !important;
+    color: #ffffff !important;
+    box-shadow: none;
+}
+[data-palette] body.heritage-shell #langSwitcherBtn:hover,
+[data-palette] body.heritage-shell #langSwitcherBtn:focus,
+[data-palette] body.heritage-shell #themeSwitcherBtn:hover,
+[data-palette] body.heritage-shell #themeSwitcherBtn:focus,
+[data-palette] body.heritage-shell .navbar .dropdown-toggle.btn-outline-light:hover,
+[data-palette] body.heritage-shell .navbar .dropdown-toggle.btn-outline-light:focus {
+    background: rgba(255, 255, 255, 0.20);
+    color: #ffffff !important;
+}
+[data-palette] body.heritage-shell .dropdown-menu {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+}
+[data-palette] body.heritage-shell .dropdown-item {
+    color: var(--text-primary);
+}
+[data-palette] body.heritage-shell .dropdown-item i {
+    color: var(--primary);
+}
+[data-palette] body.heritage-shell .dropdown-item:hover,
+[data-palette] body.heritage-shell .dropdown-item:focus {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+[data-palette] body.heritage-shell .dropdown-header {
+    color: var(--text-secondary);
+}
+[data-palette] body.heritage-shell .dropdown-divider {
+    border-color: var(--border-color);
+}
+/* Контролна дугмад у dashboard заглављу (обавештења/прилагоди) — иста браон
+   heritage подлога; на равним палетама провидна светла на структурном рам-у. */
+[data-palette] body.heritage-shell .dashboard-control-btn {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.30);
+    box-shadow: none;
+}
+[data-palette] body.heritage-shell .dashboard-control-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
 
 /* ============================================
    ФАЗА 2 — нове палете, акцентна оса, ауто/тамна
