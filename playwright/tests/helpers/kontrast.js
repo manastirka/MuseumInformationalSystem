@@ -19,11 +19,18 @@
 const REZIMI = ['dark', 'contrast'];
 const SVI_REZIMI = ['light', 'dark', 'contrast'];
 const STILOVI = ['institucionalna', 'moderna', 'arhivska', 'terenska'];
-// Именоване плаво-беле теме (миграција 033, фаза 1). Све су светле основе
-// (data-palette без data-theme=dark); мери се и у комфорној и у компактној
-// густини јер густина мења паддинг/оквире.
-const PALETE = ['plava-klasicna', 'plava-windows', 'plava-tamna', 'plava-ledena', 'plava-muzejska'];
+// Именоване равне теме: фаза 1 (plava-*) + фаза 2 (неутралне/институционалне).
+// Мери се у комфорној и компактној густини (густина мења паддинг/оквире) и у
+// светлом и тамном режиму (фаза 2: равна палета поштује mode кроз dark-flat слој).
+const PALETE = ['plava-klasicna', 'plava-windows', 'plava-tamna', 'plava-ledena',
+  'plava-muzejska', 'siva-poslovna', 'zelena-institucionalna', 'bordo-muzejska',
+  'crno-bela'];
 const GUSTINE = ['komforno', 'kompakt'];
+const PALETE_REZIMI = ['light', 'dark'];
+// Акцентна оса (фаза 2). 'podrazumevano' (идентитет палете) се покрива
+// подразумеваним пролазом палете, па се овде мере 9 експлицитних боја.
+const ACCENTI = ['klasicna-plava', 'svetloplava', 'tamnoplava', 'tirkizna',
+  'zelena', 'ljubicasta', 'bordo', 'narandzasta', 'grafitnosiva'];
 
 async function postaviTemu(page, rezim, stil) {
   // Промена теме покреће CSS transition на боји. На тешким странама (нпр.
@@ -44,26 +51,44 @@ async function postaviTemu(page, rezim, stil) {
   await page.waitForTimeout(200);
 }
 
-// Примени именовану плаву палету исто како то ради base.html скрипт: скини
-// data-theme/accent/style осе, постави data-palette + светли data-bs-theme.
-async function postaviPaletu(page, paleta, gustina) {
+// Примени именовану равну палету исто како то ради base.html скрипт: постави
+// data-palette, скини style осу, и разреши режим (light → без data-theme;
+// dark → data-theme=dark + dark data-bs-theme, што пали заједнички dark-flat
+// слој). Акценат се посебно поставља кроз postaviAkcenat.
+async function postaviPaletu(page, paleta, gustina, rezim) {
+  rezim = rezim || 'light';
   await page.addStyleTag({
     content: `*, *::before, *::after {
       transition: none !important;
       animation: none !important;
     }`,
   });
-  await page.evaluate(([p, g]) => {
+  await page.evaluate(([p, g, r]) => {
     const root = document.documentElement;
-    root.removeAttribute('data-theme');
     root.removeAttribute('data-accent');
     root.removeAttribute('data-style');
-    root.setAttribute('data-bs-theme', 'light');
     root.setAttribute('data-palette', p);
+    if (r === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      root.setAttribute('data-bs-theme', 'dark');
+    } else {
+      root.removeAttribute('data-theme');
+      root.setAttribute('data-bs-theme', 'light');
+    }
     if (g === 'komforno') root.removeAttribute('data-density');
     else root.setAttribute('data-density', g);
-  }, [paleta, gustina]);
+  }, [paleta, gustina, rezim]);
   await page.waitForTimeout(200);
+}
+
+// Постави/скини акцентну осу (фаза 2). 'podrazumevano' → скини (идентитет палете).
+async function postaviAkcenat(page, akcenat) {
+  await page.evaluate((a) => {
+    const root = document.documentElement;
+    if (!a || a === 'podrazumevano') root.removeAttribute('data-accent');
+    else root.setAttribute('data-accent', a);
+  }, akcenat);
+  await page.waitForTimeout(120);
 }
 
 // Враћа падове: [{selektor, tekst, fg, bg, odnos, prag}]
@@ -284,6 +309,6 @@ async function izmeriUStanju(page, korenSelektor) {
 }
 
 module.exports = {
-  REZIMI, SVI_REZIMI, STILOVI, PALETE, GUSTINE,
-  postaviTemu, postaviPaletu, izmeriKontrast,
+  REZIMI, SVI_REZIMI, STILOVI, PALETE, GUSTINE, PALETE_REZIMI, ACCENTI,
+  postaviTemu, postaviPaletu, postaviAkcenat, izmeriKontrast,
 };

@@ -1,15 +1,19 @@
 <!DOCTYPE html>
-{#- Named blue palette (migration 033) is a self-contained look: it carries its
-    own light/dark base, so it drives data-theme/data-bs-theme itself and the
-    accent/style axes are suppressed. 'heritage' keeps the classic mode/accent/
-    style behavior. Density applies to both families. -#}
+{#- Palette axis (migration 033/037). 'heritage' keeps the classic mode/accent/
+    style behavior. Every other palette is a self-contained flat look that (phase
+    2) honours the mode axis for auto/dark via a shared dark-flat layer and the
+    accent axis for its interactive colours; the style axis does not apply. For
+    mode 'system' the dark decision is resolved client-side (head script). Accent
+    'podrazumevano' = family default (heritage green / flat palette identity), so
+    it is not emitted. Density applies to both families. -#}
 {%- set _palette = current_theme_palette|default('plava-klasicna') -%}
-{%- set _blue = _palette != 'heritage' -%}
-{#- Sve plave palete imaju svetlu radnu površinu (bele kartice, taman tekst);
-    „tamnoplav" karakter nose ram/zaglavlje/bočni meni kroz tokene, ne data-theme. -#}
-{%- set _dark = (not _blue) and current_theme_mode|default('system') == 'dark' -%}
-{%- set _contrast = (not _blue) and current_theme_mode|default('system') == 'contrast' -%}
-<html lang="sr"{% if _contrast %} data-theme="contrast"{% elif _dark %} data-theme="dark"{% endif %} data-bs-theme="{% if _dark %}dark{% else %}light{% endif %}"{% if _blue %} data-palette="{{ _palette }}"{% else %}{% if current_theme_accent|default('zelena') != 'zelena' %} data-accent="{{ current_theme_accent }}"{% endif %}{% if current_theme_style|default('institucionalna') != 'institucionalna' %} data-style="{{ current_theme_style }}"{% endif %}{% endif %}{% if current_theme_density|default('komforno') != 'komforno' %} data-density="{{ current_theme_density }}"{% endif %}>
+{%- set _flat = _palette != 'heritage' -%}
+{%- set _acc = current_theme_accent|default('podrazumevano') -%}
+{%- set _mode = current_theme_mode|default('system') -%}
+{%- set _dark = (not _flat) and _mode == 'dark' -%}
+{%- set _contrast = (not _flat) and _mode == 'contrast' -%}
+{%- set _flatdark = _flat and _mode == 'dark' -%}
+<html lang="sr"{% if _contrast %} data-theme="contrast"{% elif _dark or _flatdark %} data-theme="dark"{% endif %} data-bs-theme="{% if _dark or _flatdark %}dark{% else %}light{% endif %}"{% if _flat %} data-palette="{{ _palette }}"{% if _acc != 'podrazumevano' %} data-accent="{{ _acc }}"{% endif %}{% else %}{% if _acc in ('bordo', 'oker', 'petrolej') %} data-accent="{{ _acc }}"{% endif %}{% if current_theme_style|default('institucionalna') != 'institucionalna' %} data-style="{{ current_theme_style }}"{% endif %}{% endif %}{% if current_theme_density|default('komforno') != 'komforno' %} data-density="{{ current_theme_density }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,9 +43,23 @@
                 // The mode axis stays available for the classic heritage family.
                 var pal = window.MuseumTheme && window.MuseumTheme.palette;
                 if (pal && pal !== 'heritage') {
-                    root.removeAttribute('data-theme');
-                    root.setAttribute('data-bs-theme', 'light');
+                    // Flat palette: self-contained look. Phase 2 makes it honour
+                    // the mode axis for auto/dark (shared dark-flat layer) and the
+                    // accent axis for interactive colours. The style axis does not
+                    // apply to flat palettes.
                     root.setAttribute('data-palette', pal);
+                    root.removeAttribute('data-style');
+                    var acc = window.MuseumTheme.accent;
+                    if (acc && acc !== 'podrazumevano') root.setAttribute('data-accent', acc);
+                    else root.removeAttribute('data-accent');
+                    var flatDark = mode === 'dark' || (mode === 'system' && mq && mq.matches);
+                    if (flatDark) {
+                        root.setAttribute('data-theme', 'dark');
+                        root.setAttribute('data-bs-theme', 'dark');
+                    } else {
+                        root.removeAttribute('data-theme');
+                        root.setAttribute('data-bs-theme', 'light');
+                    }
                     return;
                 }
                 root.removeAttribute('data-palette');
@@ -67,7 +85,7 @@
             };
             window.MuseumTheme = {
                 mode: '{{ current_theme_mode|default('system') }}',
-                accent: '{{ current_theme_accent|default('zelena') }}',
+                accent: '{{ current_theme_accent|default('podrazumevano') }}',
                 style: '{{ current_theme_style|default('institucionalna') }}',
                 density: '{{ current_theme_density|default('komforno') }}',
                 palette: '{{ current_theme_palette|default('plava-klasicna') }}',

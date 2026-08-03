@@ -3736,8 +3736,8 @@ html[data-density="kompakt"][data-style="terenska"] {
       computed стил корена) И на <body>.heritage-shell (специфичност 0,2,1 >
       heritage 0,1,1, па надјача token shadowing). Семантика и геометрија су
       исте за све плаве теме. */
-[data-palette^="plava"],
-[data-palette^="plava"] body.heritage-shell {
+[data-palette],
+[data-palette] body.heritage-shell {
     --primary: var(--pal-primary);
     --primary-dark: var(--pal-primary-dark);
     --primary-light: var(--pal-primary-light);
@@ -3747,7 +3747,7 @@ html[data-density="kompakt"][data-style="terenska"] {
     --on-accent: #ffffff;
     --on-accent-soft: rgba(255, 255, 255, 0.85);
     --navbar-text: #ffffff;
-    --focus-ring: rgba(37, 99, 176, 0.35);
+    --focus-ring: var(--pal-focus, rgba(37, 99, 176, 0.35));
 
     --bg-body: var(--pal-bg-body);
     --bg-card: var(--pal-bg-card);
@@ -3795,130 +3795,130 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 
 /* 3) Изравнавање пергамента у равне површине (token-driven) */
-[data-palette^="plava"] body.heritage-shell {
+[data-palette] body.heritage-shell {
     background: var(--bg-body);
     color: var(--text-primary);
 }
 /* Чист, професионалан безсерифни наслов уместо heritage антикве */
-[data-palette^="plava"] body.heritage-shell h1,
-[data-palette^="plava"] body.heritage-shell h2,
-[data-palette^="plava"] body.heritage-shell h3,
-[data-palette^="plava"] body.heritage-shell h4,
-[data-palette^="plava"] body.heritage-shell h5,
-[data-palette^="plava"] body.heritage-shell h6,
-[data-palette^="plava"] body.heritage-shell .page-header,
-[data-palette^="plava"] body.heritage-shell .card-header,
-[data-palette^="plava"] body.heritage-shell .modal-title {
+[data-palette] body.heritage-shell h1,
+[data-palette] body.heritage-shell h2,
+[data-palette] body.heritage-shell h3,
+[data-palette] body.heritage-shell h4,
+[data-palette] body.heritage-shell h5,
+[data-palette] body.heritage-shell h6,
+[data-palette] body.heritage-shell .page-header,
+[data-palette] body.heritage-shell .card-header,
+[data-palette] body.heritage-shell .modal-title {
     font-family: var(--font-family);
     letter-spacing: normal;
 }
-[data-palette^="plava"] body.heritage-shell .card {
+[data-palette] body.heritage-shell .card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
 }
-[data-palette^="plava"] body.heritage-shell .card.bg-dark {
+[data-palette] body.heritage-shell .card.bg-dark {
     background: var(--pal-bg-nav);
     border: 1px solid var(--pal-bg-nav);
 }
-[data-palette^="plava"] body.heritage-shell .card-header {
+[data-palette] body.heritage-shell .card-header {
     background: var(--bg-elevated);
     color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);
 }
-[data-palette^="plava"] body.heritage-shell .card-footer {
+[data-palette] body.heritage-shell .card-footer {
     background: var(--bg-elevated);
     border-top: 1px solid var(--border-color);
 }
 /* Поља */
-[data-palette^="plava"] body.heritage-shell .form-control,
-[data-palette^="plava"] body.heritage-shell .form-select,
-[data-palette^="plava"] body.heritage-shell textarea.form-control {
+[data-palette] body.heritage-shell .form-control,
+[data-palette] body.heritage-shell .form-select,
+[data-palette] body.heritage-shell textarea.form-control {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     box-shadow: none;
 }
-[data-palette^="plava"] body.heritage-shell .form-control::placeholder,
-[data-palette^="plava"] body.heritage-shell textarea.form-control::placeholder {
+[data-palette] body.heritage-shell .form-control::placeholder,
+[data-palette] body.heritage-shell textarea.form-control::placeholder {
     color: var(--text-muted);
 }
-[data-palette^="plava"] body.heritage-shell .form-control:focus,
-[data-palette^="plava"] body.heritage-shell .form-select:focus,
-[data-palette^="plava"] body.heritage-shell textarea.form-control:focus {
+[data-palette] body.heritage-shell .form-control:focus,
+[data-palette] body.heritage-shell .form-select:focus,
+[data-palette] body.heritage-shell textarea.form-control:focus {
     background: var(--bg-card);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--focus-ring);
     color: var(--text-primary);
 }
-[data-palette^="plava"] body.heritage-shell .form-select option,
-[data-palette^="plava"] body.heritage-shell .form-control option {
+[data-palette] body.heritage-shell .form-select option,
+[data-palette] body.heritage-shell .form-control option {
     background-color: var(--bg-card);
     color: var(--text-primary);
 }
-[data-palette^="plava"] body.heritage-shell .input-group-text {
+[data-palette] body.heritage-shell .input-group-text {
     background: var(--bg-elevated);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
 }
 /* Модал / алерт */
-[data-palette^="plava"] body.heritage-shell .modal-content {
+[data-palette] body.heritage-shell .modal-content {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     box-shadow: 0 24px 46px rgba(15, 40, 74, 0.18);
 }
-[data-palette^="plava"] body.heritage-shell .modal-header,
-[data-palette^="plava"] body.heritage-shell .modal-footer {
+[data-palette] body.heritage-shell .modal-header,
+[data-palette] body.heritage-shell .modal-footer {
     border-color: var(--border-color);
 }
-[data-palette^="plava"] body.heritage-shell .alert {
+[data-palette] body.heritage-shell .alert {
     border: 1px solid var(--border-color);
     background: var(--bg-elevated);
     color: var(--text-primary);
 }
-[data-palette^="plava"] body.heritage-shell .alert-success { background: var(--success-soft); border-color: #a7e0c4; color: var(--success-text); }
-[data-palette^="plava"] body.heritage-shell .alert-warning { background: var(--warning-soft); border-color: #e6cf9a; color: #6e4405; }
-[data-palette^="plava"] body.heritage-shell .alert-danger  { background: var(--danger-soft); border-color: #e6b3b7; color: #8f222d; }
-[data-palette^="plava"] body.heritage-shell .alert-info    { background: var(--info-soft); border-color: #b9d3f2; color: var(--pal-primary-dark); }
+[data-palette] body.heritage-shell .alert-success { background: var(--success-soft); border-color: #a7e0c4; color: var(--success-text); }
+[data-palette] body.heritage-shell .alert-warning { background: var(--warning-soft); border-color: #e6cf9a; color: #6e4405; }
+[data-palette] body.heritage-shell .alert-danger  { background: var(--danger-soft); border-color: #e6b3b7; color: #8f222d; }
+[data-palette] body.heritage-shell .alert-info    { background: var(--info-soft); border-color: #b9d3f2; color: var(--pal-primary-dark); }
 
 /* Дугмад: heritage хардкодује крем текст на градијенту — плаве површине траже
    бело; outline варијанте добијају плави текст/оквир. */
-[data-palette^="plava"] body.heritage-shell .btn-primary,
-[data-palette^="plava"] body.heritage-shell .btn-success,
-[data-palette^="plava"] body.heritage-shell .btn-login {
+[data-palette] body.heritage-shell .btn-primary,
+[data-palette] body.heritage-shell .btn-success,
+[data-palette] body.heritage-shell .btn-login {
     color: #ffffff;
     border: 1px solid var(--pal-primary-dark);
     box-shadow: var(--shadow-btn);
 }
-[data-palette^="plava"] body.heritage-shell .btn-primary:hover,
-[data-palette^="plava"] body.heritage-shell .btn-primary:focus,
-[data-palette^="plava"] body.heritage-shell .btn-success:hover,
-[data-palette^="plava"] body.heritage-shell .btn-success:focus,
-[data-palette^="plava"] body.heritage-shell .btn-login:hover,
-[data-palette^="plava"] body.heritage-shell .btn-login:focus {
+[data-palette] body.heritage-shell .btn-primary:hover,
+[data-palette] body.heritage-shell .btn-primary:focus,
+[data-palette] body.heritage-shell .btn-success:hover,
+[data-palette] body.heritage-shell .btn-success:focus,
+[data-palette] body.heritage-shell .btn-login:hover,
+[data-palette] body.heritage-shell .btn-login:focus {
     color: #ffffff;
 }
-[data-palette^="plava"] body.heritage-shell .btn-outline-primary,
-[data-palette^="plava"] body.heritage-shell .btn-outline-success,
-[data-palette^="plava"] body.heritage-shell .btn-outline-secondary {
+[data-palette] body.heritage-shell .btn-outline-primary,
+[data-palette] body.heritage-shell .btn-outline-success,
+[data-palette] body.heritage-shell .btn-outline-secondary {
     color: var(--pal-primary);
     border: 1px solid var(--pal-primary);
     background: transparent;
 }
-[data-palette^="plava"] body.heritage-shell .btn-outline-primary:hover,
-[data-palette^="plava"] body.heritage-shell .btn-outline-success:hover,
-[data-palette^="plava"] body.heritage-shell .btn-outline-secondary:hover,
-[data-palette^="plava"] body.heritage-shell .btn-outline-primary.active,
-[data-palette^="plava"] body.heritage-shell .btn-outline-success.active,
-[data-palette^="plava"] body.heritage-shell .btn-outline-secondary.active {
+[data-palette] body.heritage-shell .btn-outline-primary:hover,
+[data-palette] body.heritage-shell .btn-outline-success:hover,
+[data-palette] body.heritage-shell .btn-outline-secondary:hover,
+[data-palette] body.heritage-shell .btn-outline-primary.active,
+[data-palette] body.heritage-shell .btn-outline-success.active,
+[data-palette] body.heritage-shell .btn-outline-secondary.active {
     color: #ffffff;
     background: var(--pal-primary);
     border-color: var(--pal-primary);
 }
 /* Заглавље календара резервација носи ID-правило (background: var(--museum-primary));
    осим token override горе, држимо и експлицитно тамноплаво + бело. */
-[data-palette^="plava"] body.heritage-shell #calendarTable th {
+[data-palette] body.heritage-shell #calendarTable th {
     background: var(--pal-thead-bg) !important;
     color: #ffffff !important;
     box-shadow: none !important;
@@ -3928,12 +3928,12 @@ html[data-density="kompakt"][data-style="terenska"] {
 /* 4) ТАБЕЛЕ по спецификацији: тамноплаво заглавље, парни/непарни редови,
       hover, селектован ред светлоплаво, линије ћелија, активна колона
       сортирања (DataTables .sorting_1). */
-[data-palette^="plava"] body.heritage-shell .table {
+[data-palette] body.heritage-shell .table {
     color: var(--text-primary);
     --bs-table-bg: transparent;
     border-color: var(--border-color);
 }
-[data-palette^="plava"] body.heritage-shell .table thead th {
+[data-palette] body.heritage-shell .table thead th {
     background: var(--pal-thead-bg) !important;
     color: var(--pal-thead-text) !important;
     border-bottom: 2px solid var(--pal-thead-bg);
@@ -3943,87 +3943,320 @@ html[data-density="kompakt"][data-style="terenska"] {
     --bs-table-bg: var(--pal-thead-bg);
     --bs-table-color: var(--pal-thead-text);
 }
-[data-palette^="plava"] body.heritage-shell .table tbody td,
-[data-palette^="plava"] body.heritage-shell .table tbody th {
+[data-palette] body.heritage-shell .table tbody td,
+[data-palette] body.heritage-shell .table tbody th {
     background: var(--bg-card);
     color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
 }
-[data-palette^="plava"] body.heritage-shell .table-striped > tbody > tr:nth-of-type(odd) > * {
+[data-palette] body.heritage-shell .table-striped > tbody > tr:nth-of-type(odd) > * {
     background-color: var(--pal-stripe);
 }
-[data-palette^="plava"] body.heritage-shell .table-hover > tbody > tr:hover > * {
+[data-palette] body.heritage-shell .table-hover > tbody > tr:hover > * {
     background-color: var(--pal-hover);
 }
 /* Селектован ред (Bootstrap .table-active или ручна .selected класа) */
-[data-palette^="plava"] body.heritage-shell .table > tbody > tr.table-active > *,
-[data-palette^="plava"] body.heritage-shell .table > tbody > tr.selected > * {
+[data-palette] body.heritage-shell .table > tbody > tr.table-active > *,
+[data-palette] body.heritage-shell .table > tbody > tr.selected > * {
     background-color: var(--pal-sel-bg) !important;
     color: var(--pal-sel-text);
 }
 /* Активна колона сортирања (DataTables) */
-[data-palette^="plava"] body.heritage-shell .table > tbody > tr > td.sorting_1 {
+[data-palette] body.heritage-shell .table > tbody > tr > td.sorting_1 {
     background-color: var(--pal-hover);
 }
-[data-palette^="plava"] body.heritage-shell .table thead th.sorting_asc,
-[data-palette^="plava"] body.heritage-shell .table thead th.sorting_desc {
+[data-palette] body.heritage-shell .table thead th.sorting_asc,
+[data-palette] body.heritage-shell .table thead th.sorting_desc {
     background: var(--pal-primary-dark);
 }
 
 /* 5) ФОТОГРАФИЈЕ: дискретна подлога приказа, селектована фотографија плави оквир */
-[data-palette^="plava"] body.heritage-shell .fototeka-card,
-[data-palette^="plava"] body.heritage-shell .dokumenti-card,
-[data-palette^="plava"] body.heritage-shell .search-card {
+[data-palette] body.heritage-shell .fototeka-card,
+[data-palette] body.heritage-shell .dokumenti-card,
+[data-palette] body.heritage-shell .search-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
 }
-[data-palette^="plava"] body.heritage-shell .foto-item {
+[data-palette] body.heritage-shell .foto-item {
     background: var(--bg-elevated);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-card);
 }
-[data-palette^="plava"] body.heritage-shell .foto-item:has(.foto-check:checked),
-[data-palette^="plava"] body.heritage-shell .foto-item.selected {
+[data-palette] body.heritage-shell .foto-item:has(.foto-check:checked),
+[data-palette] body.heritage-shell .foto-item.selected {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* Заглавље увоза фототеке носи хардкодован зелени градијент (page-scoped) —
    у плавим темама га мапирамо на тамноплаво, а `code` на бело (AA). */
-[data-palette^="plava"] body.heritage-shell .fototeka-header {
+[data-palette] body.heritage-shell .fototeka-header {
     background: linear-gradient(135deg, var(--pal-thead-bg) 0%, var(--pal-primary) 100%);
 }
-[data-palette^="plava"] body.heritage-shell .fototeka-header code {
+[data-palette] body.heritage-shell .fototeka-header code {
     color: #ffffff;
 }
 
 /* Контролна табла: насловни банер (page-scoped бордо градијент) и златне
    иконице модула — у плавим темама тамноплаво заглавље с белим насловом и
    плаве иконице на светлој плочици. */
-[data-palette^="plava"] body.heritage-shell .dashboard-header {
+[data-palette] body.heritage-shell .dashboard-header {
     background: linear-gradient(135deg, var(--pal-thead-bg) 0%, var(--pal-primary) 100%);
     border: 1px solid var(--pal-primary-dark);
 }
-[data-palette^="plava"] body.heritage-shell .dashboard-header h1 { color: #ffffff; }
-[data-palette^="plava"] body.heritage-shell .dashboard-header p { color: rgba(255, 255, 255, 0.9); }
-[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-desc,
-[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-wind,
-[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-location,
-[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-temp,
-[data-palette^="plava"] body.heritage-shell .dashboard-header .weather-temp-placeholder {
+[data-palette] body.heritage-shell .dashboard-header h1 { color: #ffffff; }
+[data-palette] body.heritage-shell .dashboard-header p { color: rgba(255, 255, 255, 0.9); }
+[data-palette] body.heritage-shell .dashboard-header .weather-desc,
+[data-palette] body.heritage-shell .dashboard-header .weather-wind,
+[data-palette] body.heritage-shell .dashboard-header .weather-location,
+[data-palette] body.heritage-shell .dashboard-header .weather-temp,
+[data-palette] body.heritage-shell .dashboard-header .weather-temp-placeholder {
     color: #ffffff !important;
 }
-[data-palette^="plava"] body.heritage-shell .module-card .module-icon {
+[data-palette] body.heritage-shell .module-card .module-icon {
     background: var(--pal-elevated) !important;
     border: 1px solid var(--pal-border);
     box-shadow: none;
 }
-[data-palette^="plava"] body.heritage-shell .module-card .module-icon i { color: var(--pal-primary) !important; }
+[data-palette] body.heritage-shell .module-card .module-icon i { color: var(--pal-primary) !important; }
 
 /* 6) Топ навигација (ако користи --bg-nav) и дугме теме */
-[data-palette^="plava"] body.heritage-shell .navbar {
+[data-palette] body.heritage-shell .navbar {
     background: var(--bg-nav);
+}
+
+/* ============================================
+   ФАЗА 2 — нове палете, акцентна оса, ауто/тамна
+   --------------------------------------------
+   Гради на истом --pal-* механизму као фаза 1. Нове палете дају само своје
+   `--pal-*` вредности (заједнички `[data-palette]` блок их мапира у токене).
+   Акценат је ЗАСЕБНА оса: `[data-palette][data-accent="X"]` пребоји само
+   `--pal-primary*` + селекцију + фокус (дугмад/линкови/ознаке/иконе на белој
+   радној површини); рам/заглавље/бочни мени остају структурни по палети.
+   Ауто/тамна: равна палета поштује постојећу `mode` осу — при `data-theme=dark`
+   заједнички dark-flat слој даје тамне површине, а акценат светли (бело мастило
+   на градијенту → тамно `--on-accent`, исти образац као heritage тамни акценти).
+   Долази ПОСЛЕ фазе 1, ПРЕ @media print.
+   ============================================ */
+
+/* 1) Нове палете — сирове --pal-* вредности (светле основе). --pal-primary-dk /
+      --pal-onacc-dk су тамномодне вредности идентитета (default акценат) које
+      чита dark-flat слој; постојеће плаве палете немају их па падају на светло-
+      плави fallback (све су плаве). */
+[data-palette="siva-poslovna"] {
+    --pal-primary: #3f4753; --pal-primary-dark: #2d343d; --pal-primary-light: #5a6472;
+    --pal-bg-body: #f4f5f7; --pal-bg-card: #ffffff; --pal-bg-nav: #2b3138;
+    --pal-elevated: #eef0f2;
+    --pal-text: #1f242b; --pal-text2: #454c56; --pal-muted: #596069;
+    --pal-border: #dcdfe4;
+    --pal-thead-bg: #2b3138; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #e4e7eb; --pal-sel-text: #23282f;
+    --pal-stripe: #f6f7f9; --pal-hover: #eceef1;
+    --pal-side-bg: #23272e; --pal-side-text: #e7e9ec;
+    --pal-radius-card: 8px; --pal-radius-btn: 6px;
+    --pal-focus: rgba(80, 90, 105, 0.35);
+    --pal-primary-dk: #aeb7c4; --pal-onacc-dk: #1b1f26;
+}
+[data-palette="zelena-institucionalna"] {
+    --pal-primary: #1e7047; --pal-primary-dark: #15532f; --pal-primary-light: #3f9068;
+    --pal-bg-body: #eef3f0; --pal-bg-card: #ffffff; --pal-bg-nav: #123d2b;
+    --pal-elevated: #e9f0ec;
+    --pal-text: #1c2620; --pal-text2: #45524b; --pal-muted: #556a5f;
+    --pal-border: #cddbd3;
+    --pal-thead-bg: #123d2b; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #d7ecdf; --pal-sel-text: #12512f;
+    --pal-stripe: #f1f7f3; --pal-hover: #e3f0e9;
+    --pal-side-bg: #0f3624; --pal-side-text: #e6f0ea;
+    --pal-radius-card: 10px; --pal-radius-btn: 8px;
+    --pal-focus: rgba(30, 112, 71, 0.3);
+    --pal-primary-dk: #5fbf8f; --pal-onacc-dk: #06231a;
+}
+[data-palette="bordo-muzejska"] {
+    --pal-primary: #8a2f38; --pal-primary-dark: #6c232b; --pal-primary-light: #a8515a;
+    --pal-bg-body: #f4ece9; --pal-bg-card: #ffffff; --pal-bg-nav: #4d1719;
+    --pal-elevated: #f0e7e4;
+    --pal-text: #2a211f; --pal-text2: #574843; --pal-muted: #6f5a53;
+    --pal-border: #e0cfca;
+    --pal-thead-bg: #4d1719; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #f3dde0; --pal-sel-text: #6c232b;
+    --pal-stripe: #f8f1ee; --pal-hover: #f1e3de;
+    --pal-side-bg: #431315; --pal-side-text: #f0dcd8;
+    --pal-radius-card: 10px; --pal-radius-btn: 8px;
+    --pal-focus: rgba(138, 47, 56, 0.3);
+    --pal-primary-dk: #d98d94; --pal-onacc-dk: #2a0d0f;
+}
+[data-palette="crno-bela"] {
+    --pal-primary: #1a1a1a; --pal-primary-dark: #000000; --pal-primary-light: #333333;
+    --pal-bg-body: #ffffff; --pal-bg-card: #ffffff; --pal-bg-nav: #000000;
+    --pal-elevated: #f2f2f2;
+    --pal-text: #000000; --pal-text2: #141414; --pal-muted: #333333;
+    --pal-border: #000000;
+    --pal-thead-bg: #000000; --pal-thead-text: #ffffff;
+    --pal-sel-bg: #000000; --pal-sel-text: #ffffff;
+    --pal-stripe: #f0f0f0; --pal-hover: #e2e2e2;
+    --pal-side-bg: #000000; --pal-side-text: #ffffff;
+    --pal-radius-card: 2px; --pal-radius-btn: 2px;
+    --pal-focus: rgba(0, 0, 0, 0.55);
+    --pal-primary-dk: #f0f0f0; --pal-onacc-dk: #000000;
+}
+
+/* 2) АКЦЕНТНА ОСА (светло) — само за равне палете (heritage има свој систем).
+      Пребоји --pal-primary* + селекцију + фокус; сваки тон биран довољно таман
+      да и као бела-на-боји (дугме) и као боја-на-белом (линк) даје ≥4.5:1. */
+[data-palette][data-accent="klasicna-plava"] {
+    --pal-primary: #1d5fab; --pal-primary-dark: #17497f; --pal-primary-light: #3f80cf;
+    --pal-sel-bg: #d9e7fa; --pal-sel-text: #143257; --pal-focus: rgba(29, 95, 171, 0.32);
+}
+[data-palette][data-accent="svetloplava"] {
+    --pal-primary: #146cb8; --pal-primary-dark: #0f5290; --pal-primary-light: #3f8fd6;
+    --pal-sel-bg: #d6e9fb; --pal-sel-text: #0f4d84; --pal-focus: rgba(20, 108, 184, 0.3);
+}
+[data-palette][data-accent="tamnoplava"] {
+    --pal-primary: #1f4d80; --pal-primary-dark: #163a63; --pal-primary-light: #3f6da1;
+    --pal-sel-bg: #dbe6f3; --pal-sel-text: #163a63; --pal-focus: rgba(31, 77, 128, 0.32);
+}
+[data-palette][data-accent="tirkizna"] {
+    --pal-primary: #0f766e; --pal-primary-dark: #0b5a54; --pal-primary-light: #2f9a90;
+    --pal-sel-bg: #d4efec; --pal-sel-text: #0b524c; --pal-focus: rgba(15, 118, 110, 0.3);
+}
+[data-palette][data-accent="zelena"] {
+    --pal-primary: #1e7047; --pal-primary-dark: #15532f; --pal-primary-light: #3f9068;
+    --pal-sel-bg: #d7ecdf; --pal-sel-text: #12512f; --pal-focus: rgba(30, 112, 71, 0.3);
+}
+[data-palette][data-accent="ljubicasta"] {
+    --pal-primary: #6d28d9; --pal-primary-dark: #571ba8; --pal-primary-light: #8b5cf6;
+    --pal-sel-bg: #e7ddfa; --pal-sel-text: #4c179e; --pal-focus: rgba(109, 40, 217, 0.3);
+}
+[data-palette][data-accent="bordo"] {
+    --pal-primary: #8a2f38; --pal-primary-dark: #6c232b; --pal-primary-light: #a8515a;
+    --pal-sel-bg: #f3dde0; --pal-sel-text: #6c232b; --pal-focus: rgba(138, 47, 56, 0.3);
+}
+[data-palette][data-accent="narandzasta"] {
+    --pal-primary: #a94d08; --pal-primary-dark: #883d05; --pal-primary-light: #cf7020;
+    --pal-sel-bg: #f7e2cf; --pal-sel-text: #7e3906; --pal-focus: rgba(169, 77, 8, 0.3);
+}
+[data-palette][data-accent="grafitnosiva"] {
+    --pal-primary: #3f4753; --pal-primary-dark: #2d343d; --pal-primary-light: #5a6472;
+    --pal-sel-bg: #e4e7eb; --pal-sel-text: #23282f; --pal-focus: rgba(80, 90, 105, 0.35);
+}
+
+/* 3) DARK-FLAT слој — заједничке тамне површине за све равне палете при
+      data-theme=dark (ауто/тамна). Мора и на body нивоу (0,3,1) да надјача
+      body мапирање фазе 1 (0,2,1). --pal-primary иде на светли идентитет
+      (или fallback за плаве), --on-accent на тамно (мастило на дугмету). */
+[data-palette][data-theme="dark"],
+[data-palette][data-theme="dark"] body.heritage-shell {
+    --pal-primary: var(--pal-primary-dk, #6ea8e6);
+    --pal-primary-dark: var(--pal-primary-dk, #6ea8e6);
+    --pal-primary-light: var(--pal-primary-dk, #8fc0ef);
+    --pal-bg-body: #12161c;
+    --pal-bg-card: #1b2029;
+    --pal-elevated: #232a34;
+    --pal-hover: #2a323d;
+    --pal-stripe: #1f2530;
+    --pal-text: #e8ecf1;
+    --pal-text2: #c2cad4;
+    --pal-muted: #9aa4b0;
+    --pal-border: #333c48;
+    --pal-sel-bg: #2d3a4d;
+    --pal-sel-text: #eaf1fb;
+    --on-accent: var(--pal-onacc-dk, #08213b);
+    --on-accent-soft: rgba(8, 15, 25, 0.82);
+    --success: #4cbf8a; --success-text: #7fe0b4;
+    --warning: #e6b566; --danger: #f28b93; --info: var(--pal-primary-light);
+    --success-soft: #12352a; --warning-soft: #3a2f14;
+    --danger-soft: #3a1e20; --info-soft: #152a40;
+}
+/* Дугме у тамном: bg = светли акценат, мастило = тамно (--on-accent), не бело. */
+[data-palette][data-theme="dark"] body.heritage-shell .btn-primary,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-success,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-login {
+    color: var(--on-accent);
+    border-color: var(--pal-primary-dark);
+}
+[data-palette][data-theme="dark"] body.heritage-shell .btn-primary:hover,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-primary:focus,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-success:hover,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-success:focus,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-login:hover,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-login:focus {
+    color: var(--on-accent);
+}
+[data-palette][data-theme="dark"] body.heritage-shell .btn-outline-primary.active,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-outline-secondary.active,
+[data-palette][data-theme="dark"] body.heritage-shell .btn-outline-success.active {
+    color: var(--on-accent);
+}
+/* Активни Bootstrap елементи с примарном позадином (табови, пагинација, листа)
+   носе бело мастило → у тамном структурна тамна површина. */
+[data-palette][data-theme="dark"] body.heritage-shell .nav-pills .nav-link.active,
+[data-palette][data-theme="dark"] body.heritage-shell .page-link.active,
+[data-palette][data-theme="dark"] body.heritage-shell .list-group-item.active {
+    background-color: var(--pal-thead-bg);
+    border-color: var(--pal-thead-bg);
+    color: #ffffff;
+}
+/* Заглавља са page-scoped градијентом → у тамном пуна тамна површина (бело
+      мастило иначе падне на светли крај градијента). */
+[data-palette][data-theme="dark"] body.heritage-shell .fototeka-header,
+[data-palette][data-theme="dark"] body.heritage-shell .dashboard-header {
+    background: var(--pal-thead-bg);
+    border-color: var(--pal-border);
+}
+/* Bootstrap .bg-primary херо-картице/беџеви носе бело мастило — у тамном
+   иду на структурну тамну површину (иначе бело на светлом акценту падне). */
+[data-palette][data-theme="dark"] body.heritage-shell .bg-primary {
+    background: var(--pal-thead-bg) !important;
+    border-color: var(--pal-thead-bg) !important;
+}
+
+/* 4) АКЦЕНТ У ТАМНОМ — светли тон (текст на тамној картици ≥4.5) + тамно
+      мастило на дугмету. Мора body ниво (0,4,1) да надјача dark-flat body. */
+[data-palette][data-theme="dark"][data-accent="klasicna-plava"],
+[data-palette][data-theme="dark"][data-accent="klasicna-plava"] body.heritage-shell {
+    --pal-primary: #6ea8e6; --pal-primary-dark: #5c96d4; --pal-primary-light: #8fc0ef;
+    --on-accent: #08213b; --pal-focus: rgba(110, 168, 230, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="svetloplava"],
+[data-palette][data-theme="dark"][data-accent="svetloplava"] body.heritage-shell {
+    --pal-primary: #7cbef2; --pal-primary-dark: #66ace4; --pal-primary-light: #9dd0f7;
+    --on-accent: #06243f; --pal-focus: rgba(124, 190, 242, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="tamnoplava"],
+[data-palette][data-theme="dark"][data-accent="tamnoplava"] body.heritage-shell {
+    --pal-primary: #7ea9d8; --pal-primary-dark: #6a97c9; --pal-primary-light: #a0c3e6;
+    --on-accent: #071a2c; --pal-focus: rgba(126, 169, 216, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="tirkizna"],
+[data-palette][data-theme="dark"][data-accent="tirkizna"] body.heritage-shell {
+    --pal-primary: #4bc3b6; --pal-primary-dark: #35ac9f; --pal-primary-light: #74d4c9;
+    --on-accent: #06231f; --pal-focus: rgba(75, 195, 182, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="zelena"],
+[data-palette][data-theme="dark"][data-accent="zelena"] body.heritage-shell {
+    --pal-primary: #5fbf8f; --pal-primary-dark: #4aa87a; --pal-primary-light: #86d3ab;
+    --on-accent: #06231a; --pal-focus: rgba(95, 191, 143, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="ljubicasta"],
+[data-palette][data-theme="dark"][data-accent="ljubicasta"] body.heritage-shell {
+    --pal-primary: #b493f0; --pal-primary-dark: #9f7ae6; --pal-primary-light: #cbb2f6;
+    --on-accent: #1e0a3a; --pal-focus: rgba(180, 147, 240, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="bordo"],
+[data-palette][data-theme="dark"][data-accent="bordo"] body.heritage-shell {
+    --pal-primary: #d98d94; --pal-primary-dark: #c9767e; --pal-primary-light: #e6adb2;
+    --on-accent: #2a0d0f; --pal-focus: rgba(217, 141, 148, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="narandzasta"],
+[data-palette][data-theme="dark"][data-accent="narandzasta"] body.heritage-shell {
+    --pal-primary: #e8a866; --pal-primary-dark: #d9934b; --pal-primary-light: #f0c091;
+    --on-accent: #2e1705; --pal-focus: rgba(232, 168, 102, 0.4);
+}
+[data-palette][data-theme="dark"][data-accent="grafitnosiva"],
+[data-palette][data-theme="dark"][data-accent="grafitnosiva"] body.heritage-shell {
+    --pal-primary: #aeb7c4; --pal-primary-dark: #9aa4b3; --pal-primary-light: #c6cdd7;
+    --on-accent: #1b1f26; --pal-focus: rgba(174, 183, 196, 0.4);
 }
 
 /* ============================================
@@ -4075,7 +4308,7 @@ html[data-density="kompakt"][data-style="terenska"] {
     }
 
     /* Плаве теме: тело на белу, тамноплаво заглавље табеле остаје као ознака */
-    [data-palette^="plava"] body.heritage-shell {
+    [data-palette] body.heritage-shell {
         background: #ffffff !important;
         color: #1f2937 !important;
     }

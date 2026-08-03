@@ -61,16 +61,27 @@ def set_language_preference():
 # for logged-in users the choice is also persisted in users.theme_mode/accent
 # (migration 022) so it follows them across browsers.
 THEME_MODES = ('light', 'dark', 'system', 'contrast')
-THEME_ACCENTS = ('zelena', 'bordo', 'oker', 'petrolej')
+# Accent axis (migration 022, widened in 037). The first four are the classic
+# heritage accents; the rest (phase 2) are the standalone accent axis that also
+# applies to the flat named palettes. 'podrazumevano' is a sentinel meaning
+# "use the family/palette default" (heritage -> green, flat palette -> its own
+# identity colour); it is the new column default so a flat palette is never
+# silently tinted green.
+THEME_ACCENTS = ('podrazumevano', 'zelena', 'bordo', 'oker', 'petrolej',
+                 'klasicna-plava', 'svetloplava', 'tamnoplava', 'tirkizna',
+                 'ljubicasta', 'narandzasta', 'grafitnosiva')
 THEME_STYLES = ('institucionalna', 'moderna', 'arhivska', 'terenska')
 THEME_DENSITIES = ('komforno', 'kompakt')
-# Named theme palettes (migration 033). 'heritage' = classic museum look that
-# keeps the mode/accent/style axes; the 'plava-*' palettes are self-contained
-# blue-white looks that carry their own light/dark surfaces. DARK_PALETTES ride
-# the existing dark base so they inherit the dark Bootstrap component rules.
+# Named theme palettes. 'heritage' = classic museum look that keeps the
+# mode/accent/style axes; the other palettes are self-contained flat looks that
+# carry their own surfaces. Phase 1 (migration 033) shipped the 'plava-*' set;
+# phase 2 (migration 037) adds the neutral/institutional set. A flat palette
+# honours the mode axis for auto/dark (shared dark-flat CSS layer) and the
+# accent axis for its interactive colours.
 THEME_PALETTES = ('heritage', 'plava-klasicna', 'plava-windows',
-                  'plava-tamna', 'plava-ledena', 'plava-muzejska')
-DARK_PALETTES = ('plava-tamna', 'plava-muzejska')
+                  'plava-tamna', 'plava-ledena', 'plava-muzejska',
+                  'siva-poslovna', 'zelena-institucionalna',
+                  'bordo-muzejska', 'crno-bela')
 DEFAULT_PALETTE = 'plava-klasicna'
 
 
@@ -91,7 +102,7 @@ def normalize_theme_density(density):
 
 
 def normalize_theme_accent(accent):
-    return accent if accent in THEME_ACCENTS else 'zelena'
+    return accent if accent in THEME_ACCENTS else 'podrazumevano'
 
 
 def current_theme_mode():
@@ -100,7 +111,7 @@ def current_theme_mode():
 
 
 def current_theme_accent():
-    saved = session.get('museum_accent', request.cookies.get('museum_accent', 'zelena'))
+    saved = session.get('museum_accent', request.cookies.get('museum_accent', 'podrazumevano'))
     return normalize_theme_accent(saved)
 
 
@@ -123,11 +134,12 @@ def set_theme_preference():
     """Store the user's theme preference in session, cookies and (if logged in) the database."""
     data = request.get_json(silent=True) or {}
     mode = data.get('mode', 'system')
-    accent = data.get('accent', 'zelena')
+    # accent/palette default to the current choice, not the app default — a
+    # partial POST (e.g. only changing density from the navbar) must not
+    # silently reset the accent axis or the palette.
+    accent = data.get('accent', current_theme_accent())
     style = data.get('style', 'institucionalna')
     density = data.get('density', 'komforno')
-    # palette defaults to the current choice, not the app default — a partial
-    # POST (e.g. only changing density) must not silently reset the palette.
     palette = data.get('palette', current_theme_palette())
     if (mode not in THEME_MODES or accent not in THEME_ACCENTS
             or style not in THEME_STYLES or density not in THEME_DENSITIES
