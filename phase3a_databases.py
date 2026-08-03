@@ -437,6 +437,13 @@ def load_exhibitions_data():
                 exhibition['co_curators'] = []
             if exhibition.get('sponsors') is None:
                 exhibition['sponsors'] = []
+            # Normalise NULL text/number columns the template renders directly
+            # (None description -> None[:150] TypeError; None visitor_count ->
+            # "{:,}".format(None) ValueError).
+            if exhibition.get('description') is None:
+                exhibition['description'] = ''
+            if exhibition.get('visitor_count') is None:
+                exhibition['visitor_count'] = 0
             exhibitions.append(exhibition)
 
         cur.close()

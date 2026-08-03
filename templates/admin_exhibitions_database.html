@@ -188,7 +188,9 @@
                                         </div>
                                     </div>
 
+                                    {% if exhibition.description %}
                                     <p class="card-text small mb-3">{{ exhibition.description[:150] }}{% if exhibition.description|length > 150 %}...{% endif %}</p>
+                                    {% endif %}
 
                                     <div class="row g-2 small">
                                         <div class="col-12">
@@ -204,7 +206,7 @@
                                             <i class="bi bi-collection me-1"></i>{{ exhibition.specimens_count }} примерака
                                         </div>
                                         <div class="col-6 mt-2">
-                                            <i class="bi bi-people me-1"></i>{{ "{:,}".format(exhibition.visitor_count) }} посетилаца
+                                            <i class="bi bi-people me-1"></i>{{ "{:,}".format(exhibition.visitor_count or 0) }} посетилаца
                                         </div>
                                     </div>
 
