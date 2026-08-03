@@ -78,10 +78,14 @@ THEME_DENSITIES = ('komforno', 'kompakt')
 # phase 2 (migration 037) adds the neutral/institutional set. A flat palette
 # honours the mode axis for auto/dark (shared dark-flat CSS layer) and the
 # accent axis for its interactive colours.
+# 'custom' (phase 3) is a sentinel meaning "render the user's active custom
+# theme" (users.active_custom_theme_id / session museum_custom_id). It carries
+# no static CSS: the definition is resolved to inline --pal-* tokens at render
+# time (see custom_theme.py + the context processor).
 THEME_PALETTES = ('heritage', 'plava-klasicna', 'plava-windows',
                   'plava-tamna', 'plava-ledena', 'plava-muzejska',
                   'siva-poslovna', 'zelena-institucionalna',
-                  'bordo-muzejska', 'crno-bela')
+                  'bordo-muzejska', 'crno-bela', 'custom')
 DEFAULT_PALETTE = 'plava-klasicna'
 
 
@@ -130,6 +134,62 @@ def current_theme_palette():
     return normalize_theme_palette(saved)
 
 
+def current_custom_theme_id():
+    """Return the applied custom theme id (int) or None. Used only when the
+    active palette is 'custom' (phase 3)."""
+    raw = session.get('museum_custom_id', request.cookies.get('museum_custom_id'))
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def current_custom_theme_render():
+    """Resolve the active custom theme to (inline_pal_css, bs_theme).
+
+    Returns ('', 'light') when the palette is not 'custom' or the active theme
+    cannot be loaded/validated — the caller then falls back to a system palette
+    so we never emit a token-less data-palette="custom" shell. The resolved CSS
+    is cached in the session so custom users don't hit the DB every request."""
+    if current_theme_palette() != 'custom':
+        return '', 'light'
+
+    cached = session.get('museum_custom_css')
+    if cached is not None:
+        return cached, session.get('museum_custom_bs', 'light')
+
+    theme_id = current_custom_theme_id()
+    email = session.get('user_email')
+    if not theme_id or not email:
+        return '', 'light'
+
+    try:
+        import custom_theme
+        from postgres_auth import get_postgres_auth
+        row = get_postgres_auth().get_custom_theme(email, theme_id)
+        if not row:
+            return '', 'light'
+        cleaned, err = custom_theme.validate_definition(row.get('definition'))
+        if err:
+            return '', 'light'
+        css = custom_theme.pal_css(cleaned)
+        bs = custom_theme.bs_theme(cleaned)
+        session['museum_custom_css'] = css
+        session['museum_custom_bs'] = bs
+        return css, bs
+    except Exception:
+        logger.warning('Custom theme render failed', exc_info=True)
+        return '', 'light'
+
+
+def invalidate_custom_theme_cache():
+    """Drop the cached custom-theme CSS so the next render reloads from DB.
+    Call after any create/update/delete/apply of custom themes."""
+    session.pop('museum_custom_css', None)
+    session.pop('museum_custom_bs', None)
+
+
 def set_theme_preference():
     """Store the user's theme preference in session, cookies and (if logged in) the database."""
     data = request.get_json(silent=True) or {}
@@ -146,22 +206,44 @@ def set_theme_preference():
             or palette not in THEME_PALETTES):
         return jsonify({'status': 'error', 'message': 'Invalid theme'}), 400
 
+    # Custom palette (phase 3): the active custom theme is identified by
+    # custom_id. A partial POST (e.g. only density from the navbar) keeps the
+    # current id. When the palette is 'custom' the id must resolve to one of the
+    # user's saved themes, else we reject rather than render a token-less shell.
+    custom_id = data.get('custom_id', current_custom_theme_id())
+    try:
+        custom_id = int(custom_id) if custom_id is not None else None
+    except (TypeError, ValueError):
+        custom_id = None
+    if palette == 'custom':
+        if not custom_id or custom_id <= 0:
+            return jsonify({'status': 'error', 'message': 'Missing custom theme'}), 400
+        if session.get('user_email'):
+            from postgres_auth import get_postgres_auth
+            owned = get_postgres_auth().get_custom_theme(session['user_email'], custom_id)
+            if not owned:
+                return jsonify({'status': 'error', 'message': 'Unknown custom theme'}), 400
+
     session['museum_theme'] = mode
     session['museum_accent'] = accent
     session['museum_style'] = style
     session['museum_density'] = density
     session['museum_palette'] = palette
+    session['museum_custom_id'] = custom_id if palette == 'custom' else None
+    invalidate_custom_theme_cache()
 
     if session.get('user_email'):
         from postgres_auth import get_postgres_auth
         try:
             get_postgres_auth().save_theme_preferences(
-                session['user_email'], mode, accent, style, density, palette)
+                session['user_email'], mode, accent, style, density, palette,
+                active_custom_theme_id=(custom_id if palette == 'custom' else None))
         except Exception:
             logger.warning('Theme preference DB persist failed', exc_info=True)
 
     response = jsonify({'status': 'ok', 'mode': mode, 'accent': accent,
-                        'style': style, 'density': density, 'palette': palette})
+                        'style': style, 'density': density, 'palette': palette,
+                        'custom_id': custom_id if palette == 'custom' else None})
     cookie_kwargs = dict(
         max_age=31536000,
         samesite='Lax',
@@ -174,6 +256,9 @@ def set_theme_preference():
     response.set_cookie('museum_style', style, **cookie_kwargs)
     response.set_cookie('museum_density', density, **cookie_kwargs)
     response.set_cookie('museum_palette', palette, **cookie_kwargs)
+    response.set_cookie('museum_custom_id',
+                        str(custom_id) if palette == 'custom' and custom_id else '',
+                        **cookie_kwargs)
     return response
 
 
@@ -279,6 +364,10 @@ def handle_login(
             session['museum_style'] = normalize_theme_style(authenticated_user.get('theme_style'))
             session['museum_density'] = normalize_theme_density(authenticated_user.get('theme_density'))
             session['museum_palette'] = normalize_theme_palette(authenticated_user.get('theme_palette'))
+            _active_custom = authenticated_user.get('active_custom_theme_id')
+            session['museum_custom_id'] = _active_custom if _active_custom else None
+            session.pop('museum_custom_css', None)
+            session.pop('museum_custom_bs', None)
             session.permanent = True
 
             tracker.record_attempt(email, success=True)

@@ -63,9 +63,67 @@ def set_theme():
 @core_bp.route('/podesavanja/izgled')
 @login_required
 def izgled_personalizacija():
-    """Izgled i personalizacija — birač imenovanih tema (faza 1: plavo-bele)."""
+    """Izgled i personalizacija — birač imenovanih tema + kreator sopstvene teme."""
     from flask import render_template
     return render_template('podesavanja_izgled.html')
+
+
+# ---- Kreator sopstvene teme (faza 3) ------------------------------------- #
+
+@core_bp.route('/podesavanja/izgled/moje-teme', methods=['GET'])
+@login_required
+def custom_themes_list():
+    import custom_theme_views
+    return custom_theme_views.list_custom_themes()
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme', methods=['POST'])
+@login_required
+def custom_themes_create():
+    import custom_theme_views
+    return custom_theme_views.create_custom_theme()
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/uvoz', methods=['POST'])
+@login_required
+def custom_themes_import():
+    import custom_theme_views
+    return custom_theme_views.import_custom_theme()
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/<int:theme_id>', methods=['POST'])
+@login_required
+def custom_themes_update(theme_id):
+    import custom_theme_views
+    return custom_theme_views.update_custom_theme(theme_id)
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/<int:theme_id>', methods=['DELETE'])
+@login_required
+def custom_themes_delete(theme_id):
+    import custom_theme_views
+    return custom_theme_views.delete_custom_theme(theme_id)
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/<int:theme_id>/dupliciraj', methods=['POST'])
+@login_required
+def custom_themes_duplicate(theme_id):
+    import custom_theme_views
+    return custom_theme_views.duplicate_custom_theme(theme_id)
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/<int:theme_id>/primeni', methods=['POST'])
+@login_required
+def custom_themes_apply(theme_id):
+    import custom_theme_views
+    return custom_theme_views.apply_custom_theme(theme_id)
+
+
+@core_bp.route('/podesavanja/izgled/moje-teme/<int:theme_id>/izvoz', methods=['GET'])
+@login_required
+def custom_themes_export(theme_id):
+    import custom_theme_views
+    return custom_theme_views.export_custom_theme(theme_id)
 
 
 @core_bp.route('/')

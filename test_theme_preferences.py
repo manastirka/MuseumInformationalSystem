@@ -69,7 +69,8 @@ def test_set_theme_persists_to_db_for_logged_in_user(theme_app, monkeypatch):
 
     class FakeAuth:
         def save_theme_preferences(self, email, mode, accent, style, density,
-                                   palette='plava-klasicna'):
+                                   palette='plava-klasicna',
+                                   active_custom_theme_id=None):
             calls.append((email, mode, accent, style, density, palette))
             return True
 
@@ -197,7 +198,8 @@ def test_set_theme_stores_style_and_density(theme_app, monkeypatch):
 
     class FakeAuth:
         def save_theme_preferences(self, email, mode, accent, style, density,
-                                   palette='plava-klasicna'):
+                                   palette='plava-klasicna',
+                                   active_custom_theme_id=None):
             calls.append((email, mode, accent, style, density, palette))
             return True
 
