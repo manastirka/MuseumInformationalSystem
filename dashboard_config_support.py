@@ -22,15 +22,10 @@ DASHBOARD_SECTIONS = {
         'description': 'Најновије вести са nhmbeo.rs',
         'icon': 'bi-globe',
     },
-    'quick_actions': {
-        'name': 'Брзе акције',
-        'description': 'Промена лозинке, радна листа и одјава',
-        'icon': 'bi-lightning',
-    },
 }
 
-# Default four elements for a regular employee without a saved configuration.
-DEFAULT_REGULAR_ELEMENTS = ('timesheet', 'news', 'website_news', 'quick_actions')
+# Default elements for a regular employee without a saved configuration.
+DEFAULT_REGULAR_ELEMENTS = ('timesheet', 'news', 'website_news')
 
 # Roles that keep the pre-existing full dashboard by default.
 PRIVILEGED_DASHBOARD_ROLES = frozenset({

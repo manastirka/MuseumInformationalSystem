@@ -421,7 +421,7 @@ class DashboardCustomizationPreferenceTests(unittest.TestCase):
         self.assertEqual(result, 'ok')
         self.assertEqual(
             render_mock.call_args.kwargs['enabled_widgets'],
-            ['social_feeds', 'website_news', 'quick_actions', 'museum_databases'],
+            ['social_feeds', 'website_news', 'museum_databases'],
         )
 
     def test_customize_dashboard_filters_saved_widgets_to_available_modules(self):
@@ -455,7 +455,7 @@ class DashboardCustomizationPreferenceTests(unittest.TestCase):
         self.assertEqual(result, 'ok')
         self.assertEqual(
             render_mock.call_args.kwargs['enabled_widgets'],
-            ['social_feeds', 'website_news', 'quick_actions', 'timesheet'],
+            ['social_feeds', 'website_news', 'timesheet'],
         )
 
     def test_customize_dashboard_post_saves_selection_per_user(self):

@@ -981,7 +981,7 @@
             <div class="dashboard-header text-white p-4">
                 <div class="row align-items-center position-relative" style="z-index: 1;">
                     <div class="col-md-6">
-                        <h1 class="h3 mb-1 fw-bold d-flex align-items-center">
+                        <h1 class="h5 mb-1 fw-bold d-flex align-items-center">
                             Добродошли, {{ user_name }}!
                         </h1>
                         <p class="mb-0 opacity-75">
@@ -1366,59 +1366,6 @@
     </div>
     {% endif %}
 
-    <!-- Quick Actions -->
-    {% if 'quick_actions' in enabled_sections %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="section-header">
-                <h3>
-                    <i class="bi bi-lightning me-2"></i>
-                    Брзе акције
-                </h3>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 stagger-children">
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('change_password') }}'">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-key d-block mb-2" style="font-size: 2rem; color: var(--museum-warning);"></i>
-                    <span class="fw-medium">Промени лозинку</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('admin_timesheet_reports') if user_role in ('admin', 'direktor') else url_for('timesheet_entry') }}'">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-calendar-event d-block mb-2" style="font-size: 2rem; color: var(--museum-primary);"></i>
-                    <span class="fw-medium">{{ 'Извештаји радних листа' if user_role in ('admin', 'direktor') else 'Радна листа' }}</span>
-                </div>
-            </div>
-        </div>
-
-        {% if has_module_access('mineral_database') %}
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('mineral_database_app') }}'">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-gem d-block mb-2" style="font-size: 2rem; color: var(--museum-secondary);"></i>
-                    <span class="fw-medium">Претрага минерала</span>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="performLogout()">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-box-arrow-right d-block mb-2" style="font-size: 2rem; color: var(--museum-danger);"></i>
-                    <span class="fw-medium">Одјави се</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
     </div>
 
     <div x-show="showWeatherModal"

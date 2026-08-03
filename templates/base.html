@@ -1134,12 +1134,6 @@
                                         <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
                                     </a>
                                     <ul class="dropdown-submenu-items" id="adminSubmenu">
-                                        {% if is_admin() or is_director() %}
-                                        <li><a class="dropdown-item" href="{{ url_for('admin_panel') }}">
-                                            <i class="bi bi-gear me-2"></i>Администрација
-                                        </a></li>
-                                        <li><hr class="dropdown-divider my-1"></li>
-                                        {% endif %}
                                         {% if has_module_access('employees_database') %}
                                         <li><a class="dropdown-item" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
                                             <i class="bi bi-people me-2"></i>База запослених
