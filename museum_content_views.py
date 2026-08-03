@@ -268,7 +268,7 @@ def render_exhibitions_database(*, exhibitions_database, get_exhibition_statisti
     """Render the exhibitions database view."""
     exhibitions_all = sorted(
         exhibitions_database['exhibitions'],
-        key=lambda exhibition: exhibition['start_date'],
+        key=lambda exhibition: exhibition.get('start_date') or '',
         reverse=True,
     )
     gallery_exhibitions = [

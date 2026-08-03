@@ -4023,6 +4023,49 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 [data-palette] body.heritage-shell .dashboard-header h1 { color: #ffffff; }
 [data-palette] body.heritage-shell .dashboard-header p { color: rgba(255, 255, 255, 0.9); }
+
+/* Заглавља база/збирки: свака страница носи свој хардкодован банер (Bootstrap
+   bg-info/success/warning/dark, инлајн градијент код изложби, локални
+   .page-header зелени градијент код минерала). Заједничка класа `.db-hero`
+   их у плавим темама мапира на исти тамноплаво→плави градијент као контролна
+   табла (--pal-thead-bg → --pal-primary), а СВА текст (укључујући .text-dark
+   заглавља) на бело (AA, исти образац као .dashboard-header/.fototeka-header).
+   `!important` на позадини туче и bg-* класу и инлајн style без !important. */
+/* ЧВРСТА структурна подлога `--pal-thead-bg` (исти токен као заглавље табеле,
+   доказано AA са белим текстом — укључујући СИТАН текст и линкове — у оба
+   режима и свим палетама). Градијент са светлим --pal-primary крајем НЕ
+   задовољава AA за ситан текст (стат-ознаке ~4.4:1, outline-light дугме на
+   светлом крају), па се банер држи равне тамне површине. */
+[data-palette] body.heritage-shell .db-hero {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border: 1px solid var(--pal-primary-dark);
+}
+/* Сав текст у банеру (наслови, пасуси, ситне ознаке, иконе, линкови, outline
+   дугмад, хардкодовани .text-dark) → бело, читљиво на тамној површини. */
+[data-palette] body.heritage-shell .db-hero,
+[data-palette] body.heritage-shell .db-hero * {
+    color: #ffffff !important;
+}
+/* Стат-чип (Bootstrap `bg-white bg-opacity-*`) → суптилно издигнута ТАМНА
+   плочица преко равне тамне подлоге (не светла), па бело мастило остаје AA. */
+[data-palette] body.heritage-shell .db-hero .bg-white {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    --bs-bg-opacity: 0 !important;
+}
+/* Дугме `btn-light` под heritage-shell носи ПОЛУПРОВИДНУ пергамент подлогу
+   (за пергамент позадину), па на равном тамном банеру композитује непредвидиво.
+   У банеру му дајемо ЧВРСТУ светлу подлогу + таман текст (гарантовано AA), а
+   бело-форсирање изнад побеђујемо специфичнијим селектором (за текст и иконе). */
+[data-palette] body.heritage-shell .db-hero .btn-light {
+    background: #f4f6f8 !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}
+[data-palette] body.heritage-shell .db-hero .btn-light,
+[data-palette] body.heritage-shell .db-hero .btn-light * {
+    color: #212529 !important;
+}
 [data-palette] body.heritage-shell .dashboard-header .weather-desc,
 [data-palette] body.heritage-shell .dashboard-header .weather-wind,
 [data-palette] body.heritage-shell .dashboard-header .weather-location,

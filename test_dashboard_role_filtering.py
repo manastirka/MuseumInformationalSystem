@@ -24,10 +24,8 @@ import dashboard_config_support
 REGULAR_EMAIL = 'test.zaposleni@nhmbeo.rs'
 SOCIAL_MARKER = 'Facebook - Природњачки музеј'
 WEBSITE_NEWS_MARKER = 'website-news-container'
-QUICK_ACTIONS_MARKER = 'Брзе акције'
 TIMESHEET_MARKER = 'Систем за радне листе'
 MINERAL_MARKER = 'База минерала'
-MINERAL_QUICK_ACTION_MARKER = 'Претрага минерала'
 SYSTEM_LOGS_MARKER = 'Системски логови'
 
 
@@ -77,11 +75,9 @@ class DashboardElementFilteringTests(unittest.TestCase):
         self.assertIn(TIMESHEET_MARKER, html)
         self.assertIn('Музејске вести', html)
         self.assertIn(WEBSITE_NEWS_MARKER, html)
-        self.assertIn(QUICK_ACTIONS_MARKER, html)
 
         self.assertNotIn(SOCIAL_MARKER, html)
         self.assertNotIn(MINERAL_MARKER, html)
-        self.assertNotIn(MINERAL_QUICK_ACTION_MARKER, html)
 
     def test_director_keeps_full_view(self):
         self._login(email='direktor@nhmbeo.rs', role='direktor')
@@ -89,10 +85,8 @@ class DashboardElementFilteringTests(unittest.TestCase):
 
         self.assertIn(SOCIAL_MARKER, html)
         self.assertIn(WEBSITE_NEWS_MARKER, html)
-        self.assertIn(QUICK_ACTIONS_MARKER, html)
         self.assertIn(TIMESHEET_MARKER, html)
         self.assertIn(MINERAL_MARKER, html)
-        self.assertIn(MINERAL_QUICK_ACTION_MARKER, html)
 
     def test_department_head_keeps_full_view_of_allowed_modules(self):
         self._login(email='sef.bio@nhmbeo.rs', role='sef_odeljenja')
@@ -100,7 +94,6 @@ class DashboardElementFilteringTests(unittest.TestCase):
 
         self.assertIn(SOCIAL_MARKER, html)
         self.assertIn(WEBSITE_NEWS_MARKER, html)
-        self.assertIn(QUICK_ACTIONS_MARKER, html)
         self.assertIn(TIMESHEET_MARKER, html)
         self.assertNotIn(MINERAL_MARKER, html)
 
@@ -122,7 +115,6 @@ class DashboardElementFilteringTests(unittest.TestCase):
         self.assertNotIn(MINERAL_MARKER, html)
         self.assertIn(TIMESHEET_MARKER, html)
         self.assertIn(WEBSITE_NEWS_MARKER, html)
-        self.assertNotIn(QUICK_ACTIONS_MARKER, html)
         self.assertNotIn(SOCIAL_MARKER, html)
 
     def test_same_saved_config_shows_element_for_authorized_role(self):
@@ -144,7 +136,6 @@ class DashboardElementFilteringTests(unittest.TestCase):
 
         self.assertIn(SOCIAL_MARKER, html)
         self.assertIn(WEBSITE_NEWS_MARKER, html)
-        self.assertIn(QUICK_ACTIONS_MARKER, html)
         self.assertIn(TIMESHEET_MARKER, html)
 
 
@@ -194,7 +185,6 @@ class CustomizeDashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
 
-        self.assertIn(QUICK_ACTIONS_MARKER, html)
         self.assertIn(TIMESHEET_MARKER, html)
         self.assertNotIn(SYSTEM_LOGS_MARKER, html)
         self.assertNotIn(MINERAL_MARKER, html)
@@ -232,19 +222,19 @@ class CustomizeDashboardTests(unittest.TestCase):
         self._login()
         response = self.client.post(
             '/dashboard/customize',
-            data={'widgets': ['timesheet', 'news', 'website_news', 'quick_actions']},
+            data={'widgets': ['timesheet', 'news', 'website_news', 'social_feeds']},
             base_url=self.base_url,
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             self.saved_calls,
-            [(REGULAR_EMAIL, ['timesheet', 'news', 'website_news', 'quick_actions'])],
+            [(REGULAR_EMAIL, ['timesheet', 'news', 'website_news', 'social_feeds'])],
         )
 
 
 class ResolveEnabledElementsUnitTests(unittest.TestCase):
     def test_default_four_for_regular_employee(self):
-        allowed = ['social_feeds', 'website_news', 'quick_actions', 'timesheet', 'news']
+        allowed = ['social_feeds', 'website_news', 'timesheet', 'news']
         enabled = dashboard_config_support.resolve_enabled_elements(
             REGULAR_EMAIL,
             'kustos',
@@ -256,7 +246,7 @@ class ResolveEnabledElementsUnitTests(unittest.TestCase):
         )
         self.assertEqual(
             sorted(enabled),
-            sorted(['timesheet', 'news', 'website_news', 'quick_actions']),
+            sorted(['timesheet', 'news', 'website_news']),
         )
 
     def test_saved_elements_filtered_by_current_access(self):
@@ -272,7 +262,7 @@ class ResolveEnabledElementsUnitTests(unittest.TestCase):
         self.assertEqual(enabled, ['timesheet', 'website_news'])
 
     def test_privileged_role_defaults_to_full_view(self):
-        allowed = ['social_feeds', 'website_news', 'quick_actions', 'timesheet', 'news']
+        allowed = ['social_feeds', 'website_news', 'timesheet', 'news']
         enabled = dashboard_config_support.resolve_enabled_elements(
             'sef.bio@nhmbeo.rs',
             'sef_odeljenja',

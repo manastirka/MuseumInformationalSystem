@@ -145,3 +145,44 @@ for (const url of TABELE_STRANE) {
     }
   }
 }
+
+// --- 4) ЗАГЛАВЉА БАЗА/ЗБИРКИ (.db-hero) × палета × режим -------------------
+// Свака база носи хардкодован банер (Bootstrap bg-info/success/warning/dark,
+// инлајн градијент код изложби, локални зелени градијент код минерала). Кроз
+// заједничку класу `.db-hero` у палети иду на тамноплаво→плави градијент, а сав
+// текст (укључујући `text-dark` заглавља) на бело. Мери се СВАКИ механизам
+// позадине бар једном; пошто је CSS правило заједничко, репрезентативан узорак
+// доказује цео скуп.
+const HERO_STRANE = [
+  '/admin/mineral_collection',          // локални .page-header зелени градијент
+  '/admin/exhibitions_database',        // инлајн linear-gradient
+  '/admin/cultural_heritage_database',  // bg-warning + text-dark (најризичнији)
+  '/admin/inventory_book',              // bg-warning + text-white
+  '/admin/research_database',           // bg-dark
+  '/admin/library_database',            // bg-info
+];
+for (const url of HERO_STRANE) {
+  for (const paleta of PALETE) {
+    for (const rezim of PALETE_REZIMI) {
+      test(`контраст заглавља базе (${paleta} × ${rezim}): ${url}`, async ({ page }) => {
+        test.skip(!EMAIL || !PASS, 'QA креденцијали су потребни.');
+        await login(page);
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+        test.skip(!resp || resp.status() !== 200, `Стране ${url} нема на овом окружењу.`);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(600);
+        await postaviPaletu(page, paleta, 'komforno', rezim);
+        // Дугачке базе (нпр. библиотека/минерали) дају врло висок fullPage снимак
+        // који руши декодовање мерача (EncodingError). Заглавље је при врху, па се
+        // садржај испод сакрива да снимак остане декодабилан (исто као thead група).
+        await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
+        await page.waitForTimeout(150);
+
+        const padovi = await izmeriKontrast(page, '.db-hero');
+        expect(padovi,
+          `Заглавље базе испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
+          .toEqual([]);
+      });
+    }
+  }
+}
