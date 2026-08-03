@@ -124,7 +124,10 @@ def test_theme_cookies_secure_under_https(theme_app):
 def test_current_theme_defaults(theme_app):
     with theme_app.test_request_context('/'):
         assert core_app_views.current_theme_mode() == 'system'
-        assert core_app_views.current_theme_accent() == 'zelena'
+        # Phase 2: the accent axis default is the 'podrazumevano' sentinel
+        # (family default), not a concrete colour, so a flat palette is never
+        # silently tinted green.
+        assert core_app_views.current_theme_accent() == 'podrazumevano'
         assert core_app_views.current_theme_style() == 'institucionalna'
         assert core_app_views.current_theme_density() == 'komforno'
 
@@ -134,7 +137,7 @@ def test_current_theme_normalizes_garbage_values(theme_app):
         '/', headers={'Cookie': 'museum_theme=neon; museum_accent=pink; museum_style=brutalizam; museum_density=zbijeno'}
     ):
         assert core_app_views.current_theme_mode() == 'system'
-        assert core_app_views.current_theme_accent() == 'zelena'
+        assert core_app_views.current_theme_accent() == 'podrazumevano'
         assert core_app_views.current_theme_style() == 'institucionalna'
         assert core_app_views.current_theme_density() == 'komforno'
 
@@ -292,3 +295,68 @@ def test_normalize_theme_palette_rejects_unknown():
     assert core_app_views.normalize_theme_palette('plava-tamna') == 'plava-tamna'
     assert core_app_views.normalize_theme_palette('nepostojeca') == 'plava-klasicna'
     assert core_app_views.normalize_theme_palette(None) == 'plava-klasicna'
+
+
+# ---- Faza 2: nove palete + akcentna osa -----------------------------------
+
+@pytest.mark.parametrize('paleta', [
+    'siva-poslovna', 'zelena-institucionalna', 'bordo-muzejska', 'crno-bela',
+])
+def test_set_theme_stores_faza2_palettes(theme_app, paleta):
+    """Četiri nove ravne palete (migracija 037) se čuvaju u sesiji i kolačiću."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'podrazumevano', 'palette': paleta},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_palette'] == paleta
+
+    cookies = response.headers.getlist('Set-Cookie')
+    assert any('museum_palette=' + paleta in c for c in cookies)
+
+
+def test_normalize_theme_palette_accepts_faza2():
+    for paleta in ('siva-poslovna', 'zelena-institucionalna',
+                   'bordo-muzejska', 'crno-bela'):
+        assert core_app_views.normalize_theme_palette(paleta) == paleta
+
+
+@pytest.mark.parametrize('akcenat', [
+    'klasicna-plava', 'svetloplava', 'tamnoplava', 'tirkizna',
+    'ljubicasta', 'narandzasta', 'grafitnosiva', 'podrazumevano',
+])
+def test_set_theme_stores_faza2_accents(theme_app, akcenat):
+    """Devet novih akcenata + sentinel se čuvaju i vraćaju."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': akcenat, 'palette': 'siva-poslovna'},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_accent'] == akcenat
+
+    cookies = response.headers.getlist('Set-Cookie')
+    assert any('museum_accent=' + akcenat in c for c in cookies)
+
+
+def test_normalize_theme_accent_sentinel_default():
+    # Unknown -> sentinel, not a concrete colour.
+    assert core_app_views.normalize_theme_accent('rozikasta') == 'podrazumevano'
+    assert core_app_views.normalize_theme_accent(None) == 'podrazumevano'
+    # Legacy heritage accents remain valid.
+    assert core_app_views.normalize_theme_accent('oker') == 'oker'
+    # New accents are accepted.
+    assert core_app_views.normalize_theme_accent('tirkizna') == 'tirkizna'
+
+
+def test_set_theme_accent_falls_back_to_current(theme_app):
+    """Delimičan POST (bez accent) ne resetuje već izabrani akcenat."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'palette': 'siva-poslovna'},
+    ):
+        session['museum_accent'] = 'tirkizna'
+        core_app_views.set_theme_preference()
+        assert session['museum_accent'] == 'tirkizna'

@@ -71,6 +71,37 @@
 
     .izgled-density { margin-top: 2.5rem; }
     .izgled-density h2 { font-size: 1.15rem; }
+    .izgled-accent, .izgled-auto { margin-top: 2.5rem; }
+    .izgled-accent h2, .izgled-auto h2 { font-size: 1.15rem; }
+
+    .accent-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+    .accent-swatch {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.4rem 0.75rem 0.4rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+    .accent-swatch .accent-dot {
+        width: 18px; height: 18px; border-radius: 50%;
+        background: var(--sw, transparent);
+        border: 1px solid rgba(0,0,0,0.18);
+        flex: 0 0 auto;
+    }
+    .accent-swatch.accent-default .accent-dot {
+        background: conic-gradient(#1d5fab, #1e7047, #a94d08, #6d28d9, #1d5fab);
+    }
+    .accent-swatch.is-current {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--focus-ring);
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    .accent-swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
     /* Трака режима прегледа */
     .preview-bar {
@@ -128,6 +159,22 @@
          'opis': 'Елегантна тамноплава основа са сребрним детаљима, бела садржина.',
          'header': '#10233d', 'sidebar': '#0d1e35', 'body': '#e7ebf1', 'surface': '#ffffff',
          'stripe': '#f2f5f9', 'thead': '#1a3557', 'primary': '#2a4f7a', 'border': '#d0d7e0'},
+        {'key': 'siva-poslovna', 'naziv': 'Сиво-бела пословна', 'tip': 'Светла',
+         'opis': 'Неутралне сиве површине, бела радна површина, дискретни акценти.',
+         'header': '#2b3138', 'sidebar': '#23272e', 'body': '#f4f5f7', 'surface': '#ffffff',
+         'stripe': '#f6f7f9', 'thead': '#2b3138', 'primary': '#3f4753', 'border': '#dcdfe4'},
+        {'key': 'zelena-institucionalna', 'naziv': 'Зелена институционална', 'tip': 'Светла',
+         'opis': 'Пригушена институционална зелена на белој основи.',
+         'header': '#123d2b', 'sidebar': '#0f3624', 'body': '#eef3f0', 'surface': '#ffffff',
+         'stripe': '#f1f7f3', 'thead': '#123d2b', 'primary': '#1e7047', 'border': '#cddbd3'},
+        {'key': 'bordo-muzejska', 'naziv': 'Бордо музејска', 'tip': 'Светла',
+         'opis': 'Топла бордо основа у духу музејског идентитета, без агресивне засићености.',
+         'header': '#4d1719', 'sidebar': '#431315', 'body': '#f4ece9', 'surface': '#ffffff',
+         'stripe': '#f8f1ee', 'thead': '#4d1719', 'primary': '#8a2f38', 'border': '#e0cfca'},
+        {'key': 'crno-bela', 'naziv': 'Црно-бела висок контраст', 'tip': 'Светла',
+         'opis': 'Максимална читљивост: црн рам и линије, бела површина, црн текст.',
+         'header': '#000000', 'sidebar': '#000000', 'body': '#ffffff', 'surface': '#ffffff',
+         'stripe': '#f0f0f0', 'thead': '#000000', 'primary': '#1a1a1a', 'border': '#000000'},
         {'key': 'heritage', 'naziv': 'Класична музејска', 'tip': 'Светла',
          'opis': 'Изворни музејски изглед (пергамент) са режимом, акцентом и стилом.',
          'header': '#4d1617', 'sidebar': '#561719', 'body': '#efe0c3', 'surface': '#f5ead4',
@@ -173,6 +220,54 @@
         {% endfor %}
     </div>
 
+    {%- set accents = [
+        {'key': 'podrazumevano', 'naziv': 'Подразумевано (по теми)', 'boja': ''},
+        {'key': 'klasicna-plava', 'naziv': 'Класична плава', 'boja': '#1d5fab'},
+        {'key': 'svetloplava', 'naziv': 'Светлоплава', 'boja': '#146cb8'},
+        {'key': 'tamnoplava', 'naziv': 'Тамноплава', 'boja': '#1f4d80'},
+        {'key': 'tirkizna', 'naziv': 'Тиркизна', 'boja': '#0f766e'},
+        {'key': 'zelena', 'naziv': 'Зелена', 'boja': '#1e7047'},
+        {'key': 'ljubicasta', 'naziv': 'Љубичаста', 'boja': '#6d28d9'},
+        {'key': 'bordo', 'naziv': 'Бордо', 'boja': '#8a2f38'},
+        {'key': 'narandzasta', 'naziv': 'Наранџаста', 'boja': '#a94d08'},
+        {'key': 'grafitnosiva', 'naziv': 'Графитносива', 'boja': '#3f4753'}
+    ] -%}
+    {%- set current_accent = current_theme_accent|default('podrazumevano') -%}
+
+    <section class="izgled-accent">
+        <h2>Акцентна боја</h2>
+        <p class="text-muted" style="font-size:0.88rem;">
+            Боји дугмад, линкове, селекције, ознаке, иконе и фокус на радним
+            површинама. Примењује се на палете (осим класичне музејске, која има
+            свој бирач у горњем менију). <strong>Подразумевано</strong> задржава
+            идентитетску боју изабране теме.
+        </p>
+        <div class="accent-grid" role="group" aria-label="Акцентна боја">
+            {% for a in accents %}
+            <button type="button"
+                    class="accent-swatch {% if a.key == current_accent %}is-current{% endif %}{% if not a.boja %} accent-default{% endif %}"
+                    data-accent="{{ a.key }}" title="{{ a.naziv }}" aria-label="{{ a.naziv }}"
+                    {% if a.boja %}style="--sw:{{ a.boja }};"{% endif %}>
+                <span class="accent-dot" aria-hidden="true"></span>
+                <span class="accent-label">{{ a.naziv }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="izgled-auto">
+        <h2>Аутоматска тема</h2>
+        <p class="text-muted" style="font-size:0.88rem;">
+            Прати светли/тамни режим оперативног система и примењује га на изабрану
+            палету. Кад је искључено, палета остаје у светлој варијанти.
+        </p>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="autoSwitch"
+                   {% if current_theme_mode|default('system') == 'system' %}checked{% endif %}>
+            <label class="form-check-label" for="autoSwitch">Аутоматски (прати систем)</label>
+        </div>
+    </section>
+
     <section class="izgled-density">
         <h2>Густина приказа</h2>
         <p class="text-muted" style="font-size:0.88rem;">Размак између елемената примењује се на сваку тему.</p>
@@ -195,16 +290,30 @@
 <script>
 (function () {
     var T = window.MuseumTheme || {};
-    var savedPalette = T.palette || 'plava-klasicna';   // тренутно сачувана тема
-    var previewing = null;                                // тема у прегледу (или null)
+    // Trenutno sačuvano stanje. Paleta se menja kroz Pregledaj/Primeni; akcenat,
+    // auto režim i gustina se primenjuju i pamte odmah (kao i ranije gustina).
+    var saved = {
+        palette: T.palette || 'plava-klasicna',
+        accent: T.accent || 'podrazumevano',
+        mode: T.mode || 'system',
+        density: T.density || 'komforno',
+        style: T.style || 'institucionalna'
+    };
+    var previewPalette = null;   // paleta u pregledu (ili null)
 
     var bar = document.getElementById('previewBar');
     var barName = document.getElementById('previewName');
+    var request = window.secureFetch || fetch;
 
-    function applyPaletteVisual(pal) {
-        // искористи постојећу логику из base.html (примена + Chart/Leaflet)
-        window.MuseumTheme.palette = pal;
-        window.MuseumTheme.applyResolved(window.MuseumTheme.mode);
+    // Vizuelna paleta = pregledana ako je aktivan pregled, inače sačuvana; akcenat
+    // i režim se uvek uzimaju iz sačuvanog stanja, pa se svaka KOMBINACIJA
+    // (tema × akcenat × auto) vidi uživo (spec tačka 4).
+    function effectivePalette() { return previewPalette || saved.palette; }
+    function applyVisual() {
+        window.MuseumTheme.palette = effectivePalette();
+        window.MuseumTheme.accent = saved.accent;
+        window.MuseumTheme.mode = saved.mode;
+        window.MuseumTheme.applyResolved(saved.mode);
     }
 
     function markCurrentCard(pal) {
@@ -212,86 +321,90 @@
             c.classList.toggle('is-current', c.getAttribute('data-palette-key') === pal);
         });
     }
-
-    function showBar(name) {
-        barName.textContent = name;
-        bar.hidden = false;
+    function markAccent(acc) {
+        document.querySelectorAll('.accent-swatch').forEach(function (b) {
+            b.classList.toggle('is-current', b.getAttribute('data-accent') === acc);
+        });
     }
+
+    function showBar(name) { barName.textContent = name; bar.hidden = false; }
     function hideBar() { bar.hidden = true; }
 
-    function startPreview(pal, name) {
-        previewing = pal;
-        applyPaletteVisual(pal);
-        showBar(name);
-    }
-
-    function revertVisual() {
-        previewing = null;
-        applyPaletteVisual(savedPalette);
-        hideBar();
-    }
-
-    function persist(pal, onDone) {
-        var request = window.secureFetch || fetch;
+    function sendPrefs(onDone) {
         request('/set_theme', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                mode: T.mode, accent: T.accent, style: T.style,
-                density: T.density, palette: pal
+                mode: saved.mode, accent: saved.accent, style: saved.style,
+                density: saved.density, palette: saved.palette
             })
         }).then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
           .then(function () {
-              savedPalette = pal;
-              window.MuseumTheme.palette = pal;
-              // рефлектуј у колачић одмах (пре-рендер друге странице)
-              document.cookie = 'museum_palette=' + pal + ';path=/;max-age=31536000;samesite=Lax';
-              markCurrentCard(pal);
+              // reflektuj u kolačiće odmah (pre-render sledeće strane)
+              document.cookie = 'museum_palette=' + saved.palette + ';path=/;max-age=31536000;samesite=Lax';
+              document.cookie = 'museum_accent=' + saved.accent + ';path=/;max-age=31536000;samesite=Lax';
+              document.cookie = 'museum_theme=' + saved.mode + ';path=/;max-age=31536000;samesite=Lax';
               if (onDone) onDone();
           })
           .catch(function () { alert('Чување теме није успело. Покушајте поново.'); });
     }
 
+    // --- Paleta: Pregledaj / Primeni / Vrati ---
     document.querySelectorAll('[data-preview]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            startPreview(btn.getAttribute('data-preview'), btn.getAttribute('data-name'));
+            previewPalette = btn.getAttribute('data-preview');
+            applyVisual();
+            showBar(btn.getAttribute('data-name'));
         });
     });
+    function applyPalette(pal) {
+        saved.palette = pal;
+        previewPalette = null;
+        applyVisual();
+        markCurrentCard(pal);
+        sendPrefs(hideBar);
+    }
     document.querySelectorAll('[data-apply]').forEach(function (btn) {
+        btn.addEventListener('click', function () { applyPalette(btn.getAttribute('data-apply')); });
+    });
+    document.getElementById('previewApply').addEventListener('click', function () {
+        if (previewPalette) applyPalette(previewPalette);
+    });
+    function revert() { previewPalette = null; applyVisual(); hideBar(); }
+    document.getElementById('previewRevert').addEventListener('click', revert);
+    document.getElementById('previewCancel').addEventListener('click', revert);
+
+    // --- Akcenat: primeni i sačuvaj odmah (vidi se na aktivnoj/pregledanoj paleti) ---
+    document.querySelectorAll('.accent-swatch').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            var pal = btn.getAttribute('data-apply');
-            applyPaletteVisual(pal);
-            persist(pal, function () { previewing = null; hideBar(); });
+            saved.accent = btn.getAttribute('data-accent');
+            applyVisual();
+            markAccent(saved.accent);
+            sendPrefs();
         });
     });
 
-    document.getElementById('previewApply').addEventListener('click', function () {
-        if (previewing) persist(previewing, function () { previewing = null; hideBar(); });
-    });
-    document.getElementById('previewRevert').addEventListener('click', revertVisual);
-    document.getElementById('previewCancel').addEventListener('click', revertVisual);
+    // --- Automatska tema: prati sistem (system) ↔ uvek svetlo (light) ---
+    var autoSwitch = document.getElementById('autoSwitch');
+    if (autoSwitch) {
+        autoSwitch.addEventListener('change', function () {
+            saved.mode = autoSwitch.checked ? 'system' : 'light';
+            applyVisual();
+            sendPrefs();
+        });
+    }
 
-    // Густина — примени одмах и сачувај
+    // --- Gustina: primeni i sačuvaj odmah ---
     document.querySelectorAll('[data-density]').forEach(function (btn) {
-        if (btn.getAttribute('data-density') === (T.density || 'komforno')) {
-            btn.classList.add('active');
-        }
+        if (btn.getAttribute('data-density') === saved.density) btn.classList.add('active');
         btn.addEventListener('click', function () {
-            var d = btn.getAttribute('data-density');
-            window.MuseumTheme.density = d; T.density = d;
-            if (d === 'komforno') document.documentElement.removeAttribute('data-density');
-            else document.documentElement.setAttribute('data-density', d);
+            saved.density = btn.getAttribute('data-density');
+            window.MuseumTheme.density = saved.density;
+            if (saved.density === 'komforno') document.documentElement.removeAttribute('data-density');
+            else document.documentElement.setAttribute('data-density', saved.density);
             document.querySelectorAll('[data-density]').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
-            var request = window.secureFetch || fetch;
-            request('/set_theme', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mode: T.mode, accent: T.accent, style: T.style,
-                    density: d, palette: savedPalette
-                })
-            });
+            sendPrefs();
         });
     });
 })();
