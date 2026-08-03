@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from flask import current_app, render_template, request, session
-from core_app_views import current_theme_accent, current_theme_density, current_theme_mode, current_theme_palette, current_theme_style, current_ui_language
+from core_app_views import current_custom_theme_render, current_theme_accent, current_theme_density, current_theme_mode, current_theme_palette, current_theme_style, current_ui_language
 
 
 def register_error_handlers(flask_app) -> None:
@@ -89,6 +89,11 @@ def register_template_context(
                 return False
             return user_has_module_access(user_email, user_role, module_key)
 
+        # Phase 3: when the active palette is 'custom', resolve the user's theme
+        # to inline --pal-* tokens for the <html> tag. Empty when not custom or
+        # unresolvable — base.html then falls back to a system palette.
+        custom_css, custom_bs = current_custom_theme_render()
+
         return dict(
             user_logged_in=user_logged_in,
             user_name=session.get('user_name', ''),
@@ -110,6 +115,8 @@ def register_template_context(
             current_theme_style=current_theme_style(),
             current_theme_density=current_theme_density(),
             current_theme_palette=current_theme_palette(),
+            current_custom_theme_css=custom_css,
+            current_custom_theme_bs=custom_bs,
         )
 
 

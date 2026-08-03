@@ -125,6 +125,132 @@
     .preview-bar[hidden] { display: none; }
     .preview-bar .pb-label { font-size: 0.9rem; }
     .preview-bar .pb-label strong { color: #cfe0f7; }
+
+    /* ---- Креатор сопствене теме (фаза 3) ---- */
+    .izgled-creator { margin-top: 3rem; }
+    .izgled-creator h2 { font-size: 1.25rem; }
+    .creator-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 1.5rem;
+        margin-top: 1rem;
+        align-items: start;
+    }
+    @media (max-width: 900px) { .creator-grid { grid-template-columns: 1fr; } }
+
+    .creator-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-card);
+        padding: 1.1rem 1.2rem 1.3rem;
+        box-shadow: var(--shadow-card);
+    }
+    .creator-panel h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+
+    .cc-colors { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1rem; }
+    @media (max-width: 560px) { .cc-colors { grid-template-columns: 1fr; } }
+    .cc-row { display: flex; align-items: center; gap: 0.5rem; }
+    .cc-row label { flex: 1; font-size: 0.85rem; color: var(--text-secondary); }
+    .cc-row input[type="color"] {
+        width: 34px; height: 30px; border: 1px solid var(--border-color);
+        border-radius: 6px; padding: 0; background: none; cursor: pointer; flex: 0 0 auto;
+    }
+    .cc-row input[type="text"] {
+        width: 84px; font-size: 0.78rem; font-family: ui-monospace, monospace;
+        padding: 0.25rem 0.4rem; border: 1px solid var(--border-color);
+        border-radius: 6px; background: var(--bg-card); color: var(--text-primary);
+        text-transform: lowercase; flex: 0 0 auto;
+    }
+
+    .cc-params { margin-top: 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+    .cc-params .cc-field label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+    .cc-shadow-group .btn.active { background: var(--primary); color: var(--on-accent); border-color: var(--primary); }
+    #cc-radius { width: 100%; }
+    #cc-radius-val { font-size: 0.8rem; color: var(--text-muted); }
+    .cc-name-field input {
+        width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border-color);
+        border-radius: 6px; background: var(--bg-card); color: var(--text-primary);
+    }
+
+    .creator-ops { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; }
+    .creator-msg { margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.85rem; }
+    .creator-msg.ok { background: var(--success-soft); color: var(--success-text); }
+    .creator-msg.err { background: var(--danger-soft); color: #8f222d; }
+    .creator-msg[hidden] { display: none; }
+
+    /* Минијатурни преглед — независан од токена документа (сопствене --x-* боје) */
+    .creator-mini {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+        background: var(--x-body, #f1f5fb);
+    }
+    .cm-top {
+        height: 40px; background: var(--x-header, #16375d); color: var(--x-headink, #fff);
+        display: flex; align-items: center; padding: 0 0.85rem; font-weight: 600; font-size: 0.85rem;
+    }
+    .cm-body { display: flex; min-height: 210px; }
+    .cm-side { width: 30%; background: var(--x-sidebar, #143257); color: var(--x-sideink, #eaf1fb); padding: 0.7rem 0.6rem; }
+    .cm-side .cm-navitem { font-size: 0.72rem; padding: 0.3rem 0.4rem; border-radius: 6px; margin-bottom: 0.3rem; opacity: 0.9; }
+    .cm-side .cm-navitem.active { background: rgba(255,255,255,0.16); opacity: 1; }
+    .cm-main { flex: 1; padding: 0.85rem; }
+    .cm-card {
+        background: var(--x-card, #fff); border: 1px solid var(--x-border, #d5dde9);
+        border-radius: var(--x-radius, 8px); box-shadow: var(--x-shadow, none);
+        padding: 0.75rem; color: var(--x-text, #1f2a37);
+    }
+    .cm-card h4 { font-size: 0.85rem; margin: 0 0 0.5rem; color: var(--x-text, #1f2a37); }
+    .cm-card p { font-size: 0.75rem; margin: 0 0 0.55rem; color: var(--x-text, #1f2a37); }
+    .cm-card a { color: var(--x-link, #1d5fab); font-size: 0.75rem; }
+    .cm-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.7rem; }
+    .cm-table th { background: var(--x-header, #16375d); color: var(--x-headink, #fff); padding: 0.25rem 0.4rem; text-align: left; }
+    .cm-table td { padding: 0.25rem 0.4rem; border-bottom: 1px solid var(--x-border, #d5dde9); color: var(--x-text); }
+    .cm-table tr.sel td { background: var(--x-selection, #d9e7fa); color: var(--x-selink, #143257); }
+    .cm-actions { margin-top: 0.6rem; display: flex; gap: 0.4rem; align-items: center; }
+    .cm-btn {
+        background: var(--x-button, #1d5fab); color: var(--x-btnink, #fff);
+        border: none; border-radius: var(--x-radius, 8px); padding: 0.3rem 0.7rem;
+        font-size: 0.72rem; font-weight: 600; box-shadow: var(--x-shadow, none);
+    }
+    .cm-warn { font-size: 0.7rem; color: var(--x-warning, #8a5606); font-weight: 600; }
+
+    .contrast-readout { margin-top: 1rem; }
+    .contrast-readout h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .ck-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+        padding: 0.32rem 0.5rem; border: 1px solid var(--border-color); border-radius: 8px;
+        margin-bottom: 0.35rem; font-size: 0.82rem; background: var(--bg-card);
+    }
+    .ck-item.is-fail { border-color: #d0a0a5; }
+    .ck-item .ck-label { color: var(--text-secondary); }
+    .ck-item .ck-right { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .ck-item .ck-ratio { font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--text-muted); }
+    .ck-badge { font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; }
+    .ck-badge.ck-pass { background: #d8f2e5; color: #04613f; }
+    .ck-badge.ck-fail { background: #f7dedf; color: #8f222d; }
+    .contrast-warn {
+        margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px;
+        background: var(--warning-soft, #f7edd6); color: #6e4405; font-size: 0.8rem;
+    }
+    .contrast-warn[hidden] { display: none; }
+
+    .saved-themes { margin-top: 1.25rem; }
+    .saved-theme {
+        display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 10px;
+        margin-bottom: 0.5rem; background: var(--bg-card);
+    }
+    .saved-theme.is-active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--focus-ring); }
+    .saved-theme .st-main { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+    .st-swatches { display: inline-flex; gap: 3px; }
+    .st-sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); }
+    .st-name { font-weight: 600; color: var(--text-primary); }
+    .st-active { font-size: 0.72rem; color: var(--primary); font-weight: 600; }
+    .st-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    #customThemeEmpty { color: var(--text-muted); font-size: 0.88rem; }
+    #customThemeEmpty[hidden] { display: none; }
 </style>
 {% endblock %}
 
@@ -276,6 +402,153 @@
             <button type="button" class="btn btn-outline-secondary" data-density="kompakt">Компакт</button>
         </div>
     </section>
+
+    {# ===================== ФАЗА 3: Креатор сопствене теме ===================== #}
+    <section class="izgled-creator" id="themeCreator">
+        <h2>Сопствена тема</h2>
+        <p class="text-muted" style="font-size:0.88rem; max-width:70ch;">
+            Направите своју тему бирањем сваке боје појединачно. Преглед се
+            освежава уживо — ништа се не чува док не кликнете <strong>Сачувај</strong>.
+            Сопствене теме су приватне (видите их само ви); делите их извозом/увозом
+            JSON датотеке. Испод сваке комбинације приказан је AA статус читљивости.
+        </p>
+
+        <div class="creator-grid">
+            <!-- Леви ступац: контроле -->
+            <div class="creator-panel" aria-label="Контроле теме">
+                <h3>Боје</h3>
+                <div class="cc-colors">
+                    {%- set color_fields = [
+                        ('primary', 'Основна боја'),
+                        ('accent', 'Акцентна'),
+                        ('header', 'Заглавље'),
+                        ('sidebar', 'Бочни мени'),
+                        ('body', 'Позадина'),
+                        ('card', 'Картице'),
+                        ('button', 'Дугмад'),
+                        ('selection', 'Селектовани ред'),
+                        ('text', 'Текст'),
+                        ('border', 'Оквири'),
+                        ('link', 'Линкови'),
+                        ('warning', 'Упозорења')
+                    ] -%}
+                    {% for key, naziv in color_fields %}
+                    <div class="cc-row">
+                        <label for="cc-{{ key }}">{{ naziv }}</label>
+                        <input type="color" id="cc-{{ key }}" value="#000000" aria-label="{{ naziv }} — боја">
+                        <input type="text" id="cc-hex-{{ key }}" value="#000000" spellcheck="false"
+                               aria-label="{{ naziv }} — hex" maxlength="7">
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="cc-params">
+                    <div class="cc-field">
+                        <label>Јачина сенки</label>
+                        <div class="btn-group cc-shadow-group" role="group" aria-label="Јачина сенки">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-shadow="none">Без</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-shadow="soft">Благе</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-shadow="medium">Средње</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-shadow="strong">Изражене</button>
+                        </div>
+                    </div>
+                    <div class="cc-field">
+                        <label for="cc-radius">Заобљеност елемената — <span id="cc-radius-val">8 px</span></label>
+                        <input type="range" id="cc-radius" min="0" max="20" step="1" value="8">
+                    </div>
+                    <div class="cc-field cc-name-field">
+                        <label for="cc-name">Назив теме</label>
+                        <input type="text" id="cc-name" maxlength="80" placeholder="нпр. Моја плава" spellcheck="false">
+                    </div>
+                </div>
+
+                <div class="creator-ops">
+                    <button type="button" class="btn btn-primary btn-sm" id="ccSave">Сачувај</button>
+                    <button type="button" class="btn btn-success btn-sm" id="ccApply">Сачувај и примени</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="ccPreview">Прегледај на апликацији</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="ccNew">Нова</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="ccReset">Врати подразумевано</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="ccExportCurrent">Извези тренутну</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="ccImport">Увези из датотеке</button>
+                    <input type="file" id="ccImportFile" accept="application/json,.json" hidden>
+                </div>
+                <div class="creator-msg" id="creatorMsg" role="status" hidden></div>
+            </div>
+
+            <!-- Десни ступац: живи преглед + контраст -->
+            <div>
+                <div class="creator-mini" id="creatorMini" aria-label="Живи преглед теме">
+                    <div class="cm-top">Природњачки музеј — преглед</div>
+                    <div class="cm-body">
+                        <div class="cm-side">
+                            <div class="cm-navitem active">Контролна табла</div>
+                            <div class="cm-navitem">Збирке</div>
+                            <div class="cm-navitem">Радне листе</div>
+                            <div class="cm-navitem">Изложбе</div>
+                        </div>
+                        <div class="cm-main">
+                            <div class="cm-card">
+                                <h4>Пример картице</h4>
+                                <p>Ово је пример текста на картици са <a href="#" onclick="return false;">линком</a>.</p>
+                                <table class="cm-table">
+                                    <thead><tr><th>Назив</th><th>Стање</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>Ставка 1</td><td>Активно</td></tr>
+                                        <tr class="sel"><td>Ставка 2</td><td>Изабрано</td></tr>
+                                        <tr><td>Ставка 3</td><td>Активно</td></tr>
+                                    </tbody>
+                                </table>
+                                <div class="cm-actions">
+                                    <button type="button" class="cm-btn">Сачувај</button>
+                                    <span class="cm-warn">Упозорење</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contrast-readout" aria-live="polite">
+                    <h3>Читљивост (AA)</h3>
+                    <div id="contrastReadout">
+                        {%- set ck_items = [
+                            ('ck-text-body', 'Текст на позадини'),
+                            ('ck-text-card', 'Текст на картици'),
+                            ('ck-btn', 'Натпис на дугмету'),
+                            ('ck-header', 'Наслов заглавља'),
+                            ('ck-sidebar', 'Бочни мени'),
+                            ('ck-selection', 'Селектовани ред'),
+                            ('ck-link', 'Линк на картици')
+                        ] -%}
+                        {% for cid, clabel in ck_items %}
+                        <div class="ck-item" id="{{ cid }}">
+                            <span class="ck-label">{{ clabel }}</span>
+                            <span class="ck-right">
+                                <span class="ck-ratio">—</span>
+                                <span class="ck-badge">—</span>
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="contrast-warn" id="contrastWarn" hidden>
+                        Неке комбинације не задовољавају AA читљивост. Тему можете
+                        сачувати (то је ваш лични избор), али текст на тим површинама
+                        може бити тешко читљив.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="saved-themes">
+            <h3 style="font-size:1.05rem;">Моје сачуване теме</h3>
+            <p id="customThemeEmpty" hidden>Још немате сачуваних тема. Направите је горе и кликните „Сачувај".</p>
+            <div id="customThemeList"></div>
+        </div>
+    </section>
+</div>
+
+<div id="creatorPreviewBar" class="preview-bar" hidden role="region" aria-label="Режим прегледа сопствене теме">
+    <span class="pb-label">Преглед сопствене теме је укључен — измене нису сачуване.</span>
+    <button type="button" id="ccPreviewStop" class="btn btn-light btn-sm">Заустави преглед</button>
 </div>
 
 <div id="previewBar" class="preview-bar" hidden role="region" aria-label="Режим прегледа теме">
@@ -409,4 +682,5 @@
     });
 })();
 </script>
+<script src="{{ url_for('static', filename='js/theme_creator.js') }}"></script>
 {% endblock %}

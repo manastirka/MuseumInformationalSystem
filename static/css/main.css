@@ -3741,10 +3741,14 @@ html[data-density="kompakt"][data-style="terenska"] {
     --primary: var(--pal-primary);
     --primary-dark: var(--pal-primary-dark);
     --primary-light: var(--pal-primary-light);
-    --accent: var(--pal-primary);
-    --accent-strong: var(--pal-primary-dark);
+    /* Accent/on-accent honour optional identity vars (phase 3 custom themes set
+       them so the accent can diverge from primary); all existing palettes leave
+       them unset and fall back to --pal-primary / white, so this is a no-op for
+       them. */
+    --accent: var(--pal-accent, var(--pal-primary));
+    --accent-strong: var(--pal-accent-dark, var(--pal-primary-dark));
     --accent-light: var(--pal-primary-light);
-    --on-accent: #ffffff;
+    --on-accent: var(--pal-on-accent, #ffffff);
     --on-accent-soft: rgba(255, 255, 255, 0.85);
     --navbar-text: #ffffff;
     --focus-ring: var(--pal-focus, rgba(37, 99, 176, 0.35));
@@ -3761,15 +3765,16 @@ html[data-density="kompakt"][data-style="terenska"] {
 
     /* Семантичке боје — приступачне тамне нијансе (провозане WCAG AA) */
     --success: #0b7a48; --success-text: #04613f;
-    --warning: #8a5606; --danger: #b02a37; --info: var(--pal-primary);
+    --warning: var(--pal-warning, #8a5606); --danger: #b02a37; --info: var(--pal-primary);
     --success-soft: #d8f2e5; --warning-soft: #f7edd6;
     --danger-soft: #f7dedf; --info-soft: #dfeafa;
 
-    /* heritage градијент дугмади → плаво (btn-primary/success/login) */
-    --heritage-accent-hi: var(--pal-primary);
-    --heritage-accent-lo: var(--pal-primary-dark);
-    --heritage-accent-hover-hi: var(--pal-primary-dark);
-    --heritage-accent-hover-lo: var(--pal-primary-dark);
+    /* heritage градијент дугмади → плаво (btn-primary/success/login). Опциони
+       --pal-btn* (фаза 3) допушта да боја дугмади одступа од примарне. */
+    --heritage-accent-hi: var(--pal-btn, var(--pal-primary));
+    --heritage-accent-lo: var(--pal-btn-dark, var(--pal-primary-dark));
+    --heritage-accent-hover-hi: var(--pal-btn-dark, var(--pal-primary-dark));
+    --heritage-accent-hover-lo: var(--pal-btn-dark, var(--pal-primary-dark));
     --heritage-ink: var(--pal-text);
     --heritage-parchment: var(--pal-bg-card);
     --heritage-parchment-deep: var(--pal-elevated);
@@ -3780,7 +3785,7 @@ html[data-density="kompakt"][data-style="terenska"] {
     --radius-card: var(--pal-radius-card);
     --radius-btn: var(--pal-radius-btn);
     --radius-input: var(--pal-radius-btn);
-    --shadow-card: 0 1px 3px rgba(15, 40, 74, 0.08), 0 1px 2px rgba(15, 40, 74, 0.06);
+    --shadow-card: var(--pal-shadow, 0 1px 3px rgba(15, 40, 74, 0.08), 0 1px 2px rgba(15, 40, 74, 0.06));
     --shadow-btn: none;
 
     /* Бочни мени → тамноплав рам, светли текст */
@@ -4370,6 +4375,21 @@ html[data-density="kompakt"][data-style="terenska"] {
 [data-palette][data-theme="dark"][data-accent="grafitnosiva"] body.heritage-shell {
     --pal-primary: #aeb7c4; --pal-primary-dark: #9aa4b3; --pal-primary-light: #c6cdd7;
     --on-accent: #1b1f26; --pal-focus: rgba(174, 183, 196, 0.4);
+}
+
+/* ============================================
+   ФАЗА 3 — сопствена (custom) тема
+   --------------------------------------------
+   Custom тема не уводи нови CSS мотор: њене --pal-* вредности стижу inline на
+   <html data-palette="custom"> (сервер их разреши из дефиниције, види
+   custom_theme.py; уживо их мења static/js/theme_creator.js). Заједнички
+   [data-palette] блок их већ мапира у токене. Овде остаје само оно што se не
+   покрива токеном: боја линкова у садржају, коју custom допушта да одступи од
+   примарне. Опсег је искључиво data-palette="custom" — остале палете нетакнуте.
+   Долази ПОСЛЕ фаза 1/2, ПРЕ @media print.
+   ============================================ */
+[data-palette="custom"] body.heritage-shell a:not(.btn):not(.nav-link):not(.navbar-brand):not(.dropdown-item):not(.page-link):not(.list-group-item):not(.badge):not(.card):not(.list-group-item-action) {
+    color: var(--pal-link, var(--primary));
 }
 
 /* ============================================

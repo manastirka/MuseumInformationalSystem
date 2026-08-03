@@ -79,6 +79,7 @@ class PostgresAuthSystem:
                             u.theme_style,
                             u.theme_density,
                             u.theme_palette,
+                            u.active_custom_theme_id,
                             r.name as role,
                             COALESCE(d.name, ep.department) as department
                         FROM users u
@@ -138,7 +139,8 @@ class PostgresAuthSystem:
                         'theme_accent': user['theme_accent'],
                         'theme_style': user['theme_style'],
                         'theme_density': user['theme_density'],
-                        'theme_palette': user['theme_palette']
+                        'theme_palette': user['theme_palette'],
+                        'active_custom_theme_id': user.get('active_custom_theme_id')
                     }
 
         except Exception as e:
@@ -251,8 +253,11 @@ class PostgresAuthSystem:
     def save_theme_preferences(self, email: str, theme_mode: str, theme_accent: str,
                                theme_style: str = 'institucionalna',
                                theme_density: str = 'komforno',
-                               theme_palette: str = 'plava-klasicna') -> bool:
-        """Persist the user's UI theme preference (mode + accent + style + density + palette)"""
+                               theme_palette: str = 'plava-klasicna',
+                               active_custom_theme_id=None) -> bool:
+        """Persist the user's UI theme preference (mode + accent + style + density
+        + palette). active_custom_theme_id is written only when the palette is
+        'custom' (else NULL) so switching away clears the pointer."""
         if not self.available:
             return False
 
@@ -268,16 +273,174 @@ class PostgresAuthSystem:
                             theme_style = %s,
                             theme_density = %s,
                             theme_palette = %s,
+                            active_custom_theme_id = %s,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                     """, (theme_mode, theme_accent, theme_style, theme_density,
-                          theme_palette, datetime.now(), email))
+                          theme_palette,
+                          active_custom_theme_id if theme_palette == 'custom' else None,
+                          datetime.now(), email))
 
                     conn.commit()
                     return True
 
         except Exception as e:
             logger.error(f"PostgresAuth: Error saving theme preferences: {e}")
+            return False
+
+    # ---- Custom themes (phase 3) ----------------------------------------- #
+    # Private per-user themes stored as validated JSONB. All reads/writes are
+    # scoped by user_email so one user can never touch another's themes.
+
+    def list_custom_themes(self, email: str) -> list:
+        """Return the user's saved custom themes (id, name, definition, timestamps),
+        newest first."""
+        if not self.available:
+            return []
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, name, definition, created_at, updated_at
+                        FROM user_custom_themes
+                        WHERE LOWER(user_email) = LOWER(%s)
+                        ORDER BY updated_at DESC, id DESC
+                    """, (email,))
+                    return list(cur.fetchall())
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error listing custom themes: {e}")
+            return []
+
+    def get_custom_theme(self, email: str, theme_id: int):
+        """Return one custom theme owned by the user, or None."""
+        if not self.available:
+            return None
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, name, definition, created_at, updated_at
+                        FROM user_custom_themes
+                        WHERE id = %s AND LOWER(user_email) = LOWER(%s)
+                    """, (theme_id, email))
+                    return cur.fetchone()
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error getting custom theme: {e}")
+            return None
+
+    def create_custom_theme(self, email: str, name: str, definition: dict):
+        """Insert a new custom theme; return its new id or None on failure."""
+        if not self.available:
+            return None
+        try:
+            import json
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO user_custom_themes (user_email, name, definition)
+                        VALUES (%s, %s, %s)
+                        RETURNING id
+                    """, (email, name, json.dumps(definition)))
+                    new_id = cur.fetchone()[0]
+                    conn.commit()
+                    return new_id
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error creating custom theme: {e}")
+            return None
+
+    def update_custom_theme(self, email: str, theme_id: int, name: str,
+                            definition: dict) -> bool:
+        """Update name+definition of a theme the user owns."""
+        if not self.available:
+            return False
+        try:
+            import json
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE user_custom_themes
+                        SET name = %s, definition = %s, updated_at = now()
+                        WHERE id = %s AND LOWER(user_email) = LOWER(%s)
+                    """, (name, json.dumps(definition), theme_id, email))
+                    changed = cur.rowcount
+                    conn.commit()
+                    return changed > 0
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error updating custom theme: {e}")
+            return False
+
+    def rename_custom_theme(self, email: str, theme_id: int, name: str) -> bool:
+        """Rename a theme the user owns (definition untouched)."""
+        if not self.available:
+            return False
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE user_custom_themes
+                        SET name = %s, updated_at = now()
+                        WHERE id = %s AND LOWER(user_email) = LOWER(%s)
+                    """, (name, theme_id, email))
+                    changed = cur.rowcount
+                    conn.commit()
+                    return changed > 0
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error renaming custom theme: {e}")
+            return False
+
+    def delete_custom_theme(self, email: str, theme_id: int) -> bool:
+        """Delete a theme the user owns and clear it from active pointer if set."""
+        if not self.available:
+            return False
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        DELETE FROM user_custom_themes
+                        WHERE id = %s AND LOWER(user_email) = LOWER(%s)
+                    """, (theme_id, email))
+                    changed = cur.rowcount
+                    # If this theme was the applied one, drop back to the default
+                    # palette so the user never renders a deleted theme.
+                    cur.execute("""
+                        UPDATE users
+                        SET active_custom_theme_id = NULL,
+                            theme_palette = 'plava-klasicna'
+                        WHERE LOWER(email) = LOWER(%s)
+                          AND active_custom_theme_id = %s
+                    """, (email, theme_id))
+                    conn.commit()
+                    return changed > 0
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error deleting custom theme: {e}")
+            return False
+
+    def set_active_custom_theme(self, email: str, theme_id) -> bool:
+        """Point the user at a custom theme and switch palette to 'custom'. Pass
+        theme_id=None to keep palette handling to save_theme_preferences."""
+        if not self.available:
+            return False
+        try:
+            pg_url = self.database_url.replace('postgresql+psycopg://', 'postgresql://')
+            with psycopg.connect(pg_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE users
+                        SET theme_palette = 'custom',
+                            active_custom_theme_id = %s,
+                            updated_at = %s
+                        WHERE LOWER(email) = LOWER(%s)
+                    """, (theme_id, datetime.now(), email))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"PostgresAuth: Error setting active custom theme: {e}")
             return False
 
     def list_users(self) -> list:
