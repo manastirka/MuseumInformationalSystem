@@ -3943,6 +3943,22 @@ html[data-density="kompakt"][data-style="terenska"] {
     --bs-table-bg: var(--pal-thead-bg);
     --bs-table-color: var(--pal-thead-text);
 }
+/* Заглавље табеле прати палету (тамноплаво/структурно) — сав ТЕКСТ у ћелији
+   заглавља (укључујући сортабилне линкове .text-dark и иконе стрелица) мора
+   узети thead-text токен, иначе хардкодован таман текст (нпр. mineral
+   .table-header-light th a / Bootstrap .text-dark) пада на тамноплавом. Исти
+   образац као navbar ID-замка — потомак-селектор (0,3,3) туче .text-dark. */
+[data-palette] body.heritage-shell .table thead th a,
+[data-palette] body.heritage-shell .table thead th a:hover,
+[data-palette] body.heritage-shell .table thead th a:focus,
+[data-palette] body.heritage-shell .table thead th i,
+[data-palette] body.heritage-shell .table thead th span,
+[data-palette] body.heritage-shell .table thead th small,
+[data-palette] body.heritage-shell .table thead th label,
+[data-palette] body.heritage-shell .table thead th .text-dark,
+[data-palette] body.heritage-shell .table thead th .text-muted {
+    color: var(--pal-thead-text) !important;
+}
 [data-palette] body.heritage-shell .table tbody td,
 [data-palette] body.heritage-shell .table tbody th {
     background: var(--bg-card);
