@@ -1126,49 +1126,43 @@
                                 </li>
                                 {% endif %}
 
-                                <!-- Administration Section -->
+                                <!-- Музејске евиденције и збирке (изравнато из некадашње
+                                     „Администрација" групе — админ панел је у главној навигацији) -->
                                 {% if has_module_access('employees_database') or has_module_access('employee_profiles') or has_module_access('exhibitions_database') or has_module_access('exhibits_database') or has_module_access('cultural_heritage') %}
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="adminSubmenu">
-                                        <i class="bi bi-building me-2"></i>Администрација
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="adminSubmenu">
-                                        {% if has_module_access('employees_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
-                                            <i class="bi bi-people me-2"></i>База запослених
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('employee_profiles') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('employee_profiles_database') if endpoint_exists('employee_profiles_database') else '#' }}">
-                                            <i class="bi bi-person-badge me-2"></i>Профили запослених
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('employees_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
-                                            <i class="bi bi-person-walking me-2"></i>База посетилаца
-                                        </a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
-                                            <i class="bi bi-mortarboard me-2"></i>Истраживачки пројекти
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('exhibitions_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('exhibitions_database') if endpoint_exists('exhibitions_database') else '#' }}">
-                                            <i class="bi bi-easel me-2"></i>База изложби
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('exhibits_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
-                                            <i class="bi bi-box me-2"></i>База експоната
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('cultural_heritage') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
-                                            <i class="bi bi-bank me-2"></i>Културно наслеђе
-                                        </a></li>
-                                        {% endif %}
-                                    </ul>
-                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                {% if has_module_access('employees_database') %}
+                                <li><a class="dropdown-item" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
+                                    <i class="bi bi-people me-2"></i>База запослених
+                                </a></li>
+                                {% endif %}
+                                {% if has_module_access('employee_profiles') %}
+                                <li><a class="dropdown-item" href="{{ url_for('employee_profiles_database') if endpoint_exists('employee_profiles_database') else '#' }}">
+                                    <i class="bi bi-person-badge me-2"></i>Профили запослених
+                                </a></li>
+                                {% endif %}
+                                {% if has_module_access('employees_database') %}
+                                <li><a class="dropdown-item" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
+                                    <i class="bi bi-person-walking me-2"></i>База посетилаца
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
+                                    <i class="bi bi-mortarboard me-2"></i>Истраживачки пројекти
+                                </a></li>
+                                {% endif %}
+                                {% if has_module_access('exhibitions_database') %}
+                                <li><a class="dropdown-item" href="{{ url_for('exhibitions_database') if endpoint_exists('exhibitions_database') else '#' }}">
+                                    <i class="bi bi-easel me-2"></i>База изложби
+                                </a></li>
+                                {% endif %}
+                                {% if has_module_access('exhibits_database') %}
+                                <li><a class="dropdown-item" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
+                                    <i class="bi bi-box me-2"></i>База експоната
+                                </a></li>
+                                {% endif %}
+                                {% if has_module_access('cultural_heritage') %}
+                                <li><a class="dropdown-item" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
+                                    <i class="bi bi-bank me-2"></i>Културно наслеђе
+                                </a></li>
                                 {% endif %}
 
                                 <!-- External Databases Section -->
