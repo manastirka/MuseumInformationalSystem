@@ -187,5 +187,45 @@ class AdminAllowedTests(_ClientTestCase):
         self.assertIn('arhiva.docx', body)
 
 
+class ImportEntryOnlyInAdministrationTests(_ClientTestCase):
+    """Улаз за увоз из Word-а постоји ИСКЉУЧИВО у Администрацији радних листи —
+    не у прегледу/архиви радних листа (тамо је био заостали дупликат)."""
+
+    _IMPORT_HREF = '/admin/timesheet/uvoz'
+    _IMPORT_LABEL = 'Увоз из Word'
+
+    @unittest.skipUnless(_DB_OK, 'PostgreSQL није доступан за рендер стране')
+    def test_reports_page_has_no_word_import_entry(self):
+        # Преглед радних листа НЕ сме имати улаз ка увозу (заостали дупликат).
+        self.login(email='admin@nhmbeo.rs', role='admin')
+        resp = self.get('/admin/timesheet_reports')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.get_data(as_text=True)
+        self.assertNotIn(self._IMPORT_HREF, body,
+                         'Преглед радних листа не сме линковати на увоз из Word-а')
+        self.assertNotIn(self._IMPORT_LABEL, body)
+
+    @unittest.skipUnless(_DB_OK, 'PostgreSQL није доступан за рендер стране')
+    def test_archive_page_has_no_word_import_entry(self):
+        # Архива радних листа НЕ сме имати улаз ка увозу.
+        self.login(email='admin@nhmbeo.rs', role='admin')
+        resp = self.get('/admin/timesheet/arhiva')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.get_data(as_text=True)
+        self.assertNotIn(self._IMPORT_HREF, body,
+                         'Архива радних листа не сме линковати на увоз из Word-а')
+        self.assertNotIn(self._IMPORT_LABEL, body)
+
+    @unittest.skipUnless(_DB_OK, 'PostgreSQL није доступан за рендер стране')
+    def test_administration_page_still_has_word_import_entry(self):
+        # Позитивна контрола: Администрација и даље нуди улаз ка увозу.
+        self.login(email='admin@nhmbeo.rs', role='admin')
+        resp = self.get('/admin/timesheet')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.get_data(as_text=True)
+        self.assertIn(self._IMPORT_HREF, body,
+                      'Администрација мора задржати улаз ка увозу из Word-а')
+
+
 if __name__ == '__main__':
     unittest.main()
