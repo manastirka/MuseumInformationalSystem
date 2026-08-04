@@ -451,6 +451,10 @@ uvezi_arhivske_liste_cli.register_cli(app)
 import uskladi_knjiga_depo_cli
 uskladi_knjiga_depo_cli.register_cli(app)
 
+# CLI: flask ocisti-kolicine (čišćenje minerals.quantity iz originala u knjizi)
+import ciscenje_kolicina_cli
+ciscenje_kolicina_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(
