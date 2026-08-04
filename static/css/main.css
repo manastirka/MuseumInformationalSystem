@@ -4103,6 +4103,36 @@ html[data-density="kompakt"][data-style="terenska"] {
     --bs-bg-opacity: 0 !important;
     border: 1px solid rgba(255, 255, 255, 0.22);
 }
+/* Sekcijska zaglavlja: Bootstrap `.card-header` sa kontekstnom bojom
+   (bg-primary/info/success/warning/secondary/danger/dark, uklj. bg-gradient)
+   ranije su nosila fiksnu boju unutar strana. Sada prate paletu isto kao
+   `.page-hero` -> ravna --pal-thead-bg + belo (AA svuda). Izuzeti: svetla
+   zaglavlja (bg-light/white/transparent) i suptilne 10%-tint ploce (bg-opacity-*). */
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border-bottom-color: var(--pal-primary-dark) !important;
+}
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]),
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) * {
+    color: #ffffff !important;
+}
+/* Dugmad/bedzevi u sekcijskom zaglavlju -> isti AA tretman kao u .page-hero. */
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) .btn {
+    background: #f4f6f8 !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) .btn,
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) .btn * {
+    color: #212529 !important;
+}
+[data-palette] body.heritage-shell .card-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) .badge {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+    --bs-bg-opacity: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+}
 [data-palette] body.heritage-shell .dashboard-header .weather-desc,
 [data-palette] body.heritage-shell .dashboard-header .weather-wind,
 [data-palette] body.heritage-shell .dashboard-header .weather-location,

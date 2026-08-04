@@ -227,3 +227,37 @@ for (const url of PAGE_HERO_STRANE) {
     }
   }
 }
+
+// --- 6) СЕКЦИЈСКА ЗАГЛАВЉА (.card-header контекстна боја) × палета × режим ----
+// Унутрашња секцијска заглавља (Bootstrap `.card-header` са bg-primary/info/
+// success/warning/… ) су раније носила фиксну боју унутар страна. Сада прате
+// палету (равна --pal-thead-bg + бело). Мери се СВА `.card-header` на странама
+// богатим обојеним секцијским заглављима; светла заглавља (dark текст) такође
+// пролазе кроз пиксел-мерач, па један селектор покрива цео скуп.
+const SEKCIJA_STRANE = [
+  '/admin/timesheet',           // bg-primary/info/success/danger заглавља
+  '/admin/mineral_collection',  // bg-primary/success/info + bg-gradient
+  '/admin/system-settings',     // bg-info
+];
+for (const url of SEKCIJA_STRANE) {
+  for (const paleta of PALETE) {
+    for (const rezim of PALETE_REZIMI) {
+      test(`контраст секцијског заглавља (${paleta} × ${rezim}): ${url}`, async ({ page }) => {
+        test.skip(!EMAIL || !PASS, 'QA креденцијали су потребни.');
+        await login(page);
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+        test.skip(!resp || resp.status() !== 200, `Стране ${url} нема на овом окружењу.`);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(600);
+        await postaviPaletu(page, paleta, 'komforno', rezim);
+        await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
+        await page.waitForTimeout(150);
+
+        const padovi = await izmeriKontrast(page, '.card-header');
+        expect(padovi,
+          `Секцијско заглавље испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
+          .toEqual([]);
+      });
+    }
+  }
+}
