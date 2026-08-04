@@ -642,6 +642,23 @@ table th.action-cell {
     font-weight: 500;
 }
 
+/* Беџ „непотврђен" стоји у СВОМ реду испод инв. броја и не прелази оквир уске
+   колоне (min-width 120px). Пуна (непрозирна) јантарна подлога + врло таман текст
+   са фиксним, високо-контрастним паром (~13:1) — јер тему-свесни warning-subtle
+   токен у неким палетама/тамном режиму падне испод AA. Semantic warning боја је
+   намерно стабилна кроз све палете (статусни индикатор, не прати акцент). */
+.unconfirmed-badge {
+    max-width: 100%;
+    vertical-align: top;
+    white-space: nowrap;
+    background-color: #ffe08a !important;
+    border: 1px solid #d9a400 !important;
+}
+.unconfirmed-badge,
+.unconfirmed-badge * {
+    color: #332500 !important;
+}
+
 /* Smooth transitions */
 .btn, .card, .form-control, .form-select {
     transition: all 0.2s ease;
@@ -793,8 +810,11 @@ table th.action-cell {
     {% if col_id == 'inventarni_broj' %}
         <strong>{{ mineral.inventarni_broj_display }}</strong>
         {% if mineral.physical_presence_confirmed is defined and not mineral.physical_presence_confirmed %}
-        <span class="badge bg-warning text-dark ms-1" title="Ред потиче из штампане инвентарске књиге; физичко присуство у депоу није потврђено">
-            <i class="bi bi-question-circle me-1"></i>Из књиге — физички непотврђен
+        <br>
+        <span class="badge d-inline-flex align-items-center mt-1 unconfirmed-badge"
+              title="Из књиге — физички непотврђен: ред потиче из штампане инвентарске књиге; физичко присуство у депоу није потврђено"
+              aria-label="Из књиге — физички непотврђен">
+            <i class="bi bi-question-circle me-1"></i>Непотврђен
         </span>
         {% endif %}
     {% elif col_id == 'naziv' %}
