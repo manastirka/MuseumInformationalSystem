@@ -28,6 +28,7 @@ const PASS = process.env.CYPRESS_ADMIN_PASSWORD || process.env.QA_PASSWORD;
 // независне од густине, па се та страна мери само комфорно.
 const STRANE = [
   { url: '/vehicle_reservations', densities: ['komforno'] },
+  { url: '/admin' },
   { url: '/admin/timesheet_reports' },
   { url: '/vehicle_management' },
   { url: '/dashboard' },

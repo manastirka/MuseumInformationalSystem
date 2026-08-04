@@ -5,183 +5,218 @@
 {% block content %}
 <div x-data="adminPanel()" x-cloak data-admin-panel-root>
 <style>
-/* Admin panel styles */
-.admin-header {
-    background-color: var(--warning, #d97706);
-    border-radius: var(--radius-xl, 16px);
-}
+/* ==========================================================================
+   Администрациони панел — распоред у духу подешавања оперативног система
+   (лева уска навигација доменских секција + десни садржај изабране секције).
+   Све боје иду кроз токене → прати изабрану палету/акценат у светлом и тамном.
+   ========================================================================== */
 
-/* Minimizable cards */
-.card-minimizable .card-header {
-    cursor: pointer;
-    user-select: none;
+/* Header */
+.admin-os-header {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-}
-
-.card-minimizable .card-header h5 {
-    margin: 0;
-    flex: 1;
-}
-
-.card-minimizable.minimized .card-body {
-    display: none;
-}
-
-.card-minimizable .minimize-icon {
-    transition: transform 0.2s ease;
-}
-
-.card-minimizable.minimized .minimize-icon {
-    transform: rotate(180deg);
-}
-
-.window-controls {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.btn-window {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    font-size: 10px;
-    line-height: 1;
-}
-
-.btn-minimize {
-    background-color: var(--warning, #d97706);
-}
-
-/* Search input */
-.admin-search {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: var(--radius-md, 8px);
-    padding: 0.5rem 1rem;
-    color: white;
-    width: 220px;
-}
-
-.admin-search::placeholder {
-    color: rgba(255,255,255,0.6);
-}
-
-.admin-search:focus {
-    outline: none;
-    background: rgba(255,255,255,0.2);
-}
-
-/* Notification dropdown */
-.notification-dropdown {
-    width: min(350px, calc(100vw - 1.5rem)) !important;
-    overflow-x: hidden;
-}
-
-.notification-dropdown .card-header {
-    gap: 0.75rem;
-}
-
-.notification-dropdown .card-header .d-flex {
+    gap: 1rem;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    margin-bottom: 1.5rem;
 }
 
-.notification-dropdown .notification-item {
-    overflow-wrap: anywhere;
-    word-break: normal;
-}
-
-.notification-dropdown .notification-item:hover {
-    background-color: var(--gray-50, #f9fafb);
-}
-
-.notification-dropdown .notification-icon {
-    flex: 0 0 2rem;
-    width: 2rem;
-    height: 2rem;
-}
-
-.notification-dropdown .notification-copy {
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.notification-dropdown .notification-title,
-.notification-dropdown .notification-message,
-.notification-dropdown .notification-time {
-    display: block;
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: normal;
-    line-height: 1.25;
-}
-
-/* Vertical admin sections */
-.admin-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.admin-section-header {
-    background: var(--bg-elevated);
+.admin-os-header .admin-os-title h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
     color: var(--text-primary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.admin-section-header h5 {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    font-weight: 700;
 }
 
-.admin-section-header .section-badge {
-    display: inline-flex;
+.admin-os-header .admin-os-title p {
+    margin: 0.15rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Search — filtrira stavke po nazivu/opisu, kao u OS podešavanjima */
+.admin-os-search {
+    position: relative;
+    flex: 0 1 320px;
+    min-width: 200px;
+}
+
+.admin-os-search .bi-search {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 0.95rem;
+}
+
+.admin-os-search input {
+    width: 100%;
+    padding: 0.55rem 0.9rem 0.55rem 2.4rem;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card, #fff);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-os-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.admin-os-search input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.admin-os-notif {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Бројчани беџ седи у СТАТИЧКОМ заглављу (за разлику од лепљиве навигације,
+   коју пиксел-мерач прескаче), па мора сам да гарантује AA у свим палетама и
+   режимима. Глобални .notification-badge користи var(--danger), који у тамном
+   режиму постаје свело-црвен (бело-на-светлом пада на ~2:1) — овде фиксирамо
+   чврсту тамно-црвену подлогу са белим текстом (7.46:1). */
+.admin-os-notif .notification-badge {
+    background-color: #a51d2d;
+    color: #fff;
+}
+
+/* Layout: two panes */
+.admin-os-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* Left navigation rail */
+.admin-os-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    position: sticky;
+    top: 1rem;
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-card, #fff);
+}
+
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-nav-item .nav-icon {
+    flex: 0 0 1.4rem;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--radius-md, 8px);
-    background: var(--primary);
-    color: #fff;
-    font-size: 1rem;
+    font-size: 1.05rem;
+    color: var(--text-muted);
 }
 
+.admin-nav-item .nav-label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item:focus-visible {
+    background: var(--bg-hover);
+    outline: none;
+}
+
+.admin-nav-item.active {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-left-color: var(--primary);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.admin-nav-item.active .nav-icon {
+    color: var(--primary);
+}
+
+/* Right content pane */
+.admin-os-content {
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-card, #fff);
+    overflow: hidden;
+}
+
+.admin-pane-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.25rem;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-elevated);
+}
+
+.admin-pane-title .bi {
+    color: var(--primary);
+}
+
+/* Uniform list rows (не шарене картице) */
 .admin-module-list {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
 }
 
 .admin-module-item {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
-    padding: 0.7rem 0.85rem;
-    border-radius: var(--radius-md, 8px);
+    gap: 0.9rem;
+    padding: 0.85rem 1.25rem;
+    min-height: 60px;
     color: var(--text-primary);
     text-decoration: none;
-    border: 1px solid transparent;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.13s ease;
+}
+
+.admin-module-item:last-child {
+    border-bottom: none;
 }
 
 .admin-module-item:hover,
 .admin-module-item:focus-visible {
     background: var(--bg-hover);
-    border-color: var(--border-color);
     color: var(--text-primary);
+    outline: none;
+}
+
+.admin-module-item:focus-visible {
+    box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .admin-module-item .module-icon {
@@ -220,72 +255,130 @@
     flex-shrink: 0;
 }
 
+/* Empty search state */
+.admin-os-empty {
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.admin-os-empty .bi {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive: на уском екрану лева трака постаје листа секција изнад садржаја
+   (обмотавање, без хоризонталног скрола). */
+@media (max-width: 768px) {
+    .admin-os-layout {
+        grid-template-columns: 1fr;
+    }
+    .admin-os-nav {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .admin-nav-item {
+        width: auto;
+        flex: 1 1 auto;
+        border-left: 1px solid transparent;
+    }
+    .admin-nav-item.active {
+        border-left-color: transparent;
+        border-color: var(--primary);
+    }
+}
+
 @media (max-width: 576px) {
     .admin-module-item .module-desc {
         font-size: 0.75rem;
     }
-    .admin-section-header .section-badge {
-        width: 1.75rem;
-        height: 1.75rem;
+    .admin-nav-item {
+        width: 100%;
+        flex-basis: 100%;
     }
 }
 
-/* Alpine.js */
-[x-cloak] {
-    display: none !important;
+/* Notification dropdown (задржано) */
+.notification-dropdown {
+    width: min(350px, calc(100vw - 1.5rem)) !important;
+    overflow-x: hidden;
 }
+.notification-dropdown .notification-item:hover {
+    background-color: var(--bg-hover);
+}
+.notification-dropdown .notification-icon {
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+}
+.notification-dropdown .notification-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.notification-dropdown .notification-title,
+.notification-dropdown .notification-message,
+.notification-dropdown .notification-time {
+    display: block;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.25;
+}
+
+[x-cloak] { display: none !important; }
 </style>
+
 <div class="container-main fade-in">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="admin-header text-white p-4">
-                <div class="row align-items-center position-relative" style="z-index: 1;">
-                    <div class="col-md-6">
-                        <h1 class="h3 mb-1 fw-bold">
-                            <i class="bi bi-gear-wide-connected me-2"></i>
-                            Администрациони панел
-                        </h1>
-                        <p class="mb-0 opacity-75">
-                            Управљање системом и корисницима
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center justify-content-end gap-3">
-                            <input type="text"
-                                   class="admin-search"
-                                   placeholder="Претражи..."
-                                   x-model="searchQuery"
-                                   @input="filterCards()">
-                            <div class="position-relative">
-                                <button class="btn btn-light btn-sm" @click="showNotifications = !showNotifications; if(showNotifications) markAllRead()">
-                                    <i class="bi bi-bell"></i>
-                                </button>
-                                <span class="notification-badge" x-show="notifications > 0" x-text="notifications"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="admin-os-header">
+        <div class="admin-os-title">
+            <h1><i class="bi bi-gear-wide-connected"></i> Администрациони панел</h1>
+            <p>Управљање системом и корисницима</p>
+        </div>
+        <div class="admin-os-search">
+            <i class="bi bi-search"></i>
+            <input type="text"
+                   placeholder="Претражи подешавања..."
+                   aria-label="Претражи подешавања"
+                   x-model="searchQuery"
+                   @input="applyView()">
+        </div>
+        <div class="admin-os-notif">
+            <button class="btn btn-light btn-sm" @click="showNotifications = !showNotifications; if(showNotifications) markAllRead()" aria-label="Обавештења">
+                <i class="bi bi-bell"></i>
+            </button>
+            <span class="notification-badge" x-show="notifications > 0" x-text="notifications"></span>
         </div>
     </div>
 
-    <!-- Admin Sections (vertical, grouped by domain) -->
-    <div class="admin-sections stagger-children">
-        <!-- Section: Users & access -->
-        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="users-access">
-            <div class="card-header admin-section-header" @click="toggleCard('users-access')">
-                <h5>
-                    <span class="section-badge"><i class="bi bi-people"></i></span>
-                    Корисници и приступ
-                </h5>
-                <div class="window-controls">
-                    <button class="btn-window btn-minimize" @click.stop="toggleCard('users-access')" title="Минимизуј/Врати">
-                        <i class="bi bi-dash minimize-icon"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
+    <!-- Two-pane OS-style layout -->
+    <div class="admin-os-layout">
+        <!-- Left navigation rail -->
+        <nav class="admin-os-nav" aria-label="Секције администрације">
+            <button type="button" class="admin-nav-item" data-section="users-access" @click="selectSection('users-access')">
+                <span class="nav-icon"><i class="bi bi-people"></i></span>
+                <span class="nav-label">Корисници и приступ</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-section="collections-content" @click="selectSection('collections-content')">
+                <span class="nav-icon"><i class="bi bi-database"></i></span>
+                <span class="nav-label">Збирке и садржај</span>
+            </button>
+            {% if is_admin() or is_director() %}
+            <button type="button" class="admin-nav-item" data-section="system-logs" @click="selectSection('system-logs')">
+                <span class="nav-icon"><i class="bi bi-gear"></i></span>
+                <span class="nav-label">Систем и логови</span>
+            </button>
+            {% endif %}
+        </nav>
+
+        <!-- Right content -->
+        <div class="admin-os-content">
+            <!-- Pane: Users & access -->
+            <section class="admin-pane" data-pane="users-access">
+                <h2 class="admin-pane-title"><i class="bi bi-people"></i> Корисници и приступ</h2>
                 <div class="admin-module-list">
                     <a href="{{ url_for('manage_user_access') }}" class="admin-module-item" data-module-search="приступ модулима дозволе корисник">
                         <span class="module-icon"><i class="bi bi-shield-check"></i></span>
@@ -322,23 +415,11 @@
                     </a>
                     {% endif %}
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Section: Collections & content -->
-        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="collections-content">
-            <div class="card-header admin-section-header" @click="toggleCard('collections-content')">
-                <h5>
-                    <span class="section-badge"><i class="bi bi-database"></i></span>
-                    Збирке и садржај
-                </h5>
-                <div class="window-controls">
-                    <button class="btn-window btn-minimize" @click.stop="toggleCard('collections-content')" title="Минимизуј/Врати">
-                        <i class="bi bi-dash minimize-icon"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
+            <!-- Pane: Collections & content -->
+            <section class="admin-pane" data-pane="collections-content">
+                <h2 class="admin-pane-title"><i class="bi bi-database"></i> Збирке и садржај</h2>
                 <div class="admin-module-list">
                     <a href="{{ url_for('admin_statistics') }}" class="admin-module-item" data-module-search="статистика збирки бројеви">
                         <span class="module-icon"><i class="bi bi-graph-up"></i></span>
@@ -401,24 +482,12 @@
                         <i class="bi bi-chevron-right module-arrow"></i>
                     </a>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Section: System & logs (admin/director only) -->
-        {% if is_admin() or is_director() %}
-        <div class="card card-minimizable card-glass card-shine admin-section" data-card-id="system-logs">
-            <div class="card-header admin-section-header" @click="toggleCard('system-logs')">
-                <h5>
-                    <span class="section-badge"><i class="bi bi-gear"></i></span>
-                    Систем и логови
-                </h5>
-                <div class="window-controls">
-                    <button class="btn-window btn-minimize" @click.stop="toggleCard('system-logs')" title="Минимизуј/Врати">
-                        <i class="bi bi-dash minimize-icon"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
+            <!-- Pane: System & logs (admin/director only) -->
+            {% if is_admin() or is_director() %}
+            <section class="admin-pane" data-pane="system-logs">
+                <h2 class="admin-pane-title"><i class="bi bi-gear"></i> Систем и логови</h2>
                 <div class="admin-module-list">
                     <a href="{{ url_for('admin_system_hub') }}" class="admin-module-item" data-module-search="систем подешавања пошта извештаји ревизиони траг логови безбедност база">
                         <span class="module-icon"><i class="bi bi-gear-wide-connected"></i></span>
@@ -429,9 +498,15 @@
                         <i class="bi bi-chevron-right module-arrow"></i>
                     </a>
                 </div>
+            </section>
+            {% endif %}
+
+            <!-- Empty search state -->
+            <div class="admin-os-empty" data-empty-state style="display:none;">
+                <i class="bi bi-search"></i>
+                <div>Нема подешавања за <strong x-text="searchQuery"></strong></div>
             </div>
         </div>
-        {% endif %}
     </div>
 
     <!-- Notification Dropdown -->
@@ -444,9 +519,9 @@
          x-transition:leave-end="opacity-0"
          @click.away="showNotifications = false"
          class="notification-dropdown position-fixed"
-         style="top: 120px; right: 30px; z-index: 1050;">
+         style="top: 90px; right: 30px; z-index: 1050;">
         <div class="card shadow-lg border-0">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-3">
                 <h6 class="mb-0 fw-bold">
                     <i class="bi bi-bell me-2"></i>
                     Обавештења
@@ -502,153 +577,75 @@
         </template>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <h3 class="mb-3">
-                <i class="bi bi-lightning me-2"></i>
-                Брзе администраторске акције
-            </h3>
-        </div>
-    </div>
-
-    <div class="row g-3 stagger-children">
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='/timesheet/'">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-speedometer2 d-block mb-2" style="font-size: 1.5rem; color: var(--museum-primary);"></i>
-                    <small class="fw-medium">Преглед система</small>
-                </div>
-            </div>
-        </div>
-
-        {% if is_admin() or is_director() %}
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="performBackup()">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-cloud-download d-block mb-2" style="font-size: 1.5rem; color: var(--museum-success);"></i>
-                    <small class="fw-medium">Backup</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="performRestart()">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-arrow-clockwise d-block mb-2" style="font-size: 1.5rem; color: var(--museum-warning);"></i>
-                    <small class="fw-medium">Рестарт</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse"
-                 hx-get="/api/system/logs"
-                 hx-target="#logsModal .modal-body"
-                 hx-trigger="click"
-                 @click="showLogsModal()">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; color: var(--museum-info);"></i>
-                    <small class="fw-medium">Логови</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="checkForUpdates()">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-arrow-up-circle d-block mb-2" style="font-size: 1.5rem; color: var(--museum-secondary);"></i>
-                    <small class="fw-medium">Ажурирај</small>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('museum_databases') }}'">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-images d-block mb-2" style="font-size: 1.5rem; color: var(--museum-danger);"></i>
-                    <small class="fw-medium">Слике у збиркама</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-2 col-md-4 col-sm-6">
-            <div class="card border-0 card-glass quick-action icon-pulse" @click="window.location.href='{{ url_for('dashboard') }}'">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-house d-block mb-2" style="font-size: 1.5rem; color: var(--museum-primary);"></i>
-                    <small class="fw-medium">Почетна</small>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
-
-<!-- Logs Modal -->
-    <div class="modal fade" id="logsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-journal-text me-2"></i>
-                        Системски логови
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-info" role="status">
-                            <span class="visually-hidden">Учитавање...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Учитавање логова...</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" @click="refreshLogs()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>
-                        Освежи
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Затвори</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div><!-- End Alpine x-data wrapper -->
 
 <script>
-// Alpine.js Admin Panel Component
+// Alpine.js Admin Panel Component — OS-style two-pane settings.
 function adminPanel() {
     return {
         searchQuery: '',
+        activeSection: 'users-access',
         showNotifications: false,
         notifications: 0,
         notificationsList: [],
         toasts: [],
 
-        getCard(cardId) {
-            return this.$root.querySelector(`[data-card-id="${cardId}"]`);
-        },
-
-        getCards() {
-            return Array.from(this.$root.querySelectorAll('.card-minimizable'));
-        },
-
         init() {
-            this.loadCardStates();
+            // Restore last-open section if it still exists for this role.
+            const saved = localStorage.getItem('adminPanelSection');
+            if (saved && this.$root.querySelector(`.admin-pane[data-pane="${saved}"]`)) {
+                this.activeSection = saved;
+            } else if (!this.$root.querySelector(`.admin-pane[data-pane="${this.activeSection}"]`)) {
+                const first = this.$root.querySelector('.admin-pane');
+                if (first) this.activeSection = first.dataset.pane;
+            }
+            this.applyView();
             this.loadNotifications();
-
-            // Listen for HTMX events
-            document.body.addEventListener('htmx:afterSwap', () => {
-                this.showToast('success', 'Успешно', 'Садржај је учитан', 'bi-check-circle');
-            });
 
             document.body.addEventListener('htmx:responseError', () => {
                 this.showToast('danger', 'Грешка', 'Дошло је до грешке при учитавању', 'bi-exclamation-circle');
             });
         },
 
-        // Load notifications
+        // Select a domain section → swap the right pane.
+        selectSection(id) {
+            this.activeSection = id;
+            this.searchQuery = '';
+            localStorage.setItem('adminPanelSection', id);
+            this.applyView();
+        },
+
+        // Apply current section + search filter to panes, items and nav rail.
+        applyView() {
+            const query = this.searchQuery.toLowerCase().trim();
+            const searching = query.length > 0;
+            let anyResult = false;
+
+            this.$root.querySelectorAll('.admin-pane').forEach(pane => {
+                let paneHasMatch = false;
+                pane.querySelectorAll('.admin-module-item').forEach(item => {
+                    const text = (item.dataset.moduleSearch || item.textContent).toLowerCase();
+                    const match = !searching || text.includes(query);
+                    item.style.display = match ? '' : 'none';
+                    if (match && searching) paneHasMatch = true;
+                });
+                const isActive = pane.dataset.pane === this.activeSection;
+                const visible = searching ? paneHasMatch : isActive;
+                pane.style.display = visible ? '' : 'none';
+                if (visible) anyResult = true;
+            });
+
+            // Nav rail active state (no active highlight while searching across all).
+            this.$root.querySelectorAll('.admin-nav-item').forEach(btn => {
+                btn.classList.toggle('active', !searching && btn.dataset.section === this.activeSection);
+            });
+
+            // Empty search state.
+            const empty = this.$root.querySelector('[data-empty-state]');
+            if (empty) empty.style.display = (searching && !anyResult) ? '' : 'none';
+        },
+
         loadNotifications() {
             fetch('/api/notifications')
                 .then(r => r.json())
@@ -672,7 +669,6 @@ function adminPanel() {
                 });
         },
 
-        // Clear all notifications
         clearNotifications() {
             fetch('/api/notifications/clear', {
                 method: 'POST',
@@ -691,7 +687,6 @@ function adminPanel() {
             });
         },
 
-        // Mark all notifications as read
         markAllRead() {
             if (this.notifications === 0) return;
             fetch('/api/notifications/read', {
@@ -710,144 +705,20 @@ function adminPanel() {
             });
         },
 
-        // Show toast notification
         showToast(type, title, message, icon) {
             const toast = { type, title, message, icon };
             this.toasts.push(toast);
-
-            // Auto remove after 4 seconds
             setTimeout(() => {
                 this.removeToast(this.toasts.indexOf(toast));
             }, 4000);
         },
 
-        // Remove toast
         removeToast(index) {
             if (index > -1) {
                 this.toasts.splice(index, 1);
             }
-        },
-
-        // Filter module items based on search; hide sections with no matches
-        filterCards() {
-            const query = this.searchQuery.toLowerCase().trim();
-            this.$root.querySelectorAll('.admin-section').forEach(section => {
-                let anyVisible = false;
-                section.querySelectorAll('.admin-module-item').forEach(item => {
-                    const text = (item.dataset.moduleSearch || item.textContent).toLowerCase();
-                    const match = text.includes(query);
-                    item.style.display = match ? '' : 'none';
-                    if (match) anyVisible = true;
-                });
-                section.style.display = (anyVisible || query === '') ? '' : 'none';
-            });
-        },
-
-        // Toggle card minimize/maximize
-        toggleCard(cardId) {
-            const card = this.getCard(cardId);
-            if (!card) return;
-
-            const isMinimized = card.classList.toggle('minimized');
-            if (isMinimized) {
-                card.classList.remove('h-100');
-            } else {
-                card.classList.add('h-100');
-            }
-            this.saveCardStates();
-        },
-
-        // Save card states to localStorage
-        saveCardStates() {
-            const states = {};
-            this.getCards().forEach(card => {
-                const cardId = card.dataset.cardId;
-                states[cardId] = card.classList.contains('minimized');
-            });
-            localStorage.setItem('adminPanelCardStates', JSON.stringify(states));
-        },
-
-        // Load card states from localStorage
-        loadCardStates() {
-            const savedStates = localStorage.getItem('adminPanelCardStates');
-            if (!savedStates) return;
-
-            try {
-                const states = JSON.parse(savedStates);
-                Object.keys(states).forEach(cardId => {
-                    if (states[cardId]) {
-                        const card = this.getCard(cardId);
-                        if (card) {
-                            card.classList.add('minimized');
-                            card.classList.remove('h-100');
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error('Error loading card states:', e);
-            }
-        },
-
-        // Quick Actions
-        performBackup() {
-            this.showToast('info', 'Backup', 'Креирање резервне копије...', 'bi-cloud-download');
-            // Simulate backup process
-            setTimeout(() => {
-                this.showToast('success', 'Backup', 'Резервна копија је успешно креирана!', 'bi-check-circle');
-            }, 2000);
-        },
-
-        performRestart() {
-            if (confirm('Да ли сте сигурни да желите да рестартујете систем?')) {
-                this.showToast('warning', 'Рестарт', 'Рестартовање система...', 'bi-arrow-clockwise');
-            }
-        },
-
-        showLogsModal() {
-            const modal = new bootstrap.Modal(document.getElementById('logsModal'));
-            modal.show();
-            this.loadLogs();
-        },
-
-        async loadLogs() {
-            const modalBody = document.querySelector('#logsModal .modal-body');
-            try {
-                // Simulated logs - replace with actual API call
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const logs = [
-                    { time: '2026-01-15 10:30:15', level: 'INFO', message: 'Систем покренут' },
-                    { time: '2026-01-15 10:31:22', level: 'INFO', message: 'База података повезана' },
-                    { time: '2026-01-15 10:32:05', level: 'INFO', message: 'Корисник admin пријављен' },
-                    { time: '2026-01-15 10:45:33', level: 'WARNING', message: 'Висока употреба меморије' },
-                    { time: '2026-01-15 11:00:00', level: 'INFO', message: 'Аутоматски backup завршен' }
-                ];
-
-                let html = '<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Време</th><th>Ниво</th><th>Порука</th></tr></thead><tbody>';
-                logs.forEach(log => {
-                    const badgeClass = log.level === 'ERROR' ? 'danger' : (log.level === 'WARNING' ? 'warning' : 'info');
-                    html += `<tr><td><small class="text-muted">${escapeHtml(log.time)}</small></td><td><span class="badge bg-${badgeClass}">${escapeHtml(log.level)}</span></td><td>${escapeHtml(log.message)}</td></tr>`;
-                });
-                html += '</tbody></table></div>';
-                modalBody.innerHTML = html;
-            } catch (e) {
-                modalBody.innerHTML = '<div class="alert alert-danger">Грешка при учитавању логова</div>';
-            }
-        },
-
-        refreshLogs() {
-            const modalBody = document.querySelector('#logsModal .modal-body');
-            modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-info"></div><p class="mt-2 text-muted">Учитавање логова...</p></div>';
-            this.loadLogs();
-        },
-
-        checkForUpdates() {
-            this.showToast('info', 'Ажурирање', 'Провера нових верзија...', 'bi-arrow-up-circle');
-            setTimeout(() => {
-                this.showToast('success', 'Ажурирање', 'Систем је ажуран!', 'bi-check-circle');
-            }, 1500);
         }
     };
 }
-
 </script>
 {% endblock %}
