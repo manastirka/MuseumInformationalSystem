@@ -447,6 +447,10 @@ kr_dosije_cli.register_cli(app)
 import uvezi_arhivske_liste_cli
 uvezi_arhivske_liste_cli.register_cli(app)
 
+# CLI: flask uskladi-knjigu-depo (usaglašavanje inventarske knjige i baze minerala)
+import uskladi_knjiga_depo_cli
+uskladi_knjiga_depo_cli.register_cli(app)
+
 # Preserve a few legacy module-level symbols that tests and utility code still
 # reference directly, even though their routes now live in blueprints.
 globals().update(

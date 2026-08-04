@@ -53,7 +53,8 @@ class MineralDatabase:
             self.available = False
 
     def get_all_minerals(self, page: int = 1, per_page: int = 50,
-                         sort_by: str = 'id', sort_order: str = 'asc') -> Dict:
+                         sort_by: str = 'id', sort_order: str = 'asc',
+                         physical: str = 'all') -> Dict:
         """Get mineral records with pagination and sorting.
 
         Returns:
@@ -109,8 +110,16 @@ class MineralDatabase:
                 else:
                     order_clause = sort_column + " " + sort_direction + " NULLS LAST"
 
+                # Optional physical-presence filter (книга vs депо)
+                if physical == 'unconfirmed':
+                    physical_where = "WHERE physical_presence_confirmed = FALSE "
+                elif physical == 'confirmed':
+                    physical_where = "WHERE physical_presence_confirmed = TRUE "
+                else:
+                    physical_where = ""
+
                 # Get total count
-                result = conn.execute(text("SELECT COUNT(*) FROM minerals"))
+                result = conn.execute(text("SELECT COUNT(*) FROM minerals " + physical_where))
                 total = result.scalar()
 
                 total_pages = (total + per_page - 1) // per_page
@@ -135,8 +144,10 @@ class MineralDatabase:
                     "card_locality as lokalitet, "
                     "bibliography_flag as u_bibliografiji, "
                     "quantity as kolicina, "
+                    "physical_presence_confirmed, source, "
                     "created_at, updated_at "
                     "FROM minerals "
+                    + physical_where +
                     "ORDER BY " + order_clause + " "
                     "LIMIT :limit OFFSET :offset"
                 )
@@ -465,7 +476,8 @@ class MineralDatabase:
             return None
 
     def search_minerals(self, query: str, page: int = 1, per_page: int = 50,
-                        sort_by: str = 'relevance', sort_order: str = 'desc') -> Dict:
+                        sort_by: str = 'relevance', sort_order: str = 'desc',
+                        physical: str = 'all') -> Dict:
         """Smart search minerals by text query with optional sorting."""
         if not self.available:
             return {'minerals': [], 'total': 0, 'page': 1, 'per_page': per_page, 'total_pages': 0}
@@ -537,6 +549,15 @@ class MineralDatabase:
                         search_filters.append(f"({' OR '.join(filter_parts)})")
 
                 where_clause = " OR ".join(search_filters) if search_filters else "FALSE"
+
+                # Optional physical-presence filter (книга vs депо) composed with
+                # the text-search predicate. Wrap the OR-joined search filters so
+                # the AND binds against the whole search expression, not its last term.
+                if physical == 'unconfirmed':
+                    where_clause = "(" + where_clause + ") AND physical_presence_confirmed = FALSE"
+                elif physical == 'confirmed':
+                    where_clause = "(" + where_clause + ") AND physical_presence_confirmed = TRUE"
+
                 relevance_clause = (
                     "CASE\n                            "
                     + "\n                            ".join(relevance_cases)
@@ -617,6 +638,7 @@ class MineralDatabase:
                     "card_locality as lokalitet, "
                     "bibliography_flag as u_bibliografiji, "
                     "quantity as kolicina, "
+                    "physical_presence_confirmed, source, "
                     "created_at, updated_at, "
                     + relevance_clause + " as relevance "
                     "FROM minerals "
