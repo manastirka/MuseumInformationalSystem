@@ -91,7 +91,8 @@ class InventoryReconciliation:
                 category,
                 revisited,
                 physical_location,
-                revision_date
+                revision_date,
+                in_printed_book
             FROM inventory_entries
             ORDER BY inventory_number
         """
@@ -118,6 +119,7 @@ class InventoryReconciliation:
         normalized['notes'] = (normalized.get('notes') or '').strip()
         normalized['physical_location'] = (normalized.get('physical_location') or '').strip()
         normalized['quantity'] = (normalized.get('quantity') or '').strip()
+        normalized['in_printed_book'] = bool(row.get('in_printed_book'))
 
         revisited = normalized.get('revisited')
         if isinstance(revisited, bool):

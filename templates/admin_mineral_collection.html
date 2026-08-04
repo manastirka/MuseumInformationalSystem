@@ -792,6 +792,11 @@ table th.action-cell {
 {% macro mineral_column_value(mineral, col_id) -%}
     {% if col_id == 'inventarni_broj' %}
         <strong>{{ mineral.inventarni_broj_display }}</strong>
+        {% if mineral.physical_presence_confirmed is defined and not mineral.physical_presence_confirmed %}
+        <span class="badge bg-warning text-dark ms-1" title="Ред потиче из штампане инвентарске књиге; физичко присуство у депоу није потврђено">
+            <i class="bi bi-question-circle me-1"></i>Из књиге — физички непотврђен
+        </span>
+        {% endif %}
     {% elif col_id == 'naziv' %}
         {{ mineral.naziv or 'N/A' }}
     {% elif col_id == 'predmet' %}
@@ -2166,6 +2171,15 @@ table th.action-cell {
                     {% endif %}
                 </div>
             </form>
+            <div class="btn-group btn-group-sm mt-3 physical-presence-filter" role="group" aria-label="Филтер физичког присуства">
+                <a href="{{ url_for('admin_mineral_collection', search_mode='collection', search=search_query, sort_by=sort_by, sort_order=sort_order, columns=selected_columns|join(','), per_page=per_page, physical='all') }}"
+                   class="btn btn-outline-secondary {% if physical_filter == 'all' %}active{% endif %}">Све</a>
+                <a href="{{ url_for('admin_mineral_collection', search_mode='collection', search=search_query, sort_by=sort_by, sort_order=sort_order, columns=selected_columns|join(','), per_page=per_page, physical='unconfirmed') }}"
+                   class="btn btn-outline-warning {% if physical_filter == 'unconfirmed' %}active{% endif %}">
+                   <i class="bi bi-question-circle me-1"></i>Из књиге — непотврђено</a>
+                <a href="{{ url_for('admin_mineral_collection', search_mode='collection', search=search_query, sort_by=sort_by, sort_order=sort_order, columns=selected_columns|join(','), per_page=per_page, physical='confirmed') }}"
+                   class="btn btn-outline-success {% if physical_filter == 'confirmed' %}active{% endif %}">Потврђено у депоу</a>
+            </div>
         </div>
     </div>
 
@@ -2418,7 +2432,7 @@ table th.action-cell {
                     <thead class="table-header-light">
                         <tr>
                             <th class="mineral-image-cell">
-                                <a href="{{ url_for('admin_mineral_collection', search_mode='collection', sort_by='image', sort_order='asc' if sort_by == 'image' and sort_order == 'desc' else 'desc', page=1, search=search_query, columns=selected_columns|join(','), per_page=per_page) }}"
+                                <a href="{{ url_for('admin_mineral_collection', search_mode='collection', sort_by='image', sort_order='asc' if sort_by == 'image' and sort_order == 'desc' else 'desc', page=1, search=search_query, columns=selected_columns|join(','), per_page=per_page, physical=physical_filter) }}"
                                    class="text-dark text-decoration-none d-flex align-items-center gap-1 justify-content-center">
                                     Слика
                                     {% if sort_by == 'image' %}
@@ -2432,7 +2446,7 @@ table th.action-cell {
                                 {% set sortable_cols = ['inventarni_broj', 'naziv', 'predmet', 'lokalitet', 'datum_nabavljanja', 'gde_se_nalazi', 'nacin_nabavljanja', 'legator', 'identifikovao', 'kolicina', 'datum_unosa'] %}
                                 <th class="mineral-column-{{ col_id }}">
                                     {% if col_id in sortable_cols %}
-                                    <a href="{{ url_for('admin_mineral_collection', search_mode='collection', sort_by=col_id, sort_order='desc' if sort_by == col_id and sort_order == 'asc' else 'asc', page=1, search=search_query, columns=selected_columns|join(','), per_page=per_page) }}"
+                                    <a href="{{ url_for('admin_mineral_collection', search_mode='collection', sort_by=col_id, sort_order='desc' if sort_by == col_id and sort_order == 'asc' else 'asc', page=1, search=search_query, columns=selected_columns|join(','), per_page=per_page, physical=physical_filter) }}"
                                        class="text-dark text-decoration-none d-flex align-items-center gap-1">
                                         {{ available_columns[col_id] }}
                                         {% if sort_by == col_id %}
@@ -2573,7 +2587,7 @@ table th.action-cell {
                     <small class="text-muted fw-medium">Приказ по страни:</small>
                     <div class="btn-group btn-group-sm">
                         {% for pp in [25, 50, 100, 200] %}
-                        <a href="{{ url_for('admin_mineral_collection', page=1, per_page=pp, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}"
+                        <a href="{{ url_for('admin_mineral_collection', page=1, per_page=pp, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}"
                            class="btn {% if per_page == pp %}btn-success{% else %}btn-outline-secondary{% endif %}" style="border-radius: {% if loop.first %}8px 0 0 8px{% elif loop.last %}0 8px 8px 0{% else %}0{% endif %};">{{ pp }}</a>
                         {% endfor %}
                     </div>
@@ -2584,14 +2598,14 @@ table th.action-cell {
                     <ul class="pagination pagination-sm mb-0">
                         <!-- First page -->
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=1, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}" title="Прва страна">
+                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=1, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}" title="Прва страна">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
 
                         <!-- Previous page -->
                         <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=page-1 if page > 1 else 1, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}" title="Претходна">
+                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=page-1 if page > 1 else 1, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}" title="Претходна">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
@@ -2606,7 +2620,7 @@ table th.action-cell {
 
                         {% for p in range(start_page, end_page + 1) %}
                         <li class="page-item {% if p == page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=p, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}">{{ p }}</a>
+                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=p, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}">{{ p }}</a>
                         </li>
                         {% endfor %}
 
@@ -2616,14 +2630,14 @@ table th.action-cell {
 
                         <!-- Next page -->
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=page+1 if page < total_pages else total_pages, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}" title="Следећа">
+                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=page+1 if page < total_pages else total_pages, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}" title="Следећа">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
 
                         <!-- Last page -->
                         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=total_pages, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status) }}" title="Последња страна">
+                            <a class="page-link" href="{{ url_for('admin_mineral_collection', page=total_pages, sort_by=sort_by, sort_order=sort_order, search=search_query, search_mode='rruff' if is_rruff_mode else 'collection', columns=selected_columns|join(',') if not is_rruff_mode else '', per_page=per_page, elements=elements, crystal_system=crystal_system, ima_status=ima_status, physical=physical_filter) }}" title="Последња страна">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>

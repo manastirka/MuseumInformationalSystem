@@ -730,6 +730,9 @@ def render_mineral_collection(*, get_mineral_database):
     per_page = request.args.get('per_page', 50, type=int)
     sort_by = request.args.get('sort_by', 'id')
     sort_order = request.args.get('sort_order', 'asc')
+    physical = request.args.get('physical', 'all').strip()
+    if physical not in ('all', 'unconfirmed', 'confirmed'):
+        physical = 'all'
 
     available_columns = _MINERAL_COLUMNS_EN if is_english else _MINERAL_COLUMNS_SR
     columns_param = request.args.get('columns', '')
@@ -762,6 +765,7 @@ def render_mineral_collection(*, get_mineral_database):
                 per_page=per_page,
                 sort_by=sort_by,
                 sort_order=sort_order,
+                physical=physical,
             )
         else:
             result = mineral_db.get_all_minerals(
@@ -769,6 +773,7 @@ def render_mineral_collection(*, get_mineral_database):
                 per_page=per_page,
                 sort_by=sort_by,
                 sort_order=sort_order,
+                physical=physical,
             )
 
         stats = mineral_db.get_statistics()
@@ -795,6 +800,7 @@ def render_mineral_collection(*, get_mineral_database):
         sort_order=sort_order,
         selected_columns=selected_columns,
         available_columns=available_columns,
+        physical_filter=physical,
         elements=elements,
         crystal_system=crystal_system,
         ima_status=ima_status,
@@ -1001,6 +1007,9 @@ def render_inventory_book():
     search_locality = request.args.get('search_locality', '').strip()
     inv_number = request.args.get('inv_number', '').strip()
     sheet_filter = request.args.get('sheet', '').strip()
+    printed = request.args.get('printed', 'all').strip()
+    if printed not in ('all', 'only', 'no'):
+        printed = 'all'
     page = request.args.get('page', 1, type=int)
     per_page = 100
 
@@ -1035,6 +1044,11 @@ def render_inventory_book():
     else:
         items = reconciliation.get_inventory_book_items()
 
+    if printed == 'only':
+        items = [item for item in items if item.get('in_printed_book')]
+    elif printed == 'no':
+        items = [item for item in items if not item.get('in_printed_book')]
+
     items = sorted(
         items,
         key=lambda item: _inventory_sort_key(sort_by, item),
@@ -1067,6 +1081,7 @@ def render_inventory_book():
         search_locality=search_locality,
         inv_number=inv_number,
         sheet_filter=sheet_filter,
+        printed_filter=printed,
         sort_by=sort_by,
         sort_order=sort_order,
     )
