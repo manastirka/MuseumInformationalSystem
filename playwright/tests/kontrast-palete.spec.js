@@ -187,3 +187,43 @@ for (const url of HERO_STRANE) {
     }
   }
 }
+
+// --- 5) ЈЕДИНСТВЕНО ЗАГЛАВЉЕ СТРАНЕ (.page-hero) × палета × режим -----------
+// Заглавља осталих модула (радне листе, захтеви, админ форме, K-R досије,
+// документи, пројекти…) су раније носила сопствену боју (Bootstrap bg-*,
+// инлајн градијент, модул-специфичне класе) па нису пратила палету. Сада сва
+// деле класу `.page-hero` (исти механизам као `.db-hero`): равна палета их води
+// на --pal-thead-bg са белим текстом. Мери се бар по један представник сваког
+// механизма/модула; пошто је CSS правило заједничко, узорак доказује цео скуп.
+const PAGE_HERO_STRANE = [
+  '/admin/timesheet',            // bg-primary картица (радне листе)
+  '/vehicle_management',         // bg-dark (најтамнији bg-*)
+  '/admin/manage_access',        // bg-info
+  '/zahtevi/godisnji-odmor',     // инлајн linear-gradient
+  '/terenska-aktivnost',         // инлајн linear-gradient
+  '/dokumenti',                  // модул класа .dokumenti-header
+  '/kr-dosije',                  // модул класа .kr-header
+  '/admin/projekti',             // модул класа .project-hero
+];
+for (const url of PAGE_HERO_STRANE) {
+  for (const paleta of PALETE) {
+    for (const rezim of PALETE_REZIMI) {
+      test(`контраст заглавља стране (${paleta} × ${rezim}): ${url}`, async ({ page }) => {
+        test.skip(!EMAIL || !PASS, 'QA креденцијали су потребни.');
+        await login(page);
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+        test.skip(!resp || resp.status() !== 200, `Стране ${url} нема на овом окружењу.`);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(600);
+        await postaviPaletu(page, paleta, 'komforno', rezim);
+        await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
+        await page.waitForTimeout(150);
+
+        const padovi = await izmeriKontrast(page, '.page-hero');
+        expect(padovi,
+          `Заглавље стране испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
+          .toEqual([]);
+      });
+    }
+  }
+}

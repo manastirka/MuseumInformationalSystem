@@ -4041,7 +4041,11 @@ html[data-density="kompakt"][data-style="terenska"] {
    режима и свим палетама). Градијент са светлим --pal-primary крајем НЕ
    задовољава AA за ситан текст (стат-ознаке ~4.4:1, outline-light дугме на
    светлом крају), па се банер држи равне тамне површине. */
-[data-palette] body.heritage-shell .db-hero {
+/* `.page-hero` = jedinstvena klasa zaglavlja strane za sve module; deli
+   isti dokazano-AA tretman kao `.db-hero` (ravna paleta -> --pal-thead-bg
+   sa belim tekstom; heritage zadrzava izvorni izgled). */
+[data-palette] body.heritage-shell .db-hero,
+[data-palette] body.heritage-shell .page-hero {
     background: var(--pal-thead-bg) !important;
     background-image: none !important;
     border: 1px solid var(--pal-primary-dark);
@@ -4049,12 +4053,15 @@ html[data-density="kompakt"][data-style="terenska"] {
 /* Сав текст у банеру (наслови, пасуси, ситне ознаке, иконе, линкови, outline
    дугмад, хардкодовани .text-dark) → бело, читљиво на тамној површини. */
 [data-palette] body.heritage-shell .db-hero,
-[data-palette] body.heritage-shell .db-hero * {
+[data-palette] body.heritage-shell .db-hero *,
+[data-palette] body.heritage-shell .page-hero,
+[data-palette] body.heritage-shell .page-hero * {
     color: #ffffff !important;
 }
 /* Стат-чип (Bootstrap `bg-white bg-opacity-*`) → суптилно издигнута ТАМНА
    плочица преко равне тамне подлоге (не светла), па бело мастило остаје AA. */
-[data-palette] body.heritage-shell .db-hero .bg-white {
+[data-palette] body.heritage-shell .db-hero .bg-white,
+[data-palette] body.heritage-shell .page-hero .bg-white {
     background-color: rgba(255, 255, 255, 0.12) !important;
     --bs-bg-opacity: 0 !important;
 }
@@ -4062,14 +4069,39 @@ html[data-density="kompakt"][data-style="terenska"] {
    (за пергамент позадину), па на равном тамном банеру композитује непредвидиво.
    У банеру му дајемо ЧВРСТУ светлу подлогу + таман текст (гарантовано AA), а
    бело-форсирање изнад побеђујемо специфичнијим селектором (за текст и иконе). */
-[data-palette] body.heritage-shell .db-hero .btn-light {
+[data-palette] body.heritage-shell .db-hero .btn-light,
+[data-palette] body.heritage-shell .page-hero .btn-light {
     background: #f4f6f8 !important;
     background-image: none !important;
     border: 1px solid rgba(0, 0, 0, 0.18) !important;
 }
 [data-palette] body.heritage-shell .db-hero .btn-light,
-[data-palette] body.heritage-shell .db-hero .btn-light * {
+[data-palette] body.heritage-shell .db-hero .btn-light *,
+[data-palette] body.heritage-shell .page-hero .btn-light,
+[data-palette] body.heritage-shell .page-hero .btn-light * {
     color: #212529 !important;
+}
+/* Akciona dugmad u `.page-hero` baneru su raznobojna (btn-success/primary/
+   danger/outline...); na ravnom tamnom baneru belo mastilo pada na svetlim
+   dugmadima. Kao i kod `.db-hero .btn-light`, SVA dugmad u baneru dobijaju
+   cvrstu svetlu podlogu + taman tekst (garantovano AA, ujednaceno). */
+[data-palette] body.heritage-shell .page-hero .btn {
+    background: #f4f6f8 !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}
+[data-palette] body.heritage-shell .page-hero .btn,
+[data-palette] body.heritage-shell .page-hero .btn * {
+    color: #212529 !important;
+}
+/* Bedzevi u baneru nose .text-dark (svetla podloga + taman tekst), pa ih
+   belo-forsiranje rusi (belo na svetlom). Kao .db-hero .bg-white cip:
+   suptilno izdignuta TAMNA plocica preko tamnog banera + belo mastilo (AA). */
+[data-palette] body.heritage-shell .page-hero .badge {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+    --bs-bg-opacity: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.22);
 }
 [data-palette] body.heritage-shell .dashboard-header .weather-desc,
 [data-palette] body.heritage-shell .dashboard-header .weather-wind,
