@@ -2,10 +2,35 @@
 
 {% block title %}Пријава - Информациони систем Природњачког музеја{% endblock %}
 
+{% block body_class %}heritage-shell login-page{% endblock %}
+
 {% block content %}
 <style>
+/* Sticky-footer raspored za guest login stranu: body je flex kolona visine
+   ekrana, srednji sloj (wrapper bez .content-wrapper klase kad korisnik nije
+   prijavljen) + main rastu i guraju footer na dno; login-container samo centrira
+   formu u preostalom prostoru. Tako je footer vidljiv bez skrolovanja na
+   uobicajenim visinama (768/900/1080), a forma ostaje centrirana i ne stisne se. */
+body.login-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+body.login-page > div {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+body.login-page .main-content {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .login-container {
-    min-height: calc(100vh - 140px);
+    flex: 1 0 auto;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
