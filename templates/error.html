@@ -191,7 +191,7 @@
     <div class="error-wrapper fade-in">
         <div class="error-card">
             <!-- Error Header -->
-            <div class="error-header {% if error_code == 404 %}error-404{% elif error_code == 500 %}error-500{% else %}error-default{% endif %}">
+            <div class="error-header page-hero {% if error_code == 404 %}error-404{% elif error_code == 500 %}error-500{% else %}error-default{% endif %}">
                 <div class="error-icon float-animation">
                     {% if error_code == 404 %}
                         <i class="bi bi-file-earmark-x"></i>

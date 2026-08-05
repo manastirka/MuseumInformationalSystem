@@ -204,6 +204,8 @@ const PAGE_HERO_STRANE = [
   '/dokumenti',                  // модул класа .dokumenti-header
   '/kr-dosije',                  // модул класа .kr-header
   '/admin/projekti',             // модул класа .project-hero
+  '/museum_terminology',         // секцијски банер (ICOM дефиниција) — терминологија
+  '/timesheet',                  // секцијска заглавља радне листе (унос/извештај)
 ];
 for (const url of PAGE_HERO_STRANE) {
   for (const paleta of PALETE) {
@@ -219,7 +221,9 @@ for (const url of PAGE_HERO_STRANE) {
         await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
         await page.waitForTimeout(150);
 
-        const padovi = await izmeriKontrast(page, '.page-hero');
+        // `.page-header` (старија класа заглавља, нпр. терминологија/планер изложби)
+        // сада прати палету истим токенима као `.page-hero`; мери се заједно.
+        const padovi = await izmeriKontrast(page, '.page-hero, .page-header');
         expect(padovi,
           `Заглавље стране испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
           .toEqual([]);
@@ -256,6 +260,37 @@ for (const url of SEKCIJA_STRANE) {
         const padovi = await izmeriKontrast(page, '.card-header');
         expect(padovi,
           `Секцијско заглавље испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
+          .toEqual([]);
+      });
+    }
+  }
+}
+
+// --- 7) ПОДНОЖЈЕ (.footer) × палета × режим ---------------------------------
+// Подножје је раније носило heritage бордо градијент без палетног override-а,
+// па у плавој теми није пратило заглавље стране. Сада `[data-palette] .footer`
+// иде на исту равну --pal-thead-bg површину као заглавља (.page-hero/.db-hero/
+// .dashboard-header) + бело мастило (opacity-* дигнут изнад AA). Мери се на
+// репрезентативној страни; footer је глобалан (base.html), па један узорак по
+// комбинацији палета×режим доказује цео скуп.
+const FOOTER_STRANE = ['/dashboard', '/admin/timesheet_reports'];
+for (const url of FOOTER_STRANE) {
+  for (const paleta of PALETE) {
+    for (const rezim of PALETE_REZIMI) {
+      test(`контраст подножја (${paleta} × ${rezim}): ${url}`, async ({ page }) => {
+        test.skip(!EMAIL || !PASS, 'QA креденцијали су потребни.');
+        await login(page);
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+        test.skip(!resp || resp.status() !== 200, `Стране ${url} нема на овом окружењу.`);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(600);
+        await postaviPaletu(page, paleta, 'komforno', rezim);
+        await page.addStyleTag({ content: '.table tbody, table tbody { display: none !important; }' });
+        await page.waitForTimeout(150);
+
+        const padovi = await izmeriKontrast(page, '.footer');
+        expect(padovi,
+          `Подножје испод AA (${paleta} × ${rezim}) на ${url}:\n${opisPadova(padovi)}`)
           .toEqual([]);
       });
     }

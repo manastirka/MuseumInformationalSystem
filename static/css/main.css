@@ -4133,6 +4133,99 @@ html[data-density="kompakt"][data-style="terenska"] {
     --bs-bg-opacity: 0 !important;
     border: 1px solid rgba(255, 255, 255, 0.22);
 }
+/* `#localRruffSection` (admin_mineral_detail) zaglavlje nosi ID + !important
+   gradijent (da pobedi Bootstrap `.bg-danger !important`), pa nadjacava opsti
+   `.card-header[bg-*]` palette rule (nizi ID rang). Ciljani override iste ID
+   specificnosti ga vraca u paletu; tekst je vec belo iz card-header pravila. */
+[data-palette] body.heritage-shell #localRruffSection .card-header {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border-bottom-color: var(--pal-primary-dark) !important;
+}
+/* Modalna zaglavlja (.modal-header) sa kontekstnom bojom (bg-primary/info/
+   success/danger/warning/dark) prate paletu isto kao sekcijska .card-header
+   zaglavlja -> ravna --pal-thead-bg + belo (AA svuda). Inline-gradient / custom
+   modalna zaglavlja nose .page-hero (isti tretman, gore). Svetla zaglavlja
+   (bg-light/white/transparent/opacity) ostaju svetla. */
+[data-palette] body.heritage-shell .modal-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border-bottom-color: var(--pal-primary-dark) !important;
+}
+[data-palette] body.heritage-shell .modal-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]),
+[data-palette] body.heritage-shell .modal-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) * {
+    color: #ffffff !important;
+}
+/* Dugme za zatvaranje (Bootstrap .btn-close, crn SVG „X") na tamnom themed
+   zaglavlju je nevidljivo; invertuj ga u belo. Pokriva page-hero (uklj. modalna
+   zaglavlja koja nose .page-hero) i .modal-header sa kontekstnom bojom. */
+[data-palette] body.heritage-shell .page-hero .btn-close,
+[data-palette] body.heritage-shell .modal-header[class*="bg-"]:not(.bg-light):not(.bg-white):not(.bg-transparent):not([class*="opacity"]) .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+/* Podnozje prati aktivnu paletu isto kao zaglavlje strane (.page-hero/.db-hero/
+   .dashboard-header): ravna --pal-thead-bg povrsina + belo mastilo. Bez palete
+   (heritage) footer zadrzava burgundy gradijent (rule iznad, 0,2,1). Ovaj
+   selektor (0,3,1) ga nadjacava, pa u plavoj temi footer postaje plav, u bordo
+   bordo itd. --pal-thead-bg prati i dark-flat sloj (tamni rezim). */
+[data-palette] body.heritage-shell .footer {
+    background: var(--pal-thead-bg);
+    background-image: none;
+    border-top: 1px solid var(--pal-primary-dark);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-palette] body.heritage-shell .footer,
+[data-palette] body.heritage-shell .footer h5,
+[data-palette] body.heritage-shell .footer p,
+[data-palette] body.heritage-shell .footer i {
+    color: #ffffff;
+}
+/* Bootstrap .opacity-75/.opacity-60 (util, !important) snizavaju belo mastilo
+   ispod AA na tamnoj --pal-thead-bg podlozi; podigni na citljiv nivo. */
+[data-palette] body.heritage-shell .footer .opacity-75,
+[data-palette] body.heritage-shell .footer .opacity-60 {
+    opacity: 0.88 !important;
+}
+/* Eventualni linkovi u podnozju -> belo + podvuceno (AA + prepoznatljivost). */
+[data-palette] body.heritage-shell .footer a {
+    color: #ffffff;
+    text-decoration: underline;
+}
+/* `.page-header` (starije zaglavlje strane; 6 sablona: terminologija, planer
+   izlozbi, customize dashboard, museum databases...) je pod heritage-shell
+   nosilo burgundy gradijent + zlatan tekst i NIJE pratilo paletu (c8b08fe je
+   override-ovao samo font, ne i pozadinu). Isti dokazano-AA tretman kao
+   `.page-hero`/`.db-hero`: ravna --pal-thead-bg + belo. Heritage cuva karakter. */
+[data-palette] body.heritage-shell .page-header {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border: 1px solid var(--pal-primary-dark);
+    box-shadow: none;
+}
+[data-palette] body.heritage-shell .page-header,
+[data-palette] body.heritage-shell .page-header * {
+    color: #ffffff !important;
+}
+[data-palette] body.heritage-shell .page-header .bg-white {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    --bs-bg-opacity: 0 !important;
+}
+[data-palette] body.heritage-shell .page-header .btn {
+    background: #f4f6f8 !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}
+[data-palette] body.heritage-shell .page-header .btn,
+[data-palette] body.heritage-shell .page-header .btn * {
+    color: #212529 !important;
+}
+[data-palette] body.heritage-shell .page-header .badge {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+    --bs-bg-opacity: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+}
 [data-palette] body.heritage-shell .dashboard-header .weather-desc,
 [data-palette] body.heritage-shell .dashboard-header .weather-wind,
 [data-palette] body.heritage-shell .dashboard-header .weather-location,
