@@ -3,6 +3,111 @@
 {% block title %}Радне листе (PostgreSQL){% endblock %}
 
 {% block content %}
+{# Статус-значка и акције извучене у макрое: исти излаз на десктоп табели и
+   у мобилним картицама (телефон), без дуплирања логике. #}
+{% macro status_badge(report) %}
+    {% if report.status is defined and report.status == 'ARHIVA' %}
+        <span class="badge bg-secondary" title="Архивски увоз — није званично одобрен извештај">
+            <i class="bi bi-archive"></i> Архива
+        </span>
+    {% elif report.admin_approved_by %}
+        <span class="badge bg-warning text-dark" title="Одобрено административно: {{ report.admin_approved_by }} {{ report.admin_approved_at.strftime('%d.%m.%Y') if report.admin_approved_at else '' }}">
+            <i class="bi bi-shield-check"></i> Одобрено административно
+        </span>
+    {% elif report.is_verified %}
+        <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
+            <i class="bi bi-check-circle-fill"></i> Одобрено
+        </span>
+    {% elif report.status is defined and report.status == 'SUBMITTED' %}
+        <span class="badge bg-warning text-dark">
+            <i class="bi bi-hourglass-split"></i> Поднето
+        </span>
+        {% if report.rejection_note %}
+        <span class="badge bg-info text-dark ms-1" title="Поновно поднет после враћања — реевалуација">
+            <i class="bi bi-arrow-repeat"></i> реевалуација
+        </span>
+        {% endif %}
+        <div class="mt-1" style="font-size:.8em">
+            {% if report.head_verified_by %}
+            <span class="badge bg-success" title="Шеф: {{ report.head_verified_by }} {{ report.head_verified_at.strftime('%d.%m.%Y') if report.head_verified_at else '' }}"><i class="bi bi-check"></i> шеф</span>
+            {% else %}
+            <span class="badge bg-secondary" title="Чека потпис шефа"><i class="bi bi-hourglass"></i> шеф</span>
+            {% endif %}
+            {% if report.director_verified_by %}
+            <span class="badge bg-success" title="Директор: {{ report.director_verified_by }} {{ report.director_verified_at.strftime('%d.%m.%Y') if report.director_verified_at else '' }}"><i class="bi bi-check"></i> директор</span>
+            {% else %}
+            <span class="badge bg-secondary" title="Чека потпис директора"><i class="bi bi-hourglass"></i> директор</span>
+            {% endif %}
+        </div>
+    {% elif report.status is defined and report.status == 'REJECTED' %}
+        <span class="badge bg-danger">
+            <i class="bi bi-x-circle"></i> Враћено
+        </span>
+    {% elif report.status is defined and report.status == 'DRAFT' %}
+        <span class="badge bg-secondary">
+            <i class="bi bi-pencil"></i> Нацрт
+        </span>
+    {% else %}
+        <span class="badge bg-secondary">
+            <i class="bi bi-exclamation-circle"></i> Неверификовано
+        </span>
+    {% endif %}
+{% endmacro %}
+{% macro report_akcije(report) %}
+    <div class="btn-group btn-group-sm" role="group">
+        <button type="button" class="btn btn-outline-info"
+                data-testid="timesheet-report-view-{{ report.id }}"
+                onclick="viewReport({{ report.id }})"
+                title="Преглед детаља">
+            <i class="bi bi-eye"></i>
+        </button>
+
+        {% if report.is_verified %}
+            <button type="button" class="btn btn-outline-warning"
+                    data-testid="timesheet-report-unapprove-{{ report.id }}"
+                    {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, false)" title="Повуци верификацију"{% endif %}>
+                <i class="bi bi-x-circle"></i>
+            </button>
+        {% else %}
+            {% if report.status == 'SUBMITTED' %}
+                <button type="button" class="btn btn-outline-success"
+                        data-testid="timesheet-report-approve-{{ report.id }}"
+                        {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, true)" title="Верификуј и закључај"{% endif %}>
+                    <i class="bi bi-check-circle"></i>
+                </button>
+            {% else %}
+                <button type="button" class="btn btn-outline-success"
+                        disabled
+                        title="{% if report.status == 'REJECTED' %}Враћено — чека на поновно подношење{% elif report.status == 'DRAFT' %}Још увек није поднето на преглед{% else %}Није доступно за верификацију{% endif %}">
+                    <i class="bi bi-check-circle"></i>
+                </button>
+            {% endif %}
+        {% endif %}
+
+        {% if not report.is_verified and report.can_verify is defined and report.can_verify and (report.status == 'SUBMITTED' or report.is_locked) %}
+            <button type="button" class="btn btn-outline-secondary"
+                    data-testid="timesheet-report-return-{{ report.id }}"
+                    onclick="returnReportToEmployee({{ report.id }}, '{{ report.employee_name|replace("'", "&#39;") }}', '{{ report.status or '' }}')"
+                    title="Врати запосленом на измену">
+                <i class="bi bi-arrow-return-left"></i>
+            </button>
+        {% endif %}
+
+        <button type="button" class="btn btn-outline-primary"
+                data-testid="timesheet-report-export-{{ report.id }}"
+                onclick="exportReport({{ report.id }})"
+                title="Извоз у Word">
+            <i class="bi bi-file-earmark-word"></i>
+        </button>
+
+        <button type="button" class="btn btn-outline-danger"
+                data-testid="timesheet-report-delete-{{ report.id }}"
+                onclick="deleteReport({{ report.id }}, '{{ report.employee_name }}', '{{ calendar.month_name[report.month] }} {{ report.year }}')"
+                title="Обриши извештај">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+{% endmacro %}
 <style>
     /* Full-width layout for timesheet reports table */
     .container-main.timesheet-reports-wide {
@@ -238,7 +343,7 @@
                 </button>
             </div>
         </div>
-        <div class="table-responsive">
+        <div class="table-responsive desktop-tabela">
             <table class="table table-hover timesheet-table mb-0">
                 <thead class="table-light">
                     <tr>
@@ -265,64 +370,7 @@
                                 <input type="checkbox" class="form-check-input report-checkbox"
                                        value="{{ report.id }}" onchange="updateBatchSelection()">
                             </td>
-                            <td class="col-status">
-                                {# ARHIVA (увоз из Word-а) НИЈЕ званично одобрен извештај —
-                                   неутрална ознака, никад зелено «Одобрено». Мора пре
-                                   is_verified гране. #}
-                                {% if report.status is defined and report.status == 'ARHIVA' %}
-                                    <span class="badge bg-secondary" title="Архивски увоз — није званично одобрен извештај">
-                                        <i class="bi bi-archive"></i> Архива
-                                    </span>
-                                {# Административно одобрење (админ/директор ван двостепеног
-                                   ланца) — жута ознака, БЕЗ лажних шеф/директор под-ознака
-                                   (та поља су NULL). Мора пре is_verified гране. #}
-                                {% elif report.admin_approved_by %}
-                                    <span class="badge bg-warning text-dark" title="Одобрено административно: {{ report.admin_approved_by }} {{ report.admin_approved_at.strftime('%d.%m.%Y') if report.admin_approved_at else '' }}">
-                                        <i class="bi bi-shield-check"></i> Одобрено административно
-                                    </span>
-                                {# is_verified takes precedence — a report marked verified
-                                   always shows the green badge, even if the legacy `status`
-                                   column hasn't been bumped to 'APPROVED' yet. #}
-                                {% elif report.is_verified %}
-                                    <span class="badge bg-success" title="Одобрено {{ report.reviewed_at.strftime('%d.%m.%Y') if report.reviewed_at is defined and report.reviewed_at else (report.verified_at.strftime('%d.%m.%Y') if report.verified_at else '') }}">
-                                        <i class="bi bi-check-circle-fill"></i> Одобрено
-                                    </span>
-                                {% elif report.status is defined and report.status == 'SUBMITTED' %}
-                                    <span class="badge bg-warning text-dark">
-                                        <i class="bi bi-hourglass-split"></i> Поднето
-                                    </span>
-                                    {% if report.rejection_note %}
-                                    <span class="badge bg-info text-dark ms-1" title="Поновно поднет после враћања — реевалуација">
-                                        <i class="bi bi-arrow-repeat"></i> реевалуација
-                                    </span>
-                                    {% endif %}
-                                    {# Двостепено одобрење: ко је потврдио, ко још не. #}
-                                    <div class="mt-1" style="font-size:.8em">
-                                        {% if report.head_verified_by %}
-                                        <span class="badge bg-success" title="Шеф: {{ report.head_verified_by }} {{ report.head_verified_at.strftime('%d.%m.%Y') if report.head_verified_at else '' }}"><i class="bi bi-check"></i> шеф</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary" title="Чека потпис шефа"><i class="bi bi-hourglass"></i> шеф</span>
-                                        {% endif %}
-                                        {% if report.director_verified_by %}
-                                        <span class="badge bg-success" title="Директор: {{ report.director_verified_by }} {{ report.director_verified_at.strftime('%d.%m.%Y') if report.director_verified_at else '' }}"><i class="bi bi-check"></i> директор</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary" title="Чека потпис директора"><i class="bi bi-hourglass"></i> директор</span>
-                                        {% endif %}
-                                    </div>
-                                {% elif report.status is defined and report.status == 'REJECTED' %}
-                                    <span class="badge bg-danger">
-                                        <i class="bi bi-x-circle"></i> Враћено
-                                    </span>
-                                {% elif report.status is defined and report.status == 'DRAFT' %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-pencil"></i> Нацрт
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-exclamation-circle"></i> Неверификовано
-                                    </span>
-                                {% endif %}
-                            </td>
+                            <td class="col-status">{{ status_badge(report) }}</td>
                             <td class="col-employee">
                                 <strong>{{ report.employee_name }}</strong>
                                 {% if report.verified_by %}
@@ -335,66 +383,7 @@
                             <td class="text-end col-number">{{ '%.2f'|format(report.work_outside) }}</td>
                             <td class="text-end col-number">{{ '%.2f'|format(report.vacation + report.public_holiday + report.paid_leave + report.other_leave + report.sick_lt30 + report.sick_gte30) }}</td>
                             <td class="text-end col-number fw-semibold">{{ '%.2f'|format(report.total_hours) }}</td>
-                            <td class="text-end col-actions">
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-info"
-                                            data-testid="timesheet-report-view-{{ report.id }}"
-                                            onclick="viewReport({{ report.id }})"
-                                            title="Преглед детаља">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-
-                                    {% if report.is_verified %}
-                                        <button type="button" class="btn btn-outline-warning"
-                                                data-testid="timesheet-report-unapprove-{{ report.id }}"
-                                                {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, false)" title="Повуци верификацију"{% endif %}>
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
-                                    {% else %}
-                                        {# Verify button only for SUBMITTED reports — the backend
-                                           blocks verification on DRAFT/REJECTED with a
-                                           'Само поднете радне листе' error, so the button would
-                                           lead nowhere for those states. #}
-                                        {% if report.status == 'SUBMITTED' %}
-                                            <button type="button" class="btn btn-outline-success"
-                                                    data-testid="timesheet-report-approve-{{ report.id }}"
-                                                    {% if report.can_verify is defined and not report.can_verify %}disabled title="Овај извештај не одобравате Ви (одобрава шеф одељења)"{% else %}onclick="toggleApproval({{ report.id }}, true)" title="Верификуј и закључај"{% endif %}>
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
-                                        {% else %}
-                                            <button type="button" class="btn btn-outline-success"
-                                                    disabled
-                                                    title="{% if report.status == 'REJECTED' %}Враћено — чека на поновно подношење{% elif report.status == 'DRAFT' %}Још увек није поднето на преглед{% else %}Није доступно за верификацију{% endif %}">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
-                                        {% endif %}
-                                    {% endif %}
-
-                                    {# Return to employee — shown for unverified SUBMITTED/DRAFT reports that the current user is authorized to verify. Opens a note modal (reject path) for SUBMITTED; force-edits DRAFT/REJECTED that still have is_locked=TRUE (requires unlock). #}
-                                    {% if not report.is_verified and report.can_verify is defined and report.can_verify and (report.status == 'SUBMITTED' or report.is_locked) %}
-                                        <button type="button" class="btn btn-outline-secondary"
-                                                data-testid="timesheet-report-return-{{ report.id }}"
-                                                onclick="returnReportToEmployee({{ report.id }}, '{{ report.employee_name|replace("'", "&#39;") }}', '{{ report.status or '' }}')"
-                                                title="Врати запосленом на измену">
-                                            <i class="bi bi-arrow-return-left"></i>
-                                        </button>
-                                    {% endif %}
-
-                                    <button type="button" class="btn btn-outline-primary"
-                                            data-testid="timesheet-report-export-{{ report.id }}"
-                                            onclick="exportReport({{ report.id }})"
-                                            title="Извоз у Word">
-                                        <i class="bi bi-file-earmark-word"></i>
-                                    </button>
-
-                                    <button type="button" class="btn btn-outline-danger"
-                                            data-testid="timesheet-report-delete-{{ report.id }}"
-                                            onclick="deleteReport({{ report.id }}, '{{ report.employee_name }}', '{{ calendar.month_name[report.month] }} {{ report.year }}')"
-                                            title="Обриши извештај">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            <td class="text-end col-actions">{{ report_akcije(report) }}</td>
                         </tr>
                         {% endfor %}
                     {% else %}
@@ -406,6 +395,48 @@
                     {% endif %}
                 </tbody>
             </table>
+        </div>
+
+        {# Мобилни приказ: картице по запису (телефон ≤767.98px). #}
+        <div class="mobil-kartice p-2">
+            {% if reports.reports %}
+                {% for report in reports.reports %}
+                <article class="mobil-kartica {% if report.is_verified %}border-success{% endif %}" data-report-id="{{ report.id }}" data-testid="timesheet-mobil-{{ report.id }}">
+                    <div class="mobil-kartica-head">
+                        <div class="mobil-kartica-naziv">
+                            <label class="d-inline-flex align-items-center gap-2">
+                                <input type="checkbox" class="form-check-input report-checkbox mt-0" value="{{ report.id }}" onchange="updateBatchSelection()">
+                                {{ report.employee_name }}
+                            </label>
+                            <span class="mobil-kartica-inv">{{ calendar.month_name[report.month] }} {{ report.year }}
+                                {%- if report.organization_unit %} · {{ report.organization_unit }}{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="mb-2">{{ status_badge(report) }}</div>
+                    <div class="mobil-kartica-polja">
+                        <div class="mobil-polje">
+                            <span class="mobil-polje-oznaka">Рад у музеју</span>
+                            <span class="mobil-polje-vrednost">{{ '%.2f'|format(report.work_in_museum) }}</span>
+                        </div>
+                        <div class="mobil-polje">
+                            <span class="mobil-polje-oznaka">Рад ван музеја</span>
+                            <span class="mobil-polje-vrednost">{{ '%.2f'|format(report.work_outside) }}</span>
+                        </div>
+                        <div class="mobil-polje">
+                            <span class="mobil-polje-oznaka">Одсуства</span>
+                            <span class="mobil-polje-vrednost">{{ '%.2f'|format(report.vacation + report.public_holiday + report.paid_leave + report.other_leave + report.sick_lt30 + report.sick_gte30) }}</span>
+                        </div>
+                        <div class="mobil-polje">
+                            <span class="mobil-polje-oznaka">Укупно</span>
+                            <span class="mobil-polje-vrednost fw-semibold">{{ '%.2f'|format(report.total_hours) }}</span>
+                        </div>
+                    </div>
+                    <div class="mobil-kartica-akcije">{{ report_akcije(report) }}</div>
+                </article>
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-muted py-4 mb-0">Нема резултата за изабране филтере.</p>
+            {% endif %}
         </div>
 
         {% if reports.total_pages > 1 %}

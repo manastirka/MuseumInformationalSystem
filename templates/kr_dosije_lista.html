@@ -81,7 +81,7 @@
 
     <div class="kr-card">
         {% if dosijei %}
-        <div class="table-responsive">
+        <div class="table-responsive desktop-tabela">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
@@ -133,6 +133,47 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        {# Мобилни приказ: картице по запису (телефон ≤767.98px). #}
+        <div class="mobil-kartice">
+            {% for d in dosijei %}
+            <article class="mobil-kartica" id="kr-mobil-{{ d.id }}">
+                <div class="mobil-kartica-head">
+                    <div class="mobil-kartica-naziv">
+                        {{ d.naziv_predmeta }}
+                        <span class="mobil-kartica-inv">{{ d.evidencioni_broj }}
+                            {%- if d.inventarni_broj %} · Инв. бр.: {{ d.inventarni_broj }}{% endif %}</span>
+                    </div>
+                    <span class="badge bg-secondary">{{ odeljenje_labels.get(d.odeljenje, d.odeljenje) }}</span>
+                </div>
+                <div class="mobil-kartica-polja">
+                    <div class="mobil-polje">
+                        <span class="mobil-polje-oznaka">Извршиоци</span>
+                        <span class="mobil-polje-vrednost">
+                            {%- if d.izvrsioci %}{{ d.izvrsioci | map(attribute='ime_tekst') | join(', ') }}{% else %}—{% endif -%}
+                        </span>
+                    </div>
+                    <div class="mobil-polje">
+                        <span class="mobil-polje-oznaka">Период</span>
+                        <span class="mobil-polje-vrednost">
+                            {%- if d.period_od %}{{ d.period_od.strftime('%d.%m.%Y') }}{% endif -%}
+                            {%- if d.period_od and d.period_do %}–{% endif -%}
+                            {%- if d.period_do %}{{ d.period_do.strftime('%d.%m.%Y') }}{% endif -%}
+                            {%- if not d.period_od and not d.period_do %}—{% endif -%}
+                        </span>
+                    </div>
+                </div>
+                <div class="mobil-kartica-akcije">
+                    <a class="btn btn-sm btn-outline-success kr-open" data-kr-open="{{ d.id }}" href="{{ url_for('kr_dosije.detalj', dosije_id=d.id) }}">
+                        <i class="bi bi-eye me-1"></i>Отвори
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger" href="{{ url_for('kr_dosije.pdf', dosije_id=d.id) }}">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
         </div>
         {% if total_pages > 1 %}
         {% set base_args = {'q': q or None, 'odeljenje': odeljenje_filter or None} %}

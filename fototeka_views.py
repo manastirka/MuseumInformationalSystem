@@ -63,6 +63,13 @@ PREVIEW_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
 
 MAX_PHOTO_SIZE = 200 * 1024 * 1024  # 200MB — RAW files are large; matches nginx client_max_body_size
 
+# Мобилно отпремање: разуман број датотека по слању и подсетник на величину
+# по датотеци (усклађено са nginx client_max_body_size = 50M за спор мобилни
+# интернет; клијент одбија веће пре POST-а уз јасну поруку). Ови бројеви су
+# извор истине — прослеђују се у шаблон и клијент их чита из data-атрибута.
+UPLOAD_MAX_FILES_PER_SUBMIT = 40
+UPLOAD_MAX_MB_PER_FILE = 50
+
 PHOTO_STATUS_LABELS = {
     'primljena': 'Примљена',
     'obrada': 'Обрада у току',
@@ -702,6 +709,8 @@ def render_upload_form():
         izlozbe=izlozbe,
         zbirke=get_zbirka_labels(),
         prefill=prefill,
+        max_files=UPLOAD_MAX_FILES_PER_SUBMIT,
+        max_mb=UPLOAD_MAX_MB_PER_FILE,
     )
 
 
