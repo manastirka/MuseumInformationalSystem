@@ -1,0 +1,213 @@
+{# =====================================================================
+   Мобилна бочна фиока (offcanvas drawer) — обједињена навигација.
+   Замењује стари вертикални collapse навбара И засебни .sidebar FAB
+   испод mobilnog прелома (<992px). Десктоп навигација остаје нетакнута.
+   Приказује се само пријављеним корисницима; отвара се хамбургером
+   (#drawerToggle). Понашање (swipe, Back-дугме, focus) → mobile_drawer.js
+   ===================================================================== #}
+<div class="offcanvas offcanvas-start mobile-drawer d-xl-none"
+     tabindex="-1" id="mainDrawer" aria-labelledby="mainDrawerLabel"
+     data-bs-scroll="false">
+    <div class="offcanvas-header mobile-drawer-header">
+        <h2 class="offcanvas-title mobile-drawer-title" id="mainDrawerLabel">
+            <i class="bi bi-compass me-2" aria-hidden="true"></i>Мени
+        </h2>
+        <div class="mobile-drawer-lang" data-no-translate>
+            <button type="button" class="mobile-drawer-lang-btn{% if current_lang != 'sr-Latn' %} active{% endif %}"
+                    onclick="MuseumTranslator.switchLanguage('sr-Cyrl');return false;">Ћир</button>
+            <button type="button" class="mobile-drawer-lang-btn{% if current_lang == 'sr-Latn' %} active{% endif %}"
+                    onclick="MuseumTranslator.switchLanguage('sr-Latn');return false;">Lat</button>
+        </div>
+        <button type="button" class="btn-close mobile-drawer-close" data-bs-dismiss="offcanvas"
+                aria-label="Затвори мени"></button>
+    </div>
+    <div class="offcanvas-body mobile-drawer-body">
+        <nav class="mobile-drawer-nav" aria-label="Главна навигација">
+
+            <div class="drawer-section">
+                <p class="drawer-section-title">Пречице</p>
+                <a class="drawer-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">
+                    <i class="bi bi-house" aria-hidden="true"></i><span>Почетна</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('vehicles.') %} active{% endif %}" href="{{ url_for('vehicles.vehicle_reservations') }}">
+                    <i class="bi bi-truck" aria-hidden="true"></i><span>Возила</span>
+                </a>
+                {% if not is_admin() %}
+                <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('mail.') %} active{% endif %}" href="{{ url_for('mail.mail_client_page') }}">
+                    <i class="bi bi-envelope" aria-hidden="true"></i><span>Електронска пошта</span>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if has_module_access('timesheet') or has_module_access('dokumenti') or not (is_admin() or is_director()) %}
+            <div class="drawer-section">
+                <p class="drawer-section-title">Радне листе и документи</p>
+                {% if has_module_access('timesheet') %}
+                    {% if is_admin() or is_director() %}
+                    <a class="drawer-link" href="{{ url_for('admin_timesheet_main') }}">
+                        <i class="bi bi-calendar-check" aria-hidden="true"></i><span>Радне листе</span>
+                    </a>
+                    {% else %}
+                    <a class="drawer-link{% if request.endpoint == 'timesheet_entry' %} active{% endif %}" href="{{ url_for('timesheet_entry') }}">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i><span>Унос радних листа</span>
+                    </a>
+                    <a class="drawer-link{% if request.endpoint == 'timesheet_view' %} active{% endif %}" href="{{ url_for('timesheet_view') }}">
+                        <i class="bi bi-eye" aria-hidden="true"></i><span>Преглед радних листа</span>
+                    </a>
+                    {% if is_department_head() %}
+                    <a class="drawer-link" href="{{ url_for('admin_timesheet_reports') }}">
+                        <i class="bi bi-card-checklist" aria-hidden="true"></i><span>Извештаји (одељење)</span>
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                {% endif %}
+                {% if has_module_access('dokumenti') %}
+                <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('documents.') %} active{% endif %}" href="{{ url_for('documents.dokumenti_lista') }}">
+                    <i class="bi bi-folder2-open" aria-hidden="true"></i><span>Документа</span>
+                </a>
+                {% endif %}
+                {% if not (is_admin() or is_director()) %}
+                <a class="drawer-link" href="{{ url_for('zahtev_slobodan_dan') if endpoint_exists('zahtev_slobodan_dan') else '#' }}">
+                    <i class="bi bi-calendar-x" aria-hidden="true"></i><span>Захтев за слободан дан</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('zahtev_godisnji_odmor') if endpoint_exists('zahtev_godisnji_odmor') else '#' }}">
+                    <i class="bi bi-sun" aria-hidden="true"></i><span>Захтев за годишњи одмор</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('zahtev_razno') if endpoint_exists('zahtev_razno') else '#' }}">
+                    <i class="bi bi-file-earmark-plus" aria-hidden="true"></i><span>Захтев разно</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if not (is_admin() or is_director()) %}
+            <div class="drawer-section">
+                <p class="drawer-section-title">Финансије и терен</p>
+                <a class="drawer-link" href="{{ url_for('finansijski_plan') if endpoint_exists('finansijski_plan') else '#' }}">
+                    <i class="bi bi-graph-up" aria-hidden="true"></i><span>Финансијски план</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('zahtev_nabavka') if endpoint_exists('zahtev_nabavka') else '#' }}">
+                    <i class="bi bi-cart-plus" aria-hidden="true"></i><span>Захтев за набавку</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('terenska_aktivnost') if endpoint_exists('terenska_aktivnost') else '#' }}">
+                    <i class="bi bi-geo-alt" aria-hidden="true"></i><span>Теренска активност</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('zahtev_sluzbeni_put') if endpoint_exists('zahtev_sluzbeni_put') else '#' }}">
+                    <i class="bi bi-signpost-2" aria-hidden="true"></i><span>Захтев за службени пут</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if has_module_access('museum_databases') or has_module_access('kr_dosije') or has_module_access('news') %}
+            <div class="drawer-section">
+                <p class="drawer-section-title">Базе података</p>
+                {% if has_module_access('museum_databases') %}
+                <a class="drawer-link{% if request.endpoint == 'museum_databases' %} active{% endif %}" href="{{ url_for('museum_databases') }}">
+                    <i class="bi bi-database" aria-hidden="true"></i><span>Све базе података</span>
+                </a>
+                {% endif %}
+                <a class="drawer-link{% if request.endpoint == 'museum_terminology' %} active{% endif %}" href="{{ url_for('museum_terminology') }}">
+                    <i class="bi bi-book" aria-hidden="true"></i><span>Терминологија</span>
+                </a>
+                {% if has_module_access('kr_dosije') %}
+                <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('kr_dosije.') %} active{% endif %}" href="{{ url_for('kr_dosije.lista') }}">
+                    <i class="bi bi-clipboard2-pulse" aria-hidden="true"></i><span>К-Р досије</span>
+                </a>
+                {% endif %}
+                {% if has_module_access('news') %}
+                <a class="drawer-link{% if request.endpoint == 'museum_news' %} active{% endif %}" href="{{ url_for('museum_news') }}">
+                    <i class="bi bi-newspaper" aria-hidden="true"></i><span>Музејске вести</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if has_module_access('fototeka') %}
+            <div class="drawer-section">
+                <p class="drawer-section-title">Фототека</p>
+                <a class="drawer-link{% if request.endpoint == 'fototeka.fototeka_galerija' %} active{% endif %}" href="{{ url_for('fototeka.fototeka_galerija') }}">
+                    <i class="bi bi-camera" aria-hidden="true"></i><span>Фототека</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint == 'fototeka.fototeka_prijemni_red' %} active{% endif %}" href="{{ url_for('fototeka.fototeka_prijemni_red') }}">
+                    <i class="bi bi-inboxes" aria-hidden="true"></i><span>Пријемни ред</span>
+                </a>
+                {% if is_admin() or is_director() %}
+                <a class="drawer-link{% if request.endpoint == 'fototeka.fototeka_import' %} active{% endif %}" href="{{ url_for('fototeka.fototeka_import') }}">
+                    <i class="bi bi-hdd-network" aria-hidden="true"></i><span>Увоз са диска</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="drawer-section">
+                <p class="drawer-section-title">Изложбе и пројекти</p>
+                <a class="drawer-link{% if request.endpoint == 'exhibition_planner' %} active{% endif %}" href="{{ url_for('exhibition_planner') if endpoint_exists('exhibition_planner') else '#' }}">
+                    <i class="bi bi-easel" aria-hidden="true"></i><span>Изложбе</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('projects.admin_projekti') }}">
+                    <i class="bi bi-building" aria-hidden="true"></i><span>Преглед пројекта</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('projects.admin_projekti_dokumentacija') }}">
+                    <i class="bi bi-journal-richtext" aria-hidden="true"></i><span>Пројектна документација</span>
+                </a>
+                <a class="drawer-link" href="{{ url_for('projects.admin_projekti_space_planner') }}">
+                    <i class="bi bi-bounding-box-circles" aria-hidden="true"></i><span>Интерактивни план -5</span>
+                </a>
+            </div>
+
+            {% if is_admin() or is_director() %}
+            <div class="drawer-section">
+                <p class="drawer-section-title">Администрација</p>
+                <a class="drawer-link{% if request.endpoint == 'admin_panel' %} active{% endif %}" href="{{ url_for('admin_panel') }}">
+                    <i class="bi bi-gear" aria-hidden="true"></i><span>Администрација</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('archive_signature.') %} active{% endif %}" href="{{ url_for('archive_signature.admin_archive_dashboard') }}">
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i><span>Преглед архиве</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint == 'approval_center.centar_odobravanje' %} active{% endif %}" href="{{ url_for('approval_center.centar_odobravanje') }}">
+                    <i class="bi bi-check2-square" aria-hidden="true"></i><span>Центар за одобравање</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint == 'approval_center.arhiva' %} active{% endif %}" href="{{ url_for('approval_center.arhiva') }}">
+                    <i class="bi bi-archive" aria-hidden="true"></i><span>Архива</span>
+                </a>
+            </div>
+            {% else %}
+                {% if is_department_head() %}
+                <div class="drawer-section">
+                    <p class="drawer-section-title">Одобравање</p>
+                    <a class="drawer-link{% if request.endpoint == 'approval_center.centar_odobravanje' %} active{% endif %}" href="{{ url_for('approval_center.centar_odobravanje') }}">
+                        <i class="bi bi-check2-square" aria-hidden="true"></i><span>Центар за одобравање</span>
+                    </a>
+                    <a class="drawer-link{% if request.endpoint == 'approval_center.arhiva' %} active{% endif %}" href="{{ url_for('approval_center.arhiva') }}">
+                        <i class="bi bi-archive" aria-hidden="true"></i><span>Архива</span>
+                    </a>
+                </div>
+                {% else %}
+                <div class="drawer-section">
+                    <p class="drawer-section-title">Архива</p>
+                    <a class="drawer-link{% if request.endpoint == 'approval_center.arhiva' %} active{% endif %}" href="{{ url_for('approval_center.arhiva') }}">
+                        <i class="bi bi-archive" aria-hidden="true"></i><span>Архива</span>
+                    </a>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            <div class="drawer-section drawer-section-account">
+                <p class="drawer-section-title">Налог</p>
+                <a class="drawer-link{% if request.endpoint == 'core.izgled_personalizacija' %} active{% endif %}" href="{{ url_for('core.izgled_personalizacija') }}">
+                    <i class="bi bi-palette" aria-hidden="true"></i><span>Изглед и персонализација</span>
+                </a>
+                <a class="drawer-link{% if request.endpoint == 'change_password' %} active{% endif %}" href="{{ url_for('change_password') }}">
+                    <i class="bi bi-key" aria-hidden="true"></i><span>Промени лозинку</span>
+                </a>
+                <form method="POST" action="{{ url_for('logout') }}" class="drawer-logout-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="drawer-link drawer-link-logout">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i><span>Одјави се</span>
+                    </button>
+                </form>
+            </div>
+
+        </nav>
+    </div>
+</div>
