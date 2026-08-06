@@ -61,14 +61,40 @@
     </div>
 
     <div class="fototeka-card">
+        {% set pf = prefill if prefill is defined else {} %}
+        {% if pf.get('veza_tip') == 'predmet' and pf.get('veza_inventarni_broj') %}
+        <div class="alert alert-success d-flex align-items-center gap-2" role="alert" id="fototekaPredmetBaner">
+            <i class="bi bi-link-45deg fs-5"></i>
+            <div>Послате фотографије биће одмах везане за предмет
+                <strong>{{ pf.get('veza_inventarni_broj') }}</strong>{% if pf.get('veza_zbirka') %}
+                ({{ zbirke.get(pf.get('veza_zbirka'), pf.get('veza_zbirka')) }}){% endif %}.
+                Везу можете променити испод.</div>
+        </div>
+        {% endif %}
         <form id="fototekaUploadForm" method="post" action="{{ url_for('fototeka.fototeka_upload_post') }}"
-              enctype="multipart/form-data" class="row g-3">
+              enctype="multipart/form-data" class="row g-3"
+              data-max-files="{{ max_files }}" data-max-mb="{{ max_mb }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            {# Мобилни телефон: камера (capture=environment) + избор из галерије.
+               Оба извора пуне исти ред за отпремање; шаље се једна по једна кроз
+               постојећи пријемни ток. #}
+            <div class="col-12 d-md-none" id="kamera">
+                <label class="form-label fw-semibold">Сликај телефоном</label>
+                <label class="btn btn-success w-100 py-3" for="fototekaKamera">
+                    <i class="bi bi-camera-fill me-2"></i>Отвори камеру
+                </label>
+                <input class="d-none" type="file" id="fototekaKamera" accept="image/*" capture="environment">
+                <div class="form-text">Можете сликати више пута — свака слика се додаје у ред испод.</div>
+            </div>
             <div class="col-12">
-                <label class="form-label" for="fototekaFajlovi">Фотографије (може више одједном)</label>
+                <label class="form-label" for="fototekaFajlovi">Фотографије из галерије (може више одједном)</label>
                 <input class="form-control" type="file" id="fototekaFajlovi" name="files" multiple required
-                       accept=".jpg,.jpeg,.png,.tif,.tiff,.webp,.bmp,.gif,.cr2,.cr3,.nef,.arw,.dng,.raf,.orf,.rw2,.pef,.srw">
-                <div class="form-text">JPG, PNG, TIFF, WebP, BMP и камера RAW (CR2/NEF/ARW/DNG…) — до 200 MB по датотеци. Датотеке се шаљу једна по једна.</div>
+                       accept="image/*,.tif,.tiff,.webp,.bmp,.cr2,.cr3,.nef,.arw,.dng,.raf,.orf,.rw2,.pef,.srw">
+                <div class="form-text">JPG, PNG, TIFF, WebP, BMP и камера RAW (CR2/NEF/ARW/DNG…). Највише {{ max_files }} по слању, до {{ max_mb }} MB по датотеци. Датотеке се шаљу једна по једна.</div>
+                <div id="fototekaRed" class="mt-2 d-none">
+                    <div class="small fw-semibold mb-1" id="fototekaRedBroj"></div>
+                    <ul class="list-group" id="fototekaRedLista"></ul>
+                </div>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="fototekaOpis">Опис</label>

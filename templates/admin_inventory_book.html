@@ -148,7 +148,7 @@
                     <span class="badge bg-info">Страница {{ current_page }} од {{ total_pages }}</span>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive desktop-tabela">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
@@ -256,6 +256,56 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+
+                    {# Мобилни приказ: картице по запису (телефон ≤767.98px). #}
+                    <div class="mobil-kartice p-2">
+                        {% for item in items %}
+                        <article class="mobil-kartica">
+                            <div class="mobil-kartica-head">
+                                <div class="mobil-kartica-naziv">
+                                    {{ item.name }}
+                                    <span class="mobil-kartica-inv">Инв. бр.: {{ item.inventory_number or 'N/A' }}
+                                        {%- if item.sheet %} · Лист {{ item.sheet }}{% endif %}</span>
+                                </div>
+                            </div>
+                            {% if item.in_printed_book or item.has_collection_match or item.category %}
+                            <div class="mb-2 d-flex flex-wrap gap-1">
+                                {% if item.in_printed_book %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-book me-1"></i>Штампана књига</span>
+                                {% endif %}
+                                {% if item.has_collection_match %}
+                                <a href="{{ url_for('admin_mineral_detail', mineral_id=item.primary_collection_id) }}" class="badge bg-success text-decoration-none">
+                                    <i class="bi bi-arrow-right-circle me-1"></i>У ревидираној бази
+                                </a>
+                                {% else %}
+                                <span class="badge bg-light text-muted">Нема подударности</span>
+                                {% endif %}
+                                {% if item.category %}
+                                <span class="badge bg-warning text-dark">{{ item.category }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            <div class="mobil-kartica-polja">
+                                <div class="mobil-polje">
+                                    <span class="mobil-polje-oznaka">Локалитет</span>
+                                    <span class="mobil-polje-vrednost">{{ item.locality or '—' }}</span>
+                                </div>
+                                <div class="mobil-polje">
+                                    <span class="mobil-polje-oznaka">Количина</span>
+                                    <span class="mobil-polje-vrednost">{{ item.quantity or '—' }}</span>
+                                </div>
+                                <div class="mobil-polje">
+                                    <span class="mobil-polje-oznaka">Начин набавке</span>
+                                    <span class="mobil-polje-vrednost">{{ item.acquisition_info or '—' }}</span>
+                                </div>
+                                <div class="mobil-polje">
+                                    <span class="mobil-polje-oznaka">Колектор</span>
+                                    <span class="mobil-polje-vrednost">{{ item.collector_donator or '—' }}</span>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
                     </div>
                 </div>
 

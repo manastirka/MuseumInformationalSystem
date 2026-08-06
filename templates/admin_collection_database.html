@@ -111,7 +111,7 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="collection-table-toolbar">
+                    <div class="collection-table-toolbar desktop-tabela">
                         <div class="collection-table-toolbar-copy">
                             <strong><span id="visibleColumnCount">0</span> изабраних колона</strong>
                             <small>Користите горњи или доњи клизач за табелу, или укључите прилагођавање екрану.</small>
@@ -125,10 +125,10 @@
                             Уклопи у екран
                         </button>
                     </div>
-                    <div class="collection-table-scroll collection-table-top-scroll" id="collection-table-top-scroll" aria-label="Горњи клизач табеле">
+                    <div class="collection-table-scroll collection-table-top-scroll desktop-tabela" id="collection-table-top-scroll" aria-label="Горњи клизач табеле">
                         <div class="collection-table-top-scroll-spacer" id="collection-table-top-scroll-spacer"></div>
                     </div>
-                    <div class="table-responsive collection-table-scroll collection-table-bottom-scroll">
+                    <div class="table-responsive collection-table-scroll collection-table-bottom-scroll desktop-tabela">
                         <table class="table table-hover mb-0 collection-data-table" id="specimensTable">
                             <thead class="table-light">
                                 <tr id="tableHeaders">
@@ -141,6 +141,8 @@
                             </tbody>
                         </table>
                     </div>
+                    {# Мобилни приказ: картице по примерку (телефон ≤767.98px), пуни се у renderTable(). #}
+                    <div class="mobil-kartice p-2" id="specimensMobile"></div>
                 </div>
                 <div class="card-footer bg-white">
                     <small class="text-muted">
@@ -744,13 +746,85 @@ function renderTable() {
             </div>
         `;
         tr.appendChild(actionsTd);
-        
+
         tbody.appendChild(tr);
     });
-    
+
+    // Мобилне картице по примерку (исти подаци, кустосу читљиво без бочног скрола).
+    renderMobileCards(sortedSpecimens);
+
     // Update filtered count
     updateFilteredCount();
     requestAnimationFrame(updateCollectionTableTopScroll);
+}
+
+// Одреди колону-назив и колону-инв.број из доступних поља (толерантно на шеме).
+function pickColumn(candidatesRegex) {
+    return visibleColumns.find(c => candidatesRegex.test(c));
+}
+
+function renderMobileCards(sortedSpecimens) {
+    const wrap = document.getElementById('specimensMobile');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const nameCol = pickColumn(/scientific_name|meteorite_name|(^|_)naziv|(^|_)name|title/i);
+    const invCol = pickColumn(/catalog_number|record_number|inventarni|inventory/i);
+    // до 4 кључна поља осим наслова/инв.броја
+    const fieldCols = visibleColumns.filter(c => c !== nameCol && c !== invCol).slice(0, 4);
+
+    sortedSpecimens.forEach(specimen => {
+        const originalIndex = specimens.indexOf(specimen);
+        const card = document.createElement('article');
+        card.className = 'mobil-kartica';
+
+        const head = document.createElement('div');
+        head.className = 'mobil-kartica-head';
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'mobil-kartica-naziv';
+        const nameVal = (nameCol && specimen[nameCol]) ? String(specimen[nameCol]) : '(без назива)';
+        titleWrap.appendChild(document.createTextNode(nameVal));
+        if (invCol && specimen[invCol]) {
+            const inv = document.createElement('span');
+            inv.className = 'mobil-kartica-inv';
+            inv.textContent = (fieldTranslations[invCol] || invCol) + ': ' + specimen[invCol];
+            titleWrap.appendChild(inv);
+        }
+        head.appendChild(titleWrap);
+        card.appendChild(head);
+
+        if (fieldCols.length) {
+            const grid = document.createElement('div');
+            grid.className = 'mobil-kartica-polja';
+            fieldCols.forEach(col => {
+                const v = specimen[col];
+                if (v === null || v === undefined || v === '') return;
+                const cell = document.createElement('div');
+                cell.className = 'mobil-polje';
+                const lab = document.createElement('span');
+                lab.className = 'mobil-polje-oznaka';
+                lab.textContent = fieldTranslations[col] || col.replace(/_/g, ' ');
+                const val = document.createElement('span');
+                val.className = 'mobil-polje-vrednost';
+                val.textContent = String(v);
+                cell.appendChild(lab);
+                cell.appendChild(val);
+                grid.appendChild(cell);
+            });
+            card.appendChild(grid);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'mobil-kartica-akcije';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-info';
+        btn.innerHTML = '<i class="bi bi-eye me-1"></i>Детаљи';
+        btn.addEventListener('click', () => showDetails(originalIndex));
+        actions.appendChild(btn);
+        card.appendChild(actions);
+
+        wrap.appendChild(card);
+    });
 }
 
 const COLLECTION_TABLE_FIT_KEY = `collectionTableFitToScreen_${collectionType}`;

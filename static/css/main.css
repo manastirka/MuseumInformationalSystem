@@ -4548,6 +4548,125 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 
 /* ============================================
+   MOBILNI PRELOM (telefon) — feat/mobilni
+   Iskljucivo max-width upiti: desktop (>=768px) ostaje piksel-identican.
+   Cilj: nijedna strana se ne skroluje bocno na 360px; velike tabele
+   postaju kartice po zapisu; dodirne mete >=44px; forme pune sirine.
+   Boje idu kroz paleta-tokene (bg-card, text, border-color) da kartice
+   prate aktivnu temu i produ kontrast-sveru.
+   ============================================ */
+
+/* Zajednicke "kartice po zapisu": na desktopu (>=768px) skrivene -> vidi se
+   tabela; na telefonu (<=767.98px, nize) se prikazuju umesto tabele. */
+@media (min-width: 768px) {
+    .mobil-kartice { display: none !important; }
+}
+
+/* Опсег „бочна трака је ван екрана" (≤991.98px — исти праг као постојећи
+   off-canvas). Ту садржај мора да буде ПУНЕ ширине: правио се леви појас од
+   ~108px јер `sidebar-is-collapsed` маргину поставља inline <style> у base.html
+   КОЈИ долази после main.css, па постојећи reset без !important губи. Ово је
+   исправка тог бага (прави десктоп ≥992px са усидреном траком остаје нетакнут). */
+@media (max-width: 991.98px) {
+    .content-wrapper,
+    .content-wrapper.sidebar-is-collapsed,
+    .sidebar-is-collapsed {
+        margin-left: 0 !important;
+    }
+    /* Позадински осигурач: садржај никад не гура ширину преко екрана (ни у
+       landscape 800px). Табеле у .table-responsive и даље клизе у свом оквиру. */
+    .content-wrapper { overflow-x: clip; }
+}
+
+@media (max-width: 767.98px) {
+    /* --- 1) Ниједна страна се не скролује бочно --------------------- */
+    /* Групе дугмади и алатне траке се преламају уместо да гурају ширину. */
+    .btn-group:not(.btn-group-vertical) { flex-wrap: wrap; }
+    .btn-toolbar { flex-wrap: wrap; row-gap: .5rem; }
+    /* Card-header „наслов + значка/акција" (justify-between) се прелама. */
+    .card-header.d-flex { flex-wrap: wrap; gap: .5rem; }
+
+    /* Табеле-матрице (нпр. календар возила, месечна евиденција) остају
+       табеле, али клизе унутар свог оквира — не преко целе стране. */
+    .mobil-skrol { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Фиксне мин-ширине поља претраге и сл. се пуштају да се скупе. */
+    #searchInput { min-width: 0 !important; }
+
+    /* --- 2) Табела → картице: заједнички визуелни оквир ------------- */
+    .desktop-tabela { display: none !important; }
+    .mobil-kartice { display: block; }
+
+    .mobil-kartica {
+        padding: .9rem 1rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        background: var(--bg-card, #fff);
+        margin-bottom: .75rem;
+    }
+    .mobil-kartica-head {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: .75rem; margin-bottom: .6rem;
+    }
+    .mobil-kartica-naziv {
+        font-weight: 600; color: var(--text-primary, #1f2937);
+        overflow-wrap: anywhere; line-height: 1.3;
+    }
+    .mobil-kartica-inv {
+        display: block; font-size: .8rem; color: var(--text-secondary, #6b7280);
+        margin-top: .1rem; overflow-wrap: anywhere;
+    }
+    .mobil-kartica-polja { display: grid; gap: .5rem; }
+    .mobil-polje {
+        display: grid; gap: .15rem;
+        padding: .5rem .65rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 8px;
+        background: var(--bg-body, #f5f7fa);
+    }
+    .mobil-polje-oznaka {
+        font-size: .7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .03em; color: var(--text-secondary, #6b7280);
+    }
+    .mobil-polje-vrednost { color: var(--text-primary, #1f2937); overflow-wrap: anywhere; }
+    .mobil-kartica-akcije { margin-top: .7rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+    .mobil-kartica-akcije .btn {
+        flex: 1 1 auto; min-height: 44px;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    /* --- 3) Додирне мете ≥44px ------------------------------------- */
+    .navbar-nav .nav-link,
+    .dropdown-item,
+    .sidebar-nav .nav-link,
+    .pagination .page-link {
+        min-height: 44px; display: flex; align-items: center;
+    }
+    .navbar-toggler { min-width: 44px; min-height: 44px; }
+    /* Стандардна дугмад добијају пристојну висину за палац (ситне инлајн
+       иконе .btn-close и сортер-стрелице су изузете). */
+    .btn:not(.btn-close) { min-height: 44px; }
+
+    /* --- 4) Контејнери: пуна ширина, разумне маргине --------------- */
+    .container-main { padding: 1rem .75rem; }
+    .container, .container-fluid { padding-left: .85rem; padding-right: .85rem; }
+    /* Банери/заглавља модула: мањи паддинг да не једу екран. */
+    .fototeka-header, .page-hero, .db-hero { padding: 1.15rem 1.15rem; }
+    .fototeka-header h2, .page-hero h1, .page-hero h2 { font-size: 1.35rem; }
+
+    /* --- 5) Форме: поља пуна ширина, без iOS зума (≥16px) ---------- */
+    .form-control, .form-select { font-size: 16px; }
+    /* Дугме за потврду доступно палцу. */
+    .btn[type="submit"], button[type="submit"].btn { min-height: 44px; }
+
+    /* --- 6) Mreza kartica u jednu kolonu (tabla/K-R/fototeka) ------ */
+    /* Bootstrap-ove kolone s prelomom (col-sm / col-md) se vec lome ispod
+       svog praga; ovde hvatamo resetke bez preloma (npr. col-6) da idu
+       punom sirinom. */
+    .mobil-jedna-kolona > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+}
+
+/* ============================================
    ŠTAMPA — uvek svetla, bez obzira na temu
    ============================================ */
 @media print {

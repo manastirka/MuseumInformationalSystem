@@ -133,9 +133,16 @@
             <h2><i class="bi bi-camera me-2"></i>Фототека</h2>
             <p>Фотографије музеја — самосталне или везане за предмете, терене, пројекте и изложбе.</p>
         </div>
-        <a class="btn btn-oc-approve" href="{{ url_for('fototeka.fototeka_upload') }}">
-            <i class="bi bi-plus-lg me-1"></i>Додај фотографије
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            {# Мобилни телефон: истакнуто дугме „Сликај" води на отпремање где
+               се одмах отвара камера (capture=environment). #}
+            <a class="btn btn-oc-approve d-md-none" href="{{ url_for('fototeka.fototeka_upload') }}#kamera">
+                <i class="bi bi-camera-fill me-1"></i>Сликај и пошаљи
+            </a>
+            <a class="btn btn-oc-approve" href="{{ url_for('fototeka.fototeka_upload') }}">
+                <i class="bi bi-plus-lg me-1"></i>Додај фотографије
+            </a>
+        </div>
     </div>
 
     <div class="oc-card">
