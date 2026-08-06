@@ -385,11 +385,11 @@
             font-size: 1.25rem;
         }
 
+        /* Испод 992px операције су доступне кроз обједињену фиоку (#mainDrawer),
+           па засебни бочни FAB више није потребан — остаје скривен. */
         @media (max-width: 991.98px) {
             .sidebar-toggle {
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                display: none !important;
             }
         }
 
@@ -794,9 +794,23 @@
                 <span class="navbar-cloud-layer navbar-cloud-layer-wisp-right"></span>
             </div>
 
+            {% if user_logged_in() %}
+            <!-- Мобилни хамбургер (<992px): отвара обједињену бочну фиоку #mainDrawer -->
+            <button class="navbar-toggler drawer-toggle d-lg-none" type="button"
+                    id="drawerToggle" data-bs-toggle="offcanvas" data-bs-target="#mainDrawer"
+                    aria-controls="mainDrawer" aria-expanded="false" aria-label="Отвори мени">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!-- Постојећи collapse toggler: само у опсегу 992–1199px (десктоп нетакнут) -->
+            <button class="navbar-toggler d-none d-lg-inline-block d-xl-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            {% else %}
+            <!-- Одјављен: нема фиоке, задржава се оригинални collapse toggler (<1200px) -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            {% endif %}
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
@@ -1513,6 +1527,9 @@
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
         <i class="bi bi-list"></i>
     </button>
+
+    <!-- Обједињена мобилна бочна фиока (замењује collapse навбара + sidebar FAB испод 992px) -->
+    {% include '_mobile_drawer.html' %}
     {% endif %}
 
     <!-- Content Wrapper -->
@@ -2009,6 +2026,9 @@
 
     <!-- Language/Script Translator -->
     <script src="{{ url_for('static', filename='js/translator.js') }}"></script>
+    {% if user_logged_in() %}
+    <script src="{{ url_for('static', filename='js/mobile_drawer.js') }}"></script>
+    {% endif %}
 
     {% block scripts %}{% endblock %}
 </body>

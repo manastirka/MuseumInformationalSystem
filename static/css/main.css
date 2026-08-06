@@ -4667,6 +4667,176 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 
 /* ============================================
+   МОБИЛНА БОЧНА ФИОКА (#mainDrawer, offcanvas)
+   Токен-вођено: прати палету, акценат, светло/тамно.
+   Приказ само испод xl прелома (десктоп нетакнут).
+   ============================================ */
+.mobile-drawer.offcanvas-start {
+    width: min(85vw, 320px);
+    max-width: 320px;
+    background: var(--bg-card, #ffffff);
+    color: var(--text-primary, #1f2937);
+    border-right: 1px solid var(--border-color, #e5e7eb);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+/* Кратка анимација клизања (200–250ms), без скока распореда. */
+.mobile-drawer.offcanvas {
+    transition: transform 0.22s ease-in-out;
+}
+
+.mobile-drawer .mobile-drawer-header {
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    background: var(--bg-elevated, var(--bg-card, #ffffff));
+}
+
+.mobile-drawer .mobile-drawer-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary, #1f2937);
+    display: flex;
+    align-items: center;
+}
+
+.mobile-drawer .mobile-drawer-title i {
+    color: var(--accent, var(--primary, #2d6a4f));
+}
+
+/* Језички прекидач у заглављу фиоке. */
+.mobile-drawer .mobile-drawer-lang {
+    display: inline-flex;
+    margin-left: auto;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.mobile-drawer .mobile-drawer-lang-btn {
+    min-height: 34px;
+    min-width: 44px;
+    padding: 0 0.6rem;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary, #4c5a6b);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mobile-drawer .mobile-drawer-lang-btn.active {
+    background: var(--accent, var(--primary, #2d6a4f));
+    color: var(--on-accent, #ffffff);
+}
+
+.mobile-drawer .mobile-drawer-close {
+    margin-left: 0.25rem;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* У тамним површинама btn-close мора бити светао да се види. */
+[data-theme="dark"] .mobile-drawer .mobile-drawer-close,
+[data-mode="dark"] .mobile-drawer .mobile-drawer-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.mobile-drawer .mobile-drawer-body {
+    padding: 0.5rem 0.75rem 1.5rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.mobile-drawer .drawer-section {
+    margin-bottom: 1.25rem;
+}
+
+.mobile-drawer .drawer-section-title {
+    margin: 0.25rem 0 0.35rem;
+    padding: 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    /* --text-secondary (не --text-muted) — muted #9ca3af пада на AA (2.54) на белом */
+    color: var(--text-secondary, #6b7280);
+}
+
+.mobile-drawer .drawer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: var(--radius-md, 8px);
+    background: transparent;
+    color: var(--text-primary, #1f2937);
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.mobile-drawer .drawer-link i {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    font-size: 1.05rem;
+    text-align: center;
+    color: var(--accent, var(--primary, #2d6a4f));
+}
+
+.mobile-drawer .drawer-link span {
+    flex: 1 1 auto;
+}
+
+.mobile-drawer .drawer-link:hover,
+.mobile-drawer .drawer-link:focus-visible {
+    background: var(--bg-hover, var(--gray-100, #f3f4f6));
+    color: var(--text-primary, #1f2937);
+}
+
+.mobile-drawer .drawer-link.active {
+    background: var(--accent, var(--primary, #2d6a4f));
+    color: var(--on-accent, #ffffff);
+    font-weight: 600;
+}
+
+.mobile-drawer .drawer-link.active i {
+    color: var(--on-accent, #ffffff);
+}
+
+.mobile-drawer .drawer-logout-form {
+    margin: 0;
+}
+
+.mobile-drawer .drawer-link-logout {
+    color: var(--danger, #b02a37);
+}
+
+.mobile-drawer .drawer-link-logout i {
+    color: var(--danger, #b02a37);
+}
+
+/* У тамном режиму #dc2626 пада на AA (3.04) на тамној картици — светлији црвени. */
+[data-theme="dark"] .mobile-drawer .drawer-link-logout,
+[data-theme="dark"] .mobile-drawer .drawer-link-logout i {
+    color: #f87171;
+}
+
+.mobile-drawer .drawer-section-account {
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    padding-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================
    ŠTAMPA — uvek svetla, bez obzira na temu
    ============================================ */
 @media print {
