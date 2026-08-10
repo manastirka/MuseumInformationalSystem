@@ -158,33 +158,31 @@ class DirectorRouteAccessTests(unittest.TestCase):
         self.assertNotEqual(response.status_code, 302,
                             "director was redirected (blocked) from /admin/manage_access")
 
-    # ---- Director has full admin parity (business decision 2026-06) ----
-    def test_director_can_access_password_manager(self):
+    # ---- Purely technical routes are admin_only (decision 2026-08):
+    # ---- the director does NOT pass — parity holds only for business routes.
+    def test_director_blocked_from_password_manager(self):
         self._login_as_director()
         response = self.client.get('/admin/password_manager', base_url=self.base_url, follow_redirects=False)
-        self.assertEqual(response.status_code, 200,
-                         f"director should have admin parity, got {response.status_code}")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dashboard', response.headers.get('Location', ''))
 
-    def test_director_can_access_system_settings(self):
-        # Standalone URL now redirects to the unified hub tab (not to /dashboard):
-        # the director keeps full access — the actual content is served (200) at the
-        # embedded route that the hub iframe loads.
+    def test_director_blocked_from_system_settings(self):
         self._login_as_director()
         response = self.client.get('/admin/system-settings', base_url=self.base_url, follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/admin/sistem', response.headers.get('Location', ''))
-        self.assertNotIn('/dashboard', response.headers.get('Location', ''))
+        self.assertIn('/dashboard', response.headers.get('Location', ''))
         embedded = self.client.get('/admin/system-settings?embedded=1', base_url=self.base_url, follow_redirects=False)
-        self.assertEqual(embedded.status_code, 200)
+        self.assertEqual(embedded.status_code, 302)
+        self.assertIn('/dashboard', embedded.headers.get('Location', ''))
 
-    def test_director_can_access_mail_settings(self):
+    def test_director_blocked_from_mail_settings(self):
         self._login_as_director()
         response = self.client.get('/admin/mail-settings', base_url=self.base_url, follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/admin/sistem', response.headers.get('Location', ''))
-        self.assertNotIn('/dashboard', response.headers.get('Location', ''))
+        self.assertIn('/dashboard', response.headers.get('Location', ''))
         embedded = self.client.get('/admin/mail-settings?embedded=1', base_url=self.base_url, follow_redirects=False)
-        self.assertEqual(embedded.status_code, 200)
+        self.assertEqual(embedded.status_code, 302)
+        self.assertIn('/dashboard', embedded.headers.get('Location', ''))
 
     def test_director_can_access_add_user(self):
         self._login_as_director()
