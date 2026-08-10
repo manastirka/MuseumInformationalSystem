@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 
 from flask import jsonify, request, session
+from app_core_support import can_access_owned_record
 from runtime_lock_utils import load_json_file, update_json_file, write_json_file
 
 logger = logging.getLogger(__name__)
@@ -300,7 +301,7 @@ def api_digitized_profile_update(profile_id, *, profiles_path):
             profile = pg.get_digitized_profile(profile_id)
             if profile is None:
                 return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
-            if profile.get('digitized_by') != user_email and user_role != 'admin':
+            if not can_access_owned_record(profile.get('digitized_by'), user_email, user_role):
                 return jsonify({'success': False, 'message': 'Немате дозволу'}), 403
             for key in ('endpoint_a', 'endpoint_b', 'image_bounds', 'layers', 'faults', 'profile_id', 'sheet_folder'):
                 if key in data:
@@ -319,7 +320,7 @@ def api_digitized_profile_update(profile_id, *, profiles_path):
                 raise _ProfileUpdateRejected('Профил није пронађен', 404)
 
             profile = profiles[idx]
-            if profile.get('digitized_by') != user_email and user_role != 'admin':
+            if not can_access_owned_record(profile.get('digitized_by'), user_email, user_role):
                 raise _ProfileUpdateRejected('Немате дозволу', 403)
 
             for key in ('endpoint_a', 'endpoint_b', 'image_bounds', 'layers', 'faults', 'profile_id', 'sheet_folder'):
@@ -352,7 +353,7 @@ def api_digitized_profile_delete(profile_id, *, profiles_path):
             target = pg.get_digitized_profile(profile_id)
             if target is None:
                 return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
-            if target.get('digitized_by') != user_email and user_role != 'admin':
+            if not can_access_owned_record(target.get('digitized_by'), user_email, user_role):
                 return jsonify({'success': False, 'message': 'Немате дозволу'}), 403
             pg.delete_digitized_profile(profile_id)
             return jsonify({'success': True, 'message': 'Профил обрисан'})
@@ -364,7 +365,7 @@ def api_digitized_profile_delete(profile_id, *, profiles_path):
             if target is None:
                 raise _ProfileUpdateRejected('Профил није пронађен', 404)
 
-            if target.get('digitized_by') != user_email and user_role != 'admin':
+            if not can_access_owned_record(target.get('digitized_by'), user_email, user_role):
                 raise _ProfileUpdateRejected('Немате дозволу', 403)
 
             return [profile for profile in profiles if profile.get('id') != profile_id]

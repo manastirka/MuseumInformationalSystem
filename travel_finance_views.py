@@ -12,6 +12,7 @@ import requests as http_requests
 from flask import jsonify, render_template, request, send_file, session
 
 import audit_support
+from app_core_support import can_access_owned_record
 
 logger = logging.getLogger(__name__)
 
@@ -1417,7 +1418,9 @@ def api_finansijski_plan_save(*, get_postgres_connection):
                     owner_email = owner_row[0]
                     current_email = session.get('user_email', '')
                     current_role = session.get('user_role', '')
-                    if owner_email != current_email and current_role != 'admin':
+                    # Parity: листа планове приказује и директору (admin-level),
+                    # па и чување мора да користи исти ниво провере (правило 7).
+                    if not can_access_owned_record(owner_email, current_email, current_role):
                         return jsonify({'success': False, 'message': 'Немате приступ овом плану'}), 403
 
                     cur.execute(
