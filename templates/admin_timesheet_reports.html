@@ -725,7 +725,7 @@ function viewReport(reportId) {
                 modalBody.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        Грешка: ${data.message}
+                        Грешка: ${escapeHtml(data.message)}
                     </div>
                 `;
             }
@@ -734,10 +734,17 @@ function viewReport(reportId) {
             modalBody.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    Грешка при учитавању: ${error}
+                    Грешка при учитавању: ${escapeHtml(String(error))}
                 </div>
             `;
         });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function displayReportDetails(report) {
@@ -762,18 +769,18 @@ function displayReportDetails(report) {
     let html = `
         <div class="row mb-3">
             <div class="col-md-6">
-                <strong>Запослени:</strong> ${header.employee_name || 'N/A'}
+                <strong>Запослени:</strong> ${escapeHtml(header.employee_name || 'N/A')}
             </div>
             <div class="col-md-6">
-                <strong>Период:</strong> ${header.month || '?'}/${header.year || '?'}
+                <strong>Период:</strong> ${escapeHtml(header.month || '?')}/${escapeHtml(header.year || '?')}
             </div>
         </div>
         <div class="row mb-3">
             <div class="col-md-6">
-                <strong>Организација:</strong> ${header.organization_unit || 'N/A'}
+                <strong>Организација:</strong> ${escapeHtml(header.organization_unit || 'N/A')}
             </div>
             <div class="col-md-6">
-                <strong>Позиција:</strong> ${header.position || 'N/A'}
+                <strong>Позиција:</strong> ${escapeHtml(header.position || 'N/A')}
             </div>
         </div>
 
@@ -787,15 +794,15 @@ function displayReportDetails(report) {
                     : header.admin_approved_by
                     ? `<strong>Одобрење:</strong>
                 <div class="mt-1 d-flex flex-wrap gap-2">
-                    <span class="badge bg-warning text-dark" title="Одобрено административно — ван двостепеног ланца потписа"><i class="bi bi-shield-check"></i> Одобрено административно: ${header.admin_approved_by}${header.admin_approved_at ? ' · ' + new Date(header.admin_approved_at).toLocaleDateString('sr-RS') : ''}</span>
+                    <span class="badge bg-warning text-dark" title="Одобрено административно — ван двостепеног ланца потписа"><i class="bi bi-shield-check"></i> Одобрено административно: ${escapeHtml(header.admin_approved_by)}${header.admin_approved_at ? ' · ' + escapeHtml(new Date(header.admin_approved_at).toLocaleDateString('sr-RS')) : ''}</span>
                 </div>`
                     : `<strong>Потписи (двостепено одобрење):</strong>
                 <div class="mt-1 d-flex flex-wrap gap-2">
                     ${header.head_verified_by
-                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Шеф: ${header.head_verified_by}${header.head_verified_at ? ' · ' + new Date(header.head_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
+                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Шеф: ${escapeHtml(header.head_verified_by)}${header.head_verified_at ? ' · ' + escapeHtml(new Date(header.head_verified_at).toLocaleDateString('sr-RS')) : ''}</span>`
                         : `<span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис шефа одељења</span>`}
                     ${header.director_verified_by
-                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Директор: ${header.director_verified_by}${header.director_verified_at ? ' · ' + new Date(header.director_verified_at).toLocaleDateString('sr-RS') : ''}</span>`
+                        ? `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Директор: ${escapeHtml(header.director_verified_by)}${header.director_verified_at ? ' · ' + escapeHtml(new Date(header.director_verified_at).toLocaleDateString('sr-RS')) : ''}</span>`
                         : `<span class="badge bg-secondary"><i class="bi bi-hourglass"></i> Чека потпис директора</span>`}
                 </div>`}
             </div>
@@ -866,7 +873,7 @@ function displayReportDetails(report) {
                     workHtml += `
                         <tr>
                             <td class="fw-semibold" style="width: 40%;">${label}</td>
-                            <td>${value}</td>
+                            <td>${escapeHtml(value)}</td>
                         </tr>
                     `;
                 }
@@ -881,14 +888,14 @@ function displayReportDetails(report) {
             }
         } catch (e) {
             // If not JSON, display as plain text (old format)
-            html += `<p class="text-muted">${workTasksData}</p>`;
+            html += `<p class="text-muted">${escapeHtml(workTasksData)}</p>`;
         }
     }
 
     if (header.duties_summary) {
         html += `
             <h6 class="mt-4 mb-2">Додатне напомене:</h6>
-            <p class="text-muted">${header.duties_summary}</p>
+            <p class="text-muted">${escapeHtml(header.duties_summary)}</p>
         `;
     }
 
