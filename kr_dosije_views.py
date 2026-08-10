@@ -597,6 +597,17 @@ def handle_predlozak_create():
     return redirect(url_for('kr_dosije.predlosci'))
 
 
+def _fetch_predlozak(cur, predlozak_id):
+    cur.execute(
+        'SELECT odeljenje, created_by_email FROM kr_predlozak WHERE id = %s',
+        (predlozak_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return {'odeljenje': row[0], 'created_by_email': row[1]}
+
+
 def handle_predlozak_update(predlozak_id):
     ctx = _ctx()
     naziv = (request.form.get('naziv') or '').strip()
@@ -605,6 +616,11 @@ def handle_predlozak_update(predlozak_id):
         flash('Назив и садржај су обавезни.', 'danger')
         return redirect(url_for('kr_dosije.predlosci'))
     with get_postgres_connection() as conn, conn.cursor() as cur:
+        predlozak = _fetch_predlozak(cur, predlozak_id)
+        if predlozak is None:
+            abort(404)
+        if not _can_edit(ctx, predlozak):
+            abort(403)
         cur.execute(
             'UPDATE kr_predlozak SET naziv=%s, sadrzaj=%s, updated_at=NOW() WHERE id=%s',
             (naziv, sadrzaj, predlozak_id),
@@ -615,7 +631,13 @@ def handle_predlozak_update(predlozak_id):
 
 
 def handle_predlozak_delete(predlozak_id):
+    ctx = _ctx()
     with get_postgres_connection() as conn, conn.cursor() as cur:
+        predlozak = _fetch_predlozak(cur, predlozak_id)
+        if predlozak is None:
+            abort(404)
+        if not _can_delete(ctx, predlozak):
+            abort(403)
         cur.execute('DELETE FROM kr_predlozak WHERE id = %s', (predlozak_id,))
         conn.commit()
     flash('Предложак је обрисан.', 'success')

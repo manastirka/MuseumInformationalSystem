@@ -317,3 +317,95 @@ def test_admin_moze_reset_sopstvenog_naloga(dva_admina):
     assert resp.get_json().get('success') is True
     assert _password_hash_of(dva_admina['a_email']) != 'x', \
         'лозинка сопственог налога није промењена у бази'
+
+
+# ===========================================================================
+# 4. IDOR на К-Р предлошцима — измена/брисање ван свог одељења
+# ===========================================================================
+KR_VLASNIK = 'vlasnik.kr@example.invalid'
+KR_ULJEZ = 'uljez.kr@example.invalid'
+
+
+@pytest.fixture
+def kr_predlozak_geo():
+    with _db() as conn:
+        # Тест база је шема-клон без миграције 030 — DDL идентичан миграцији.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS kr_predlozak (
+                id SERIAL PRIMARY KEY,
+                odeljenje TEXT CHECK (odeljenje IS NULL OR odeljenje IN ('geo', 'bio')),
+                vrsta TEXT NOT NULL CHECK (vrsta IN ('pre', 'postupak', 'posle')),
+                naziv TEXT NOT NULL,
+                sadrzaj TEXT NOT NULL,
+                created_by_email VARCHAR(255),
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur = conn.execute(
+            """
+            INSERT INTO kr_predlozak (odeljenje, vrsta, naziv, sadrzaj, created_by_email)
+            VALUES ('geo', 'postupak', 'Оригинал назив', 'Оригинал садржај', %s)
+            RETURNING id
+            """,
+            (KR_VLASNIK,),
+        )
+        predlozak_id = cur.fetchone()[0]
+        conn.commit()
+    yield predlozak_id
+    with _db() as conn:
+        conn.execute('DELETE FROM kr_predlozak WHERE created_by_email = %s',
+                     (KR_VLASNIK,))
+        conn.commit()
+
+
+def _kr_row(predlozak_id):
+    with _db() as conn:
+        return conn.execute(
+            'SELECT naziv, sadrzaj FROM kr_predlozak WHERE id = %s',
+            (predlozak_id,),
+        ).fetchone()
+
+
+def _kr_uljez_client():
+    """Запослени из БИОЛОШКОГ одељења са приступом модулу (није админ)."""
+    from unittest.mock import patch
+    patcher = patch.object(museum_app.app, 'user_has_module_access',
+                           lambda *a, **k: True)
+    patcher.start()
+    client = _login(_client(), email=KR_ULJEZ, role='employee',
+                    department='Биолошко одељење')
+    return client, patcher
+
+
+def test_idor_predlozak_izmena_tudjeg_odeljenja_403(kr_predlozak_geo):
+    """БАГ (ревизија 2026-08 #4): корисник одељења bio мења предложак
+    одељења geo → 403, ред у бази непромењен."""
+    client, patcher = _kr_uljez_client()
+    try:
+        resp = client.post(
+            f'/kr-dosije/predlosci/{kr_predlozak_geo}/izmena',
+            data={'naziv': 'Хакован назив', 'sadrzaj': 'Хакован садржај'},
+            base_url=BASE,
+        )
+        assert resp.status_code == 403, resp.status_code
+        assert _kr_row(kr_predlozak_geo) == ('Оригинал назив', 'Оригинал садржај'), \
+            'предложак туђег одељења је ипак измењен у бази'
+    finally:
+        patcher.stop()
+
+
+def test_idor_predlozak_brisanje_tudjeg_odeljenja_403(kr_predlozak_geo):
+    client, patcher = _kr_uljez_client()
+    try:
+        resp = client.post(
+            f'/kr-dosije/predlosci/{kr_predlozak_geo}/brisanje',
+            base_url=BASE,
+        )
+        assert resp.status_code == 403, resp.status_code
+        assert _kr_row(kr_predlozak_geo) is not None, \
+            'предложак туђег одељења је ипак обрисан из базе'
+    finally:
+        patcher.stop()
