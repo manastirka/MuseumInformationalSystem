@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / 'data'
 MAIL_CACHE_DIR = DATA_DIR / 'mail_cache'
 MAIL_SETTINGS_PATH = DATA_DIR / 'mail_settings.json'
-MIGRATION_SQL = ROOT / 'migration' / '007_remaining_sqlite_runtime_to_postgres.sql'
+MIGRATION_SQL = ROOT / 'migration' / '012_remaining_sqlite_runtime_to_postgres.sql'
 
 load_dotenv(ROOT / '.env')
 

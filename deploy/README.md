@@ -15,8 +15,15 @@ Applies `migration/NNN_*.sql` in order, once each, tracked in a
 python deploy/run_migrations.py status     # show applied vs pending
 python deploy/run_migrations.py apply       # run all pending, in order
 python deploy/run_migrations.py baseline     # mark ALL files applied WITHOUT running
-python deploy/run_migrations.py mark '00[1-7]_*.sql'   # mark some applied, don't run
+python deploy/run_migrations.py mark '001_*.sql'   # mark some applied, don't run
+python deploy/run_migrations.py remap            # dry-run: old->new filename rows
+python deploy/run_migrations.py remap --execute  # rewrite them in schema_migrations
 ```
+
+> 2026-08: duplicate `NNN_` prefixes were renamed to unique numbers (002–005
+> dupes → 003–010, then 006–040 → 011–045). Databases that recorded the old
+> names are rewritten automatically by `apply` (or explicitly via `remap`);
+> nothing is re-run. Historical examples below use the pre-rename numbering.
 
 **First run on THIS database** (it already has the 001–007 schema; 008–011 are new):
 ```bash
@@ -27,7 +34,7 @@ python scripts/migrate_sanja_to_postgres.py            # load Sanja into PG
 python scripts/migrate_digitized_profiles_to_postgres.py
 ```
 > Before 009, de-duplicate any duplicate monthly reports (see the comment in
-> `migration/009_timesheet_report_integrity.sql`).
+> `migration/014_timesheet_report_integrity.sql`, formerly `009_...`).
 
 **On the NEW server after restoring a `pg_dump`** (schema is already in the dump):
 ```bash
