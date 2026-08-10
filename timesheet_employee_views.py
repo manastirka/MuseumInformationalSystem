@@ -1143,7 +1143,9 @@ def api_timesheet_force_edit(report_id):
     )
     if result.success:
         # Откључавање већ ОВЕРЕНЕ листе је осетљива радња — остави траг.
-        if (status_row and status_row.get('status') == 'APPROVED'):
+        # Статус пре измене долази из закључане трансакције (FOR UPDATE),
+        # па важи за све улоге — админ прескаче scope-грану изнад.
+        if result.data.get('old_status') == 'APPROVED':
             try:
                 from audit_support import record_audit
                 record_audit(

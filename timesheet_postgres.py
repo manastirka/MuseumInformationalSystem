@@ -1816,6 +1816,7 @@ def force_edit_timesheet(report_id: int, admin_email: str,
                 return TimesheetResult.ok({
                     'report_id': report_id,
                     'status': 'DRAFT',
+                    'old_status': old_status,
                     'message': 'Радна листа је враћена запосленом на измену (24 часа).'
                 })
 
