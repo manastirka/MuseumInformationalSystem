@@ -347,7 +347,7 @@ class MineralDatabase:
                     WHERE id = :id
                 """)
 
-                conn.execute(query, {
+                result = conn.execute(query, {
                     'id': mineral_id,
                     'inventory_number': mineral_data.get('inventory_number', ''),
                     'item_name': mineral_data.get('item_name', ''),
@@ -364,6 +364,11 @@ class MineralDatabase:
                     'bibliography_flag': mineral_data.get('bibliography_flag', False),
                     'quantity': mineral_data.get('quantity', 1)
                 })
+
+                if result.rowcount == 0:
+                    conn.rollback()
+                    logger.warning(f"Update matched no mineral with ID: {mineral_id}")
+                    return False
 
                 conn.commit()
                 logger.info(f"Updated mineral with ID: {mineral_id}")
@@ -388,7 +393,11 @@ class MineralDatabase:
         try:
             with self.engine.connect() as conn:
                 query = text("DELETE FROM minerals WHERE id = :id")
-                conn.execute(query, {'id': mineral_id})
+                result = conn.execute(query, {'id': mineral_id})
+                if result.rowcount == 0:
+                    conn.rollback()
+                    logger.warning(f"Delete matched no mineral with ID: {mineral_id}")
+                    return False
                 conn.commit()
                 logger.info(f"Deleted mineral with ID: {mineral_id}")
                 return True
@@ -417,8 +426,10 @@ class MineralDatabase:
                 return "1"
 
         except Exception as e:
+            # Транзијентна DB грешка не сме да „измисли" инвентарски број 1 —
+            # куратор би преписао постојећи запис (ревизија #6).
             logger.error(f"Error getting next inventory number: {e}")
-            return "1"
+            raise
 
     def get_mineral_by_inventory_number(self, inv_number: str) -> Optional[Dict]:
         """Get mineral by inventory number (supports M12345 or 12345 format)."""
