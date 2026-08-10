@@ -1,90 +1,210 @@
 #!/usr/bin/env python3
-"""
-Comprehensive Reliability Test Suite for Timesheet System
-Tests: validation, concurrent access, data integrity, error handling, edge cases
+"""Reliability test suite за timesheet систем (pytest).
+
+Покрива: валидацију, интегритет података (save/load, тригер синхронизацију),
+конкурентност (оптимистичко закључавање, паралелна чувања), ивичне случајеве
+(преступна година, 31-дневни месец, празна листа, специјални карактери),
+rate limiting захтева за измену и структуру error guidance одговора.
+
+Сваки тест ПАДА кроз assert када логика откаже — нема record_pass/record_fail
+бројача који гута исходе.
+
+БЕЗБЕДНОСТ:
+  - ради ИСКЉУЧИВО над базом чије име садржи '_test'
+    (подразумевано museum_system_test) — никад над museum_system;
+  - сви редови које тестови праве користе синтетичке адресе на
+    @example.invalid домену, а чишћење брише ИСКЉУЧИВО по тим адресама
+    (employee_email = ANY(...)) — никад по префиксу имена.
+
+Покретање:
+    python -m pytest test_timesheet_reliability.py -q
 """
 
 import os
 import sys
-import time
-import calendar
-import threading
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
-# Colors for output
-class Colors:
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    CYAN = '\033[96m'
-    END = '\033[0m'
-    BOLD = '\033[1m'
+import pytest
 
-def print_success(msg):
-    print(f"{Colors.GREEN}✓{Colors.END} {msg}")
+TEST_DB_URL = os.environ.get(
+    'MIS_TEST_DB_URL',
+    'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system_test',
+)
+if '_test' not in TEST_DB_URL.rsplit('/', 1)[-1]:
+    pytest.skip(
+        'MIS_TEST_DB_URL не показује на *_test базу — заштита продукционе базе',
+        allow_module_level=True,
+    )
 
-def print_error(msg):
-    print(f"{Colors.RED}✗{Colors.END} {msg}")
+os.environ['DATABASE_URL'] = TEST_DB_URL
+os.environ.setdefault('FLASK_ENV', 'testing')
+os.environ.setdefault('SECRET_KEY', 'test-secret')
+os.environ.setdefault('REDIS_URL', '')
+os.environ.setdefault('SESSION_TYPE', 'filesystem')
+os.environ.setdefault('SESSION_FILE_DIR', 'logs/qa_flask_session')
+os.environ.setdefault('WTF_CSRF_ENABLED', 'False')
+os.environ.setdefault('RATELIMIT_STORAGE_URL', 'memory://')
 
-def print_info(msg):
-    print(f"{Colors.BLUE}ℹ{Colors.END} {msg}")
+import psycopg  # noqa: E402
+from psycopg.rows import dict_row  # noqa: E402
 
-def print_warning(msg):
-    print(f"{Colors.YELLOW}⚠{Colors.END} {msg}")
-
-def print_section(msg):
-    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*60}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{msg}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*60}{Colors.END}\n")
-
-# Test configuration
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://aleksandarlukovic@localhost/museum_system')
-TEST_EMAIL = 'test_reliability@museum.test'
-TEST_NAME = 'Test Reliability User'
+PLAIN_URL = TEST_DB_URL.replace('postgresql+psycopg://', 'postgresql://')
 
 
-class TestResults:
-    __test__ = False  # plain result holder, not a pytest test class
-    def __init__(self):
-        self.passed = 0
-        self.failed = 0
-        self.errors = []
-
-    def record_pass(self, test_name):
-        self.passed += 1
-        print_success(test_name)
-
-    def record_fail(self, test_name, reason):
-        self.failed += 1
-        self.errors.append((test_name, reason))
-        print_error(f"{test_name}: {reason}")
-
-    def summary(self):
-        total = self.passed + self.failed
-        print_section("TEST SUMMARY")
-        print(f"Passed: {Colors.GREEN}{self.passed}{Colors.END}/{total}")
-        print(f"Failed: {Colors.RED}{self.failed}{Colors.END}/{total}")
-        if self.errors:
-            print(f"\n{Colors.RED}Failed tests:{Colors.END}")
-            for name, reason in self.errors:
-                print(f"  - {name}: {reason}")
-        return self.failed == 0
+def _pg_available():
+    try:
+        with psycopg.connect(PLAIN_URL, connect_timeout=3) as conn:
+            conn.execute('SELECT 1')
+        return True
+    except Exception:
+        return False
 
 
-results = TestResults()
+if not _pg_available():
+    pytest.skip('PostgreSQL (museum_system_test) није доступан',
+                allow_module_level=True)
+
+import timesheet_postgres as tp  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Синтетички идентитети — све на @example.invalid, чишћење само по њима.
+# ---------------------------------------------------------------------------
+TEST_EMAIL = 'reliability.primary@example.invalid'
+TEST_NAME = 'Reliability Primary'
+TRIGGER_EMAIL = 'reliability.trigger@example.invalid'
+OPTLOCK_EMAIL = 'reliability.optlock@example.invalid'
+LOCK_EMAIL = 'reliability.lock@example.invalid'
+LEAP_EMAIL = 'reliability.leap@example.invalid'
+MONTH31_EMAIL = 'reliability.month31@example.invalid'
+EMPTY_EMAIL = 'reliability.empty@example.invalid'
+SPECIAL_EMAIL = 'reliability.special@example.invalid'
+RATE_LIMIT_EMAIL = 'reliability.rate-limit@example.invalid'
+CONCURRENT_EMAILS = {
+    i: f'reliability.concurrent.{i}@example.invalid' for i in range(1, 7)
+}
+BATCH_EMAILS = [f'reliability.batch.{i}@example.invalid' for i in range(1, 4)]
+BATCH_ADMIN_EMAIL = 'reliability.batch-admin@example.invalid'
+
+ALL_TEST_EMAILS = [
+    TEST_EMAIL, TRIGGER_EMAIL, OPTLOCK_EMAIL, LOCK_EMAIL, LEAP_EMAIL,
+    MONTH31_EMAIL, EMPTY_EMAIL, SPECIAL_EMAIL, RATE_LIMIT_EMAIL,
+    *CONCURRENT_EMAILS.values(), *BATCH_EMAILS, BATCH_ADMIN_EMAIL,
+]
+
+# ---------------------------------------------------------------------------
+# Експлицитни прагови
+# ---------------------------------------------------------------------------
+# Сати се пореде као float — толеранција за numeric->float конверзију.
+HOURS_TOLERANCE = 0.01
+# Паралелна чувања: 6 радника, свих 6 МОРА да успе (упис је транзакциона
+# операција за различите кориснике — делимичан успех = регресија).
+CONCURRENT_SAVE_WORKERS = 6
+CONCURRENT_SAVE_REQUIRED_SUCCESSES = 6
+# editable_until прозор за seed-оване извештаје ван рока уноса (минута).
+SEED_EDIT_WINDOW_MINUTES = 60
+
+# save_timesheet_to_postgres дозвољава упис само за текући месец (или
+# претходни до 10. у месецу) — тестови зато раде над ТЕКУЋИМ месецом, а
+# периоде ван рока (преступни фебруар, 31-дневни јануар) добијају кроз
+# seed-ован DRAFT са активним editable_until прозором (докуменотвани
+# override рока у save слоју).
+_NOW = datetime.now()
+CURRENT_MONTH = _NOW.month
+CURRENT_YEAR = _NOW.year
 
 
-try:
-    import pytest
+def _db():
+    return psycopg.connect(PLAIN_URL, row_factory=dict_row)
 
-    @pytest.fixture(scope='session', autouse=True)
-    def _reliability_suite_cleanup():
-        yield
-        cleanup_test_data()
-except ImportError:
-    pass
+
+def _cleanup_test_data():
+    """Брише искључиво редове синтетичких @example.invalid идентитета."""
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM timesheet_edit_requests "
+                "WHERE requester_email = ANY(%s)", (ALL_TEST_EMAILS,))
+            cur.execute(
+                "DELETE FROM timesheet_report_days WHERE report_id IN "
+                "(SELECT id FROM timesheet_reports "
+                " WHERE employee_email = ANY(%s))", (ALL_TEST_EMAILS,))
+            cur.execute(
+                "DELETE FROM timesheet_entries WHERE report_id IN "
+                "(SELECT id FROM timesheet_reports "
+                " WHERE employee_email = ANY(%s))", (ALL_TEST_EMAILS,))
+            cur.execute(
+                "DELETE FROM timesheet_reports "
+                "WHERE employee_email = ANY(%s)", (ALL_TEST_EMAILS,))
+            conn.commit()
+
+
+@pytest.fixture(scope='module', autouse=True)
+def _preusmeri_bazu_na_test():
+    """У пуном suite-у је app можда већ увезен са DATABASE_URL из .env
+    (museum_system!) и pool-ови већ везани — преусмери env и ресетуј СВЕ
+    pool-ове на *_test базу док траје овај модул, па врати старо стање."""
+    import postgres_service
+    old_env = os.environ.get('DATABASE_URL')
+    old_tp_url = tp.DATABASE_URL
+    os.environ['DATABASE_URL'] = TEST_DB_URL
+    postgres_service.close_connection_pools()
+    tp.close_connection_pool()
+    tp.DATABASE_URL = TEST_DB_URL
+    _cleanup_test_data()
+    yield
+    _cleanup_test_data()
+    postgres_service.close_connection_pools()
+    tp.close_connection_pool()
+    tp.DATABASE_URL = old_tp_url
+    if old_env is not None:
+        os.environ['DATABASE_URL'] = old_env
+
+
+def _save(email, name, month=CURRENT_MONTH, year=CURRENT_YEAR, *,
+          daily_data, work_description='Reliability test',
+          expected_version=None):
+    return tp.save_timesheet_to_postgres(
+        user_email=email,
+        user_name=name,
+        month=month,
+        year=year,
+        daily_data=daily_data,
+        work_description=work_description,
+        organization_unit='Test Unit',
+        position='Test Position',
+        expected_version=expected_version,
+    )
+
+
+def _seed_editable_report(email, name, month, year):
+    """DRAFT извештај са активним editable_until прозором — једини начин да
+    save слој прими упис за месец ван рока уноса (правило 5 override)."""
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO timesheet_reports "
+                "(employee_email, employee_name, month, year, status, "
+                " is_locked, version, editable_until) "
+                "VALUES (%s, %s, %s, %s, 'DRAFT', FALSE, 1, "
+                "        NOW() + make_interval(mins => %s)) RETURNING id",
+                (email, name, month, year, SEED_EDIT_WINDOW_MINUTES))
+            rid = cur.fetchone()['id']
+            conn.commit()
+            return rid
+
+
+def _lock_report(email, month, year):
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE timesheet_reports SET is_locked = TRUE "
+                "WHERE employee_email = %s AND month = %s AND year = %s",
+                (email, month, year))
+            assert cur.rowcount == 1, (
+                f'Очекиван тачно 1 извештај за закључавање, '
+                f'нађено {cur.rowcount}')
+            conn.commit()
 
 
 # =============================================================================
@@ -92,88 +212,44 @@ except ImportError:
 # =============================================================================
 
 def test_validation_negative_hours():
-    """Test that negative hours are rejected"""
-    from timesheet_postgres import validate_hours
-
-    error = validate_hours(-5.0, "test_field")
-    if error and "негативна" in error:
-        results.record_pass("Validation: Negative hours rejected")
-    else:
-        results.record_fail("Validation: Negative hours rejected", f"Got: {error}")
+    """Негативни сати морају бити одбијени са јасном поруком."""
+    error = tp.validate_hours(-5.0, 'test_field')
+    assert error is not None, 'validate_hours(-5.0) мора вратити грешку'
+    assert 'негативна' in error, f'Порука не помиње негативну вредност: {error}'
 
 
 def test_validation_excessive_hours():
-    """Test that hours > 24 are rejected"""
-    from timesheet_postgres import validate_hours
-
-    error = validate_hours(25.0, "test_field")
-    if error and "24" in error:
-        results.record_pass("Validation: Hours > 24 rejected")
-    else:
-        results.record_fail("Validation: Hours > 24 rejected", f"Got: {error}")
+    """Сати > 24 морају бити одбијени."""
+    error = tp.validate_hours(25.0, 'test_field')
+    assert error is not None, 'validate_hours(25.0) мора вратити грешку'
+    assert '24' in error, f'Порука не помиње лимит 24: {error}'
 
 
 def test_validation_valid_hours():
-    """Test that valid hours pass validation"""
-    from timesheet_postgres import validate_hours
-
+    """Валидне вредности (0, 4, 8, 12, 24) пролазе без грешке."""
     for hours in [0, 4, 8, 12, 24]:
-        error = validate_hours(float(hours))
-        if error:
-            results.record_fail(f"Validation: Valid hours {hours}", error)
-            return
-
-    results.record_pass("Validation: Valid hours (0, 4, 8, 12, 24) accepted")
+        error = tp.validate_hours(float(hours))
+        assert error is None, f'Валидни сати {hours} одбијени: {error}'
 
 
 def test_validation_month_year():
-    """Test month/year validation"""
-    from timesheet_postgres import validate_month_year
-
-    # Invalid month
-    error = validate_month_year(13, 2026)
-    if not error:
-        results.record_fail("Validation: Invalid month 13", "Should have failed")
-        return
-
-    # Invalid year
-    error = validate_month_year(1, 1999)
-    if not error:
-        results.record_fail("Validation: Invalid year 1999", "Should have failed")
-        return
-
-    # Valid
-    error = validate_month_year(2, 2026)
-    if error:
-        results.record_fail("Validation: Valid month/year", error)
-        return
-
-    results.record_pass("Validation: Month/year validation works")
+    """Месец 13 и година 1999 падају; 2/2026 пролази."""
+    assert tp.validate_month_year(13, 2026) is not None, \
+        'Месец 13 мора бити одбијен'
+    assert tp.validate_month_year(1, 1999) is not None, \
+        'Година 1999 мора бити одбијена'
+    error = tp.validate_month_year(2, 2026)
+    assert error is None, f'Валидан месец/година одбијен: {error}'
 
 
 def test_validation_daily_data():
-    """Test daily data validation"""
-    from timesheet_postgres import validate_daily_data
+    """Дан 31 у фебруару пада; валидан дан пролази."""
+    errors = tp.validate_daily_data({'31': {'rad_na_mestu': 8}}, 2, 2026)
+    assert errors, 'Дан 31 у фебруару мора произвести грешку валидације'
 
-    # Test invalid day for month
-    daily_data = {
-        '31': {'rad_na_mestu': 8}  # February doesn't have 31 days
-    }
-    errors = validate_daily_data(daily_data, 2, 2026)
-    if not errors:
-        results.record_fail("Validation: Invalid day for month", "Should have failed")
-        return
-
-    # Test valid data
-    daily_data = {
-        '1': {'rad_na_mestu': 8, 'van_muzeja': 0}
-    }
-    errors = validate_daily_data(daily_data, 2, 2026)
-    if errors:
-        results.record_fail("Validation: Valid daily data", str(errors))
-        return
-
-    results.record_pass("Validation: Daily data validation works")
+    errors = tp.validate_daily_data(
+        {'1': {'rad_na_mestu': 8, 'van_muzeja': 0}}, 2, 2026)
+    assert errors == [], f'Валидни дневни подаци одбијени: {errors}'
 
 
 # =============================================================================
@@ -181,17 +257,9 @@ def test_validation_daily_data():
 # =============================================================================
 
 def test_save_and_load_consistency():
-    """Test that saved data can be loaded back correctly"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres
-    import psycopg
-    from psycopg.rows import dict_row
-
-    test_month = 12
-    test_year = 2025
-
-    # Create test data
+    """Сачувани подаци се учитавају назад идентично (28 дана)."""
     daily_data = {}
-    for day in range(1, 29):  # Use 28 days to be safe for any month
+    for day in range(1, 29):
         daily_data[str(day)] = {
             'rad_na_mestu': 8 if day % 7 not in [0, 6] else 0,
             'van_muzeja': 0,
@@ -200,110 +268,59 @@ def test_save_and_load_consistency():
             'placeno_odsustvo': 0,
             'ostalo_odsustvo': 0,
             'bolovanje_manje30': 0,
-            'bolovanje_30_ili_vise': 0
+            'bolovanje_30_ili_vise': 0,
         }
 
-    # Save
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data=daily_data,
-        work_description="Test work description",
-        organization_unit="Test Unit",
-        position="Test Position"
-    )
+    result = _save(TEST_EMAIL, TEST_NAME, daily_data=daily_data,
+                   work_description='Save/load consistency')
+    assert result.success, f'Чување није успело: {result.error.message}'
 
-    if not result.success:
-        results.record_fail("Data Integrity: Save operation", result.error.message)
-        return
+    loaded = tp.load_timesheet_from_postgres(
+        TEST_EMAIL, CURRENT_MONTH, CURRENT_YEAR)
+    assert loaded is not None, 'Учитавање вратило None после успешног чувања'
 
-    # Load back
-    loaded = load_timesheet_from_postgres(TEST_EMAIL, test_month, test_year)
-
-    if not loaded:
-        results.record_fail("Data Integrity: Load operation", "Returned None")
-        return
-
-    # Verify data matches
     for day_str, expected in daily_data.items():
-        day = int(day_str)
-        actual = loaded['daily_data'].get(day, {})
-
+        actual = loaded['daily_data'].get(int(day_str), {})
         for category, expected_hours in expected.items():
             actual_hours = actual.get(category, 0)
-            if abs(float(expected_hours) - float(actual_hours)) > 0.01:
-                results.record_fail(
-                    "Data Integrity: Value match",
-                    f"Day {day}, {category}: expected {expected_hours}, got {actual_hours}"
-                )
-                return
-
-    results.record_pass("Data Integrity: Save/Load consistency verified")
+            assert abs(float(expected_hours) - float(actual_hours)) <= HOURS_TOLERANCE, (
+                f'Дан {day_str}, {category}: очекивано {expected_hours}, '
+                f'добијено {actual_hours}')
 
 
 def test_trigger_sync():
-    """Test that trigger properly syncs timesheet_report_days to timesheet_entries"""
-    import psycopg
-    from psycopg.rows import dict_row
-    from timesheet_postgres import save_timesheet_to_postgres
-
-    test_month = 11
-    test_year = 2025
-
-    # Save data with known values
+    """Тригер агрегира timesheet_report_days у timesheet_entries."""
     daily_data = {
         '1': {'rad_na_mestu': 8},
         '2': {'rad_na_mestu': 8},
         '3': {'van_muzeja': 4},
-        '4': {'godisnji_odmor': 8}
+        '4': {'godisnji_odmor': 8},
     }
+    result = _save(TRIGGER_EMAIL, 'Reliability Trigger',
+                   daily_data=daily_data, work_description='Trigger test')
+    assert result.success, f'Чување није успело: {result.error.message}'
 
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data=daily_data,
-        work_description="Trigger test",
-        organization_unit="Test",
-        position="Test"
-    )
-
-    if not result.success:
-        results.record_fail("Trigger Sync: Save operation", result.error.message)
-        return
-
-    # Check timesheet_entries has correct aggregated values
-    pg_url = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
-    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+    with _db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT te.category, te.hours
                 FROM timesheet_entries te
                 JOIN timesheet_reports tr ON tr.id = te.report_id
                 WHERE tr.employee_email = %s AND tr.month = %s AND tr.year = %s
-            """, (TEST_EMAIL, test_month, test_year))
-
-            entries = {row['category']: float(row['hours']) for row in cur.fetchall()}
+            """, (TRIGGER_EMAIL, CURRENT_MONTH, CURRENT_YEAR))
+            entries = {row['category']: float(row['hours'])
+                       for row in cur.fetchall()}
 
     expected = {
-        'rad_na_mestu': 16.0,  # 8 + 8
+        'rad_na_mestu': 16.0,
         'van_muzeja': 4.0,
-        'godisnji_odmor': 8.0
+        'godisnji_odmor': 8.0,
     }
-
     for category, expected_hours in expected.items():
         actual = entries.get(category, 0)
-        if abs(expected_hours - actual) > 0.01:
-            results.record_fail(
-                "Trigger Sync: Category totals",
-                f"{category}: expected {expected_hours}, got {actual}"
-            )
-            return
-
-    results.record_pass("Trigger Sync: timesheet_entries correctly aggregated")
+        assert abs(expected_hours - actual) <= HOURS_TOLERANCE, (
+            f'Тригер агрегат {category}: очекивано {expected_hours}, '
+            f'добијено {actual} (сви уноси: {entries})')
 
 
 # =============================================================================
@@ -311,175 +328,73 @@ def test_trigger_sync():
 # =============================================================================
 
 def test_optimistic_locking():
-    """Test that optimistic locking prevents concurrent modification"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres, TimesheetErrorType
+    """Друго чување са застарелом верзијом пада са CONCURRENT_MODIFICATION."""
+    initial = _save(OPTLOCK_EMAIL, 'Reliability Optlock',
+                    daily_data={'1': {'rad_na_mestu': 8}},
+                    work_description='Initial')
+    assert initial.success, f'Почетно чување није успело: {initial.error.message}'
+    initial_version = initial.data['version']
 
-    test_month = 10
-    test_year = 2025
+    first_update = _save(OPTLOCK_EMAIL, 'Reliability Optlock',
+                         daily_data={'1': {'rad_na_mestu': 4}},
+                         work_description='First update',
+                         expected_version=initial_version)
+    assert first_update.success, (
+        f'Прво ажурирање са тачном верзијом није успело: '
+        f'{first_update.error.message}')
 
-    # Create initial record
-    initial_result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 8}},
-        work_description="Initial",
-        organization_unit="Test",
-        position="Test"
-    )
-
-    if not initial_result.success:
-        results.record_fail("Optimistic Locking: Initial save", initial_result.error.message)
-        return
-
-    initial_version = initial_result.data['version']
-
-    # Simulate first user updating
-    first_update = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 4}},
-        work_description="First update",
-        organization_unit="Test",
-        position="Test",
-        expected_version=initial_version
-    )
-
-    if not first_update.success:
-        results.record_fail("Optimistic Locking: First update", first_update.error.message)
-        return
-
-    # Simulate second user trying to update with stale version
-    second_update = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 2}},
-        work_description="Second update (should fail)",
-        organization_unit="Test",
-        position="Test",
-        expected_version=initial_version  # Stale version
-    )
-
-    if second_update.success:
-        results.record_fail("Optimistic Locking: Stale update", "Should have failed with concurrent modification error")
-        return
-
-    if second_update.error.error_type != TimesheetErrorType.CONCURRENT_MODIFICATION:
-        results.record_fail(
-            "Optimistic Locking: Error type",
-            f"Expected CONCURRENT_MODIFICATION, got {second_update.error.error_type}"
-        )
-        return
-
-    results.record_pass("Optimistic Locking: Concurrent modification detected")
+    second_update = _save(OPTLOCK_EMAIL, 'Reliability Optlock',
+                          daily_data={'1': {'rad_na_mestu': 2}},
+                          work_description='Second update (stale)',
+                          expected_version=initial_version)
+    assert not second_update.success, \
+        'Чување са застарелом верзијом је МОРАЛО да падне'
+    assert second_update.error.error_type == tp.TimesheetErrorType.CONCURRENT_MODIFICATION, (
+        f'Очекиван CONCURRENT_MODIFICATION, добијен '
+        f'{second_update.error.error_type}')
 
 
 def test_lock_enforcement():
-    """Test that locked timesheets cannot be modified"""
-    from timesheet_postgres import save_timesheet_to_postgres, TimesheetErrorType
-    import psycopg
+    """Закључан извештај не сме да се мења (LOCKED грешка)."""
+    initial = _save(LOCK_EMAIL, 'Reliability Lock',
+                    daily_data={'1': {'rad_na_mestu': 8}},
+                    work_description='To be locked')
+    assert initial.success, f'Почетно чување није успело: {initial.error.message}'
 
-    test_month = 9
-    test_year = 2025
+    _lock_report(LOCK_EMAIL, CURRENT_MONTH, CURRENT_YEAR)
 
-    # Create initial record
-    initial_result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 8}},
-        work_description="To be locked",
-        organization_unit="Test",
-        position="Test"
-    )
-
-    if not initial_result.success:
-        results.record_fail("Lock Enforcement: Initial save", initial_result.error.message)
-        return
-
-    # Lock the report manually
-    pg_url = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
-    with psycopg.connect(pg_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE timesheet_reports
-                SET is_locked = TRUE
-                WHERE employee_email = %s AND month = %s AND year = %s
-            """, (TEST_EMAIL, test_month, test_year))
-            conn.commit()
-
-    # Try to update locked report
-    update_result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 4}},
-        work_description="Trying to update locked",
-        organization_unit="Test",
-        position="Test"
-    )
-
-    if update_result.success:
-        results.record_fail("Lock Enforcement", "Should have failed - report is locked")
-        return
-
-    if update_result.error.error_type != TimesheetErrorType.LOCKED:
-        results.record_fail(
-            "Lock Enforcement: Error type",
-            f"Expected LOCKED, got {update_result.error.error_type}"
-        )
-        return
-
-    results.record_pass("Lock Enforcement: Locked report cannot be modified")
+    update = _save(LOCK_EMAIL, 'Reliability Lock',
+                   daily_data={'1': {'rad_na_mestu': 4}},
+                   work_description='Trying to update locked')
+    assert not update.success, 'Чување закључаног извештаја МОРА да падне'
+    assert update.error.error_type == tp.TimesheetErrorType.LOCKED, (
+        f'Очекиван LOCKED, добијен {update.error.error_type}')
 
 
 def test_concurrent_saves():
-    """Test multiple simultaneous saves to different months"""
-    from timesheet_postgres import save_timesheet_to_postgres
-
-    results_list = []
-    errors_list = []
-
-    def save_for_month(month):
+    """6 паралелних чувања за 6 различитих корисника — сва морају успети."""
+    def save_for(idx):
         try:
-            result = save_timesheet_to_postgres(
-                user_email=f"concurrent_test_{month}@test.com",
-                user_name=f"Concurrent Test {month}",
-                month=month,
-                year=2025,
-                daily_data={'1': {'rad_na_mestu': 8}},
-                work_description=f"Concurrent test month {month}",
-                organization_unit="Test",
-                position="Test"
-            )
-            return (month, result.success, result.error.message if result.error else None)
-        except Exception as e:
-            return (month, False, str(e))
+            result = _save(CONCURRENT_EMAILS[idx],
+                           f'Reliability Concurrent {idx}',
+                           daily_data={'1': {'rad_na_mestu': 8}},
+                           work_description=f'Concurrent test {idx}')
+            return (idx, result.success,
+                    result.error.message if result.error else None)
+        except Exception as e:  # noqa: BLE001 — исход се асертује
+            return (idx, False, str(e))
 
-    # Run 6 concurrent saves
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = [executor.submit(save_for_month, m) for m in range(1, 7)]
+    successes, failures = [], []
+    with ThreadPoolExecutor(max_workers=CONCURRENT_SAVE_WORKERS) as executor:
+        futures = [executor.submit(save_for, i)
+                   for i in CONCURRENT_EMAILS]
         for future in as_completed(futures):
-            month, success, error = future.result()
-            if success:
-                results_list.append(month)
-            else:
-                errors_list.append((month, error))
+            idx, ok, error = future.result()
+            (successes if ok else failures).append((idx, error))
 
-    if len(results_list) == 6:
-        results.record_pass("Concurrent Saves: 6 parallel saves succeeded")
-    else:
-        results.record_fail(
-            "Concurrent Saves",
-            f"Only {len(results_list)}/6 succeeded. Errors: {errors_list}"
-        )
+    assert len(successes) == CONCURRENT_SAVE_REQUIRED_SUCCESSES, (
+        f'Успело {len(successes)}/{CONCURRENT_SAVE_REQUIRED_SUCCESSES} '
+        f'паралелних чувања. Падови: {failures}')
 
 
 # =============================================================================
@@ -487,347 +402,215 @@ def test_concurrent_saves():
 # =============================================================================
 
 def test_leap_year():
-    """Test handling of February in leap year"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres
+    """29. фебруар преступне 2024. се чува и учитава."""
+    _seed_editable_report(LEAP_EMAIL, 'Reliability Leap', 2, 2024)
+    daily_data = {str(d): {'rad_na_mestu': 8} for d in range(1, 30)}
 
-    # 2024 is a leap year (29 days in Feb)
-    daily_data = {str(d): {'rad_na_mestu': 8} for d in range(1, 30)}  # Include day 29
+    result = _save(LEAP_EMAIL, 'Reliability Leap', 2, 2024,
+                   daily_data=daily_data, work_description='Leap year test')
+    assert result.success, f'Чување фебруара 2024 није успело: {result.error.message}'
 
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=2,
-        year=2024,
-        daily_data=daily_data,
-        work_description="Leap year test",
-        organization_unit="Test",
-        position="Test"
-    )
-
-    if not result.success:
-        results.record_fail("Leap Year: Save Feb 2024", result.error.message)
-        return
-
-    # Load and verify day 29 exists
-    loaded = load_timesheet_from_postgres(TEST_EMAIL, 2, 2024)
-    if not loaded:
-        results.record_fail("Leap Year: Load", "Returned None")
-        return
-
-    if loaded['daily_data'].get(29, {}).get('rad_na_mestu', 0) != 8:
-        results.record_fail("Leap Year: Day 29 data", "Day 29 not properly saved")
-        return
-
-    results.record_pass("Leap Year: February 29 handled correctly")
+    loaded = tp.load_timesheet_from_postgres(LEAP_EMAIL, 2, 2024)
+    assert loaded is not None, 'Учитавање фебруара 2024 вратило None'
+    day29 = loaded['daily_data'].get(29, {}).get('rad_na_mestu', 0)
+    assert abs(day29 - 8) <= HOURS_TOLERANCE, (
+        f'Дан 29. фебруар: очекивано 8, добијено {day29}')
 
 
 def test_31_day_month():
-    """Test handling of 31-day months"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres
-
-    # January has 31 days
+    """31. јануар се чува и учитава."""
+    _seed_editable_report(MONTH31_EMAIL, 'Reliability Month31', 1, 2025)
     daily_data = {str(d): {'rad_na_mestu': 8} for d in range(1, 32)}
 
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=1,
-        year=2025,
-        daily_data=daily_data,
-        work_description="31 day test",
-        organization_unit="Test",
-        position="Test"
-    )
+    result = _save(MONTH31_EMAIL, 'Reliability Month31', 1, 2025,
+                   daily_data=daily_data, work_description='31 day test')
+    assert result.success, f'Чување јануара није успело: {result.error.message}'
 
-    if not result.success:
-        results.record_fail("31-Day Month: Save", result.error.message)
-        return
-
-    loaded = load_timesheet_from_postgres(TEST_EMAIL, 1, 2025)
-    if not loaded:
-        results.record_fail("31-Day Month: Load", "Returned None")
-        return
-
-    if loaded['daily_data'].get(31, {}).get('rad_na_mestu', 0) != 8:
-        results.record_fail("31-Day Month: Day 31 data", "Day 31 not properly saved")
-        return
-
-    results.record_pass("31-Day Month: Day 31 handled correctly")
+    loaded = tp.load_timesheet_from_postgres(MONTH31_EMAIL, 1, 2025)
+    assert loaded is not None, 'Учитавање јануара вратило None'
+    day31 = loaded['daily_data'].get(31, {}).get('rad_na_mestu', 0)
+    assert abs(day31 - 8) <= HOURS_TOLERANCE, (
+        f'Дан 31: очекивано 8, добијено {day31}')
 
 
 def test_empty_timesheet():
-    """Test handling of empty timesheet (no hours entered)"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres
-
-    # All zeros
+    """Празна листа (све нуле) се чува и учитава као све-нула матрица."""
     daily_data = {str(d): {
-        'rad_na_mestu': 0,
-        'van_muzeja': 0,
-        'godisnji_odmor': 0
+        'rad_na_mestu': 0, 'van_muzeja': 0, 'godisnji_odmor': 0,
     } for d in range(1, 29)}
 
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=8,
-        year=2025,
-        daily_data=daily_data,
-        work_description="Empty timesheet test",
-        organization_unit="Test",
-        position="Test"
-    )
+    result = _save(EMPTY_EMAIL, 'Reliability Empty',
+                   daily_data=daily_data, work_description='Empty test')
+    assert result.success, f'Чување празне листе није успело: {result.error.message}'
 
-    if not result.success:
-        results.record_fail("Empty Timesheet: Save", result.error.message)
-        return
-
-    loaded = load_timesheet_from_postgres(TEST_EMAIL, 8, 2025)
-    if not loaded:
-        results.record_fail("Empty Timesheet: Load", "Returned None")
-        return
-
-    results.record_pass("Empty Timesheet: Handled correctly")
+    loaded = tp.load_timesheet_from_postgres(
+        EMPTY_EMAIL, CURRENT_MONTH, CURRENT_YEAR)
+    assert loaded is not None, 'Учитавање празне листе вратило None'
+    total = sum(hours
+                for day_values in loaded['daily_data'].values()
+                for hours in day_values.values())
+    assert total == 0, f'Празна листа има ненулте сате: укупно {total}'
 
 
 def test_special_characters_in_description():
-    """Test handling of special characters in work description"""
-    from timesheet_postgres import save_timesheet_to_postgres, load_timesheet_from_postgres
+    """Ћирилица, HTML и наводници у опису преживљавају save/load нетакнути."""
+    special_desc = ("Тест са специјалним карактерима: "
+                    "<script>alert('xss')</script> & \"quotes\" 'apostrophe'")
 
-    special_desc = "Тест са специјалним карактерима: <script>alert('xss')</script> & \"quotes\" 'apostrophe'"
+    result = _save(SPECIAL_EMAIL, 'Reliability Special',
+                   daily_data={'1': {'rad_na_mestu': 8}},
+                   work_description=special_desc)
+    assert result.success, f'Чување није успело: {result.error.message}'
 
-    result = save_timesheet_to_postgres(
-        user_email=TEST_EMAIL,
-        user_name=TEST_NAME,
-        month=7,
-        year=2025,
-        daily_data={'1': {'rad_na_mestu': 8}},
-        work_description=special_desc,
-        organization_unit="Test",
-        position="Test"
-    )
+    loaded = tp.load_timesheet_from_postgres(
+        SPECIAL_EMAIL, CURRENT_MONTH, CURRENT_YEAR)
+    assert loaded is not None, 'Учитавање вратило None'
+    assert loaded['OPosao'] == special_desc, (
+        f'Опис искварен: очекивано {special_desc!r}, '
+        f'добијено {loaded["OPosao"]!r}')
 
-    if not result.success:
-        results.record_fail("Special Characters: Save", result.error.message)
-        return
 
-    loaded = load_timesheet_from_postgres(TEST_EMAIL, 7, 2025)
-    if not loaded:
-        results.record_fail("Special Characters: Load", "Returned None")
-        return
-
-    if loaded['OPosao'] != special_desc:
-        results.record_fail(
-            "Special Characters: Data integrity",
-            f"Expected: {special_desc}, Got: {loaded['OPosao']}"
-        )
-        return
-
-    results.record_pass("Special Characters: Handled correctly")
-
+# =============================================================================
+# SECURITY TESTS
+# =============================================================================
 
 def test_rate_limiting():
-    """Test rate limiting for edit approval requests"""
-    from timesheet_postgres import (
-        save_timesheet_to_postgres,
-        request_edit_approval,
-        get_edit_request_rate_limit_status,
-        TimesheetErrorType
-    )
-    import psycopg
+    """Лимит 3 захтева/24h: бројач, pending-дупликат и одбијање 4. захтева."""
+    result = _save(RATE_LIMIT_EMAIL, 'Reliability RateLimit',
+                   daily_data={'1': {'rad_na_mestu': 8}},
+                   work_description='Rate limit test')
+    assert result.success, f'Чување није успело: {result.error.message}'
+    report_id = result.data['report_id']
 
-    test_email = "rate_limit_test@museum.test"
-    test_month = 6
-    test_year = 2025
+    _lock_report(RATE_LIMIT_EMAIL, CURRENT_MONTH, CURRENT_YEAR)
 
-    # Create a test report first
-    result = save_timesheet_to_postgres(
-        user_email=test_email,
-        user_name="Rate Limit Test User",
-        month=test_month,
-        year=test_year,
-        daily_data={'1': {'rad_na_mestu': 8}},
-        work_description="Rate limit test",
-        organization_unit="Test",
-        position="Test"
-    )
+    status = tp.get_edit_request_rate_limit_status(RATE_LIMIT_EMAIL)
+    assert status['remaining'] == 3, (
+        f'Почетни лимит: очекивано 3 преостала, добијено {status}')
 
-    if not result.success:
-        results.record_fail("Rate Limiting: Create report", result.error.message)
-        return
+    first = tp.request_edit_approval(
+        RATE_LIMIT_EMAIL, CURRENT_MONTH, CURRENT_YEAR,
+        'Test request 1 - need to fix data entry error')
+    assert first.success, f'Први захтев одбијен: {first.error.message}'
 
-    # Lock the report so we can request edits
-    pg_url = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
-    with psycopg.connect(pg_url) as conn:
+    status = tp.get_edit_request_rate_limit_status(RATE_LIMIT_EMAIL)
+    assert status['requests_today'] == 1, (
+        f'После 1. захтева: очекиван бројач 1, добијено {status}')
+    assert status['remaining'] == 2, (
+        f'После 1. захтева: очекивано 2 преостала, добијено {status}')
+
+    duplicate = tp.request_edit_approval(
+        RATE_LIMIT_EMAIL, CURRENT_MONTH, CURRENT_YEAR,
+        'Test request 2 - duplicate while pending exists')
+    assert not duplicate.success, \
+        'Дупли захтев уз постојећи pending МОРА да падне'
+    assert duplicate.error.details.get('error_code') == 'ERR_PENDING_EXISTS', (
+        f'Очекиван ERR_PENDING_EXISTS, добијено {duplicate.error.details}')
+
+    # Допуни бројач до лимита (3) директним уписом одбијених захтева —
+    # rate limit броји СВЕ захтеве у последња 24 часа без обзира на статус.
+    with _db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE timesheet_reports
-                SET is_locked = TRUE
-                WHERE employee_email = %s AND month = %s AND year = %s
-            """, (test_email, test_month, test_year))
+            for i in (2, 3):
+                cur.execute(
+                    "INSERT INTO timesheet_edit_requests "
+                    "(report_id, requester_email, reason, status) "
+                    "VALUES (%s, %s, %s, 'rejected')",
+                    (report_id, RATE_LIMIT_EMAIL,
+                     f'Synthetic rate-limit filler {i}'))
             conn.commit()
 
-    # Check initial rate limit status
-    status = get_edit_request_rate_limit_status(test_email)
-    if status['remaining'] != 3:
-        results.record_fail("Rate Limiting: Initial status", f"Expected 3 remaining, got {status['remaining']}")
-        return
+    status = tp.get_edit_request_rate_limit_status(RATE_LIMIT_EMAIL)
+    assert status['requests_today'] == 3, (
+        f'На лимиту: очекиван бројач 3, добијено {status}')
+    assert status['remaining'] == 0 and status['is_limited'], (
+        f'На лимиту: очекивано remaining=0/is_limited, добијено {status}')
 
-    # Make 3 requests (should all succeed)
-    for i in range(3):
-        req_result = request_edit_approval(
-            test_email, test_month, test_year,
-            f"Test request {i+1} - need to fix data entry error"
-        )
-        # First request should succeed, subsequent might fail due to pending exists
-        # So we just track that at least one succeeds
-        if i == 0 and not req_result.success:
-            results.record_fail("Rate Limiting: First request", req_result.error.message)
-            return
+    fourth = tp.request_edit_approval(
+        RATE_LIMIT_EMAIL, CURRENT_MONTH, CURRENT_YEAR,
+        'Test request 4 - must hit the rate limit')
+    assert not fourth.success, '4. захтев преко лимита МОРА да падне'
+    assert fourth.error.details.get('error_code') == 'ERR_RATE_LIMIT', (
+        f'Очекиван ERR_RATE_LIMIT, добијено {fourth.error.details}')
 
-    # Check rate limit status after requests
-    status = get_edit_request_rate_limit_status(test_email)
 
-    # The 4th request should be rate limited (if we could make it)
-    # Since we have pending request check, let's verify the rate limit counter works
-    if status['requests_today'] < 1:
-        results.record_fail("Rate Limiting: Request counter", f"Expected at least 1 request, got {status['requests_today']}")
-        return
-
-    results.record_pass("Rate Limiting: Working correctly")
-
+# =============================================================================
+# API TESTS
+# =============================================================================
 
 def test_error_guidance():
-    """Test that error guidance is included in error responses"""
-    from timesheet_postgres import TimesheetResult, TimesheetErrorType
-
-    # Create an error result
-    result = TimesheetResult.fail(
-        TimesheetErrorType.LOCKED,
-        "Test locked error",
-        {'error_code': 'TEST'}
-    )
-
-    # Convert to dict
+    """Error одговор носи комплетан guidance блок (LOCKED → bi-lock)."""
+    result = tp.TimesheetResult.fail(
+        tp.TimesheetErrorType.LOCKED,
+        'Test locked error',
+        {'error_code': 'TEST'})
     error_dict = result.error.to_dict()
 
-    # Verify guidance is included
-    if 'guidance' not in error_dict:
-        results.record_fail("Error Guidance: Missing guidance", f"No guidance in error dict: {error_dict.keys()}")
-        return
-
+    assert 'guidance' in error_dict, (
+        f'Нема guidance у error dict: {sorted(error_dict.keys())}')
     guidance = error_dict['guidance']
-    if 'title' not in guidance or 'icon' not in guidance or 'suggestions' not in guidance:
-        results.record_fail("Error Guidance: Incomplete guidance", f"Missing fields: {guidance}")
-        return
-
-    # Verify locked error has correct guidance
-    if guidance['icon'] != 'bi-lock':
-        results.record_fail("Error Guidance: Wrong icon", f"Expected bi-lock, got {guidance['icon']}")
-        return
-
-    if not isinstance(guidance['suggestions'], list) or len(guidance['suggestions']) == 0:
-        results.record_fail("Error Guidance: No suggestions", f"Suggestions: {guidance['suggestions']}")
-        return
-
-    results.record_pass("Error Guidance: Working correctly")
+    for field in ('title', 'icon', 'suggestions'):
+        assert field in guidance, f'Guidance нема поље {field!r}: {guidance}'
+    assert guidance['icon'] == 'bi-lock', (
+        f'Очекиван bi-lock, добијено {guidance["icon"]}')
+    assert isinstance(guidance['suggestions'], list) and guidance['suggestions'], (
+        f'Suggestions празни или нису листа: {guidance["suggestions"]}')
 
 
 def test_data_integrity_validation():
-    """Test data integrity validation on load"""
-    from timesheet_postgres import validate_loaded_data
-
-    # Test with valid data
+    """validate_loaded_data: чисти подаци без упозорења; негативни→error са
+    корекцијом на 0; >24→warning; дневни збир >24→warning."""
     valid_data = {
         1: {'rad_na_mestu': 8, 'van_muzeja': 0},
-        2: {'rad_na_mestu': 4, 'van_muzeja': 4}
+        2: {'rad_na_mestu': 4, 'van_muzeja': 4},
     }
-    warnings = validate_loaded_data(valid_data, 1, 2025, 999)
-    if warnings:
-        results.record_fail("Data Integrity: Valid data", f"Got warnings: {warnings}")
-        return
+    warnings = tp.validate_loaded_data(valid_data, 1, 2025, 999)
+    assert warnings == [], f'Валидни подаци добили упозорења: {warnings}'
 
-    # Test with negative hours (should be flagged as error)
-    invalid_data = {
-        1: {'rad_na_mestu': -5, 'van_muzeja': 0}
-    }
-    warnings = validate_loaded_data(invalid_data, 1, 2025, 999)
-    if not any(w['level'] == 'error' and 'Negative' in w['message'] for w in warnings):
-        results.record_fail("Data Integrity: Negative hours", f"Expected error for negative hours, got: {warnings}")
-        return
+    invalid_data = {1: {'rad_na_mestu': -5, 'van_muzeja': 0}}
+    warnings = tp.validate_loaded_data(invalid_data, 1, 2025, 999)
+    assert any(w['level'] == 'error' and 'Negative' in w['message']
+               for w in warnings), (
+        f'Очекиван error за негативне сате, добијено: {warnings}')
+    assert invalid_data[1]['rad_na_mestu'] == 0, (
+        f'Негативна вредност није коригована на 0: '
+        f'{invalid_data[1]["rad_na_mestu"]}')
 
-    # Verify negative value was corrected to 0
-    if invalid_data[1]['rad_na_mestu'] != 0:
-        results.record_fail("Data Integrity: Auto-correction", f"Expected 0, got {invalid_data[1]['rad_na_mestu']}")
-        return
+    excessive_data = {1: {'rad_na_mestu': 30, 'van_muzeja': 0}}
+    warnings = tp.validate_loaded_data(excessive_data, 1, 2025, 999)
+    assert any(w['level'] == 'warning' and '24' in w['message']
+               for w in warnings), (
+        f'Очекиван warning за >24 сата, добијено: {warnings}')
 
-    # Test with hours > 24 (should be flagged as warning)
-    excessive_data = {
-        1: {'rad_na_mestu': 30, 'van_muzeja': 0}
-    }
-    warnings = validate_loaded_data(excessive_data, 1, 2025, 999)
-    if not any(w['level'] == 'warning' and '24' in w['message'] for w in warnings):
-        results.record_fail("Data Integrity: Excessive hours", f"Expected warning for >24 hours, got: {warnings}")
-        return
-
-    # Test with total daily hours > 24
-    total_excessive = {
-        1: {'rad_na_mestu': 20, 'van_muzeja': 10}
-    }
-    warnings = validate_loaded_data(total_excessive, 1, 2025, 999)
-    if not any(w['message'] and 'Total daily hours' in w['message'] for w in warnings):
-        results.record_fail("Data Integrity: Total exceeds 24", f"Expected total hours warning, got: {warnings}")
-        return
-
-    results.record_pass("Data Integrity Validation: Working correctly")
+    total_excessive = {1: {'rad_na_mestu': 20, 'van_muzeja': 10}}
+    warnings = tp.validate_loaded_data(total_excessive, 1, 2025, 999)
+    assert any(w['message'] and 'Total daily hours' in w['message']
+               for w in warnings), (
+        f'Очекиван warning за дневни збир >24, добијено: {warnings}')
 
 
 def test_batch_verification():
-    """Test batch verification/unverification of reports"""
-    from timesheet_postgres import save_timesheet_to_postgres
-    import psycopg
-    from psycopg.rows import dict_row
+    """Групна верификација/деверификација: 3 извештаја кроз ANY(ids)."""
+    for i, email in enumerate(BATCH_EMAILS, start=1):
+        result = _save(email, f'Reliability Batch {i}',
+                       daily_data={'1': {'rad_na_mestu': 8}},
+                       work_description=f'Batch test {i}')
+        assert result.success, (
+            f'Чување извештаја {i} није успело: {result.error.message}')
 
-    pg_url = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
-    test_email_prefix = "batch_test_"
-    test_year = 2025
-    test_month = 3
-
-    # Create 3 test reports
-    report_ids = []
-    for i in range(1, 4):
-        email = f"{test_email_prefix}{i}@museum.test"
-        result = save_timesheet_to_postgres(
-            user_email=email,
-            user_name=f"Batch Test User {i}",
-            month=test_month,
-            year=test_year,
-            daily_data={'1': {'rad_na_mestu': 8}},
-            work_description=f"Batch test {i}",
-            organization_unit="Test",
-            position="Test"
-        )
-        if not result.success:
-            results.record_fail("Batch Verification: Create reports", result.error.message)
-            return
-
-    # Get the created report IDs
-    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+    with _db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id FROM timesheet_reports
-                WHERE employee_email LIKE %s
-                ORDER BY id
-            """, (f"{test_email_prefix}%",))
+            cur.execute(
+                "SELECT id FROM timesheet_reports "
+                "WHERE employee_email = ANY(%s) AND month = %s AND year = %s "
+                "ORDER BY id",
+                (BATCH_EMAILS, CURRENT_MONTH, CURRENT_YEAR))
             report_ids = [row['id'] for row in cur.fetchall()]
+    assert len(report_ids) == 3, (
+        f'Очекивана 3 извештаја, нађено {len(report_ids)}')
 
-    if len(report_ids) < 3:
-        results.record_fail("Batch Verification: Create reports", f"Expected 3 reports, got {len(report_ids)}")
-        return
-
-    # Test batch verification (simulate API call logic)
-    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+    with _db() as conn:
         with conn.cursor() as cur:
-            # Verify all reports
             cur.execute("""
                 UPDATE timesheet_reports
                 SET is_verified = TRUE,
@@ -835,22 +618,16 @@ def test_batch_verification():
                     verified_at = NOW(),
                     is_locked = TRUE
                 WHERE id = ANY(%s)
-            """, ("batch_test_admin@museum.test", report_ids))
+            """, (BATCH_ADMIN_EMAIL, report_ids))
             conn.commit()
-
-            # Check all are verified
-            cur.execute("""
-                SELECT COUNT(*) as cnt FROM timesheet_reports
-                WHERE id = ANY(%s) AND is_verified = TRUE
-            """, (report_ids,))
+            cur.execute(
+                "SELECT COUNT(*) AS cnt FROM timesheet_reports "
+                "WHERE id = ANY(%s) AND is_verified = TRUE", (report_ids,))
             verified_count = cur.fetchone()['cnt']
+    assert verified_count == 3, (
+        f'Групна верификација: очекивано 3, верификовано {verified_count}')
 
-    if verified_count != 3:
-        results.record_fail("Batch Verification: Verify all", f"Expected 3 verified, got {verified_count}")
-        return
-
-    # Test batch unverification
-    with psycopg.connect(pg_url, row_factory=dict_row) as conn:
+    with _db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 UPDATE timesheet_reports
@@ -861,117 +638,13 @@ def test_batch_verification():
                 WHERE id = ANY(%s)
             """, (report_ids,))
             conn.commit()
-
-            # Check all are unverified
-            cur.execute("""
-                SELECT COUNT(*) as cnt FROM timesheet_reports
-                WHERE id = ANY(%s) AND is_verified = FALSE
-            """, (report_ids,))
+            cur.execute(
+                "SELECT COUNT(*) AS cnt FROM timesheet_reports "
+                "WHERE id = ANY(%s) AND is_verified = FALSE", (report_ids,))
             unverified_count = cur.fetchone()['cnt']
-
-    if unverified_count != 3:
-        results.record_fail("Batch Verification: Unverify all", f"Expected 3 unverified, got {unverified_count}")
-        return
-
-    results.record_pass("Batch Verification: Working correctly")
-
-
-# =============================================================================
-# CLEANUP
-# =============================================================================
-
-def cleanup_test_data():
-    """Remove all test data created during tests"""
-    import psycopg
-
-    print_section("CLEANUP")
-
-    pg_url = DATABASE_URL.replace('postgresql+psycopg://', 'postgresql://')
-    try:
-        with psycopg.connect(pg_url) as conn:
-            with conn.cursor() as cur:
-                # Delete test edit requests first
-                cur.execute("""
-                    DELETE FROM timesheet_edit_requests
-                    WHERE requester_email LIKE '%@museum.test'
-                       OR requester_email LIKE '%@test.com'
-                """)
-
-                # Delete test reports and related data (CASCADE handles entries)
-                cur.execute("""
-                    DELETE FROM timesheet_reports
-                    WHERE employee_email LIKE '%@museum.test'
-                       OR employee_email LIKE '%@test.com'
-                       OR employee_name LIKE 'Test%'
-                       OR employee_name LIKE 'Concurrent Test%'
-                       OR employee_name LIKE 'Batch Test%'
-                """)
-                deleted = cur.rowcount
-                conn.commit()
-
-        print_success(f"Cleaned up {deleted} test records")
-        return True
-    except Exception as e:
-        print_error(f"Cleanup failed: {e}")
-        return False
-
-
-# =============================================================================
-# MAIN
-# =============================================================================
-
-def main():
-    print(f"\n{Colors.BOLD}{'='*60}")
-    print("TIMESHEET RELIABILITY TEST SUITE")
-    print(f"{'='*60}{Colors.END}\n")
-
-    print_info(f"Database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else DATABASE_URL}")
-    print_info(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-    # Run tests
-    print_section("VALIDATION TESTS")
-    test_validation_negative_hours()
-    test_validation_excessive_hours()
-    test_validation_valid_hours()
-    test_validation_month_year()
-    test_validation_daily_data()
-
-    print_section("DATA INTEGRITY TESTS")
-    test_save_and_load_consistency()
-    test_trigger_sync()
-
-    print_section("CONCURRENCY TESTS")
-    test_optimistic_locking()
-    test_lock_enforcement()
-    test_concurrent_saves()
-
-    print_section("EDGE CASE TESTS")
-    test_leap_year()
-    test_31_day_month()
-    test_empty_timesheet()
-    test_special_characters_in_description()
-
-    print_section("SECURITY TESTS")
-    test_rate_limiting()
-
-    print_section("API TESTS")
-    test_error_guidance()
-    test_data_integrity_validation()
-    test_batch_verification()
-
-    # Cleanup
-    cleanup_test_data()
-
-    # Summary
-    success = results.summary()
-
-    if success:
-        print(f"\n{Colors.GREEN}{Colors.BOLD}ALL TESTS PASSED!{Colors.END}\n")
-        return 0
-    else:
-        print(f"\n{Colors.RED}{Colors.BOLD}SOME TESTS FAILED{Colors.END}\n")
-        return 1
+    assert unverified_count == 3, (
+        f'Групна деверификација: очекивано 3, деверификовано {unverified_count}')
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(pytest.main([__file__, '-q']))
