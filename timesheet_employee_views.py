@@ -978,66 +978,6 @@ def api_timesheet_submit(report_id):
     return jsonify({'success': False, 'message': result.error.message}), 400
 
 
-def api_timesheet_approve(report_id):
-    """Admin approves a submitted timesheet.
-
-    Per-report verification scope is enforced through the same policy as
-    the primary admin route: the director may not approve a regular
-    employee of a department that has a head (admin passes automatically).
-    """
-    from timesheet_postgres import confirm_timesheet_signature
-    from timesheet_admin_views import (
-        _get_department_heads,
-        _lookup_report_department,
-        _signature_plan,
-    )
-
-    try:
-        with get_postgres_connection(row_factory=dict_row) as conn:
-            with conn.cursor() as cur:
-                report_department, employee_email = _lookup_report_department(cur, report_id)
-                heads = _get_department_heads(cur)
-    except Exception as exc:
-        logger.error("approve scope lookup failed: %s", exc)
-        return jsonify({'success': False, 'message': 'Грешка провере дозволе.'}), 500
-
-    # Двостепено одобрење: одреди слот потписа (шеф/директор). APPROVED тек кад
-    # су оба потписа присутна.
-    plan = _signature_plan(
-        session, report_department,
-        target_employee_email=employee_email,
-        department_heads=heads,
-    )
-    if not plan['allowed']:
-        return jsonify(
-            {'success': False, 'message': 'Немате овлашћење за оверу овог извештаја.'}
-        ), 403
-
-    result = confirm_timesheet_signature(
-        report_id, session.get('user_email'), plan['slot'], plan['head_required'],
-    )
-    if result.success:
-        approved_now = bool(result.data.get('approved'))
-        if approved_now:
-            _notify_employee_about_review_outcome(
-                report_id,
-                'Радна листа одобрена',
-                'bi-check-circle',
-                lambda month_name, year: f'Ваша радна листа за {month_name} {year}. је одобрена (шеф и директор).',
-            )
-            message = 'Извештај је одобрен (оба потписа присутна).'
-        else:
-            _notify_employee_about_review_outcome(
-                report_id,
-                'Радна листа — потпис забележен',
-                'bi-hourglass-split',
-                lambda month_name, year: f'Ваша радна листа за {month_name} {year}. има један потпис и чека још један.',
-            )
-            message = 'Потпис забележен. Листа чека још један потпис.'
-        return jsonify({'success': True, 'message': message, 'approved': approved_now})
-    return jsonify({'success': False, 'message': result.error.message}), 400
-
-
 def api_timesheet_reject(report_id):
     """Return a SUBMITTED timesheet to the employee with a note.
 

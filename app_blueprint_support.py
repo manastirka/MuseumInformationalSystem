@@ -105,7 +105,6 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
         'api_load_timesheet',
         'api_save_timesheet',
         'api_timesheet_submit',
-        'api_timesheet_approve',
         'api_timesheet_reject',
         'api_timesheet_force_edit',
         'admin_timesheet_review',

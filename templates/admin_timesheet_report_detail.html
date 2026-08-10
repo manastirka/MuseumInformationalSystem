@@ -234,12 +234,13 @@ function approveReport(reportId) {
     const onYes = () => {
         yesBtn.removeEventListener('click', onYes);
         modal.hide();
-        fetch(`/api/timesheet/${reportId}/approve`, {
+        fetch(`/api/admin/timesheet/report/${reportId}/approve`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token() }}'
-            }
+            },
+            body: JSON.stringify({ approve: true })
         })
         .then(r => r.json())
         .then(data => {
