@@ -46,12 +46,29 @@ def pytest_configure(config):
 
 _ASSERT_RE = re.compile(r'assert|pytest\.raises')
 
+# Чувар „фајл без assert-а" важи САМО над стварном свитом — легаси стабла
+# (стари бекапи, one-off скрипте) нису наши тестови и не смеју да обарају
+# колекцију кад их неко експлицитно наведе на командној линији.
+_ROOT = Path(__file__).resolve().parent
+_LEGACY_DIRS = {
+    'PrirodnjackiMuzej', 'localSQLtesting', 'backups',
+    'venv', '.venv', 'node_modules',
+}
+
+
+def _u_sviti(path):
+    try:
+        rel = path.resolve().relative_to(_ROOT)
+    except ValueError:
+        return False
+    return not (set(rel.parts[:-1]) & _LEGACY_DIRS)
+
 
 def pytest_collection_modifyitems(config, items):
     proveren, bez_asserta = set(), []
     for item in items:
         path = Path(str(getattr(item, 'path', None) or item.fspath))
-        if path.suffix != '.py' or path in proveren:
+        if path.suffix != '.py' or path in proveren or not _u_sviti(path):
             continue
         proveren.add(path)
         if not _ASSERT_RE.search(path.read_text(encoding='utf-8', errors='replace')):
