@@ -409,3 +409,74 @@ def test_idor_predlozak_brisanje_tudjeg_odeljenja_403(kr_predlozak_geo):
             'предложак туђег одељења је ипак обрисан из базе'
     finally:
         patcher.stop()
+
+
+# ===========================================================================
+# 5. add_user — allow-листа улога по позиваоцу + политика лозинки
+# ===========================================================================
+def _user_exists(email):
+    with _db() as conn:
+        return conn.execute('SELECT 1 FROM users WHERE email = %s',
+                            (email,)).fetchone() is not None
+
+
+def _add_user_form(email, *, role, password):
+    return {
+        'email': email,
+        'full_name': 'Тест Ревизија Нови',
+        'department': 'Природњачки музеј',
+        'position': 'Тест',
+        'role': role,
+        'password': password,
+    }
+
+
+def test_direktor_ne_moze_da_kreira_admina():
+    """БАГ (ревизија 2026-08 #5): direktor + role=admin → одбијено, нема реда."""
+    email = 'novi.admin.revizija@example.invalid'
+    client = _login(_client(), email='direktor.revizija@example.invalid',
+                    role='direktor')
+    try:
+        resp = client.post('/admin/add_user',
+                           data=_add_user_form(email, role='admin',
+                                               password=STRONG_PASSWORD),
+                           base_url=BASE, follow_redirects=True)
+        assert resp.status_code == 200
+        assert not _user_exists(email), \
+            'директор је успео да креира админ налог'
+        assert 'Немате дозволу да креирате корисника' in resp.get_data(as_text=True)
+    finally:
+        _delete_user(email)
+
+
+def test_add_user_kratka_lozinka_odbijena():
+    """БАГ (ревизија 2026-08 #5): лозинка од 8 знакова (стара провера би је
+    пустила) мора пасти на политици PASSWORD_MIN_LENGTH=12."""
+    email = 'kratka.lozinka@example.invalid'
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    try:
+        resp = client.post('/admin/add_user',
+                           data=_add_user_form(email, role='employee',
+                                               password='Abc123!x'),
+                           base_url=BASE, follow_redirects=True)
+        assert resp.status_code == 200
+        assert not _user_exists(email), \
+            'корисник са прекратком лозинком је ипак креиран'
+        assert 'Лозинка не задовољава политику' in resp.get_data(as_text=True)
+    finally:
+        _delete_user(email)
+
+
+def test_admin_moze_da_kreira_korisnika_sa_jakom_lozinkom():
+    """Контролни: admin + дозвољена улога + јака лозинка → ред у бази."""
+    email = 'validan.novi@example.invalid'
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    try:
+        resp = client.post('/admin/add_user',
+                           data=_add_user_form(email, role='employee',
+                                               password=STRONG_PASSWORD),
+                           base_url=BASE, follow_redirects=True)
+        assert resp.status_code == 200, resp.status_code
+        assert _user_exists(email), 'валидан корисник није уписан у базу'
+    finally:
+        _delete_user(email)

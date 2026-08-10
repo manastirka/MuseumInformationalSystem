@@ -294,6 +294,7 @@ def add_user():
         get_museum_employees=museum_app.get_museum_employees,
         get_employee_directory=museum_app.get_employee_directory,
         password_hasher=museum_app.password_hasher,
+        password_validator=museum_app.password_validator,
     )
 
 
