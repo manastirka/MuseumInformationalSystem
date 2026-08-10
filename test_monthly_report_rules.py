@@ -672,9 +672,14 @@ class TestSubmitOwnership(unittest.TestCase):
 
     def test_owner_can_submit_and_lock_happens(self):
         import timesheet_postgres as tp
+        # window_active=True je stvarno DB stanje (aktivan 24h prozor iz
+        # editable_until) koje legitimno nadjačava rok iz
+        # can_submit_for_review — test tako ne zavisi od današnjeg datuma.
+        window_end = datetime.now(timezone.utc) + timedelta(hours=12)
         cursor = RecordingCursor(fetchone_queue=[
             {'id': 5, 'month': 6, 'year': 2026, 'status': 'DRAFT',
-             'employee_email': 'zaposleni@nhmbeo.rs'},
+             'employee_email': 'zaposleni@nhmbeo.rs',
+             'editable_until': window_end, 'window_active': True},
         ])
         with patch.object(tp, 'get_pg_connection', conn_cm_for(cursor)):
             result = tp.submit_timesheet(5, 'zaposleni@nhmbeo.rs')

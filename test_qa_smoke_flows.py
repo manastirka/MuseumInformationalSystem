@@ -34,9 +34,17 @@ class FakeTracker:
 class FakeCursor:
     def __init__(self):
         self.executed = []
+        # The password-reset flow (batch 523cf12) UPDATE-uje tačno jedan red
+        # i proverava cur.rowcount != 1 → 404 uz rollback.
+        self.rowcount = 1
 
     def execute(self, query, params=None):
         self.executed.append((query, params))
+
+    def fetchone(self):
+        # Prvi SELECT u reset flow-u čita ulogu ciljnog korisnika; običan
+        # 'employee' red dozvoljava adminu da nastavi (admin meta → 403).
+        return ('employee',)
 
     def __enter__(self):
         return self

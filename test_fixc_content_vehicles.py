@@ -2,7 +2,10 @@
 
 Covers four LOW-severity hardening fixes:
 1. museum_content_views.handle_add_visitor / handle_add_research:
-   in-memory IDs must not collide via len()+1 (use max(id)+1).
+   IDs must not collide. Originally the in-memory len()+1 scheme was
+   replaced by max(id)+1; since batch 62c9336 (migracija 040) the records
+   live in PostgreSQL and the database assigns the id (SERIAL/IDENTITY),
+   so the handlers must not compute an id at all.
 2. vehicle_depot_views.handle_add_vehicle_reservation JSON-fallback:
    int(vehicle_id) must be guarded (no 500 on missing/blank).
 3. notification_views.api_get_notifications:
@@ -12,6 +15,7 @@ Covers four LOW-severity hardening fixes:
 """
 
 import os
+import re
 from contextlib import contextmanager
 from unittest import mock
 
@@ -44,31 +48,79 @@ def app():
     return application
 
 
-# --- Finding 1: visitor/research in-memory ID collision -------------------
+# --- Finding 1: visitor/research ID assignment belongs to the database ----
 
-def test_add_visitor_id_unique_after_existing_higher_id(app):
-    """A pre-existing record with a higher id than len() must not cause a
-    duplicate id (len()+1 would collide / overwrite logically)."""
-    # Two records but their ids are 1 and 5 -> len()+1 == 3 would collide later.
-    visitor_records = [{'id': 1}, {'id': 5}]
+class _RecordingWriteCursor:
+    def __init__(self):
+        self.executed = []
+
+    def execute(self, query, params=None):
+        self.executed.append((query, params))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _fake_pg_conn(cursor):
+    conn = mock.MagicMock()
+    conn.cursor.return_value = cursor
+
+    @contextmanager
+    def _cm(*args, **kwargs):
+        yield conn
+
+    return conn, _cm
+
+
+def _single_insert(cursor, table):
+    inserts = [(q, p) for q, p in cursor.executed if f'INSERT INTO {table}' in q]
+    assert len(inserts) == 1, f"expected exactly one INSERT INTO {table}"
+    return inserts[0]
+
+
+def _assert_db_assigns_id(query, params):
+    """The handler must not compute an id itself: the INSERT column list has
+    no `id` column (SERIAL/IDENTITY assigns it) and the parameter count
+    matches the placeholders, so no extra id value is smuggled in."""
+    column_list = query.split('VALUES')[0]
+    assert not re.search(r'\bid\b', column_list), \
+        f"INSERT must not set an explicit id column: {column_list}"
+    assert len(params) == query.count('%s')
+
+
+def test_add_visitor_id_assigned_by_database_not_computed(app):
+    """Old collision worry (len()+1 over an in-memory list) is now solved by
+    PostgreSQL: the handler INSERTs without an id and the database assigns
+    a unique one."""
+    cursor = _RecordingWriteCursor()
+    conn, cm = _fake_pg_conn(cursor)
     form = {'date': '2026-05-29', 'visitor_type': 'individual'}
     with app.test_request_context('/admin/add-visitor', method='POST', data=form):
-        content_views.handle_add_visitor(visitor_records=visitor_records)
-    new_id = visitor_records[-1]['id']
-    ids = [record['id'] for record in visitor_records]
-    assert new_id == 6
-    assert len(ids) == len(set(ids)), f"duplicate ids: {ids}"
+        with mock.patch.object(content_views, 'get_postgres_connection', cm):
+            resp = content_views.handle_add_visitor()
+    assert resp.status_code == 302  # success redirect, not the error re-render
+    query, params = _single_insert(cursor, 'visitor_records')
+    _assert_db_assigns_id(query, params)
+    assert params[1] == 'individual'  # visit_date, visitor_type, ...
+    conn.commit.assert_called_once()
 
 
-def test_add_research_id_unique_after_existing_higher_id(app):
-    research_projects = [{'id': 1}, {'id': 7}]
+def test_add_research_id_assigned_by_database_not_computed(app):
+    cursor = _RecordingWriteCursor()
+    conn, cm = _fake_pg_conn(cursor)
     form = {'title': 'X', 'project_code': 'P1'}
     with app.test_request_context('/admin/add-research', method='POST', data=form):
-        content_views.handle_add_research(research_projects=research_projects)
-    new_id = research_projects[-1]['id']
-    ids = [project['id'] for project in research_projects]
-    assert new_id == 8
-    assert len(ids) == len(set(ids)), f"duplicate ids: {ids}"
+        with mock.patch.object(content_views, 'get_postgres_connection', cm):
+            resp = content_views.handle_add_research()
+    assert resp.status_code == 302
+    query, params = _single_insert(cursor, 'research_projects')
+    _assert_db_assigns_id(query, params)
+    assert params[0] == 'X'  # title, project_code, ...
+    assert params[1] == 'P1'
+    conn.commit.assert_called_once()
 
 
 # --- Finding 2: int(vehicle_id) guard in JSON fallback --------------------

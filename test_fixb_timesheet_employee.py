@@ -43,11 +43,12 @@ def _install_fake_timesheet_postgres(save_result):
     return fake
 
 
-def test_save_succeeds_when_status_check_raises():
-    """Regression: if the pre-save status check raises (connection/SELECT failure)
-    after int(month) succeeds, report_row must not be left unbound. The save still
-    succeeds, so the endpoint must return success rather than a NameError-driven
-    failure message."""
+def test_save_aborts_when_status_check_raises():
+    """Fail-closed (revizija 2026-08 #5, batch 12b135c): if the pre-save status
+    check raises (connection/SELECT failure), the save must be ABORTED — not
+    attempted. Continuing without the check would allow editing a SUBMITTED or
+    APPROVED (overena) timesheet, so the endpoint returns 503 with a clear
+    message and never calls save_timesheet_to_postgres."""
     app = _make_app()
 
     save_result = SimpleNamespace(
@@ -77,16 +78,16 @@ def test_save_succeeds_when_status_check_raises():
             tev.session['user_name'] = 'Запослени'
             resp = tev.api_save_timesheet()
 
-    # Endpoint returns either a Response or (Response, status) tuple.
-    response = resp[0] if isinstance(resp, tuple) else resp
+    # Fail-closed: the endpoint returns (Response, 503) and aborts the save.
+    assert isinstance(resp, tuple), 'expected (Response, status) tuple'
+    response, status = resp
+    assert status == 503
     payload = response.get_json()
 
-    # The save persisted, so the API must report success and must NOT surface a
-    # NameError ('report_row' is not defined) as a generic error message.
-    assert payload['success'] is True, payload
-    assert 'report_row' not in payload.get('message', '')
-    assert payload['report_id'] == 7
-    assert payload['auto_resubmitted'] is False
+    assert payload['success'] is False, payload
+    assert 'обустављен' in payload.get('message', ''), payload
+    # Ključno: bez uspešne provere statusa NIŠTA ne sme da se upiše.
+    fake_pg.save_timesheet_to_postgres.assert_not_called()
 
 
 def test_save_returns_locked_when_already_submitted():
