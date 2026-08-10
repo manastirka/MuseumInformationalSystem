@@ -8,6 +8,7 @@ import audit_log_views
 import collection_statistics_views
 import core_app_views
 import employee_admin_views
+from rate_limit_ext import limiter
 from security_utils import (
     admin_only,
     admin_or_director_required,
@@ -218,6 +219,7 @@ def api_admin_mail_test_connection():
 
 @admin_bp.route('/api/admin/password_manager/reset', methods=['POST'])
 @admin_only
+@limiter.limit("5 per minute")
 def api_password_manager_reset():
     """Reset user password."""
     import app as museum_app

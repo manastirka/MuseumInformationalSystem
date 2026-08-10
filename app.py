@@ -159,8 +159,7 @@ from security_utils import (
     get_client_ip
 )
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from rate_limit_ext import limiter
 from flask_session import Session
 from flask_babel import Babel, gettext as _, lazy_gettext as _l
 
@@ -464,15 +463,13 @@ globals().update(
     )
 )
 
-# Initialize rate limiter
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    # Sensitive endpoints keep explicit tighter limits; this default should not
-    # block normal internal navigation and collection work.
-    default_limits=["10000 per day", "1000 per hour"],
-    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
+# Initialize rate limiter (shared instance from rate_limit_ext; blueprints
+# attach @limiter.limit decorators on it without importing app).
+app.config.setdefault(
+    'RATELIMIT_STORAGE_URI',
+    app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
 )
+limiter.init_app(app)
 
 app_blueprint_support.apply_endpoint_rate_limits(app, limiter)
 
