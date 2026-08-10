@@ -240,3 +240,80 @@ def test_admin_prolazi_na_sistemske_rute():
     client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
     resp = client.get('/api/admin/database/table-stats', base_url=BASE)
     assert resp.status_code == 200, resp.get_data(as_text=True)
+
+
+# ===========================================================================
+# 3. Ресет лозинке не сме на туђ админ налог
+# ===========================================================================
+STRONG_PASSWORD = 'Xk9!mQpL2#vRw7z'
+
+
+def _create_user(email, *, role, full_name='Тест Ревизија'):
+    with _db() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO users (email, full_name, password_hash, salt, role_id,
+                               position, is_active, is_first_login)
+            VALUES (%s, %s, 'x', 'x', (SELECT id FROM roles WHERE name = %s),
+                    'Тест', TRUE, FALSE)
+            RETURNING id
+            """,
+            (email, full_name, role),
+        )
+        user_id = cur.fetchone()[0]
+        conn.commit()
+    return user_id
+
+
+def _delete_user(email):
+    with _db() as conn:
+        conn.execute('DELETE FROM users WHERE email = %s', (email,))
+        conn.commit()
+
+
+def _password_hash_of(email):
+    with _db() as conn:
+        row = conn.execute('SELECT password_hash FROM users WHERE email = %s',
+                           (email,)).fetchone()
+    return row[0] if row else None
+
+
+@pytest.fixture
+def dva_admina():
+    admin_a = 'adminA.revizija@example.invalid'
+    admin_b = 'adminB.revizija@example.invalid'
+    id_a = _create_user(admin_a, role='admin')
+    id_b = _create_user(admin_b, role='admin')
+    yield {'a_email': admin_a, 'a_id': id_a, 'b_email': admin_b, 'b_id': id_b}
+    _delete_user(admin_a)
+    _delete_user(admin_b)
+
+
+def test_admin_ne_moze_reset_tudjeg_admin_naloga(dva_admina):
+    """БАГ (ревизија 2026-08 #3): админ А над админом Б → 403, хеш непромењен."""
+    client = _login(_client(), email=dva_admina['a_email'], role='admin',
+                    user_id=dva_admina['a_id'])
+    resp = client.post(
+        '/api/admin/password_manager/reset',
+        json={'user_id': dva_admina['b_id'], 'email': dva_admina['b_email'],
+              'new_password': STRONG_PASSWORD},
+        base_url=BASE,
+    )
+    assert resp.status_code == 403, resp.get_data(as_text=True)
+    assert _password_hash_of(dva_admina['b_email']) == 'x', \
+        'лозинка туђег админ налога је ипак промењена у бази'
+
+
+def test_admin_moze_reset_sopstvenog_naloga(dva_admina):
+    client = _login(_client(), email=dva_admina['a_email'], role='admin',
+                    user_id=dva_admina['a_id'])
+    resp = client.post(
+        '/api/admin/password_manager/reset',
+        json={'user_id': dva_admina['a_id'], 'email': dva_admina['a_email'],
+              'new_password': STRONG_PASSWORD},
+        base_url=BASE,
+    )
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    assert resp.get_json().get('success') is True
+    assert _password_hash_of(dva_admina['a_email']) != 'x', \
+        'лозинка сопственог налога није промењена у бази'

@@ -543,6 +543,39 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
         return jsonify({'success': False, 'message': ', '.join(errors)}), 400
 
     try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                if user_id:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(r.name, 'employee')
+                        FROM users u
+                        LEFT JOIN roles r ON u.role_id = r.id
+                        WHERE u.id = %s
+                          AND LOWER(u.email) = LOWER(%s)
+                        """,
+                        (user_id, email),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(r.name, 'employee')
+                        FROM users u
+                        LEFT JOIN roles r ON u.role_id = r.id
+                        WHERE LOWER(u.email) = LOWER(%s)
+                        """,
+                        (email,),
+                    )
+                target_row = cur.fetchone()
+        if target_row is None:
+            return jsonify({'success': False, 'message': 'Изабрани корисник није пронађен.'}), 404
+        if target_row[0] == 'admin' and email.lower() != (session.get('user_email') or '').lower():
+            return jsonify({
+                'success': False,
+                'message': 'Не можете ресетовати лозинку другог администраторског налога — '
+                           'админ налог може да мења само његов власник.',
+            }), 403
+
         add_sentry_breadcrumb(
             category='password_manager',
             message='Admin password reset requested',
