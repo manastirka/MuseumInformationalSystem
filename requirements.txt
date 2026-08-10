@@ -49,6 +49,9 @@ python-docx>=1.1.0
 
 # Excel (used by the K-R досије import CLI: uvezi-kr-dosije)
 openpyxl>=3.1.0
+# .xls chemistry files (RRUFF local data via mineral_science_views);
+# xlrd 2.x dropped everything but clean .xls — stay on 1.x
+xlrd>=1.2.0,<2
 
 # Production Server
 gunicorn>=21.0.0
