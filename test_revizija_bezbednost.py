@@ -68,6 +68,27 @@ museum_app.app.config['WTF_CSRF_ENABLED'] = False
 BASE = 'https://localhost'
 
 
+@pytest.fixture(scope='module', autouse=True)
+def _preusmeri_bazu_na_test():
+    """У пуном suite-у је app можда већ увезен са DATABASE_URL из .env
+    (museum_system!) и pool-ови већ везани — преусмери env и ресетуј СВЕ
+    pool-ове на *_test базу док траје овај модул, па врати старо стање."""
+    import postgres_service
+    import timesheet_postgres as tp
+    old_env = os.environ.get('DATABASE_URL')
+    old_tp_url = tp.DATABASE_URL
+    os.environ['DATABASE_URL'] = TEST_DB_URL
+    postgres_service.close_connection_pools()
+    tp.close_connection_pool()
+    tp.DATABASE_URL = TEST_DB_URL
+    yield
+    postgres_service.close_connection_pools()
+    tp.close_connection_pool()
+    tp.DATABASE_URL = old_tp_url
+    if old_env is not None:
+        os.environ['DATABASE_URL'] = old_env
+
+
 def _db():
     return psycopg.connect(PLAIN_URL)
 
