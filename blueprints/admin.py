@@ -9,6 +9,7 @@ import collection_statistics_views
 import core_app_views
 import employee_admin_views
 from security_utils import (
+    admin_only,
     admin_or_director_required,
     admin_required,
     login_required,
@@ -37,7 +38,7 @@ def admin_system_hub():
 
 
 @admin_bp.route('/admin/system-settings')
-@admin_required
+@admin_only
 def admin_system_settings():
     """System settings page. Standalone URL redirects to the unified hub tab;
     ?embedded=1 renders the content bare for the hub iframe (bookmarks keep working)."""
@@ -57,56 +58,56 @@ def admin_audit_log():
 
 
 @admin_bp.route('/api/admin/settings/general', methods=['POST'])
-@admin_required
+@admin_only
 def api_save_general_settings():
     """Save general settings."""
     return admin_system_views.api_save_general_settings()
 
 
 @admin_bp.route('/api/admin/settings/security', methods=['POST'])
-@admin_required
+@admin_only
 def api_save_security_settings():
     """Save security settings."""
     return admin_system_views.api_save_security_settings()
 
 
 @admin_bp.route('/api/admin/database/backup', methods=['POST'])
-@admin_required
+@admin_only
 def api_database_backup():
     """Create database backup."""
     return admin_system_views.api_database_backup()
 
 
 @admin_bp.route('/api/admin/database/table-stats')
-@admin_required
+@admin_only
 def api_table_stats():
     """Get table statistics."""
     return admin_system_views.api_table_stats()
 
 
 @admin_bp.route('/api/admin/database/vacuum', methods=['POST'])
-@admin_required
+@admin_only
 def api_vacuum_database():
     """Run VACUUM ANALYZE on database."""
     return admin_system_views.api_vacuum_database()
 
 
 @admin_bp.route('/api/admin/logs')
-@admin_required
+@admin_only
 def api_get_logs():
     """Get system logs."""
     return admin_system_views.api_get_logs()
 
 
 @admin_bp.route('/api/admin/logs/download')
-@admin_required
+@admin_only
 def api_download_logs():
     """Download log file."""
     return admin_system_views.api_download_logs()
 
 
 @admin_bp.route('/api/admin/cache/clear', methods=['POST'])
-@admin_required
+@admin_only
 def api_clear_cache():
     """Clear system cache."""
     return admin_system_views.api_clear_cache()
@@ -171,14 +172,14 @@ def revoke_module_access():
 
 
 @admin_bp.route('/admin/password_manager')
-@admin_required
+@admin_only
 def admin_password_manager():
     """Password manager for all users."""
     return admin_user_management_views.render_admin_password_manager()
 
 
 @admin_bp.route('/admin/mail-settings')
-@admin_required
+@admin_only
 def admin_mail_configuration():
     """Centralized mail configuration. Standalone URL redirects to the unified hub
     tab; ?embedded=1 renders bare content for the iframe (bookmarks keep working)."""
@@ -188,35 +189,35 @@ def admin_mail_configuration():
 
 
 @admin_bp.route('/api/admin/password_manager/users')
-@admin_required
+@admin_only
 def api_password_manager_users():
     """Get all users for password manager."""
     return admin_user_management_views.api_password_manager_users()
 
 
 @admin_bp.route('/api/admin/mail-settings/state')
-@admin_required
+@admin_only
 def api_admin_mail_settings_state():
     """Return admin mail configuration state."""
     return admin_user_management_views.api_admin_mail_settings_state()
 
 
 @admin_bp.route('/api/admin/mail-settings', methods=['POST'])
-@admin_required
+@admin_only
 def api_admin_mail_settings_save():
     """Save mail settings for a selected user account."""
     return admin_user_management_views.api_admin_mail_settings_save()
 
 
 @admin_bp.route('/api/admin/mail-settings/test', methods=['POST'])
-@admin_required
+@admin_only
 def api_admin_mail_test_connection():
     """Test mail connectivity for a selected user account."""
     return admin_user_management_views.api_admin_mail_test_connection()
 
 
 @admin_bp.route('/api/admin/password_manager/reset', methods=['POST'])
-@admin_required
+@admin_only
 def api_password_manager_reset():
     """Reset user password."""
     import app as museum_app
@@ -229,7 +230,7 @@ def api_password_manager_reset():
 
 
 @admin_bp.route('/api/admin/password_manager/force_change', methods=['POST'])
-@admin_required
+@admin_only
 def api_password_manager_force_change():
     """Force user to change password on next login."""
     import app as museum_app
@@ -240,7 +241,7 @@ def api_password_manager_force_change():
 
 
 @admin_bp.route('/api/admin/password_manager/toggle_status', methods=['POST'])
-@admin_required
+@admin_only
 def api_password_manager_toggle_status():
     """Activate or deactivate user."""
     import app as museum_app
@@ -251,7 +252,7 @@ def api_password_manager_toggle_status():
 
 
 @admin_bp.route('/api/admin/password_manager/generate')
-@admin_required
+@admin_only
 def api_password_manager_generate():
     """Generate a strong random password."""
     import app as museum_app

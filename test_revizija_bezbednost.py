@@ -196,3 +196,47 @@ def test_xss_payload_izlazi_escapovan_iz_modala(xss_report_id):
     rendered = _render_modal_with_node(page.get_data(as_text=True), data['report'])
     assert '<img' not in rendered, 'payload је постао живи HTML елемент (XSS!)'
     assert '&lt;img' in rendered, 'payload се уопште не приказује escape-ован'
+
+
+# ===========================================================================
+# 2. admin_only — директор нема приступ техничким рутама
+# ===========================================================================
+def test_direktor_403_na_password_manager_reset():
+    """ОДЛУКА (ревизија 2026-08 #2): password manager је admin-only."""
+    client = _login(_client(), email='direktor.revizija@example.invalid',
+                    role='direktor')
+    resp = client.post('/api/admin/password_manager/reset', json={}, base_url=BASE)
+    assert resp.status_code == 403, resp.get_data(as_text=True)
+
+
+def test_admin_prolazi_gejt_na_password_manager_reset():
+    """Админ пролази admin_only гејт (празан захтев → 400, никад 403)."""
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    resp = client.post('/api/admin/password_manager/reset', json={}, base_url=BASE)
+    assert resp.status_code == 400, resp.get_data(as_text=True)
+
+
+def test_direktor_403_na_smtp_rute():
+    client = _login(_client(), email='direktor.revizija@example.invalid',
+                    role='direktor')
+    resp = client.get('/api/admin/mail-settings/state', base_url=BASE)
+    assert resp.status_code == 403, resp.get_data(as_text=True)
+
+
+def test_admin_prolazi_na_smtp_rute():
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    resp = client.get('/api/admin/mail-settings/state', base_url=BASE)
+    assert resp.status_code != 403, resp.get_data(as_text=True)
+
+
+def test_direktor_403_na_sistemske_rute():
+    client = _login(_client(), email='direktor.revizija@example.invalid',
+                    role='direktor')
+    resp = client.get('/api/admin/database/table-stats', base_url=BASE)
+    assert resp.status_code == 403, resp.get_data(as_text=True)
+
+
+def test_admin_prolazi_na_sistemske_rute():
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    resp = client.get('/api/admin/database/table-stats', base_url=BASE)
+    assert resp.status_code == 200, resp.get_data(as_text=True)
