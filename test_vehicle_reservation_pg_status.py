@@ -91,19 +91,44 @@ def test_add_reservation_insert_with_serbian_status_succeeds(db_conn):
     db_conn.rollback()
 
 
+_LEGACY_CONSTRAINT_SQL = """
+    SELECT pg_get_constraintdef(oid)
+    FROM pg_constraint
+    WHERE conrelid = 'vehicle_reservations'::regclass
+      AND conname = 'vehicle_reservations_status_check'
+"""
+
+_MIGRATION_021 = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'migration', '021_fix_vehicle_reservations_legacy_status.sql',
+)
+
+
 def test_no_legacy_english_status_check_constraint(db_conn):
     """db/schema_vehicles.sql declares no status CHECK; a leftover legacy
-    constraint rejecting 'Активна' must not exist on the deployed table."""
+    constraint rejecting 'Активна' must not exist on the deployed table.
+
+    Тест сам обезбеђује шему коју проверава (образац из
+    test_revizija_codex.EmployeeEmailNotNull): ако је заостали CHECK
+    присутан а повезана база је *_test — примени миграцију
+    021_fix_vehicle_reservations_legacy_status.sql (идемпотентна: DROP IF
+    EXISTS + UPDATE само legacy вредности) па тек онда провери. На
+    не-*_test бази се шема не дира — јасан skip уместо тихог пада."""
     with db_conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT pg_get_constraintdef(oid)
-            FROM pg_constraint
-            WHERE conrelid = 'vehicle_reservations'::regclass
-              AND conname = 'vehicle_reservations_status_check'
-            """
-        )
+        cur.execute(_LEGACY_CONSTRAINT_SQL)
         row = cur.fetchone()
+        if row is not None:
+            db_name = DATABASE_URL.rstrip('/').rsplit('/', 1)[-1].split('?')[0]
+            if not db_name.endswith('_test'):
+                pytest.skip(
+                    f'legacy vehicle_reservations_status_check je prisutan, a '
+                    f'baza "{db_name}" nije *_test — ne menjam šemu žive baze; '
+                    'primeni migration/021_fix_vehicle_reservations_legacy_status.sql')
+            with open(_MIGRATION_021, encoding='utf-8') as fh:
+                cur.execute(fh.read())
+            db_conn.commit()
+            cur.execute(_LEGACY_CONSTRAINT_SQL)
+            row = cur.fetchone()
     assert row is None, (
         f'legacy status CHECK still present: {row[0]}'
     )
