@@ -93,19 +93,16 @@ def _redirect_output(tmp_dir):
     """Redirect generated documents into a writable temp dir, since the
     repo's exports/timesheets dir is not writable in this environment."""
 
-    def document_factory(*args, **kwargs):
-        doc = _RealDocument(*args, **kwargs)
-        real_save = doc.save
+    from docx.document import Document as _DocClass
+    real_save = _DocClass.save
 
-        def patched_save(path, *a, **k):
-            target = os.path.join(tmp_dir, os.path.basename(path))
-            return real_save(target, *a, **k)
+    def patched_save(doc, path, *a, **k):
+        target = os.path.join(tmp_dir, os.path.basename(path))
+        return real_save(doc, target, *a, **k)
 
-        doc.save = patched_save
-        return doc
-
+    # Document uses __slots__, so save is patched on the class, not the instance.
     with patch('timesheet_word_export.os.makedirs'), \
-            patch('timesheet_word_export.Document', document_factory):
+            patch.object(_DocClass, 'save', patched_save):
         yield
 
 
