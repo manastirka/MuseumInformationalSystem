@@ -517,6 +517,7 @@ function archiveZahtevi() {
                 });
                 const data = await response.json();
                 if (data.success) {
+                    if (data.warning) { alert(data.warning); }
                     this.approvalComment = '';
                     await this.loadRequests();
                     await this.selectRequest(this.selectedId);
