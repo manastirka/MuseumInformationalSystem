@@ -33,7 +33,9 @@ echo "== 3/7 Zavisnosti (pinovane, requirements.lock) =="
 sudo -u mis "$VENV/bin/pip" install -r "$APP/requirements.lock" -q
 
 echo "== 3b/7 Migracije šeme (SQL fajlovi iz migration/) =="
-sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply"
+# Neinteraktivno, ali --database mora da se poklopi sa current_database() —
+# runner odbija ako .env pokazuje na pogrešnu bazu.
+sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply --execute --database ${MIS_DB_NAME:-mis_db}"
 
 echo "== 4/7 Sistemski fajlovi (systemd/nginx/logrotate) =="
 install -m 755 "$APP/deploy/backup-nhmb.sh" /usr/local/bin/backup-nhmb.sh
