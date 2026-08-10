@@ -1,0 +1,12 @@
+# Mesečna proba vraćanja backupa — 1. u mesecu 03:30 (repo primerak
+# produkcijskog tajmera).
+
+[Unit]
+Description=Mesecna proba vracanja backupa
+
+[Timer]
+OnCalendar=*-*-01 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

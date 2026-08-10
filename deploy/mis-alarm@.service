@@ -1,0 +1,10 @@
+# Mejl-alarm za pale jedinice: u [Unit] sekciji ciljne jedinice stoji
+# OnFailure=mis-alarm@%n.service. Zahteva podešen lokalni MTA / mailx
+# (s-nail) na serveru; primalac je root (alias u /etc/aliases).
+
+[Unit]
+Description=Mejl alarm: pala jedinica %i
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'systemctl status --no-pager --lines=30 "%i" | mail -s "[nhmb-srv01] PALA JEDINICA: %i" root'

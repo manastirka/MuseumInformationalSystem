@@ -182,16 +182,20 @@ sudo firewall-cmd --permanent --add-service={ssh,http,https}
 sudo firewall-cmd --reload
 ```
 
-## 12. Backups → your Google Drive
+## 12. Backups
+The production server (nhmb-srv01) runs the nightly backup as
+`backup-nhmb.timer` / `backup-nhmb.service` (02:30, script
+`/usr/local/bin/backup-nhmb.sh`) plus the monthly automated restore drill
+`restore-proba.timer` / `restore-proba.service` (1st of month, 03:30).
+Install both per `deploy/RUNBOOK-backup-nhmb.md`:
 ```bash
-sudo install -o museum -g museum -m 700 -d /home/museum/.config/rclone
-sudo install -o museum -g museum -m 600 /tmp/rclone.conf /home/museum/.config/rclone/rclone.conf
-sudo cp /opt/museum/app/deploy/museum-backup.{service,timer} /etc/systemd/system/
-sudoedit /etc/systemd/system/museum-backup.service   # User=museum,
-#   MUSEUM_APP_DIR=/opt/museum/app, MUSEUM_BACKUP_DIR=/srv/museum/backups
-sudo systemctl daemon-reload && sudo systemctl enable --now museum-backup.timer
-sudo systemctl start museum-backup.service           # run one now
-rclone ls gdrive:MuseumBackups --config /home/museum/.config/rclone/rclone.conf
+sudo install -m 755 /opt/mis/app/deploy/backup-nhmb.sh /usr/local/bin/backup-nhmb.sh
+sudo install -m 755 /opt/mis/app/deploy/restore-proba.sh /usr/local/bin/restore-proba.sh
+sudo cp /opt/mis/app/deploy/{backup-nhmb,restore-proba}.{service,timer} /etc/systemd/system/
+sudo cp /opt/mis/app/deploy/mis-alarm@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now backup-nhmb.timer restore-proba.timer
+sudo systemctl start backup-nhmb.service             # run one now
 ```
 
 ## 13. Verify (go/no-go)

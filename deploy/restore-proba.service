@@ -1,0 +1,17 @@
+# Mesečna proba vraćanja backupa na nhmb-srv01 — repo primerak produkcijske
+# jedinice (/etc/systemd/system/restore-proba.service). PAŽNJA: autoritativan
+# je primerak na produkciji; skripta /usr/local/bin/restore-proba.sh je u repou
+# rekonstruisana po ponašanju (deploy/restore-proba.sh) — pre izmene uporedi
+# sa prod primerkom.
+
+[Unit]
+Description=Mesecna proba vracanja backupa
+After=network.target postgresql.service
+Wants=postgresql.service
+OnFailure=mis-alarm@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/restore-proba.sh
+Nice=10
+IOSchedulingClass=idle

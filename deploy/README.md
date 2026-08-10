@@ -43,32 +43,31 @@ python deploy/run_migrations.py baseline   # mark everything applied
 
 ---
 
-## 2. Nightly backup → your personal Google Drive
+## 2. Nightly backup — `backup-nhmb` (production: nhmb-srv01)
 
-`deploy/museum-backup.sh` dumps PostgreSQL (custom format) + flat-file data,
-copies it off-box to **`gdrive:MuseumBackups`** (your rclone remote), and prunes
-old copies. Runs as `aleksandarlukovic` so the rclone Google Drive config works.
+Production runs **`backup-nhmb.timer` → `backup-nhmb.service`** every night at
+02:30, executing `/usr/local/bin/backup-nhmb.sh` (source in the repo:
+`deploy/backup-nhmb.sh`). It does three things:
 
-Install the timer:
-```bash
-sudo cp deploy/museum-backup.service /etc/systemd/system/
-sudo cp deploy/museum-backup.timer   /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now museum-backup.timer
-sudo systemctl start museum-backup.service     # run one now to test
-journalctl -u museum-backup.service -n 40       # check it
-rclone ls gdrive:MuseumBackups                  # confirm files landed on Drive
-```
-Tunable via env (in the `.service` or `.env`): `MUSEUM_BACKUP_GDRIVE_REMOTE`,
-`MUSEUM_BACKUP_DIR`, `MUSEUM_BACKUP_LOCAL_KEEP_DAYS` (7), `MUSEUM_BACKUP_DRIVE_KEEP_DAYS`
-(30), `MUSEUM_BACKUP_INCLUDE_SECRETS` (0 — set 1 to also back up `.env`/`.mail_key`).
+1. `pg_dump` of `mis_db` into `/backup/current/db/` (gzipped, daily);
+2. **rsync refresh of the file trees** — `/data/arhiva`, `/data/mis/dokumenti`,
+   `/data/mis/media`, `/data/fototeka_ulaz` → `/backup/current/data/`, with a
+   file count + SHA-256 manifest; a source error FAILS the job (no `|| true`);
+3. a read-only btrfs snapshot of `/backup/current` under
+   `/backup/.snapshots/<date>`.
 
-**Restore drill (do once to prove it works):**
-```bash
-createdb museum_restore_test
-pg_restore --no-owner -d museum_restore_test backups/museum_db_<stamp>.dump
-# verify a few row counts, then: dropdb museum_restore_test
-```
+`/backup` is a separate 19 TB disk (`/dev/sdb1`); `/data` lives on `/dev/sda1`
+— the rsync step is what keeps new fototeka material on **two** disks.
+Failures alert by mail via `OnFailure=mis-alarm@%n.service`.
+Install/update: `deploy/RUNBOOK-backup-nhmb.md`.
+
+**Restore drill is AUTOMATED** — `restore-proba.timer` → `restore-proba.service`
+runs on the 1st of each month at 03:30 (`/usr/local/bin/restore-proba.sh`,
+repo copy: `deploy/restore-proba.sh`, prod copy is authoritative): restores the
+latest dump into a temporary `restore_test` database, compares per-table row
+counts against the live `mis_db`, then `dropdb restore_test`. To run one by
+hand: `sudo systemctl start restore-proba.service` and check
+`journalctl -u restore-proba -n 40`.
 
 ---
 
