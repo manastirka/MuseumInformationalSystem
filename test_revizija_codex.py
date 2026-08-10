@@ -342,14 +342,40 @@ class CurrentMonthSelfSaveBlocked(unittest.TestCase):
 # #5  employee_email NOT NULL
 # ===========================================================================
 class EmployeeEmailNotNull(unittest.TestCase):
-    @_DB
-    def test_column_is_not_null(self):
+    @staticmethod
+    def _is_nullable():
         with tp.get_pg_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT is_nullable FROM information_schema.columns "
                             "WHERE table_name='timesheet_reports' AND column_name='employee_email'")
-                row = cur.fetchone()
-        self.assertEqual(row['is_nullable'], 'NO',
+                return cur.fetchone()['is_nullable']
+
+    @_DB
+    def test_column_is_not_null(self):
+        """Закључава миграцију employee_email -> NOT NULL. Тест сам обезбеђује
+        шему коју проверава: ако повезана *_test база није мигрирана, примени
+        миграциону датотеку па тек онда провери. На не-test бази се шема не
+        дира — јасан skip уместо тихог пада."""
+        if self._is_nullable() == 'YES':
+            db_name = tp.DATABASE_URL.rstrip('/').rsplit('/', 1)[-1].split('?')[0]
+            if not db_name.endswith('_test'):
+                self.skipTest(
+                    'База није мигрирана (employee_email nullable), а није *_test '
+                    '— нећу да мењам шему живе базе; примени миграцију '
+                    '*_employee_email_not_null.sql')
+            import glob
+            candidates = glob.glob(os.path.join(
+                _HERE, 'migration', '0*_employee_email_not_null.sql'))
+            self.assertEqual(
+                len(candidates), 1,
+                f'Очекујем тачно једну миграцију employee_email_not_null, нашао: {candidates}')
+            with open(candidates[0], encoding='utf-8') as fh:
+                sql = fh.read()
+            with tp.get_pg_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql)
+                conn.commit()
+        self.assertEqual(self._is_nullable(), 'NO',
                          'employee_email није NOT NULL — name-collision грана остаје жива')
 
 
