@@ -189,7 +189,12 @@ def save_json_settings_data(
     get_postgres_connection: Optional[Callable[[], Any]] = None,
     file_path: Optional[str] = None,
 ) -> bool:
-    """Save shared JSON settings to PostgreSQL and optional file fallback."""
+    """Save shared JSON settings to PostgreSQL, or to file when DB is not configured.
+
+    Kada je baza konfigurisana ona je JEDINI izvor istine: pad DB upisa vraća
+    False i NE piše falbek fajl — fajl se pri čitanju ionako ignoriše čim DB red
+    postoji, pa bi takav upis tiho nestao. Fajl služi samo kad baze nema.
+    """
     saved_to_db = _save_db_json_setting(
         get_postgres_connection=get_postgres_connection,
         setting_key=setting_key,
@@ -197,6 +202,13 @@ def save_json_settings_data(
     )
     if saved_to_db:
         return True
+
+    if get_postgres_connection is not None:
+        logger.error(
+            "Deljena podešavanja '%s': DB upis nije uspeo — prijavljujem neuspeh "
+            "pozivaocu (bez falbek fajla)", setting_key,
+        )
+        return False
 
     saved_to_file = False
     if file_path:
@@ -208,7 +220,7 @@ def save_json_settings_data(
         except Exception as exc:
             logger.error("Error saving %s to file: %s", setting_key, exc)
 
-    return saved_to_db or saved_to_file
+    return saved_to_file
 
 
 def _fail_closed_module_access(default_access):

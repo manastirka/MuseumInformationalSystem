@@ -154,24 +154,30 @@ def grant_module_access(*, load_module_access, save_module_access, module_access
     module_name = module['name']
     changed = False
 
+    success_message = None
     if module.get('default_access', False):
         restricted_users = module.get('restricted_users', [])
         if user_email in restricted_users:
             restricted_users.remove(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је враћен кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је враћен кориснику.'
         else:
             flash('Корисник већ има приступ овом модулу (подразумевани приступ).', 'info')
     else:
         if user_email not in module.get('authorized_users', []):
             module.setdefault('authorized_users', []).append(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је дат кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је дат кориснику.'
         else:
             flash('Корисник већ има приступ овом модулу.', 'info')
 
     if changed:
-        save_module_access()
+        if not save_module_access():
+            # Упис није успео — одбаци измену из меморије и НЕ пријављуј успех.
+            load_module_access(force=True)
+            flash('Чување измене није успело — приступ НИЈЕ додељен. Покушајте поново.', 'error')
+            return redirect(url_for('manage_user_access', selected_user=user_email))
+        flash(success_message, 'success')
         audit_support.record_audit(
             action=audit_support.ACTION_PERMISSION_GRANT,
             entity_type='module_access',
@@ -200,12 +206,13 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
     module_name = module['name']
     changed = False
 
+    success_message = None
     if module.get('default_access', False):
         module.setdefault('restricted_users', [])
         if user_email not in module['restricted_users']:
             module['restricted_users'].append(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је укинут кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је укинут кориснику.'
         else:
             flash('Корисник већ нема приступ овом модулу.', 'info')
     else:
@@ -213,12 +220,17 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
         if user_email in authorized_users:
             authorized_users.remove(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је укинут кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је укинут кориснику.'
         else:
             flash('Корисник није имао приступ овом модулу.', 'info')
 
     if changed:
-        save_module_access()
+        if not save_module_access():
+            # Упис није успео — одбаци измену из меморије и НЕ пријављуј успех.
+            load_module_access(force=True)
+            flash('Чување измене није успело — приступ НИЈЕ укинут. Покушајте поново.', 'error')
+            return redirect(url_for('manage_user_access', selected_user=user_email))
+        flash(success_message, 'success')
         audit_support.record_audit(
             action=audit_support.ACTION_PERMISSION_REVOKE,
             entity_type='module_access',
