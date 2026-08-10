@@ -816,7 +816,21 @@ def api_save_timesheet():
                             423,
                         )
         except Exception as exc:
-            logger.warning("Status check before save failed (continuing): %s", exc)
+            # Fail-closed: без провере статуса/прозора не сме да се упише —
+            # наставак би дозволио измену поднете/оверене листе (ревизија #5).
+            logger.error("Status check before save failed (aborting save): %s", exc)
+            return (
+                jsonify(
+                    {
+                        'success': False,
+                        'message': (
+                            'Провера стања радне листе није могућа — упис је '
+                            'обустављен. Покушајте поново.'
+                        ),
+                    }
+                ),
+                503,
+            )
 
         try:
             month = int(month)

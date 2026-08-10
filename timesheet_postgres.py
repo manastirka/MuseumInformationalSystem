@@ -1020,7 +1020,10 @@ def check_timesheet_lock_status(user_email: str, month: int, year: int) -> Tuple
                             bool(result['is_verified']))
 
     except Exception as e:
+        # Fail-closed: пад провере не сме да се чита као „није закључано,
+        # није оверено" — то би отворило упис у закључану листу (ревизија #5).
         logger.error(f"Error checking lock status: {e}")
+        raise
 
     return False, False
 
