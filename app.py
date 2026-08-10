@@ -1339,11 +1339,10 @@ except Exception as _bilja_exc:  # pragma: no cover
     BILJA_RECENTNI_MORSKI_MEKUSCI_DATABASE = deepcopy(_empty_bilja)
 
 
-# Visitor Records Database
-VISITOR_RECORDS = []
-
-# Research Projects Database
-RESEARCH_PROJECTS = []
+# Посете и истраживачки пројекти: PostgreSQL табеле visitor_records /
+# research_projects (миграција 040); čitanje/upis у museum_content_views.
+# Процесне листе су уклоњене — нису преживљавале рестарт ни делиле stanje
+# између gunicorn радника.
 
 # Vozila i rezervacije: PostgreSQL je jedini izvor istine (ZADATAK #3).
 # Nema JSON fajl-fallback-a — pad baze se propagira kao jasna greška, a jedini

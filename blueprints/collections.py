@@ -3,6 +3,7 @@
 from flask import Blueprint, current_app, flash, redirect, session, url_for
 
 import collection_management_views
+import museum_content_views
 import museum_overview_views
 from collection_registry import (
     COLLECTION_LIST_ENTRIES,
@@ -226,8 +227,8 @@ def museum_databases():
         scientific_papers_database=museum_app.scientific_papers_database,
         collection_databases=build_collection_database_map(museum_app),
         conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
-        visitor_records=museum_app.VISITOR_RECORDS,
-        research_projects=museum_app.RESEARCH_PROJECTS,
+        visitor_records=museum_content_views.load_visitor_records(),
+        research_projects=museum_content_views.load_research_projects(),
         get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         user_has_module_access=museum_app.user_has_module_access,
     )
