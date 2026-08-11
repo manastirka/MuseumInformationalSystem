@@ -681,6 +681,36 @@ def default_project_space_planner_state(*, auto_layout_version, project_space_pl
     }
 
 
+def _planner_state_read_db():
+    """Vrati JSONB stanje planera iz singleton reda, ili None ako reda nema."""
+    from postgres_service import get_postgres_connection
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT state FROM project_space_planner_state WHERE id = 1')
+            row = cur.fetchone()
+    if row is None:
+        return None
+    return row['state'] if isinstance(row, dict) else row[0]
+
+
+def _planner_state_write_db(state, user_name):
+    """Upsert singleton reda (migration/050) — PostgreSQL je izvor istine."""
+    from postgres_service import get_postgres_connection
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO project_space_planner_state (id, state, updated_at, updated_by)
+                VALUES (1, %s::jsonb, now(), %s)
+                ON CONFLICT (id) DO UPDATE
+                SET state = EXCLUDED.state,
+                    updated_at = now(),
+                    updated_by = EXCLUDED.updated_by
+                """,
+                (json.dumps(state, ensure_ascii=False), user_name),
+            )
+
+
 def save_project_space_planner_state(
     payload,
     user_name,
@@ -689,7 +719,10 @@ def save_project_space_planner_state(
     auto_layout_version,
     project_space_plan_file,
 ):
-    """Persist the project space planner state to disk."""
+    """Persist the project space planner state to PostgreSQL (migration/050).
+
+    JSON fajl (planner_file) se više NE piše — ostaje samo kao jednokratni
+    izvor uvoza pri prvom čitanju (load_project_space_planner_state)."""
     state = default_project_space_planner_state(
         auto_layout_version=auto_layout_version,
         project_space_plan_file=project_space_plan_file,
@@ -699,24 +732,6 @@ def save_project_space_planner_state(
         state['last_active_view'] = payload['last_active_view']
     state['last_updated_at'] = datetime.utcnow().isoformat() + 'Z'
     state['last_updated_by'] = user_name
-    planner_file.parent.mkdir(parents=True, exist_ok=True)
-    backup_dir = planner_file.parent / 'space_planner_backups'
-    backup_dir.mkdir(exist_ok=True)
-    if planner_file.exists():
-        import shutil
-
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        backup_path = backup_dir / f'space_planner_{timestamp}.json'
-        try:
-            shutil.copy2(str(planner_file), str(backup_path))
-        except Exception:
-            pass
-        try:
-            backups = sorted(backup_dir.glob('space_planner_*.json'))
-            for old_backup in backups[:-20]:
-                old_backup.unlink(missing_ok=True)
-        except Exception:
-            pass
 
     sample_positions = [(space.get('id'), space.get('x'), space.get('y')) for space in state['spaces'][:3]]
     logger.info(
@@ -726,7 +741,7 @@ def save_project_space_planner_state(
         state.get('last_active_view'),
         sample_positions,
     )
-    write_json_file(planner_file, state)
+    _planner_state_write_db(state, user_name)
     return state
 
 
@@ -740,18 +755,30 @@ def load_project_space_planner_state(
     project_auto_detected_spaces,
     project_depot_auto_detected_spaces,
 ):
-    """Load and auto-sync project planner state from disk."""
-    if not planner_file.exists():
-        logger.info("Space planner LOAD: file does not exist, returning defaults")
-        return default_project_space_planner_state(
-            auto_layout_version=auto_layout_version,
-            project_space_plan_file=project_space_plan_file,
-        )
+    """Load and auto-sync project planner state from PostgreSQL.
 
+    Izvor istine je project_space_planner_state (migration/050). Zatečeni
+    JSON fajl služi SAMO za jednokratni uvoz: kad u bazi nema reda a fajl
+    postoji, sadržaj se uveze u bazu i dalje se čita odatle."""
     try:
-        data = load_json_file(planner_file, default={})
+        data = _planner_state_read_db()
+        if data is None and planner_file.exists():
+            data = load_json_file(planner_file, default={})
+            if isinstance(data, dict) and data:
+                logger.info(
+                    "Space planner LOAD: jednokratni uvoz iz %s u PostgreSQL",
+                    planner_file,
+                )
+                _planner_state_write_db(
+                    data, data.get('last_updated_by') or 'uvoz-json')
+        if data is None:
+            logger.info("Space planner LOAD: nema stanja, returning defaults")
+            return default_project_space_planner_state(
+                auto_layout_version=auto_layout_version,
+                project_space_plan_file=project_space_plan_file,
+            )
         if not isinstance(data, dict):
-            logger.warning("Space planner LOAD: file is not a dict, returning defaults")
+            logger.warning("Space planner LOAD: stanje nije dict, returning defaults")
             return default_project_space_planner_state(
                 auto_layout_version=auto_layout_version,
                 project_space_plan_file=project_space_plan_file,
