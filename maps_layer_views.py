@@ -202,11 +202,17 @@ def api_geological_sheet_image(folder_name, image_type, app_root):
         return jsonify({'success': False, 'message': 'Слика није доступна за овај лист'}), 404
 
     filename = sheet['files'][image_type]
-    file_path = os.path.join(app_root, 'Karte', 'Final - Srbija', folder_name, filename)
-    if not os.path.isfile(file_path):
+    # filename dolazi iz istog JSON-a kao tumac_file — ista resolve+prefix
+    # provera (stavka 11).
+    from pathlib import Path
+    sheet_root = Path(app_root, 'Karte', 'Final - Srbija', folder_name).resolve()
+    file_path = (sheet_root / filename).resolve()
+    if not str(file_path).startswith(str(sheet_root) + os.sep):
+        return jsonify({'success': False, 'message': 'Неважећи назив'}), 400
+    if not file_path.is_file():
         return jsonify({'success': False, 'message': 'Датотека није пронађена'}), 404
 
-    return send_file(file_path, mimetype='image/jpeg', max_age=86400)
+    return send_file(str(file_path), mimetype='image/jpeg', max_age=86400)
 
 
 def api_geological_sheet_tumac(folder_name, app_root):
@@ -224,9 +230,16 @@ def api_geological_sheet_tumac(folder_name, app_root):
         return jsonify({'success': False, 'message': 'Тумач није пронађен'}), 404
 
     tumac_file = sheet['tumac']['tumac_file']
-    file_path = os.path.join(app_root, 'Karte', 'Tumaci Srbija', tumac_file)
-    if not os.path.isfile(file_path):
+    # tumac_file dolazi iz geological_map_sheets.json (nije sanitizovan kao
+    # folder_name) — isti obrazac kao fototeka: resolve + provera prefiksa,
+    # sve van korena se odbija.
+    from pathlib import Path
+    tumac_root = Path(app_root, 'Karte', 'Tumaci Srbija').resolve()
+    file_path = (tumac_root / tumac_file).resolve()
+    if not str(file_path).startswith(str(tumac_root) + os.sep):
+        return jsonify({'success': False, 'message': 'Неважећи назив'}), 400
+    if not file_path.is_file():
         return jsonify({'success': False, 'message': 'Датотека није пронађена'}), 404
 
     mimetype = 'application/pdf' if tumac_file.lower().endswith('.pdf') else 'application/msword'
-    return send_file(file_path, mimetype=mimetype, max_age=86400)
+    return send_file(str(file_path), mimetype=mimetype, max_age=86400)
