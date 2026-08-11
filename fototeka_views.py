@@ -375,13 +375,19 @@ def _insert_veza(cur, fotografija_id, veza):
     if veza is None:
         return
     if veza['tip'] == 'predmet':
+        # mineral_id (migr. 048): stabilan FK za mineralošku zbirku — prati
+        # preimenovanje/brisanje minerala; NULL za druge zbirke/nepoklopljeno.
         cur.execute(
             """
-            INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj)
-            VALUES (%s, %s, %s)
+            INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj, mineral_id)
+            VALUES (%s, %s, %s,
+                    CASE WHEN %s = 'mineral'
+                         THEN (SELECT id FROM minerals WHERE inventory_number = %s LIMIT 1)
+                    END)
             ON CONFLICT (fotografija_id, database_name, inventarni_broj) DO NOTHING
             """,
-            (fotografija_id, veza['database_name'], veza['inventarni_broj']),
+            (fotografija_id, veza['database_name'], veza['inventarni_broj'],
+             veza['database_name'], veza['inventarni_broj']),
         )
     elif veza['tip'] == 'teren':
         cur.execute(
