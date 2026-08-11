@@ -267,10 +267,26 @@ def api_geo_manual_calibration_patch_entry(folder_name, *, app_root):
 
 def api_geo_manual_calibration_delete(folder_name, *, app_root):
     """Delete manual calibration for a geological sheet."""
+    import audit_support
+
     if _is_invalid_folder_name(folder_name):
         return jsonify({'success': False, 'message': 'Неважећи назив'}), 400
 
     cal_path = os.path.join(app_root, 'data', 'geo_zones', folder_name, 'manual_calibration.json')
     if os.path.isfile(cal_path):
-        os.remove(cal_path)
+        # Фајлска радња: намера у audit_outbox ПРЕ брисања (без трага нема
+        # радње), потврда после, flush прелива у audit_log.
+        intent_id = audit_support.record_audit_intent(
+            action=audit_support.ACTION_DELETE,
+            entity_type='geo_manual_calibration',
+            entity_id=folder_name,
+            summary=f'Обрисана ручна калибрација геолошког листа {folder_name}',
+        )
+        try:
+            os.remove(cal_path)
+        except Exception:
+            audit_support.confirm_audit_intent(intent_id, success=False)
+            raise
+        audit_support.confirm_audit_intent(intent_id, success=True)
+        audit_support.flush_audit_outbox()
     return jsonify({'success': True, 'message': 'Калибрација обрисана'})
