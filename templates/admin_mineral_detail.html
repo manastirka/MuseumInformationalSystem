@@ -932,18 +932,18 @@
 
 <style>
 .mineral-card {
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-bottom: 12px;
     transition: all 0.2s ease;
 }
 .mineral-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-color: #17a2b8;
+    box-shadow: var(--shadow-md);
+    border-color: var(--info);
 }
 .mineral-card.current-mineral {
-    border-color: #28a745;
-    background-color: rgba(40, 167, 69, 0.05);
+    border-color: var(--success);
+    background-color: var(--success-soft);
 }
 .mineral-card-header {
     padding: 12px 15px;
@@ -953,19 +953,20 @@
     align-items: center;
 }
 .mineral-card-header:hover {
-    background-color: #f8f9fa;
+    background-color: var(--bg-hover);
 }
 .mineral-name-box {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
 }
 .mineral-locality-box {
     font-size: 0.85rem;
-    color: #6c757d;
+    color: var(--text-secondary);
 }
 .mineral-inv-box {
     font-family: monospace;
-    background-color: #e9ecef;
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
     padding: 3px 8px;
     border-radius: 4px;
     font-size: 0.85rem;
@@ -973,8 +974,8 @@
 .mineral-rruff-details {
     display: none;
     padding: 15px;
-    background-color: #f8f9fa;
-    border-top: 1px solid #dee2e6;
+    background-color: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
 }
 .mineral-rruff-details.show {
     display: block;
@@ -986,21 +987,21 @@
 }
 .rruff-field-box {
     padding: 8px;
-    background: white;
+    background: var(--bg-card);
     border-radius: 4px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-color);
 }
 .rruff-field-box.full-width {
     grid-column: 1 / -1;
 }
 .rruff-label-box {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: var(--text-secondary);
     margin-bottom: 2px;
 }
 .rruff-value-box {
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
 }
 .expand-icon {
     transition: transform 0.2s ease;
@@ -1009,8 +1010,8 @@
     transform: rotate(180deg);
 }
 .current-badge {
-    background-color: #28a745;
-    color: white;
+    background-color: var(--success-soft);
+    color: var(--success-text);
     font-size: 0.7rem;
     padding: 2px 6px;
     border-radius: 3px;
@@ -1042,31 +1043,31 @@
     gap: 1rem;
 }
 
-/* Light modal styles for box view */
+/* Box modal follows the theme tokens (adapts to dark/contrast) */
 .box-modal-content {
-    background: #ffffff;
-    border: 1px solid #dee2e6;
-    color: #212529;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 .box-modal-header {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-    border-bottom: 1px solid #dee2e6;
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--on-accent);
 }
 .box-modal-body {
-    background: #f8f9fa;
+    background: var(--bg-elevated);
     max-height: 70vh;
     overflow-y: auto;
 }
 .box-modal-footer {
-    background: #f8f9fa;
-    border-top: 1px solid #dee2e6;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
 }
 
-/* Mineral Item Styling - Light Theme */
+/* Mineral Item Styling */
 .mineral-item {
-    background: #ffffff;
-    border: 1px solid #dee2e6;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     margin-bottom: 12px;
     cursor: pointer;
@@ -1075,12 +1076,12 @@
     list-style: none;
 }
 .mineral-item:hover {
-    border-color: #17a2b8;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--info);
+    box-shadow: var(--shadow-md);
 }
 .mineral-item.current-mineral {
-    border-color: #28a745;
-    background: linear-gradient(180deg, rgba(40, 167, 69, 0.05) 0%, rgba(40, 167, 69, 0.02) 100%);
+    border-color: var(--success);
+    background: var(--success-soft);
 }
 .mineral-item-header {
     padding: 14px 16px;
@@ -1091,36 +1092,36 @@
 .mineral-name {
     font-size: 16px;
     font-weight: 600;
-    color: #212529;
+    color: var(--text-primary);
     margin-bottom: 4px;
 }
 .mineral-locality {
     font-size: 12px;
-    color: #6c757d;
+    color: var(--text-secondary);
 }
 .mineral-inv {
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 12px;
-    background: #e9ecef;
-    color: #495057;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
     padding: 4px 10px;
     border-radius: 4px;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--border-color);
 }
 .mineral-expand-hint {
     font-size: 11px;
-    color: #6c757d;
+    color: var(--text-secondary);
     padding: 8px 16px;
-    background: #f8f9fa;
-    border-top: 1px solid #dee2e6;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
     text-align: center;
 }
 .mineral-item.expanded .mineral-expand-hint {
     display: none;
 }
 .current-badge-depot {
-    background: #28a745;
-    color: #fff;
+    background: var(--success-soft);
+    color: var(--success-text);
     font-size: 10px;
     font-weight: 600;
     padding: 2px 8px;
@@ -1132,7 +1133,7 @@
 .rruff-loading {
     text-align: center;
     padding: 25px;
-    color: #17a2b8;
+    color: var(--text-secondary);
     font-size: 13px;
 }
 .rruff-loading i {
@@ -1140,7 +1141,7 @@
     font-size: 18px;
     margin-bottom: 8px;
     display: block;
-    color: #17a2b8;
+    color: var(--text-secondary);
 }
 @keyframes spin {
     from { transform: rotate(0deg); }

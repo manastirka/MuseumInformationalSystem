@@ -14,10 +14,24 @@
         :root {
             --museum-primary: #2c5f7c;
             --museum-gold: #d4af37;
+            --qr-page-bg-1: #667eea;
+            --qr-page-bg-2: #764ba2;
+            --qr-surface: #ffffff;
+            --qr-text: #212529;
+            --qr-muted: #6a737b;
+            --qr-header-1: #2c5f7c;
+            --qr-header-2: #1a3a4f;
+            --qr-on-header: #ffffff;
+            --qr-accent: #2c5f7c;
+            --qr-elevated: #f8f9fa;
+            --qr-border: #e9ecef;
+            --qr-border-strong: #dee2e6;
+            --qr-on-gold: #000000;
+            --qr-filter-bg: #ffc107;
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--qr-page-bg-1) 0%, var(--qr-page-bg-2) 100%);
             min-height: 100vh;
             padding: 0;
             margin: 0;
@@ -27,14 +41,14 @@
         .mobile-container {
             max-width: 800px;
             margin: 0 auto;
-            background: white;
+            background: var(--qr-surface);
             min-height: 100vh;
             box-shadow: 0 0 30px rgba(0,0,0,0.3);
         }
 
         .header {
-            background: linear-gradient(135deg, var(--museum-primary) 0%, #1a3a4f 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--qr-header-1) 0%, var(--qr-header-2) 100%);
+            color: var(--qr-on-header);
             padding: 25px 20px;
             text-align: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
@@ -49,7 +63,7 @@
         .box-badge {
             display: inline-block;
             background: var(--museum-gold);
-            color: #000;
+            color: var(--qr-on-gold);
             padding: 10px 25px;
             border-radius: 30px;
             font-size: 1.3rem;
@@ -63,7 +77,7 @@
         }
 
         .stats-bar {
-            background: #f8f9fa;
+            background: var(--qr-elevated);
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 20px;
@@ -79,12 +93,12 @@
         .stat-value {
             font-size: 1.8rem;
             font-weight: 700;
-            color: var(--museum-primary);
+            color: var(--qr-accent);
         }
 
         .stat-label {
             font-size: 0.85rem;
-            color: #6c757d;
+            color: var(--qr-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -93,15 +107,15 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: white;
+            background: var(--qr-surface);
             padding: 15px 20px;
-            border-bottom: 2px solid #e9ecef;
+            border-bottom: 2px solid var(--qr-border);
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .mineral-card {
-            background: white;
-            border: 2px solid #e9ecef;
+            background: var(--qr-surface);
+            border: 2px solid var(--qr-border);
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 12px;
@@ -110,7 +124,7 @@
         }
 
         .mineral-card:hover {
-            border-color: var(--museum-primary);
+            border-color: var(--qr-accent);
             box-shadow: 0 4px 12px rgba(44, 95, 124, 0.15);
             transform: translateY(-2px);
         }
@@ -124,7 +138,7 @@
 
         .inv-badge {
             background: var(--museum-primary);
-            color: white;
+            color: var(--qr-on-header);
             padding: 5px 12px;
             border-radius: 20px;
             font-size: 0.9rem;
@@ -134,14 +148,14 @@
         .mineral-name {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #212529;
+            color: var(--qr-text);
             margin: 0;
         }
 
         .mineral-details {
             margin-top: 10px;
             padding-top: 10px;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid var(--qr-border);
         }
 
         .detail-row {
@@ -152,12 +166,12 @@
         }
 
         .detail-label {
-            color: #6c757d;
+            color: var(--qr-muted);
             font-weight: 600;
         }
 
         .detail-value {
-            color: #212529;
+            color: var(--qr-text);
             text-align: right;
             max-width: 60%;
         }
@@ -165,11 +179,11 @@
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #6c757d;
+            color: var(--qr-muted);
         }
 
         .footer {
-            background: #f8f9fa;
+            background: var(--qr-elevated);
             padding: 20px;
             text-align: center;
             border-top: 3px solid var(--museum-primary);
@@ -178,8 +192,8 @@
 
         .action-buttons {
             padding: 15px 20px;
-            background: white;
-            border-top: 1px solid #dee2e6;
+            background: var(--qr-surface);
+            border-top: 1px solid var(--qr-border-strong);
             position: sticky;
             bottom: 0;
             display: flex;
@@ -194,8 +208,8 @@
 
         .filter-badge {
             display: inline-block;
-            background: #ffc107;
-            color: #000;
+            background: var(--qr-filter-bg);
+            color: var(--qr-on-gold);
             padding: 5px 12px;
             border-radius: 15px;
             font-size: 0.85rem;
@@ -242,12 +256,12 @@
             }
 
             .header {
-                background: white !important;
-                color: black !important;
+                background: var(--qr-surface) !important;
+                color: var(--qr-text) !important;
             }
 
             body {
-                background: white !important;
+                background: var(--qr-surface) !important;
             }
 
             .mobile-container {
@@ -355,13 +369,13 @@
 
         <!-- Footer -->
         <div class="footer">
-            <div class="mb-2" style="font-size: 2rem; color: var(--museum-primary);">
+            <div class="mb-2" style="font-size: 2rem; color: var(--qr-accent);">
                 <i class="bi bi-bank2"></i>
             </div>
             <div>
                 <strong>Природњачки музеј у Београду</strong><br>
                 Његошева 51, 11000 Београд<br>
-                <a href="https://nhmbeo.rs" style="color: var(--museum-primary);">nhmbeo.rs</a>
+                <a href="https://nhmbeo.rs" style="color: var(--qr-accent);">nhmbeo.rs</a>
             </div>
             <div class="mt-3">
                 <small class="text-muted">
