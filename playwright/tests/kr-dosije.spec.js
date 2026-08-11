@@ -69,6 +69,51 @@ test.describe('К-Р досије', () => {
     }
   });
 
+  test('претрага предмета је употребљива тастатуром (ARIA combobox)', async ({ page }) => {
+    test.skip(!adminEmail || !adminPassword,
+      'Админ креденцијали су обавезни за K-R досије QA.');
+
+    await login(page, adminEmail, adminPassword);
+    // Мокована претрага — тест доказује понашање комбо-бокса, не садржај базе.
+    await page.route('**/kr-dosije/api/predmet*', (route) => route.fulfill({
+      json: {
+        rezultati: [
+          { prikaz: 'Кварц (M-1)', naziv: 'Кварц', database_name: 'mineralogija', inventarni_broj: 'M-1', kolektorski_broj: '' },
+          { prikaz: 'Калцит (M-2)', naziv: 'Калцит', database_name: 'mineralogija', inventarni_broj: 'M-2', kolektorski_broj: '' },
+        ],
+      },
+    }));
+    await page.goto('/kr-dosije/novi');
+
+    const input = page.locator('#krPredmetPretraga');
+    const lista = page.locator('#krPredmetRezultati');
+    await expect(input).toHaveAttribute('role', 'combobox');
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+
+    await input.pressSequentially('ква');
+    await expect(lista).toBeVisible();
+    await expect(input).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#krPredmetStatus')).toContainText('2 резултата');
+
+    // Стрелице померају активну опцију, Enter бира — све без миша.
+    await input.press('ArrowDown');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'krPredmetOpcija-0');
+    await input.press('ArrowDown');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'krPredmetOpcija-1');
+    await expect(page.locator('#krPredmetOpcija-1')).toHaveAttribute('aria-selected', 'true');
+    await input.press('Enter');
+    await expect(lista).toBeHidden();
+    await expect(page.locator('#krInventarniBroj')).toHaveValue('M-2');
+    await expect(page.locator('[name="naziv_predmeta"]')).toHaveValue('Калцит');
+
+    // Escape затвара листу без избора.
+    await input.pressSequentially('кал');
+    await expect(lista).toBeVisible();
+    await input.press('Escape');
+    await expect(lista).toBeHidden();
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('предлошци: админ додаје предложак поступка', async ({ page }) => {
     test.skip(!adminEmail || !adminPassword,
       'Админ креденцијали су обавезни за K-R досије QA.');

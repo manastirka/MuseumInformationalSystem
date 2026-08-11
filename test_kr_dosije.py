@@ -326,3 +326,50 @@ def test_kreiranje_dosijea_i_pdf(client):
         with get_postgres_connection() as conn, conn.cursor() as cur:
             cur.execute('DELETE FROM kr_dosije WHERE id = %s', (dosije_id,))
             conn.commit()
+
+
+# ===========================================================================
+# 4) ПРИСТУПАЧНОСТ — претрага предмета је WAI-ARIA combobox (без базе)
+# ===========================================================================
+class TestPretragaPredmetaCombobox:
+    """Ревизија 2026-08 (батч 6, ставка 3): autocomplete мора бити употребљив
+    тастатуром и најављен читачу екрана. Проверава се шаблон: улога combobox
+    са aria-expanded/aria-activedescendant, listbox са option редовима које
+    JS гради, тастатурна навигација и live порука о броју резултата."""
+
+    @pytest.fixture(scope='class')
+    def forma(self):
+        putanja = Path(__file__).parent / 'templates' / 'kr_dosije_forma.html'
+        return putanja.read_text(encoding='utf-8')
+
+    def test_input_je_combobox(self, forma):
+        import re
+        ulaz = re.search(r'<input[^>]*id="krPredmetPretraga"[^>]*>', forma)
+        assert ulaz, 'нема поља krPredmetPretraga'
+        atributi = ulaz.group(0)
+        assert 'role="combobox"' in atributi
+        assert 'aria-expanded=' in atributi
+        assert 'aria-controls="krPredmetRezultati"' in atributi
+        assert 'aria-autocomplete="list"' in atributi
+
+    def test_lista_je_listbox_sa_option_redovima(self, forma):
+        import re
+        lista = re.search(r'<ul[^>]*id="krPredmetRezultati"[^>]*>', forma)
+        assert lista, 'нема листе krPredmetRezultati'
+        assert 'role="listbox"' in lista.group(0)
+        # JS сваком резултату даје улогу option + стабилан id за activedescendant
+        assert "setAttribute('role', 'option')" in forma
+        assert "'krPredmetOpcija-' + i" in forma
+        assert 'aria-activedescendant' in forma
+
+    def test_tastaturna_navigacija(self, forma):
+        for taster in ("'ArrowDown'", "'ArrowUp'", "'Enter'", "'Escape'"):
+            assert taster in forma, 'нема обраде тастера {}'.format(taster)
+
+    def test_live_poruka_o_broju_rezultata(self, forma):
+        import re
+        status = re.search(r'<div[^>]*id="krPredmetStatus"[^>]*>', forma)
+        assert status, 'нема live региона krPredmetStatus'
+        assert 'aria-live="polite"' in status.group(0)
+        assert 'Нема резултата.' in forma
+        assert 'резултат' in forma

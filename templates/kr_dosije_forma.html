@@ -116,9 +116,13 @@
                     <label class="form-label" for="krPredmetPretraga">Претрага предмета у збиркама</label>
                     <div class="kr-autocomplete-wrap">
                         <input type="text" class="form-control" id="krPredmetPretraga" autocomplete="off"
+                               role="combobox" aria-expanded="false" aria-controls="krPredmetRezultati"
+                               aria-autocomplete="list" aria-haspopup="listbox"
                                placeholder="Укуцајте назив, инвентарни или колекторски број…">
-                        <ul class="kr-autocomplete-list" id="krPredmetRezultati"></ul>
+                        <ul class="kr-autocomplete-list" id="krPredmetRezultati" role="listbox"
+                            aria-label="Резултати претраге предмета"></ul>
                     </div>
+                    <div id="krPredmetStatus" class="visually-hidden" role="status" aria-live="polite"></div>
                     <div class="form-text">Одабиром се попуњавају поља предмета испод.</div>
                 </div>
 
@@ -329,14 +333,44 @@
 {% block scripts %}
 <script>
 (function () {
-    // --- Autocomplete предмета ---
+    // --- Autocomplete предмета (WAI-ARIA combobox: стрелице/Enter/Escape) ---
     var pretraga = document.getElementById('krPredmetPretraga');
     var lista = document.getElementById('krPredmetRezultati');
+    var statusPolje = document.getElementById('krPredmetStatus');
     var timer = null;
+    var stavke = [];
+    var opcije = [];
+    var aktivna = -1;
+
+    function objaviStatus(poruka) {
+        if (statusPolje) { statusPolje.textContent = poruka; }
+    }
 
     function zatvoriListu() {
         lista.style.display = 'none';
         lista.innerHTML = '';
+        stavke = [];
+        opcije = [];
+        aktivna = -1;
+        pretraga.setAttribute('aria-expanded', 'false');
+        pretraga.removeAttribute('aria-activedescendant');
+    }
+
+    function oznaciAktivnu(idx) {
+        if (aktivna >= 0 && opcije[aktivna]) {
+            opcije[aktivna].classList.remove('active');
+            opcije[aktivna].setAttribute('aria-selected', 'false');
+        }
+        aktivna = idx;
+        if (aktivna >= 0 && opcije[aktivna]) {
+            var li = opcije[aktivna];
+            li.classList.add('active');
+            li.setAttribute('aria-selected', 'true');
+            pretraga.setAttribute('aria-activedescendant', li.id);
+            if (li.scrollIntoView) { li.scrollIntoView({ block: 'nearest' }); }
+        } else {
+            pretraga.removeAttribute('aria-activedescendant');
+        }
     }
 
     function popuniPredmet(item) {
@@ -348,21 +382,37 @@
         }
         pretraga.value = item.prikaz || item.naziv || '';
         zatvoriListu();
+        objaviStatus('Предмет изабран.');
     }
 
     function prikaziRezultate(rezultati) {
         lista.innerHTML = '';
-        if (!rezultati || !rezultati.length) {
+        opcije = [];
+        aktivna = -1;
+        stavke = rezultati || [];
+        if (!stavke.length) {
             zatvoriListu();
+            objaviStatus('Нема резултата.');
             return;
         }
-        rezultati.forEach(function (item) {
+        stavke.forEach(function (item, i) {
             var li = document.createElement('li');
             li.textContent = item.prikaz || item.naziv || '';
+            li.id = 'krPredmetOpcija-' + i;
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', 'false');
             li.addEventListener('click', function () { popuniPredmet(item); });
             lista.appendChild(li);
+            opcije.push(li);
         });
         lista.style.display = 'block';
+        pretraga.setAttribute('aria-expanded', 'true');
+        objaviStatus(stavke.length + (stavke.length === 1 ? ' резултат.' : ' резултата.') +
+            ' Стрелицама бирате, Ентер потврђује.');
+    }
+
+    function listaOtvorena() {
+        return lista.style.display === 'block' && opcije.length > 0;
     }
 
     if (pretraga) {
@@ -376,6 +426,31 @@
                     .then(function (d) { prikaziRezultate(d.rezultati || []); })
                     .catch(function () { zatvoriListu(); });
             }, 250);
+        });
+        pretraga.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') {
+                if (listaOtvorena()) {
+                    e.preventDefault();
+                    oznaciAktivnu(aktivna >= opcije.length - 1 ? 0 : aktivna + 1);
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (listaOtvorena()) {
+                    e.preventDefault();
+                    oznaciAktivnu(aktivna <= 0 ? opcije.length - 1 : aktivna - 1);
+                }
+            } else if (e.key === 'Enter') {
+                if (listaOtvorena() && aktivna >= 0) {
+                    e.preventDefault();
+                    popuniPredmet(stavke[aktivna]);
+                }
+            } else if (e.key === 'Escape') {
+                if (listaOtvorena()) {
+                    e.preventDefault();
+                    zatvoriListu();
+                }
+            } else if (e.key === 'Tab') {
+                if (listaOtvorena()) { zatvoriListu(); }
+            }
         });
         document.addEventListener('click', function (e) {
             if (!lista.contains(e.target) && e.target !== pretraga) { zatvoriListu(); }
