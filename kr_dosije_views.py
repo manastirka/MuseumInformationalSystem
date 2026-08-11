@@ -417,7 +417,7 @@ def handle_foto_upload(dosije_id):
         flash('Нисте изабрали ниједну слику.', 'warning')
         return redirect(url_for('kr_dosije.detalj', dosije_id=dosije_id))
 
-    dodato, preskoceno = 0, 0
+    dodato, preskoceno, razlozi = 0, 0, []
     with get_postgres_connection() as conn, conn.cursor() as cur:
         dosije = _fetch_dosije(cur, dosije_id)
         if dosije is None:
@@ -425,18 +425,28 @@ def handle_foto_upload(dosije_id):
         if not _can_edit(ctx, dosije):
             abort(403)
         for uploaded in files:
-            foto_id, _reason = _intake_web_file(cur, uploaded, ctx['email'])
+            foto_id, reason = _intake_web_file(cur, uploaded, ctx['email'])
             if foto_id is None:
                 preskoceno += 1
+                if reason:
+                    razlozi.append(reason)
                 continue
-            _link_foto(cur, foto_id, dosije_id, faza, ctx['email'])
-            dodato += 1
+            # dodato raste SAMO kad je veza stvarno umetnuta — ista slika u
+            # istoj fazi ranije je prijavljivana kao "dodata" a nije.
+            if _link_foto(cur, foto_id, dosije_id, faza, ctx['email']):
+                dodato += 1
+            else:
+                preskoceno += 1
+                razlozi.append(f'{uploaded.filename}: фотографија је већ '
+                               f'везана за ову фазу досијеа')
         conn.commit()
 
     msg = f'Додато {dodato} слика у фазу „{core.FAZA_LABELS[faza]}".'
     if preskoceno:
-        msg += f' Прескочено {preskoceno} (дупликат/неисправна).'
+        msg += f' Прескочено {preskoceno}.'
     flash(msg, 'success' if dodato else 'warning')
+    for reason in razlozi:
+        flash(reason, 'warning')
     return redirect(url_for('kr_dosije.detalj', dosije_id=dosije_id))
 
 
@@ -459,10 +469,18 @@ def _intake_web_file(cur, uploaded, autor_email):
     try:
         uploaded.save(temp_path)
         sha256 = fototeka_jobs.sha256_of_file(temp_path)
-        cur.execute('SELECT id FROM fotografije WHERE sha256 = %s', (sha256,))
+        cur.execute('SELECT id, obrisana, status FROM fotografije WHERE sha256 = %s',
+                    (sha256,))
         existing = cur.fetchone()
         if existing:
-            return existing[0], None
+            foto_id, obrisana = existing[0], existing[1]
+            if obrisana:
+                # Prikaz dosijea filtrira f.obrisana = FALSE — vezivanje na
+                # obrisan zapis bi "uspešno dodalo" nevidljivu fotografiju.
+                return None, (f'{original_ime}: фотографија са истим садржајем '
+                              f'(бр. {foto_id}) је раније обрисана из Фототеке — '
+                              f'вратите је у Фототеци, па поновите додавање')
+            return foto_id, None
         foto_id, reason = fototeka_views._intake_photo_from_path(
             cur, temp_path, original_ime, file_size, ext,
             autor_email=autor_email, opis=None, tags=['к-р-досије'],
@@ -476,15 +494,20 @@ def _intake_web_file(cur, uploaded, autor_email):
 
 
 def _link_foto(cur, foto_id, dosije_id, faza, email):
+    """Veži fotografiju za dosije+fazu. Vraća True samo kad je red STVARNO
+    umetnut (RETURNING id) — ON CONFLICT DO NOTHING bez provere je pozivaocu
+    izgledao kao uspeh i brojač je lažno rastao."""
     cur.execute(
         """
         INSERT INTO foto_veza_kr_dosije
             (fotografija_id, dosije_id, faza, redosled, created_by_email)
         VALUES (%s, %s, %s, %s, %s)
         ON CONFLICT (fotografija_id, dosije_id, faza) DO NOTHING
+        RETURNING id
         """,
         (foto_id, dosije_id, faza, core.FAZA_REDOSLED.get(faza, 0), email),
     )
+    return cur.fetchone() is not None
 
 
 def handle_foto_detach(dosije_id, veza_id):

@@ -373,3 +373,73 @@ class TestPretragaPredmetaCombobox:
         assert 'aria-live="polite"' in status.group(0)
         assert 'Нема резултата.' in forma
         assert 'резултат' in forma
+
+
+# ===========================================================================
+# 5) UPLOAD FOTOGRAFIJA — obrisan duplikat i tačan brojač (batch 6, stavka 8)
+# ===========================================================================
+class _FotoFakeCursor:
+    """SHA lookup + INSERT veze sa RETURNING; ponašanje se zadaje unapred."""
+
+    def __init__(self, sha_row=None, link_inserted=True):
+        self.sha_row = sha_row
+        self.link_inserted = link_inserted
+        self.executed = []
+        self._pending = None
+
+    def execute(self, sql, params=None):
+        squashed = ' '.join(sql.split())
+        self.executed.append(squashed)
+        self._pending = None
+        if 'FROM fotografije WHERE sha256' in squashed:
+            self._pending = self.sha_row
+        elif 'INSERT INTO foto_veza_kr_dosije' in squashed:
+            self._pending = (42,) if self.link_inserted else None
+
+    def fetchone(self):
+        return self._pending
+
+
+class TestUploadObrisanDuplikat:
+    def _fake_upload(self, tmp_path, monkeypatch, sha_row):
+        import io as _io
+        import kr_dosije_views as views
+        from werkzeug.datastructures import FileStorage
+
+        media = tmp_path / 'media'
+        media.mkdir()
+        monkeypatch.setattr(views.fototeka_jobs, 'get_media_path', lambda: media)
+        cur = _FotoFakeCursor(sha_row=sha_row)
+        uploaded = FileStorage(stream=_io.BytesIO(b'\xff\xd8\xff\xdbJPEGDATA'),
+                               filename='slika.jpg')
+        return views._intake_web_file(cur, uploaded, 'qa@example.com'), cur
+
+    def test_obrisan_duplikat_se_odbija_sa_porukom(self, tmp_path, monkeypatch):
+        """SHA pogodak na OBRISAN zapis ne sme da se veže: prikaz filtrira
+        obrisana=FALSE, pa bi korisnik dobio "dodato" a slika nevidljiva."""
+        (foto_id, reason), _ = self._fake_upload(
+            tmp_path, monkeypatch, sha_row=(7, True, 'spremna'))
+        assert foto_id is None
+        assert reason is not None
+        assert 'обрисана' in reason
+        assert 'бр. 7' in reason
+
+    def test_ziv_duplikat_se_vezuje(self, tmp_path, monkeypatch):
+        (foto_id, reason), _ = self._fake_upload(
+            tmp_path, monkeypatch, sha_row=(7, False, 'spremna'))
+        assert foto_id == 7
+        assert reason is None
+
+
+class TestLinkFotoBrojac:
+    def test_link_vraca_true_kad_je_red_umetnut(self):
+        import kr_dosije_views as views
+        cur = _FotoFakeCursor(link_inserted=True)
+        assert views._link_foto(cur, 7, 5, 'pre', 'qa@x') is True
+        assert any('RETURNING id' in sql for sql in cur.executed)
+
+    def test_link_vraca_false_na_konflikt(self):
+        """ON CONFLICT DO NOTHING: veza već postoji — brojač ne sme da raste."""
+        import kr_dosije_views as views
+        cur = _FotoFakeCursor(link_inserted=False)
+        assert views._link_foto(cur, 7, 5, 'pre', 'qa@x') is False
