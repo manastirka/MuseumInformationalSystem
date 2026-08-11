@@ -61,6 +61,10 @@ def run_worker():
                 fototeka_jobs.reclaim_stale_jobs()
             except Exception:
                 logger.exception("Stale-job reclaim failed")
+            try:
+                fototeka_jobs.reconcile_intake_pending()
+            except Exception:
+                logger.exception("Intake-pending reconcile failed")
             last_reclaim = now
 
         try:

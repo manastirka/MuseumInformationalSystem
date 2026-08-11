@@ -763,6 +763,40 @@ def _place_raw_exclusive(temp_path, raw_full):
     os.unlink(temp_path)
 
 
+def _record_intake_intent(raw_rel, sha256, original_ime):
+    """Upiši nameru intake-a u fototeka_intake_pending, u SOPSTVENOJ kratkoj
+    transakciji, PRE postavljanja RAW fajla. Ako spoljni commit posle padne,
+    ovaj red ostaje i reconciler (fototeka_jobs.reconcile_intake_pending) zna
+    da RAW na toj putanji bez DB reda nije write-once original nego siroče."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO fototeka_intake_pending (sha256, raw_putanja, original_ime)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (raw_putanja) DO UPDATE SET created_at = now()
+                """,
+                (sha256, raw_rel, original_ime),
+            )
+
+
+def _reclaim_orphan_raw(cur, raw_rel, raw_full):
+    """Sme li zauzeta RAW putanja da se preuzme? Da — samo ako je NIJEDAN red
+    fotografije ne referencira, a postoji zabeležena namera (fototeka_intake_
+    pending): to je siroče propalog intake-a (commit pao posle postavljanja
+    fajla). Putanja je sadržajno adresirana (sha256 u imenu), pa je sadržaj
+    identičan našem. Pravi write-once original (sa DB redom) se NIKAD ne dira."""
+    cur.execute('SELECT 1 FROM fotografije WHERE raw_putanja = %s', (raw_rel,))
+    if cur.fetchone():
+        return False
+    cur.execute('SELECT 1 FROM fototeka_intake_pending WHERE raw_putanja = %s',
+                (raw_rel,))
+    if not cur.fetchone():
+        return False
+    Path(raw_full).unlink(missing_ok=True)
+    return True
+
+
 def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
                             autor_email, opis, tags, datum_override, veza,
                             u_prijemnom_redu, poreklo, vidljivost='javno'):
@@ -772,8 +806,14 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
     tags + link and enqueues the derivative job. On success temp_path is
     consumed; on dedup/invalid it is left for the caller to clean up. If any DB
     step fails after the file is placed, exactly that file is removed so a
-    rolled-back transaction leaves no orphan. Returns (fotografija_id, None) or
-    (None, skip_reason)."""
+    rolled-back transaction leaves no orphan.
+
+    Redosled protiv siročića (revizija 2026-08, stavka 5): prvo NAMERA u
+    fototeka_intake_pending (sopstvena transakcija), pa fajl, pa red + brisanje
+    namere u transakciji pozivaoca. Ako spoljni commit padne, namera ostaje:
+    ponovni upload isti sadržaj preuzima zauzetu putanju umesto lažne kolizije,
+    a reconciler periodično čisti zaostala siročad. Returns (fotografija_id,
+    None) or (None, skip_reason)."""
     sha256 = fototeka_jobs.sha256_of_file(temp_path)
     if ext in PIL_DECODABLE_EXTENSIONS:
         try:
@@ -816,13 +856,19 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         datum=datum_snimanja,
     )
     raw_full = fototeka_jobs.get_arhiva_path() / raw_rel
-    # Place the RAW first, exclusively: a collision (leftover orphan or a
-    # concurrent upload of the same content) is refused here, never overwritten.
+    # Namera PRE fajla — sopstvena kratka transakcija, preživljava pad
+    # spoljnog commit-a i čini siroče prepoznatljivim.
+    _record_intake_intent(raw_rel, sha256, original_ime)
+    # Place the RAW first, exclusively: a collision is refused here, never
+    # overwritten — osim kad je zauzeta putanja dokazano siroče propalog
+    # intake-a (nema DB reda + postoji namera), koje se preuzima.
     try:
         _place_raw_exclusive(temp_path, raw_full)
     except FileExistsError:
-        return None, (f'{original_ime}: идентична датотека већ постоји у '
-                      f'архиви (није преписана)')
+        if not _reclaim_orphan_raw(cur, raw_rel, raw_full):
+            return None, (f'{original_ime}: идентична датотека већ постоји у '
+                          f'архиви (није преписана)')
+        _place_raw_exclusive(temp_path, raw_full)
 
     # The RAW is now ours. If any DB step fails, remove exactly this file so the
     # rolled-back transaction leaves no orphan in the write-once archive.
@@ -845,6 +891,10 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         _replace_tags(cur, fotografija_id, tags)
         _insert_veza(cur, fotografija_id, veza)
         fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
+        # Finalizacija namere u ISTOJ transakciji kao red: commit briše nameru
+        # atomski sa upisom reda; pad commit-a ostavlja nameru za reconciler.
+        cur.execute('DELETE FROM fototeka_intake_pending WHERE raw_putanja = %s',
+                    (raw_rel,))
     except BaseException:
         Path(raw_full).unlink(missing_ok=True)
         raise

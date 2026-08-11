@@ -162,6 +162,12 @@ class RawIntakeTests(unittest.TestCase):
                                       'FOTOTEKA_MEDIA_PATH': str(Path(self.tmp, 'media'))})
         env.start()
         self.addCleanup(env.stop)
+        # Protokol namere (stavka 5) piše u fototeka_intake_pending kroz
+        # sopstvenu konekciju — ovde fake, da testovi ostanu bez baze.
+        intent = patch.object(fototeka_views, 'get_postgres_connection',
+                              lambda: _FakeConnection(_FakeCursor()))
+        intent.start()
+        self.addCleanup(intent.stop)
 
     def test_raw_accepted_without_pil_validation(self):
         # a .cr2 with a valid RAW/TIFF signature is archived without PIL
