@@ -59,7 +59,7 @@ def create_custom_theme():
     name = custom_theme.normalize_name(data.get('name'))
     if not name:
         return jsonify({'status': 'error', 'message': 'Унесите назив теме.'}), 400
-    cleaned, err = custom_theme.validate_definition(data.get('definition'))
+    cleaned, err = custom_theme.validate_definition(data.get('definition'), require_aa=True)
     if err:
         return jsonify({'status': 'error', 'message': err}), 400
 
@@ -89,7 +89,7 @@ def update_custom_theme(theme_id):
 
     # Definition: keep existing when omitted (rename-only update).
     if 'definition' in data:
-        cleaned, err = custom_theme.validate_definition(data.get('definition'))
+        cleaned, err = custom_theme.validate_definition(data.get('definition'), require_aa=True)
         if err:
             return jsonify({'status': 'error', 'message': err}), 400
     else:
@@ -114,9 +114,9 @@ def duplicate_custom_theme(theme_id):
     existing = _auth().get_custom_theme(email, theme_id)
     if not existing:
         return jsonify({'status': 'error', 'message': 'Тема није пронађена.'}), 404
-    cleaned, err = custom_theme.validate_definition(existing['definition'])
+    cleaned, err = custom_theme.validate_definition(existing['definition'], require_aa=True)
     if err:
-        return jsonify({'status': 'error', 'message': 'Постојећа дефиниција је неисправна.'}), 400
+        return jsonify({'status': 'error', 'message': err}), 400
 
     new_name = custom_theme.normalize_name('{} (копија)'.format(existing['name']))
     new_id = _auth().create_custom_theme(email, new_name, cleaned)
@@ -224,7 +224,7 @@ def import_custom_theme():
     # Accept either a full export bundle ({name, definition}) or a bare
     # definition. A supplied name is normalised; missing name gets a default.
     definition_raw = data.get('definition', data)
-    cleaned, err = custom_theme.validate_definition(definition_raw)
+    cleaned, err = custom_theme.validate_definition(definition_raw, require_aa=True)
     if err:
         return jsonify({'status': 'error', 'message': 'Неисправна тема: {}'.format(err)}), 400
 

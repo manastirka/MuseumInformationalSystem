@@ -137,16 +137,46 @@ def best_ink(bg_hex):
     return white if contrast_ratio(white, bg_hex) >= contrast_ratio(black, bg_hex) else black
 
 
+# AA pairs measured live in theme_creator.js — mirrored here so the server can
+# refuse to persist a theme the client only warned about.
+AA_MIN_RATIO = 4.5
+
+CONTRAST_PAIRS = (
+    ('Текст на позадини', lambda c: c['text'], lambda c: c['body']),
+    ('Текст на картици', lambda c: c['text'], lambda c: c['card']),
+    ('Натпис на дугмету', lambda c: best_ink(c['button']), lambda c: c['button']),
+    ('Наслов заглавља', lambda c: best_ink(c['header']), lambda c: c['header']),
+    ('Бочни мени', lambda c: best_ink(c['sidebar']), lambda c: c['sidebar']),
+    ('Селектовани ред', lambda c: best_ink(c['selection']), lambda c: c['selection']),
+    ('Линк на картици', lambda c: c['link'], lambda c: c['card']),
+)
+
+
+def contrast_failures(definition):
+    """Return [(label, ratio), ...] for every CONTRAST_PAIRS entry below AA."""
+    colors = definition['colors']
+    failures = []
+    for label, fg, bg in CONTRAST_PAIRS:
+        ratio = contrast_ratio(fg(colors), bg(colors))
+        if ratio < AA_MIN_RATIO:
+            failures.append((label, ratio))
+    return failures
+
+
 # --------------------------------------------------------------------------- #
 # Validation
 # --------------------------------------------------------------------------- #
 
-def validate_definition(raw):
+def validate_definition(raw, require_aa=False):
     """Validate and normalise a custom theme definition.
 
     Rebuilds a clean definition from known keys only — untrusted input (import
     or paste) can never inject unknown keys or non-colour values. Returns
     (cleaned_dict, None) on success or (None, error_message) on failure.
+
+    With require_aa=True every CONTRAST_PAIRS combination must reach 4.5:1 —
+    used on save paths so an unreadable theme can never be persisted. Read
+    paths (render/apply/export of already stored themes) stay lenient.
     """
     if not isinstance(raw, dict):
         return None, 'Дефиниција теме мора бити објекат.'
@@ -173,7 +203,21 @@ def validate_definition(raw):
     if radius < RADIUS_MIN or radius > RADIUS_MAX:
         return None, 'Заобљеност мора бити између {} и {} px.'.format(RADIUS_MIN, RADIUS_MAX)
 
-    return {'colors': colors, 'shadow': shadow, 'radius': radius}, None
+    cleaned = {'colors': colors, 'shadow': shadow, 'radius': radius}
+
+    if require_aa:
+        failures = contrast_failures(cleaned)
+        if failures:
+            detail = '; '.join(
+                '{} {:.2f}:1'.format(label, ratio) for label, ratio in failures
+            )
+            return None, (
+                'Тема не задовољава AA контраст (мин. {}:1): {}.'.format(
+                    AA_MIN_RATIO, detail
+                )
+            )
+
+    return cleaned, None
 
 
 def normalize_name(raw):

@@ -230,3 +230,116 @@ def test_current_custom_theme_render_noncustom_is_empty(theme_app):
         css, bs = core_app_views.current_custom_theme_render()
         assert css == ''
         assert bs == 'light'
+
+
+# ---- AA contrast enforcement on save paths --------------------------------
+
+def _all_white_definition():
+    colors = _good_colors()
+    for key in ('text', 'body', 'card', 'link'):
+        colors[key] = '#ffffff'
+    return {'colors': colors, 'shadow': 'soft', 'radius': 8}
+
+
+def test_contrast_failures_reports_failing_pairs():
+    cleaned, err = ct.validate_definition(_all_white_definition())
+    assert err is None
+    fails = ct.contrast_failures(cleaned)
+    labels = [label for label, _ in fails]
+    assert 'Текст на позадини' in labels
+    assert 'Текст на картици' in labels
+    assert 'Линк на картици' in labels
+    assert all(ratio < ct.AA_MIN_RATIO for _, ratio in fails)
+
+
+def test_contrast_failures_default_is_clean():
+    assert ct.contrast_failures(ct.DEFAULT_DEFINITION) == []
+
+
+def test_validate_require_aa_accepts_default():
+    cleaned, err = ct.validate_definition(ct.DEFAULT_DEFINITION, require_aa=True)
+    assert err is None
+    assert cleaned is not None
+
+
+def test_validate_require_aa_rejects_and_names_pair():
+    cleaned, err = ct.validate_definition(_all_white_definition(), require_aa=True)
+    assert cleaned is None
+    assert 'Текст на позадини' in err
+    assert '1.00:1' in err
+
+
+def test_validate_without_require_aa_stays_lenient():
+    """Read paths (render/apply/export of stored themes) must keep working."""
+    cleaned, err = ct.validate_definition(_all_white_definition())
+    assert err is None
+    assert cleaned is not None
+
+
+class _ThemeAuthStub:
+    def __init__(self, existing=None):
+        self.created = []
+        self.updated = []
+        self.existing = existing
+
+    def create_custom_theme(self, email, name, definition):
+        self.created.append((email, name, definition))
+        return 1
+
+    def get_custom_theme(self, email, theme_id):
+        return self.existing
+
+    def update_custom_theme(self, email, theme_id, name, definition):
+        self.updated.append((email, theme_id, name, definition))
+        return True
+
+
+def test_create_route_rejects_aa_failing_theme(theme_app, monkeypatch):
+    import custom_theme_views as views
+    stub = _ThemeAuthStub()
+    monkeypatch.setattr(views, '_auth', lambda: stub)
+    with theme_app.test_request_context(
+        '/podesavanja/teme', method='POST',
+        json={'name': 'Бела', 'definition': _all_white_definition()},
+    ):
+        session['user_email'] = 'test@example.com'
+        response = views.create_custom_theme()
+    payload, status = response if isinstance(response, tuple) else (response, 200)
+    assert status == 400
+    body = payload.get_json()
+    assert body['status'] == 'error'
+    assert 'Текст на позадини' in body['message']
+    assert ':1' in body['message']
+    assert stub.created == []
+
+
+def test_update_route_rejects_aa_failing_definition(theme_app, monkeypatch):
+    import custom_theme_views as views
+    stub = _ThemeAuthStub(existing={'id': 7, 'name': 'Стара', 'definition': dict(ct.DEFAULT_DEFINITION)})
+    monkeypatch.setattr(views, '_auth', lambda: stub)
+    with theme_app.test_request_context(
+        '/podesavanja/teme/7', method='POST',
+        json={'definition': _all_white_definition()},
+    ):
+        session['user_email'] = 'test@example.com'
+        response = views.update_custom_theme(7)
+    payload, status = response if isinstance(response, tuple) else (response, 200)
+    assert status == 400
+    assert 'AA' in payload.get_json()['message']
+    assert stub.updated == []
+
+
+def test_import_route_rejects_aa_failing_theme(theme_app, monkeypatch):
+    import custom_theme_views as views
+    stub = _ThemeAuthStub()
+    monkeypatch.setattr(views, '_auth', lambda: stub)
+    with theme_app.test_request_context(
+        '/podesavanja/teme/uvoz', method='POST',
+        json={'mis_custom_theme': 1, 'name': 'Бела', 'definition': _all_white_definition()},
+    ):
+        session['user_email'] = 'test@example.com'
+        response = views.import_custom_theme()
+    payload, status = response if isinstance(response, tuple) else (response, 200)
+    assert status == 400
+    assert 'AA' in payload.get_json()['message']
+    assert stub.created == []
