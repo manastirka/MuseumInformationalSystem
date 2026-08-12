@@ -259,6 +259,8 @@ class TestCollectionRegistryEdgeCases:
 
         # The real database is loaded from environment data that an empty test
         # DB does not have; stub it so the strip behavior is what's under test.
+        # (Sanja se od revizije 2026-08 čita iz baze po zahtevu, ne iz
+        # procesnog globala — stub ide na loader.)
         stub_database = {
             'specimens': [
                 {'id': 1, 'name': 'Mammut', 'source_file': 'sanja.xlsx'},
@@ -267,7 +269,9 @@ class TestCollectionRegistryEdgeCases:
             'statistics': {'total': 2},
         }
         with patch.object(
-            museum_app, entry.database_attr, stub_database,
+            museum_app.collection_management_views,
+            '_load_sanja_database_payload',
+            return_value=stub_database,
         ), patch.object(
             museum_app.collection_management_views,
             'render_standard_collection_database',

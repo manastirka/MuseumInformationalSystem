@@ -13,6 +13,20 @@ from core_app_views import current_custom_theme_render, current_theme_accent, cu
 def register_error_handlers(flask_app) -> None:
     """Register shared 404/500 error handlers."""
 
+    from collection_bootstrap_support import CollectionUnavailableError
+
+    @flask_app.errorhandler(CollectionUnavailableError)
+    def collection_unavailable_error(error):
+        current_app.logger.error("Collection unavailable: %s", error)
+        return (
+            render_template(
+                'error.html',
+                error_code=503,
+                error_message="Збирка тренутно није доступна — покушајте поново касније.",
+            ),
+            503,
+        )
+
     @flask_app.errorhandler(404)
     def not_found_error(error):
         return (
