@@ -2104,10 +2104,16 @@ def handle_import_confirm():
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
-    rezime = run_batch_import(
-        dry_run=False, default_zbirka=zbirka,
-        izvor='ui', pokrenuo_email=_session_email(session),
-    )
+    try:
+        rezime = run_batch_import(
+            dry_run=False, default_zbirka=zbirka,
+            izvor='ui', pokrenuo_email=_session_email(session),
+        )
+    except Exception as greska:
+        logger.exception('Batch uvoz prekinut greškom')
+        flash(f'Увоз је прекинут грешком: {greska} — ништа није делимично '
+              f'уписано, датотеке остају у улазу за поновни покушај.', 'danger')
+        return redirect(url_for('fototeka.fototeka_import'))
     if rezime['uvezeno']:
         flash(
             f"Увезено фотографија: {rezime['uvezeno']} — "
@@ -2338,8 +2344,14 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                             u_prijemnom_redu=klasifikovano['u_prijemnom_redu'],
                             poreklo='import',
                         )
-                    except Exception as greska:  # jedan fajl ne obara ceo uvoz
-                        fotografija_id, reason = None, f'neočekivana greška: {greska}'
+                    except Exception:
+                        # Polu-upis ne sme da se commit-uje: intake je posle pada
+                        # već uklonio RAW, a commit-ovan red bi sledeći run naveo
+                        # da original proglasi duplikatom i skloni ga — trajan
+                        # gubitak. Rollback pa greška ide pozivaocu; original
+                        # ostaje u ulazu za ponovni pokušaj.
+                        conn.rollback()
+                        raise
                     finally:
                         if temp_path.exists():
                             temp_path.unlink()
@@ -2363,10 +2375,7 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                 stavka['ishod'] = 'neuspesno'
                 stavka['poruka'] = reason or 'непозната грешка'
                 brojaci['neuspesno'] += 1
-                if reason and reason.startswith('neočekivana greška'):
-                    pass  # prolazna greška (baza/disk): fajl ostaje za sledeći run
-                else:
-                    _premesti_original(path, folder / 'neuspesno')
+                _premesti_original(path, folder / 'neuspesno')
 
     run_id = None
     if not dry_run:
