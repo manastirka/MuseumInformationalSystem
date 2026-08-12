@@ -36,10 +36,10 @@
     .stat-card .stat-label { font-size: 0.85rem; opacity: 0.85; }
     .section-title {
         font-weight: 700;
-        color: #1a472a;
+        color: var(--primary-dark);
         margin-bottom: 1.5rem;
         padding-bottom: 0.5rem;
-        border-bottom: 3px solid #40916c;
+        border-bottom: 3px solid var(--primary-light);
         display: inline-block;
     }
     .plan-card {
@@ -54,10 +54,10 @@
     .plan-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
     .plan-card img { width: 100%; height: 220px; object-fit: cover; object-position: center; }
     .plan-card .card-body { padding: 1rem 1.25rem; }
-    .plan-card .card-title { font-weight: 600; font-size: 0.95rem; color: #333; }
-    .plan-card .card-text { font-size: 0.85rem; color: #666; }
+    .plan-card .card-title { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
+    .plan-card .card-text { font-size: 0.85rem; color: var(--text-secondary); }
     .doc-item {
-        background: white;
+        background: var(--bg-card);
         border-radius: 12px;
         padding: 1.25rem;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -77,7 +77,7 @@
     .doc-icon.pdf { background: #fce4ec; color: #c62828; }
     .doc-icon.rtf { background: #f3e5f5; color: #6a1b9a; }
     .doc-info h6 { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.95rem; }
-    .doc-info p { font-size: 0.82rem; color: #777; margin-bottom: 0.5rem; }
+    .doc-info p { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
     .doc-info .badge { font-size: 0.72rem; }
     .timeline-item {
         position: relative; padding-left: 2.5rem; padding-bottom: 1.5rem;
@@ -86,7 +86,7 @@
     .timeline-item::before {
         content: ''; position: absolute; left: -7px; top: 4px;
         width: 12px; height: 12px; border-radius: 50%;
-        background: #40916c; border: 2px solid white; box-shadow: 0 0 0 2px #40916c;
+        background: #40916c; border: 2px solid var(--bg-card); box-shadow: 0 0 0 2px #40916c;
     }
     .timeline-item.completed::before { background: #2e7d32; }
     .timeline-item.active::before { background: #ff9800; box-shadow: 0 0 0 2px #ff9800; }
@@ -106,10 +106,10 @@
         display: flex; align-items: center; justify-content: center;
     }
     .key-info-card {
-        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-        border-radius: 12px; padding: 1.5rem; border-left: 4px solid #40916c;
+        background: var(--bg-elevated);
+        border-radius: 12px; padding: 1.5rem; border-left: 4px solid var(--primary-light);
     }
-    .key-info-card h6 { color: #1a472a; font-weight: 700; }
+    .key-info-card h6 { color: var(--primary-dark); font-weight: 700; }
     .key-info-card ul { margin-bottom: 0; }
     .key-info-card li { font-size: 0.9rem; margin-bottom: 0.3rem; }
 </style>

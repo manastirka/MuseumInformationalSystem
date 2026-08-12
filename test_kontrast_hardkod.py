@@ -85,6 +85,16 @@ FIXED_SELECTORS = [
     ('templates/admin_mineral_detail.html', '.box-modal-content'),
     ('templates/admin_mineral_detail.html', '.rruff-loading'),
     ('templates/admin_archive_dashboard.html', '.empty-state'),
+    # revizija 2026-08, stavka 9: projekti — svakodnevni ekran bez ijednog
+    # data-theme override-a; bele kartice/sivi tekst mapirani na tokene, pa
+    # tamni režim dolazi sam od sebe.
+    ('templates/admin_projekti.html', '.section-title'),
+    ('templates/admin_projekti.html', '.plan-card .card-title'),
+    ('templates/admin_projekti.html', '.plan-card .card-text'),
+    ('templates/admin_projekti.html', '.doc-item'),
+    ('templates/admin_projekti.html', '.key-info-card'),
+    ('templates/admin_projekti.html', '.key-info-card h6'),
+    ('templates/admin_news.html', '.social-card-facebook .social-icon-wrapper'),
 ]
 
 
@@ -131,6 +141,10 @@ TOKEN_PAIRS = [
     ('--text-primary', '--bg-hover'),
     ('--text-secondary', '--bg-card'),
     ('--text-secondary', '--bg-elevated'),
+    # revizija 2026-08, stavka 9: --text-muted je imao ~2.5:1 ugradjeno u sam
+    # token svetle palete — od sada se meri kao i ostali parovi.
+    ('--text-muted', '--bg-card'),
+    ('--text-muted', '--bg-body'),
     ('--on-accent', '--primary'),
     ('--on-accent', '--primary-dark'),
     ('--success-text', '--success-soft'),
