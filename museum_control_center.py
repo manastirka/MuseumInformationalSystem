@@ -305,6 +305,20 @@ def build_qa_email_defaults(env, directory_entries=None, db_rows=None):
     return defaults
 
 
+def validate_password_for_storage(password):
+    """Provuci lozinku kroz ISTI PasswordValidator kao veb aplikacija
+    (config-driven minimum 12 + složenost). Vraća (ok, lista_poruka)."""
+    import sys as _sys
+
+    project_root = str(PROJECT_ROOT)
+    if project_root not in _sys.path:
+        _sys.path.insert(0, project_root)
+    from config import get_config
+    from security_utils import PasswordValidator
+
+    return PasswordValidator(get_config()).validate(password)
+
+
 def hash_password_for_storage(password):
     """Hash a password in-process and return (password_hash, salt).
 
@@ -2469,6 +2483,15 @@ WantedBy=multi-user.target
                 f"Генерисана лозинка за {full_name}:\n\n{new_password}\n\n"
                 "Запамтите ову лозинку!"
             )
+        else:
+            valid, greske = validate_password_for_storage(new_password)
+            if not valid:
+                messagebox.showerror(
+                    "Слаба лозинка",
+                    "Лозинка не задовољава правила (иста као на вебу):\n\n"
+                    + "\n".join(greske)
+                )
+                return
 
         # Ask about force change
         force_change = messagebox.askyesno(
@@ -2667,22 +2690,20 @@ WantedBy=multi-user.target
             messagebox.showerror("Грешка", f"Грешка: {str(e)}")
 
     def set_temporary_password(self):
-        """Set a known temporary password for user"""
+        """Set a temporary password for user (random, validated like the web)"""
         user = self.get_selected_user()
         if not user:
             return
 
         email, full_name, role, status, _ = user
 
-        # Default temporary password
-        temp_password = "Muzej2024!"
-
-        # Ask admin if they want to change it
+        # Bez fiksne podrazumevane lozinke: literal iz repoa je bio poznat
+        # svima, kraći od minimuma 12 i zaobilazio je PasswordValidator.
+        # Prazan unos = slučajna lozinka 16–20 znakova.
         custom_pass = simpledialog.askstring(
             "Привремена лозинка",
             f"Постављање привремене лозинке за:\n{full_name} ({email})\n\n"
-            f"Подразумевана привремена лозинка: {temp_password}\n\n"
-            f"Унесите другу лозинку или оставите празно за подразумевану:",
+            f"Унесите лозинку или оставите празно за аутоматски генерисану:",
             parent=self.root
         )
 
@@ -2691,6 +2712,16 @@ WantedBy=multi-user.target
 
         if custom_pass.strip():
             temp_password = custom_pass.strip()
+            valid, greske = validate_password_for_storage(temp_password)
+            if not valid:
+                messagebox.showerror(
+                    "Слаба лозинка",
+                    "Лозинка не задовољава правила (иста као на вебу):\n\n"
+                    + "\n".join(greske)
+                )
+                return
+        else:
+            temp_password = self.generate_strong_password()
 
         if not messagebox.askyesno(
             "Потврда",
@@ -2751,10 +2782,13 @@ WantedBy=multi-user.target
         except Exception as e:
             messagebox.showerror("Грешка", f"Грешка: {str(e)}")
 
-    def generate_strong_password(self, length=16):
-        """Generate a strong random password"""
+    def generate_strong_password(self, length=None):
+        """Generate a strong random password (slučajna dužina 16–20)."""
         import secrets
         import string
+
+        if length is None:
+            length = 16 + secrets.randbelow(5)
 
         alphabet = string.ascii_letters + string.digits + '!@#$%^&*()'
 
