@@ -61,6 +61,28 @@ def test_deploy_sh_instalira_lock_i_sistemske_fajlove():
     assert 'logrotate' in text
 
 
+def test_deploy_sh_ne_prepisuje_prod_autoritativne_fajlove():
+    """Batč 7: repo kopije backup/restore skripti i nginx konfiga su
+    rekonstrukcije po opisu — deploy sme samo da upozori na razliku,
+    nikako da ih instalira preko prod primerka."""
+    text = DEPLOY_SH.read_text(encoding='utf-8')
+    for fajl in ('backup-nhmb.sh', 'restore-proba.sh', 'nginx_museum_prod.conf'):
+        assert not re.search(rf'^\s*install\s[^\n]*{re.escape(fajl)}', text, re.M), \
+            f'deploy.sh i dalje instalira {fajl} preko prod primerka'
+    assert 'warn_if_differs' in text, \
+        'deploy.sh ne poredi (diff) repo kopije sa živim fajlovima'
+    assert re.search(r'diff -q "\$repo" "\$live"', text), \
+        'deploy.sh ne radi diff repo naspram živog fajla'
+
+
+def test_deploy_sh_rollback_vraca_nginx_konfig():
+    text = DEPLOY_SH.read_text(encoding='utf-8')
+    assert 'NGINX_PRE' in text, 'nema snimka nginx konfiga pre deploja'
+    rollback_telo = text.split('rollback() {', 1)[1].split('\n}', 1)[0]
+    assert 'NGINX_PRE' in rollback_telo and '$NGINX_CONF' in rollback_telo, \
+        'rollback ne vraća nginx konfig na stanje pre deploja'
+
+
 # --- 2. /healthz pada kad baza ne radi ----------------------------------------
 
 def test_healthz_pada_kad_je_baza_nedostupna(monkeypatch):

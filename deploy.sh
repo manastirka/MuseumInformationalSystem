@@ -16,10 +16,26 @@ systemctl start backup-nhmb.service
 echo "== 2/7 Povlačenje koda (samo fast-forward) =="
 PREV="$(sudo -u mis git -C "$APP" rev-parse HEAD)"
 
+# Snimak živog nginx konfiga pre deploja — rollback vraća i njega ako ga je
+# deploj u međuvremenu menjao (ne samo kod).
+NGINX_PRE=""
+if [[ -f "$NGINX_CONF" ]]; then
+    NGINX_PRE="$(mktemp /tmp/mis-nginx-pre.XXXXXX)"
+    cp "$NGINX_CONF" "$NGINX_PRE"
+fi
+
 rollback() {
     echo "!! DEPLOY PAO — vraćam kod na ${PREV:0:12} i restartujem servis"
     sudo -u mis git -C "$APP" reset --hard "$PREV"
     sudo -u mis "$VENV/bin/pip" install -q -r "$APP/requirements.lock" || true
+    if [[ -n "$NGINX_PRE" && -f "$NGINX_PRE" && -f "$NGINX_CONF" ]] \
+            && ! diff -q "$NGINX_PRE" "$NGINX_CONF" >/dev/null 2>&1; then
+        echo "!! vraćam nginx konfig na stanje pre deploja"
+        install -m 644 "$NGINX_PRE" "$NGINX_CONF"
+        if nginx -t; then
+            systemctl reload nginx || true
+        fi
+    fi
     systemctl restart mis || true
     if systemctl cat mis-fototeka-worker.service >/dev/null 2>&1; then
         systemctl restart mis-fototeka-worker || true
@@ -38,27 +54,50 @@ echo "== 3b/7 Migracije šeme (SQL fajlovi iz migration/) =="
 sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply --execute --database ${MIS_DB_NAME:-mis_db}"
 
 echo "== 4/7 Sistemski fajlovi (systemd/nginx/logrotate) =="
-install -m 755 "$APP/deploy/backup-nhmb.sh" /usr/local/bin/backup-nhmb.sh
-install -m 755 "$APP/deploy/restore-proba.sh" /usr/local/bin/restore-proba.sh
+# PROD primerak je AUTORITATIVAN za backup-nhmb.sh, restore-proba.sh i
+# $NGINX_CONF — repo kopije su rekonstrukcije po opisu (referenca, ne izvor;
+# vidi deploy/README.md). Deploy ih zato NE prepisuje: samo prijavi razliku,
+# bez izmene i bez prekida deploja.
+warn_if_differs() {
+    local repo="$1" live="$2"
+    if [[ ! -f "$repo" ]]; then
+        echo "  UPOZORENJE: $repo ne postoji u repou — nema reference za poređenje"
+    elif [[ ! -f "$live" ]]; then
+        echo "  UPOZORENJE: $live ne postoji — repo referenca: $repo" \
+             "(ručno usvajanje, vidi deploy/README.md)"
+    elif ! diff -q "$repo" "$live" >/dev/null; then
+        echo "  UPOZORENJE: $live se razlikuje od repo kopije ($repo) —" \
+             "NE prepisujem, prod primerak je autoritativan"
+    fi
+}
+warn_if_differs "$APP/deploy/backup-nhmb.sh"          /usr/local/bin/backup-nhmb.sh
+warn_if_differs "$APP/deploy/restore-proba.sh"        /usr/local/bin/restore-proba.sh
+warn_if_differs "$APP/deploy/nginx_museum_prod.conf"  "$NGINX_CONF"
+
+# Systemd jedinice: instaliraju se samo kad nema šta da se pregazi — nova
+# jedinica (živi fajl ne postoji) ili identičan sadržaj. Razišla živa
+# jedinica se NE prepisuje, samo upozorenje.
 for unit in backup-nhmb.service backup-nhmb.timer \
             restore-proba.service restore-proba.timer mis-alarm@.service \
             fototeka-import.service fototeka-import.timer \
             fototeka-fixity.service fototeka-fixity.timer \
             mis-fototeka-worker.service; do
-    install -m 644 "$APP/deploy/$unit" "/etc/systemd/system/$unit"
+    repo_unit="$APP/deploy/$unit"
+    live_unit="/etc/systemd/system/$unit"
+    if [[ ! -f "$repo_unit" ]]; then
+        echo "  UPOZORENJE: $repo_unit ne postoji u repou — preskačem"
+    elif [[ ! -f "$live_unit" ]]; then
+        install -m 644 "$repo_unit" "$live_unit"
+        echo "  instalirana nova jedinica: $unit"
+    elif diff -q "$repo_unit" "$live_unit" >/dev/null; then
+        install -m 644 "$repo_unit" "$live_unit"
+    else
+        echo "  UPOZORENJE: $live_unit se razlikuje od repo kopije —" \
+             "NE prepisujem, prod primerak je autoritativan"
+    fi
 done
 systemctl daemon-reload
 install -m 644 "$APP/deploy/logrotate-museum" /etc/logrotate.d/museum-info-system
-if [[ -f "$NGINX_CONF" ]]; then
-    install -m 644 "$APP/deploy/nginx_museum_prod.conf" "$NGINX_CONF"
-    # nginx -t PRE reload-a: pokvaren konfig obara deploy (rollback), a živi
-    # nginx nastavlja sa starim učitanim konfigom.
-    nginx -t
-    systemctl reload nginx
-else
-    echo "  (nginx: $NGINX_CONF ne postoji — prvo ručno usvajanje konfiga," \
-         "vidi deploy/README.md; preskačem)"
-fi
 
 echo "== 5/7 Restart aplikacije =="
 systemctl restart mis

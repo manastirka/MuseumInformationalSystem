@@ -4,6 +4,15 @@ Small, portable ops tooling. Everything is env-driven so it runs **on this
 machine now** and on the **new server** unchanged. Anything that touches the
 database or the server must be run by you (the sandbox can't reach the live DB).
 
+> **AUTORITATIVNOST (2026-08):** prod primerak je autoritativan za
+> `/usr/local/bin/backup-nhmb.sh`, `/usr/local/bin/restore-proba.sh` i
+> `/etc/nginx/conf.d/mis.conf`. Repo kopije (`deploy/backup-nhmb.sh`,
+> `deploy/restore-proba.sh`, `deploy/nginx_museum_prod.conf`) su
+> **rekonstrukcije po opisu — referenca, ne izvor**: nikad nisu radile na
+> produkciji i dokazano se razlikuju od živih fajlova. `deploy.sh` ih zato NE
+> instalira; samo `diff`-om upozori kad se repo i živi fajl raziđu. Izmena tih
+> fajlova ide ručno na produ, pa se repo kopija uskladi unazad.
+
 ---
 
 ## 1. Database migration runner — `deploy/run_migrations.py`
