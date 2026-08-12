@@ -603,6 +603,7 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
                         SET password_hash = %s,
                             salt = %s,
                             is_first_login = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE id = %s
                           AND LOWER(email) = LOWER(%s)
@@ -616,6 +617,7 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
                         SET password_hash = %s,
                             salt = %s,
                             is_first_login = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                         """,
@@ -750,6 +752,7 @@ def api_password_manager_toggle_status(*, log_security_event):
                         """
                         UPDATE users
                         SET is_active = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE id = %s
                           AND LOWER(email) = LOWER(%s)
@@ -761,6 +764,7 @@ def api_password_manager_toggle_status(*, log_security_event):
                         """
                         UPDATE users
                         SET is_active = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                         """,

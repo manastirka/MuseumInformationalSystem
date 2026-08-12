@@ -156,7 +156,8 @@ from security_utils import (
     admin_required,
     module_access_required,
     log_security_event,
-    get_client_ip
+    get_client_ip,
+    validate_session_auth_version,
 )
 from flask_wtf.csrf import CSRFProtect
 from rate_limit_ext import limiter
@@ -287,6 +288,22 @@ def refresh_shared_runtime_settings():
         apply_shared_system_settings(admin_system_views.load_saved_settings())
     except Exception as exc:
         logging.getLogger(__name__).warning("Could not refresh shared system settings: %s", exc)
+
+
+def auth_version_check_enabled(flask_app):
+    """Gejt opoziva sesija — namerno ODVOJEN od shared_settings_db_enabled,
+    da testovi koji simuliraju prod za deljena podešavanja ne uvuku i
+    opoziv (sintetičke sesije bez auth_version bi padale)."""
+    return bool(os.environ.get('DATABASE_URL')) and not flask_app.config.get('TESTING', False)
+
+
+@app.before_request
+def enforce_session_auth_version():
+    """Opoziv sesije: deaktivacija/promena uloge/lozinke podiže users.auth_version,
+    pa sesija sa starom verzijom pada odmah umesto da živi do isteka."""
+    if not auth_version_check_enabled(app):
+        return None
+    return validate_session_auth_version()
 
 # Trust proxy headers from nginx (1 proxy hop)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)

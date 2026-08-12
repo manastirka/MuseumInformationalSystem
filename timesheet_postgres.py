@@ -1478,16 +1478,16 @@ def _approve_administratively(report_id: int, verifier_email: str) -> TimesheetR
                     VALUES (%s, 'SUBMITTED', 'APPROVED', %s, %s)
                 """, (report_id, verifier_email,
                       'ОДОБРЕНО АДМИНИСТРАТИВНО (ван двостепеног ланца)'))
+                from audit_support import record_audit
+                # Audit у ИСТОЈ трансакцији (cursor=): одобрење без трага се
+                # не commit-uje; грешка се пропагира уместо тихог прогутања.
+                record_audit(
+                    action='approve_administrative', entity_type='timesheet_report',
+                    entity_id=report_id, changed_by=verifier_email,
+                    summary='Радна листа одобрена административно (ван двостепеног ланца)',
+                    cursor=cur,
+                )
                 conn.commit()
-        try:
-            from audit_support import record_audit
-            record_audit(
-                action='approve_administrative', entity_type='timesheet_report',
-                entity_id=report_id, changed_by=verifier_email,
-                summary='Радна листа одобрена административно (ван двостепеног ланца)',
-            )
-        except Exception:
-            pass
         return TimesheetResult.ok({
             'report_id': report_id,
             'approved': True,

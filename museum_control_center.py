@@ -2486,6 +2486,7 @@ WantedBy=multi-user.target
                 set_clause="password_hash = :'password_hash', "
                            "salt = :'salt', "
                            "is_first_login = :first_login, "
+                           "auth_version = auth_version + 1, "
                            "updated_at = NOW()",
                 email=email,
                 variables={
@@ -2574,7 +2575,7 @@ WantedBy=multi-user.target
 
         try:
             update_command, update_sql = build_user_update_command(
-                set_clause="is_active = :is_active, updated_at = NOW()",
+                set_clause="is_active = :is_active, auth_version = auth_version + 1, updated_at = NOW()",
                 email=email,
                 variables={'is_active': str(new_status).upper()},
             )
@@ -2623,6 +2624,7 @@ WantedBy=multi-user.target
                 set_clause="password_hash = :'password_hash', "
                            "salt = :'salt', "
                            "is_first_login = TRUE, "
+                           "auth_version = auth_version + 1, "
                            "updated_at = NOW()",
                 email=email,
                 variables={
@@ -2708,6 +2710,7 @@ WantedBy=multi-user.target
                 set_clause="password_hash = :'password_hash', "
                            "salt = :'salt', "
                            "is_first_login = TRUE, "
+                           "auth_version = auth_version + 1, "
                            "updated_at = NOW()",
                 email=email,
                 variables={

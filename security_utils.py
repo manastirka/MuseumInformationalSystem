@@ -634,6 +634,63 @@ def get_client_ip() -> str:
     return request.remote_addr or 'unknown'
 
 
+def validate_session_auth_version():
+    """Опозив сесије при промени права (ревизија 2026-08, ставка 6).
+
+    Свака промена права налога (деактивација, промена улоге, промена/reset
+    лозинке) подиже ``users.auth_version``; сесија носи верзију из тренутка
+    пријаве. Сесија са старом верзијом (или без ње — старе сесије пре увођења)
+    се руши одмах уместо да живи до истека. Враћа response за прекид захтева
+    или None када је сесија важећа.
+
+    Fail-open на грешци провере: у прекиду базе ионако ниједан захтев не
+    пролази, а масовно рушење сесија због пролазног квара би било горе.
+    """
+    import logging
+    from flask import jsonify, redirect, url_for
+
+    if 'user_id' not in session:
+        return None
+    if session.get('auth_source', 'primary') != 'primary':
+        return None  # fallback nalozi ne postoje u bazi
+    if request.path.startswith('/static/'):
+        return None
+
+    try:
+        from postgres_service import get_postgres_connection
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT auth_version FROM users WHERE id = %s AND is_active = TRUE',
+                            (session['user_id'],))
+                row = cur.fetchone()
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            'auth_version provera nije uspela (fail-open): %s', exc)
+        return None
+
+    if row is None:
+        current_version = None
+    elif isinstance(row, dict):
+        current_version = row.get('auth_version')
+    else:
+        current_version = row[0]
+
+    if row is not None and session.get('auth_version') == current_version:
+        return None
+
+    log_security_event('session_revoked', {
+        'user_id': session.get('user_id'),
+        'session_auth_version': session.get('auth_version'),
+        'current_auth_version': current_version,
+    })
+    session.clear()
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False,
+                        'message': 'Сесија је опозвана — пријавите се поново.'}), 401
+    flash('Ваша сесија је опозвана (промена налога или лозинке) — пријавите се поново.', 'warning')
+    return redirect(url_for('login'))
+
+
 def log_security_event(event_type: str, details: Dict[str, Any]) -> None:
     """Log security-related events."""
     import logging
