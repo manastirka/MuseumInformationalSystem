@@ -73,8 +73,10 @@ Install/update: `deploy/RUNBOOK-backup-nhmb.md`.
 **Restore drill is AUTOMATED** — `restore-proba.timer` → `restore-proba.service`
 runs on the 1st of each month at 03:30 (`/usr/local/bin/restore-proba.sh`,
 repo copy: `deploy/restore-proba.sh`, prod copy is authoritative): restores the
-latest dump into a temporary `restore_test` database, compares per-table row
-counts against the live `mis_db`, then `dropdb restore_test`. To run one by
+latest dump into a temporary `mis_restore_test` database, compares per-table row
+counts against the live `mis_db`, then `dropdb mis_restore_test` (the script
+refuses any `TEST_DB` that does not start with `mis_restore_test` or equals
+`LIVE_DB`). To run one by
 hand: `sudo systemctl start restore-proba.service` and check
 `journalctl -u restore-proba -n 40`.
 
