@@ -85,9 +85,11 @@
         {% endif %}
 
         {% if not report.is_verified and report.can_verify is defined and report.can_verify and (report.status == 'SUBMITTED' or report.is_locked) %}
-            <button type="button" class="btn btn-outline-secondary"
+            <button type="button" class="btn btn-outline-secondary js-return-report"
                     data-testid="timesheet-report-return-{{ report.id }}"
-                    onclick="returnReportToEmployee({{ report.id }}, '{{ report.employee_name|replace("'", "&#39;") }}', '{{ report.status or '' }}')"
+                    data-report-id="{{ report.id }}"
+                    data-employee-name="{{ report.employee_name }}"
+                    data-report-status="{{ report.status or '' }}"
                     title="Врати запосленом на измену">
                 <i class="bi bi-arrow-return-left"></i>
             </button>
@@ -100,9 +102,11 @@
             <i class="bi bi-file-earmark-word"></i>
         </button>
 
-        <button type="button" class="btn btn-outline-danger"
+        <button type="button" class="btn btn-outline-danger js-delete-report"
                 data-testid="timesheet-report-delete-{{ report.id }}"
-                onclick="deleteReport({{ report.id }}, '{{ report.employee_name }}', '{{ calendar.month_name[report.month] }} {{ report.year }}')"
+                data-report-id="{{ report.id }}"
+                data-employee-name="{{ report.employee_name }}"
+                data-report-period="{{ calendar.month_name[report.month] }} {{ report.year }}"
                 title="Обриши извештај">
             <i class="bi bi-trash"></i>
         </button>
@@ -994,6 +998,25 @@ document.addEventListener('DOMContentLoaded', () => {
             message: 'Грешка при комуникацији: ' + err,
         }));
     });
+});
+
+// Dugmad iz makroa nose podatke u data-* atributima umesto inline onclick-a:
+// HTML escape u atributu NE štiti JS string — browser prvo dekodira entitete,
+// pa ime sa navodnikom pobegne iz stringa (XSS).
+document.addEventListener('click', (event) => {
+    const returnBtn = event.target.closest('.js-return-report');
+    if (returnBtn) {
+        returnReportToEmployee(returnBtn.dataset.reportId,
+                               returnBtn.dataset.employeeName,
+                               returnBtn.dataset.reportStatus);
+        return;
+    }
+    const deleteBtn = event.target.closest('.js-delete-report');
+    if (deleteBtn) {
+        deleteReport(deleteBtn.dataset.reportId,
+                     deleteBtn.dataset.employeeName,
+                     deleteBtn.dataset.reportPeriod);
+    }
 });
 
 // Delete report

@@ -191,6 +191,17 @@
 const specimens = {{ specimens|tojson }};
 const collectionType = '{{ collection_type }}';
 const hiddenCollectionFields = new Set(['source_file']);
+
+// Vrednosti iz baze idu u innerHTML šablone — obavezno kroz esc(). Escape-uje
+// svih 5 znakova (i navodnike), pa vrednost sme i u atribut bez bekstva.
+function esc(value) {
+    return String(value === null || value === undefined ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 const defaultColumnLayouts = {
     sanja_paleogene_neogene_mammals: [
         'inventory_sequence',
@@ -697,9 +708,9 @@ function renderTable() {
         };
 
         const dbName = databaseMap[collectionType] || collectionType;
-        const imgUrl = `/api/specimen_thumbnail/${dbName}/${collectionType}/${entityId}`;
+        const imgUrl = `/api/specimen_thumbnail/${dbName}/${collectionType}/${encodeURIComponent(entityId)}`;
 
-        imgTd.innerHTML = `<img src="${imgUrl}" alt="Specimen" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;" onerror="this.onerror=null; this.style.display='none';">`;
+        imgTd.innerHTML = `<img src="${esc(imgUrl)}" alt="Specimen" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;" onerror="this.onerror=null; this.style.display='none';">`;
         tr.appendChild(imgTd);
 
         visibleColumns.forEach(col => {
@@ -711,25 +722,25 @@ function renderTable() {
             if (value === null || value === undefined || value === '') {
                 td.innerHTML = '<span class="text-muted">-</span>';
             } else if (col.includes('catalog_number') || col.includes('record_number')) {
-                td.innerHTML = `<span class="badge bg-primary">${value}</span>`;
+                td.innerHTML = `<span class="badge bg-primary">${esc(value)}</span>`;
             } else if (col.includes('scientific_name') || col.includes('meteorite_name')) {
-                td.innerHTML = `<em>${value}</em>`;
+                td.innerHTML = `<em>${esc(value)}</em>`;
             } else if (col === 'condition' || col === 'condition_after') {
                 let badgeClass = 'bg-secondary';
                 if (value.includes('Одлично') || value.includes('Одличан')) badgeClass = 'bg-success';
                 else if (value.includes('Добро') || value.includes('Добар')) badgeClass = 'bg-info';
                 else if (value.includes('Оштећен')) badgeClass = 'bg-warning';
-                td.innerHTML = `<span class="badge ${badgeClass}">${value}</span>`;
+                td.innerHTML = `<span class="badge ${badgeClass}">${esc(value)}</span>`;
             } else if (col === 'conservation_status') {
-                td.innerHTML = `<span class="badge bg-danger">${value}</span>`;
+                td.innerHTML = `<span class="badge bg-danger">${esc(value)}</span>`;
             } else if (col === 'serbian_meteorite') {
                 td.innerHTML = value ? '<span class="badge bg-success">Да</span>' : '<span class="badge bg-secondary">Не</span>';
             } else if (typeof value === 'number') {
                 td.innerHTML = `<strong>${value}</strong>`;
             } else if (col.includes('date')) {
-                td.innerHTML = `<small>${value}</small>`;
+                td.innerHTML = `<small>${esc(value)}</small>`;
             } else {
-                td.innerHTML = value;
+                td.textContent = value;
             }
             
             tr.appendChild(td);
@@ -981,7 +992,7 @@ function showDetails(index) {
         'cultural_heritage': 'cultural_heritage'
     };
     const dbName = databaseMap[collectionType] || collectionType;
-    const imgUrl = `/api/specimen_image/${dbName}/${collectionType}/${entityId}`;
+    const imgUrl = `/api/specimen_image/${dbName}/${collectionType}/${encodeURIComponent(entityId)}`;
 
     // Update modal subtitle
     const subtitle = document.getElementById('detailModalSubtitle');
@@ -1012,7 +1023,7 @@ function showDetails(index) {
     // Image section
     html += `
         <div class="detail-image-section">
-            <img src="${imgUrl}" alt="Specimen" class="detail-image" onerror="this.onerror=null; this.closest('.detail-image-section').style.display='none';">
+            <img src="${esc(imgUrl)}" alt="Specimen" class="detail-image" onerror="this.onerror=null; this.closest('.detail-image-section').style.display='none';">
         </div>
     `;
 
@@ -1041,8 +1052,8 @@ function showDetails(index) {
                 html += `
                     <div class="col-sm-6">
                         <div class="detail-field">
-                            <span class="detail-field-label">${label}</span>
-                            <span class="detail-field-value">${val}</span>
+                            <span class="detail-field-label">${esc(label)}</span>
+                            <span class="detail-field-value">${esc(val)}</span>
                         </div>
                     </div>
                 `;
@@ -1070,8 +1081,8 @@ function showDetails(index) {
                 html += `
                     <div class="col-sm-6">
                         <div class="detail-field">
-                            <span class="detail-field-label">${label}</span>
-                            <span class="detail-field-value">${val}</span>
+                            <span class="detail-field-label">${esc(label)}</span>
+                            <span class="detail-field-value">${esc(val)}</span>
                         </div>
                     </div>
                 `;
@@ -1088,8 +1099,8 @@ function showDetails(index) {
                 html += `
                     <div class="col-sm-6">
                         <div class="detail-field">
-                            <span class="detail-field-label">${label}</span>
-                            <span class="detail-field-value">${value}</span>
+                            <span class="detail-field-label">${esc(label)}</span>
+                            <span class="detail-field-value">${esc(value)}</span>
                         </div>
                     </div>
                 `;
