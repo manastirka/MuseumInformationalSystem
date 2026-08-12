@@ -3,13 +3,14 @@
 # Noćni backup MIS-a na nhmb-srv01 (pokreće backup-nhmb.timer u 02:30).
 # Instalacija: deploy/RUNBOOK-backup-nhmb.md (kopija u /usr/local/bin).
 #
-# Radi tri stvari, tim redom:
+# Radi četiri stvari, tim redom:
 #   1. pg_dump žive baze (gz) u /backup/current/db/ + čišćenje starih dump-ova;
 #   2. rsync OSVEŽAVANJE fajl-stabala u /backup/current/data/ i koda u
 #      /backup/current/app/ — ovo je korak koji drži novu fototeku na DVA
 #      diska (/data je /dev/sda1, /backup je /dev/sdb1); bez njega sve posle
 #      poslednjeg ručnog rsync-a postoji samo na jednom disku;
-#   3. btrfs readonly snimak /backup/current u /backup/.snapshots/<datum>.
+#   3. btrfs readonly snimak /backup/current u /backup/.snapshots/<datum>;
+#   4. rclone kopija DB dump-ova na offsite remote (OFFSITE_REMOTE).
 #
 # Posle rsync-a se piše MANIFEST.sha256 (broj fajlova + SHA-256 svakog fajla)
 # — dokaz šta je te noći stvarno bilo u kopiji, i osnova za restore-probu.
@@ -93,5 +94,23 @@ for snap in "$SNAP_DIR"/????-??-??; do
         btrfs subvolume delete "$snap"
     fi
 done
+
+# --- 4) offsite kopija DB dump-ova -------------------------------------------
+# MEĐUKORAK do selidbe servera: prod i SVI bekapi (uključujući btrfs snimke)
+# su trenutno u ISTOM kućištu — požar/krađa/prenapon nosi original i sve
+# kopije zajedno. Zato bar dump baze svake noći ide van kućišta. rclone copy
+# je inkrementalan: prenosi samo novi dump (~183 MB noću), a --checksum
+# potvrđuje sadržaj, ne samo veličinu/datum. Remote se podešava jednom sa
+# `rclone config` i imenuje kroz OFFSITE_REMOTE (vidi RUNBOOK korak 5).
+OFFSITE_REMOTE="${OFFSITE_REMOTE:-}"
+if [[ -n "$OFFSITE_REMOTE" ]]; then
+    log "rclone copy $CURRENT/db -> $OFFSITE_REMOTE"
+    rclone copy --checksum "$CURRENT/db" "$OFFSITE_REMOTE"
+    log "  offsite kopija potvrđena."
+else
+    # Namerno NE obara job: lokalni backup je vredniji od pada zbog još
+    # nepodešenog remote-a — ali upozorenje mora da se vidi u journalu.
+    log "UPOZORENJE: OFFSITE_REMOTE nije podešen — DB dump postoji SAMO u ovom kućištu."
+fi
 
 log "gotovo: db=$(du -h "$DUMP" | cut -f1), data=$(du -sh "$CURRENT/data" | cut -f1)"
