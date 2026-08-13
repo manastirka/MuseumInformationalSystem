@@ -152,6 +152,28 @@ def get_online_users(threshold_seconds: int = 15) -> list:
     } for r in rows]
 
 
+def get_attachment_channel(stored_name: str):
+    """Kanal poruke kojoj prilog pripada, ili None ako ga nijedna poruka ne
+    referencira. Osnova za proveru pristupa pri preuzimanju (krug 4, stavka 7):
+    UUID ime fajla nije tajna, pa pristup mora da prati učešće u razgovoru."""
+    with _get_db() as db:
+        row = db.execute(
+            'SELECT channel FROM chat_messages WHERE file_path = %s '
+            'ORDER BY id LIMIT 1',
+            (stored_name,),
+        ).fetchone()
+    return row['channel'] if row else None
+
+
+def user_in_channel(user_id: int, channel: str) -> bool:
+    """Da li korisnik učestvuje u kanalu: 'general' je otvoren svim
+    prijavljenim, dm:<a>:<b> samo dvojici učesnika."""
+    if not channel.startswith('dm:'):
+        return True
+    parts = channel.split(':')
+    return len(parts) == 3 and str(user_id) in (parts[1], parts[2])
+
+
 def make_dm_channel(user_id_a: int, user_id_b: int) -> str:
     """Return canonical DM channel name: dm:<low>:<high>."""
     low, high = sorted([int(user_id_a), int(user_id_b)])

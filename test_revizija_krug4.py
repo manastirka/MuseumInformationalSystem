@@ -194,6 +194,67 @@ def test_admin_system_views_ne_curi_izuzetke():
     assert 'str(exc)' not in src
 
 
+# --- Ставка 7: chat прилози само учесницима разговора ------------------------
+
+@pytest.fixture()
+def _chat_prilog(tmp_path):
+    """DM poruka korisnika 990411→990412 sa prilogom u tmp CHAT_FILES_DIR."""
+    import chat_room
+    stored_name = 'deadbeefdeadbeefdeadbeefdeadbeef.pdf'
+    (tmp_path / stored_name).write_bytes(b'%PDF-1.4 test')
+    with patch.object(chat_room, 'CHAT_FILES_DIR', tmp_path):
+        chat_room.send_message(
+            user_id=990411, user_name='Ана Тест', user_email='ana.krug4@example.invalid',
+            department='Тест', message='прилог',
+            channel=chat_room.make_dm_channel(990411, 990412),
+            file_name='dokument.pdf', file_path=stored_name,
+            file_size=13, file_type='application/pdf',
+        )
+        yield stored_name
+    with psycopg.connect(PLAIN_URL) as conn:
+        conn.execute("DELETE FROM chat_messages WHERE file_path = %s", (stored_name,))
+
+
+def _chat_login(client, user_id, email):
+    with client.session_transaction() as s:
+        s['user_id'] = user_id
+        s['user_email'] = email
+        s['user_name'] = 'Тест Круг4'
+        s['user_role'] = 'employee'
+        s['user_department'] = 'Тест'
+        s['is_admin'] = False
+    return client
+
+
+def test_chat_prilog_ucesnik_moze_autsajder_403(_chat_prilog, tmp_path):
+    import chat_room
+    stored_name = _chat_prilog
+    # Servis je trenutno ugašen flagom — ranjivost važi kad je uključen.
+    with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}), \
+         patch.object(chat_room, 'CHAT_FILES_DIR', tmp_path):
+        ucesnik = _chat_login(_client(), 990412, 'boban.krug4@example.invalid')
+        resp = ucesnik.get(f'/api/chat/file/{stored_name}', base_url=BASE)
+        assert resp.status_code == 200, resp.get_data(as_text=True)
+
+        autsajder = _chat_login(_client(), 990413, 'uljez.krug4@example.invalid')
+        resp = autsajder.get(f'/api/chat/file/{stored_name}', base_url=BASE)
+        assert resp.status_code == 403, (
+            'korisnik van razgovora sme da preuzme tuđ prilog: '
+            + resp.get_data(as_text=True)[:200])
+
+
+def test_chat_fajl_bez_poruke_se_ne_sluzi(tmp_path):
+    """Fajl u skladištu koji nijedna poruka ne referencira → 404."""
+    import chat_room
+    stored_name = 'feedfacefeedfacefeedfacefeedface.pdf'
+    (tmp_path / stored_name).write_bytes(b'%PDF-1.4 orphan')
+    with patch.dict(museum_app.app.config, {'CHAT_SERVICE_ENABLED': True}), \
+         patch.object(chat_room, 'CHAT_FILES_DIR', tmp_path):
+        client = _chat_login(_client(), 990414, 'neko.krug4@example.invalid')
+        resp = client.get(f'/api/chat/file/{stored_name}', base_url=BASE)
+    assert resp.status_code == 404
+
+
 # --- Дигитализовани профили: кар пробе није тихи JSON ------------------------
 
 def test_profili_pad_probe_je_503_ne_json(tmp_path):
