@@ -134,13 +134,75 @@ def _run_migracije(*args):
         capture_output=True, text=True, cwd=REPO, env=os.environ.copy())
 
 
-def test_run_migrations_bez_execute_ne_menja_bazu():
+def _db_name():
+    return os.environ['DATABASE_URL'].rsplit('/', 1)[-1].split('?')[0]
+
+
+def test_run_migrations_bez_execute_sa_pending_vraca_nenulti_exit():
+    """apply bez --execute uz bar jednu pending migraciju NE SME da vrati 0.
+
+    Produkcijski deploy.sh (stara verzija, bez root pristupa da se menja)
+    zove baš 'apply' bez --execute — nulti exit kod bi značio da je deploy
+    uspeo dok nijedna migracija nije primenjena (tihi neuspeh).
+    """
+    import postgres_service
     pre = _snimak_evidencije()
-    result = _run_migracije('apply')
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert 'DRY RUN' in result.stdout
-    assert _snimak_evidencije() == pre, \
-        'apply bez --execute je promenio tabelu evidencije'
+    applied = {row[0] for row in (pre or [])}
+    removed = None
+    conn = postgres_service.get_postgres_connection()
+    try:
+        if not applied:
+            # baza je već potpuno pending (uobičajeno za museum_system_test);
+            # ništa dodatno ne treba forsirati.
+            pass
+        else:
+            removed = sorted(applied)[0]
+            cur = conn.cursor()
+            cur.execute("DELETE FROM schema_migrations WHERE filename = %s", (removed,))
+            conn.commit()
+
+        pre_run = _snimak_evidencije()
+        result = _run_migracije('apply')
+        assert result.returncode != 0, \
+            'apply bez --execute uz pending migracije mora da vrati nenulti exit'
+        assert 'DRY RUN' in result.stdout
+        assert _snimak_evidencije() == pre_run, \
+            'apply bez --execute je promenio tabelu evidencije'
+    finally:
+        if removed is not None:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO schema_migrations(filename) VALUES (%s) "
+                "ON CONFLICT DO NOTHING", (removed,))
+            conn.commit()
+        conn.close()
+    assert _snimak_evidencije() == pre
+
+
+def test_run_migrations_bez_execute_bez_pending_vraca_0():
+    """Kad NEMA nijedne pending migracije, apply bez --execute vraća 0 —
+    nema šta da padne."""
+    import postgres_service
+    pre = _snimak_evidencije()
+    mark = _run_migracije('mark', '*.sql', '--execute', '--database', _db_name())
+    assert mark.returncode == 0, mark.stdout + mark.stderr
+    try:
+        result = _run_migracije('apply')
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert 'Nothing to apply' in result.stdout
+    finally:
+        conn = postgres_service.get_postgres_connection()
+        try:
+            cur = conn.cursor()
+            pre_files = {row[0] for row in (pre or [])}
+            cur.execute("SELECT filename FROM schema_migrations")
+            for (f,) in cur.fetchall():
+                if f not in pre_files:
+                    cur.execute("DELETE FROM schema_migrations WHERE filename = %s", (f,))
+            conn.commit()
+        finally:
+            conn.close()
+    assert _snimak_evidencije() == pre
 
 
 def test_run_migrations_pogresna_baza_se_odbija():

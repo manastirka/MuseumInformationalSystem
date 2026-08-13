@@ -234,19 +234,21 @@ def cmd_apply(execute, database, applied_log=None):
             print(f"Remap {len(renames)} starih imena u schema_migrations:")
             for old, new in renames:
                 print(f"  {old} -> {new}")
-        if not pending:
-            print("Nothing to apply; database is up to date.")
-            if not (renames and execute):
-                return 0
-        else:
+        if pending:
             print(f"Za primenu ({len(pending)}):")
             for f in pending:
                 print(f"  {f}")
+        elif not renames:
+            print("Nothing to apply; database is up to date.")
+
+        if not pending and not renames:
+            return 0
 
         if not execute:
-            print("\nDRY RUN: ništa nije menjano. Za primenu dodaj "
-                  "--execute --database <ime baze>.")
-            return 0
+            print("\nDRY RUN: ništa NIJE primenjeno. Deploy NIJE završen — "
+                  "pokreni ponovo sa --execute --database <ime baze> da bi se "
+                  "migracije stvarno primenile.")
+            return 2
         if not _require_database_match(cur, database):
             return 1
 
