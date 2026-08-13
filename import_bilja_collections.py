@@ -15,8 +15,19 @@ Usage:
     psql "$DATABASE_URL" -f db/schema_bilja_paleozoology.sql
     psql "$DATABASE_URL" -f db/schema_bilja_biology.sql
 
-    # then import
+    # plan (podrazumevano DRY RUN — nula izmena)
     python3 import_bilja_collections.py
+
+    # stvarni uvoz: traži --execute I potvrdu imena baze
+    python3 import_bilja_collections.py --execute --database museum_system
+
+Pravila (revizija 2026-08, krug 4, stavka 8):
+  * podrazumevano dry-run sa planom (fajl/sheet/tabela, broj redova,
+    greške parsiranja); izmena baze SAMO uz --execute i --database koje
+    se poklapa sa current_database();
+  * ceo uvoz je JEDNA transakcija — bilo koji neuspeh (red koji ne može
+    da se parsira ili ga baza odbije) znači ROLLBACK i nenulti exit,
+    nikad "uspeh" sa prećutno ispuštenim redovima.
 
 Requires:
     pip install openpyxl xlrd==1.2.0 psycopg[binary] python-dotenv
@@ -309,7 +320,12 @@ JOBS: list[dict[str, Any]] = [
 # Runner
 # ---------------------------------------------------------------------------
 
-def run_job(cur, job: dict[str, Any]) -> tuple[int, int]:
+def parse_job(job: dict[str, Any]) -> tuple[list[tuple], int, list[str]]:
+    """Parse one Excel source completely, without touching the database.
+
+    Returns (rows, empty_skipped, errors). Empty rows are legitimately
+    skipped; a row the mapper cannot parse is an ERROR — such an import se
+    ne sme primeniti delimično."""
     path = BILJA_DIR / job['file']
     if not path.exists():
         raise FileNotFoundError(f'Missing source file: {path}')
@@ -317,94 +333,109 @@ def run_job(cur, job: dict[str, Any]) -> tuple[int, int]:
     iterator: Callable[[Path, str], Iterable[tuple]]
     iterator = _iter_xlsx_rows if job['kind'] == 'xlsx' else _iter_xls_rows
 
-    stmt = INSERT_STATEMENTS[job['table']]
     mapper = job['mapper']
     source_file = job['file']
 
-    inserted = skipped = 0
-    batch: list[tuple] = []
-    BATCH = 200
-
-    for row in iterator(path, job['sheet']):
+    rows: list[tuple] = []
+    empty = 0
+    errors: list[str] = []
+    for i, row in enumerate(iterator(path, job['sheet']), start=2):
         if _row_is_empty(row):
-            skipped += 1
+            empty += 1
             continue
         try:
-            batch.append(mapper(row, source_file))
+            rows.append(mapper(row, source_file))
         except Exception as exc:
-            log.warning('  bad row skipped in %s: %s', job['table'], exc)
-            skipped += 1
-            continue
-        if len(batch) >= BATCH:
-            ins, skp = _flush_batch(cur, stmt, batch, job['table'])
-            inserted += ins
-            skipped += skp
-            batch.clear()
-
-    if batch:
-        ins, skp = _flush_batch(cur, stmt, batch, job['table'])
-        inserted += ins
-        skipped += skp
-
-    return inserted, skipped
-
-
-def _flush_batch(cur, stmt: str, batch: list[tuple], table: str) -> tuple[int, int]:
-    """Write a batch, isolating DB failures so one bad row cannot abort the run.
-
-    Tries a fast bulk executemany first; if the batch is rejected by the
-    database it is replayed row-by-row (each inside a SAVEPOINT) so good rows
-    still persist and only the offending rows are skipped.
-    """
-    if not batch:
-        return 0, 0
-    try:
-        with cur.connection.transaction():
-            cur.executemany(stmt, batch)
-        return len(batch), 0
-    except Exception as exc:
-        log.warning('  batch insert failed in %s, retrying row-by-row: %s', table, exc)
-
-    inserted = skipped = 0
-    for params in batch:
-        try:
-            with cur.connection.transaction():
-                cur.execute(stmt, params)
-            inserted += 1
-        except Exception as exc:
-            log.warning('  bad row skipped in %s: %s', table, exc)
-            skipped += 1
-    return inserted, skipped
+            errors.append(f'{job["table"]}: red {i}: {exc}')
+    return rows, empty, errors
 
 
 def main(argv: list[str]) -> int:
+    execute = '--execute' in argv
     truncate = '--truncate' in argv
+    database = None
     only = None
-    for a in argv:
+    for i, a in enumerate(argv):
         if a.startswith('--only='):
             only = a.split('=', 1)[1]
+        if a == '--database' and i + 1 < len(argv):
+            database = argv[i + 1]
 
     db_url = _get_database_url()
     log.info('Connecting to PostgreSQL…')
 
+    exit_code = 0
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
-            for job in JOBS:
-                if only and job['table'] != only:
-                    continue
+            cur.execute('SELECT current_database()')
+            current = cur.fetchone()[0]
+            log.info('Cilj: baza=%s', current)
+
+            jobs = [j for j in JOBS if not only or j['table'] == only]
+
+            # ---- Plan (uvek, pre ijedne izmene) ----
+            parsed: list[tuple[dict, list[tuple]]] = []
+            all_errors: list[str] = []
+            for job in jobs:
+                rows, empty, errors = parse_job(job)
+                cur.execute('SELECT to_regclass(%s) IS NOT NULL', (job['table'],))
+                table_exists = bool(cur.fetchone()[0])
+                existing = None
+                if table_exists:
+                    cur.execute(f'SELECT count(*) FROM {job["table"]}')
+                    existing = cur.fetchone()[0]
                 log.info('---- %s  (%s | %s) ----', job['table'], job['file'], job['sheet'])
+                log.info('  za uvoz=%d  praznih=%d  grešaka=%d  u bazi sada=%s%s',
+                         len(rows), empty, len(errors),
+                         existing if table_exists else 'TABELA NE POSTOJI',
+                         '  [TRUNCATE pre uvoza]' if truncate else '')
+                for e in errors:
+                    log.error('  GREŠKA: %s', e)
+                if not table_exists:
+                    all_errors.append(f'{job["table"]}: tabela ne postoji (primeni šemu)')
+                all_errors.extend(errors)
+                parsed.append((job, rows))
 
-                if truncate:
-                    log.info('  TRUNCATE %s', job['table'])
-                    cur.execute(f'TRUNCATE TABLE {job["table"]} RESTART IDENTITY')
+            if not execute:
+                log.info('DRY RUN: ništa nije menjano. Za uvoz dodaj '
+                         '--execute --database <ime baze>.')
+                return 1 if all_errors else 0
 
-                inserted, skipped = run_job(cur, job)
-                log.info('  inserted=%d  skipped=%d', inserted, skipped)
+            if all_errors:
+                log.error('ODBIJENO: %d grešaka u planu — delimičan uvoz se ne '
+                          'primenjuje. Ispravi izvor pa pokušaj ponovo.',
+                          len(all_errors))
+                return 1
+            if not database:
+                log.error('ODBIJENO: uvoz traži --execute I --database <ime> '
+                          '(current_database() je „%s“).', current)
+                return 1
+            if database != current:
+                log.error('ODBIJENO: --database %s ≠ current_database() „%s“ — '
+                          'pogrešna baza ili pogrešan DATABASE_URL.',
+                          database, current)
+                return 1
 
-        conn.commit()
+            # ---- Uvoz: JEDNA transakcija, sve ili ništa ----
+            try:
+                for job, rows in parsed:
+                    if truncate:
+                        log.info('  TRUNCATE %s', job['table'])
+                        cur.execute(f'TRUNCATE TABLE {job["table"]} RESTART IDENTITY')
+                    cur.executemany(INSERT_STATEMENTS[job['table']], rows)
+                    log.info('  %s: upisano %d redova', job['table'], len(rows))
+            except Exception:
+                conn.rollback()
+                log.exception('NEUSPEH: uvoz prekinut, SVE izmene vraćene '
+                              '(rollback) — baza je netaknuta.')
+                exit_code = 1
 
-    log.info('Done.')
-    return 0
+        if exit_code == 0:
+            conn.commit()
+
+    if exit_code == 0:
+        log.info('Done.')
+    return exit_code
 
 
 if __name__ == '__main__':
