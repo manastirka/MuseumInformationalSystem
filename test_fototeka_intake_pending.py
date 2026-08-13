@@ -1,5 +1,5 @@
-"""Revizija 2026-08 (batch 6, stavka 5): pad spoljnog commit-a ne sme trajno
-da zarobi write-once RAW putanju.
+"""Revizija 2026-08 (batch 6, stavka 5 + krug revizije, stavka 2): pad
+spoljnog commit-a ne sme trajno da zarobi write-once RAW putanju.
 
 Scenario iz nalaza: _intake_photo_from_path postavi RAW, vrati se, a commit
 ManagedPostgresConnection konteksta padne — nema DB reda, RAW ostaje, ponovni
@@ -8,9 +8,12 @@ intake_pending, migration/047): namera PRE fajla u sopstvenoj transakciji,
 finalizacija u transakciji reda; zauzeta putanja bez DB reda a sa namerom je
 dokazano siroče i sme da se preuzme; reconciler periodično čisti ostatke.
 
-Testovi koriste fake DB sloj (obrazac iz test_fototeka_uvoz.py) i stvarne
-fajlove u tmp arhivi — commit-fail se simulira odbacivanjem svih DB efekata
-glavne transakcije uz zadržavanje fajla i (posebno commit-ovane) namere.
+IntakePendingProtocolTests i ConcurrentIntakeRealDbTests rade nad stvarnim
+PostgreSQL-om (museum_system_test): baš MVCC/commit ponašanje je predmet
+ovih testova (siroče vs. pravi write-once original, konkurentni unos), a
+fake kursor bez pravih transakcija ne bi to dokazao. ReconcileIntakePendingTests
+i dalje koristi fake DB sloj jer testira čistu orkestraciju
+reconcile_intake_pending nad tmp arhivom, bez transakcione semantike.
 """
 
 import os
@@ -32,101 +35,47 @@ import fototeka_jobs
 import fototeka_views
 
 
-class _PendingStore:
-    """Simulira fototeka_intake_pending: upisi preko sopstvene konekcije se
-    'commit-uju' odmah (kao u produkciji); DELETE kroz glavnu transakciju
-    primenjuje se samo ako glavna transakcija 'prođe'. Red čuva claim_token
-    (krug 4, stavka 2) i 'stale' zastavicu kojom test simulira protok
-    INTAKE_CLAIM_STALE_MINUTES."""
-
-    def __init__(self):
-        self.rows = {}
-
-
-class _IntentCursor:
-    def __init__(self, store):
-        self.store = store
-        self._claimed = None
-
-    def execute(self, sql, params=None):
-        assert 'fototeka_intake_pending' in sql
-        sha256, raw_rel, original_ime, token, _stale_mins = params
-        row = self.store.rows.get(raw_rel)
-        if row is None or row.get('stale'):
-            self.store.rows[raw_rel] = {
-                'sha256': sha256, 'claim_token': token, 'stale': False}
-            self._claimed = (token,)
-        else:
-            self._claimed = None
-
-    def fetchone(self):
-        return self._claimed
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        return False
-
-
-class _IntentConnection:
-    def __init__(self, store):
-        self.store = store
-
-    def cursor(self):
-        return _IntentCursor(self.store)
-
-    def commit(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        return False
-
-
-class _MainCursor:
-    """Glavna transakcija: fotografije + tagovi + veza + posao + finalizacija.
-    Efekti se skupljaju u staged_* i primenjuju tek na apply() ('commit')."""
-
-    def __init__(self, store, committed_photos):
-        self.store = store
-        self.committed_photos = committed_photos  # set raw_putanja sa redom
-        self.staged_pending_deletes = []
-        self._pending = None
-        self.next_id = 100
-
-    def execute(self, sql, params=None):
-        squashed = ' '.join(sql.split())
-        self._pending = None
-        if 'SELECT id FROM fotografije WHERE sha256' in squashed:
-            self._pending = None
-        elif 'SELECT 1 FROM fotografije WHERE raw_putanja' in squashed:
-            self._pending = (1,) if params[0] in self.committed_photos else None
-        elif 'SELECT 1 FROM fototeka_intake_pending' in squashed:
-            row = self.store.rows.get(params[0])
-            self._pending = (
-                (1,) if row and row.get('claim_token') == params[1] else None)
-        elif 'INSERT INTO fotografije' in squashed:
-            self._pending = {'id': self.next_id}
-        elif 'DELETE FROM fototeka_intake_pending' in squashed:
-            self.staged_pending_deletes.append(params[0])
-
-    def fetchone(self):
-        return self._pending
-
-    def apply_commit(self, raw_rel):
-        self.committed_photos.add(raw_rel)
-        for deleted in self.staged_pending_deletes:
-            self.store.rows.pop(deleted, None)
+TEST_DB_URL = os.environ.get(
+    'MIS_TEST_DB_URL',
+    'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system_test',
+)
+PLAIN_URL = TEST_DB_URL.replace('postgresql+psycopg://', 'postgresql://')
 
 
 def _write_jpeg(path):
     Image.new('RGB', (40, 30), (120, 30, 30)).save(path, 'JPEG')
 
 
-class IntakePendingProtocolTests(unittest.TestCase):
+class _RealDbFototekaTestCase(unittest.TestCase):
+    """Zajednička plumbing za testove nad stvarnim museum_system_test:
+    dostupnost baze, primena migracija koje protokol namere zahteva, tmp
+    arhiva/media, čišćenje po sintetičkom identitetu."""
+
+    NAMERA_EMAIL = 'namera.protokol@example.invalid'
+    NAMERA_IME = 'NAMERA_PROTOKOL.jpg'
+
+    @classmethod
+    def setUpClass(cls):
+        if '_test' not in PLAIN_URL.rsplit('/', 1)[-1]:
+            raise unittest.SkipTest(
+                'MIS_TEST_DB_URL ne pokazuje na *_test bazu — zaštita produkcije')
+        try:
+            import psycopg
+        except ImportError:
+            raise unittest.SkipTest('psycopg nije instaliran')
+        cls.psycopg = psycopg
+        try:
+            with psycopg.connect(PLAIN_URL, connect_timeout=3) as conn:
+                conn.execute('SELECT 1')
+        except Exception:
+            raise unittest.SkipTest('museum_system_test nije dostupan')
+        with psycopg.connect(PLAIN_URL) as conn:
+            for fname in ('047_fototeka_intake_pending.sql',
+                          '052_fototeka_intent_claim.sql'):
+                sql = (Path(__file__).parent / 'migration' / fname
+                       ).read_text(encoding='utf-8')
+                conn.execute(sql)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         base = Path(self.tmp.name)
@@ -134,74 +83,136 @@ class IntakePendingProtocolTests(unittest.TestCase):
         self.media = base / 'media'
         self.arhiva.mkdir()
         self.media.mkdir()
-        self.store = _PendingStore()
-        self.committed = set()
         self.patchers = [
             patch.object(fototeka_jobs, 'get_arhiva_path', lambda: self.arhiva),
             patch.object(fototeka_jobs, 'get_media_path', lambda: self.media),
             patch.object(fototeka_jobs, 'enqueue_job', lambda cur, fid, tip: None),
+            # Intent-transakcija fototeka_views ide na test bazu, ne kroz
+            # pool vezan za .env bazu.
             patch.object(fototeka_views, 'get_postgres_connection',
-                         lambda: _IntentConnection(self.store)),
+                         lambda: self.psycopg.connect(PLAIN_URL)),
         ]
         for p in self.patchers:
             p.start()
         self.addCleanup(self.tmp.cleanup)
         for p in self.patchers:
             self.addCleanup(p.stop)
+        self.addCleanup(self._ocisti_bazu)
+        # I na ulazu: namera se commit-uje autonomno, pa prekinut raniji run
+        # ostavlja redove koje cleanup nije stigao da ukloni.
+        self._ocisti_bazu()
+
+    def _ocisti_bazu(self):
+        with self.psycopg.connect(PLAIN_URL) as conn:
+            conn.execute(
+                """
+                DELETE FROM foto_poslovi WHERE fotografija_id IN
+                    (SELECT id FROM fotografije WHERE autor_email = %s)
+                """, (self.NAMERA_EMAIL,))
+            conn.execute(
+                """
+                DELETE FROM fotografija_tagovi WHERE fotografija_id IN
+                    (SELECT id FROM fotografije WHERE autor_email = %s)
+                """, (self.NAMERA_EMAIL,))
+            conn.execute('DELETE FROM fotografije WHERE autor_email = %s',
+                         (self.NAMERA_EMAIL,))
+            conn.execute(
+                'DELETE FROM fototeka_intake_pending WHERE original_ime = %s',
+                (self.NAMERA_IME,))
 
     def _intake(self, cur):
         temp_path = self.media / 'temp_upload.jpg'
         _write_jpeg(temp_path)
         size = temp_path.stat().st_size
         return fototeka_views._intake_photo_from_path(
-            cur, temp_path, 'IMG_0001.jpg', size, '.jpg',
-            autor_email='qa@example.com', opis=None, tags=[],
+            cur, temp_path, self.NAMERA_IME, size, '.jpg',
+            autor_email=self.NAMERA_EMAIL, opis=None, tags=[],
             datum_override=None, veza=None,
             u_prijemnom_redu=False, poreklo='upload',
         )
 
+
+class IntakePendingProtocolTests(_RealDbFototekaTestCase):
+    """Stvarni PostgreSQL: pad commit-a i write-once kolizija zavise od
+    pravog MVCC ponašanja (nekomitovan red je nevidljiv drugoj konekciji,
+    fajl na disku nije transakcion) — fake kursor to ne modeluje verno."""
+
     def test_pad_commita_pa_ponovni_upload_uspeva(self):
         """Nalaz iz revizije: posle propalog commit-a ponovni upload istog
         sadržaja MORA da uspe, ne da prijavi lažnu koliziju."""
-        # 1. prvi intake: fajl postavljen, ali commit "padne" — DB efekti se
-        #    NE primenjuju (apply_commit se ne zove); namera je već upisana.
-        cur1 = _MainCursor(self.store, self.committed)
+        # 1. prvi intake: fajl postavljen, ali commit "padne" — rollback na
+        #    sopstvenoj konekciji; namera je već commit-ovana (sopstvena
+        #    transakcija) i preživljava.
+        conn1 = self.psycopg.connect(PLAIN_URL)
+        self.addCleanup(conn1.close)
+        cur1 = conn1.cursor()
         foto_id, reason = self._intake(cur1)
+        self.assertIsNone(reason)
         self.assertIsNotNone(foto_id)
         raw_files = list(self.arhiva.rglob('*.jpg'))
         self.assertEqual(len(raw_files), 1, 'RAW mora biti postavljen')
         raw_rel = str(raw_files[0].relative_to(self.arhiva))
-        self.assertIn(raw_rel, self.store.rows,
-                      'namera mora biti upisana pre fajla i preživeti pad commit-a')
+        conn1.rollback()
+
+        with self.psycopg.connect(PLAIN_URL) as verify_conn:
+            namera = verify_conn.execute(
+                'SELECT 1 FROM fototeka_intake_pending WHERE raw_putanja = %s',
+                (raw_rel,)).fetchone()
+        self.assertIsNotNone(
+            namera, 'namera mora biti upisana pre fajla i preživeti pad commit-a')
 
         # 2. ponovni upload POSLE isteka INTAKE_CLAIM_STALE_MINUTES (svežu
         #    tuđu nameru niko ne sme da preuzme — krug 4, stavka 2): putanja
         #    je zauzeta siročetom, bez DB reda, bajata namera se preuzima.
-        self.store.rows[raw_rel]['stale'] = True
-        cur2 = _MainCursor(self.store, self.committed)
+        with self.psycopg.connect(PLAIN_URL) as age_conn:
+            age_conn.execute(
+                """
+                UPDATE fototeka_intake_pending
+                SET created_at = now() - interval '31 minutes'
+                WHERE raw_putanja = %s
+                """, (raw_rel,))
+            age_conn.commit()
+
+        conn2 = self.psycopg.connect(PLAIN_URL)
+        self.addCleanup(conn2.close)
+        cur2 = conn2.cursor()
         foto_id2, reason2 = self._intake(cur2)
         self.assertIsNone(reason2, f'lažna kolizija: {reason2}')
         self.assertIsNotNone(foto_id2)
-        cur2.apply_commit(raw_rel)
-        self.assertNotIn(raw_rel, self.store.rows,
-                         'uspešan commit briše nameru (finalizacija)')
+        conn2.commit()
+
+        with self.psycopg.connect(PLAIN_URL) as verify_conn:
+            namera = verify_conn.execute(
+                'SELECT 1 FROM fototeka_intake_pending WHERE raw_putanja = %s',
+                (raw_rel,)).fetchone()
+        self.assertIsNone(namera, 'uspešan commit briše nameru (finalizacija)')
         self.assertEqual(len(list(self.arhiva.rglob('*.jpg'))), 1)
 
     def test_pravi_original_se_nikad_ne_preuzima(self):
-        """Zauzeta putanja SA postojećim DB redom je pravi write-once original
-        — kolizija se i dalje odbija, fajl se ne dira."""
-        cur1 = _MainCursor(self.store, self.committed)
-        foto_id, _ = self._intake(cur1)
+        """Zauzeta putanja SA postojećim DB redom je pravi write-once
+        original — _reclaim_orphan_raw je nikad ne preuzima, fajl se ne
+        dira. (Sha256 je deo imena RAW fajla, pa isti sadržaj kroz javni
+        _intake_photo_from_path prvo pada na dedup pre sha256 provere;
+        _reclaim_orphan_raw se testira direktno, kao što ga interno zove
+        _intake_photo_from_path posle FileExistsError.)"""
+        conn1 = self.psycopg.connect(PLAIN_URL)
+        self.addCleanup(conn1.close)
+        cur1 = conn1.cursor()
+        foto_id, reason = self._intake(cur1)
+        self.assertIsNone(reason)
         self.assertIsNotNone(foto_id)
+        conn1.commit()  # commit PROŠAO — pravi original
+
         raw_files = list(self.arhiva.rglob('*.jpg'))
         raw_rel = str(raw_files[0].relative_to(self.arhiva))
-        cur1.apply_commit(raw_rel)  # commit PROŠAO — pravi original
         original_bytes = raw_files[0].read_bytes()
 
-        cur2 = _MainCursor(self.store, self.committed)
-        foto_id2, reason2 = self._intake(cur2)
-        self.assertIsNone(foto_id2)
-        self.assertIn('већ постоји у', reason2 or '')
+        with self.psycopg.connect(PLAIN_URL) as conn2:
+            cur2 = conn2.cursor()
+            preuzeto = fototeka_views._reclaim_orphan_raw(
+                cur2, raw_rel, raw_files[0], 'ma-koji-token')
+        self.assertFalse(
+            preuzeto, 'putanja sa postojećim DB redom se nikad ne preuzima')
         self.assertEqual(raw_files[0].read_bytes(), original_bytes)
 
     def test_namera_se_upisuje_pre_fajla(self):
@@ -211,7 +222,9 @@ class IntakePendingProtocolTests(unittest.TestCase):
             raise RuntimeError('baza nedostupna')
 
         with patch.object(fototeka_views, 'get_postgres_connection', boom):
-            cur = _MainCursor(self.store, self.committed)
+            conn = self.psycopg.connect(PLAIN_URL)
+            self.addCleanup(conn.close)
+            cur = conn.cursor()
             with self.assertRaises(RuntimeError):
                 self._intake(cur)
         self.assertEqual(list(self.arhiva.rglob('*.jpg')), [],
@@ -310,12 +323,6 @@ class ReconcileIntakePendingTests(unittest.TestCase):
 
 
 # --- Krug 4, stavka 2: konkurentni unos na STVARNOJ bazi ----------------------
-
-TEST_DB_URL = os.environ.get(
-    'MIS_TEST_DB_URL',
-    'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system_test',
-)
-PLAIN_URL = TEST_DB_URL.replace('postgresql+psycopg://', 'postgresql://')
 
 KONKURENCIJA_EMAIL = 'konkurencija.krug4@example.invalid'
 KONKURENCIJA_IME = 'KONKURENCIJA_KRUG4.jpg'

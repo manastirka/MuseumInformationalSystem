@@ -284,6 +284,7 @@ class ImportRouteTests(_RouteTestCase):
             'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
             'WHERE sha256': [],
             'FROM minerals': [('77',)],   # predmet postoji -> veza se pravi
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
             'INSERT INTO fotografije': {'id': 1},
             'INSERT INTO fototeka_uvoz_run': {'id': 5},
         })

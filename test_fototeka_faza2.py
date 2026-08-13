@@ -228,7 +228,10 @@ class _RouteTestCase(unittest.TestCase):
 class ReceptionQueueTests(_RouteTestCase):
 
     def test_upload_flag_sets_reception_queue(self):
-        cursor = self.use_db({'INSERT INTO fotografije': {'id': 9}})
+        cursor = self.use_db({
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
+            'INSERT INTO fotografije': {'id': 9},
+        })
         self.login(AUTHOR)
         response = self.post(
             '/fototeka/upload',
