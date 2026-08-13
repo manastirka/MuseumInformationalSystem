@@ -23,9 +23,10 @@ logger = logging.getLogger(__name__)
 # Database URL
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg://aleksandarlukovic@localhost:5432/museum_system')
 
-# Local CIF file storage
-CIF_STORAGE_DIR = Path('/home/aleksandarlukovic/MuseumInfoSystem/data/cif_files')
-COD_CIF_DIR = Path('/home/aleksandarlukovic/MuseumInfoSystem/data/cif_files/cod')
+# Local CIF file storage (production: set CIF_STORAGE_DIR in .env, e.g.
+# /data/mis/cif_files — no dev home paths in code)
+CIF_STORAGE_DIR = Path(os.environ.get('CIF_STORAGE_DIR', './data/cif_files'))
+COD_CIF_DIR = CIF_STORAGE_DIR / 'cod'
 
 
 class CrystalStructureSearch:

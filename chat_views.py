@@ -178,11 +178,22 @@ def api_chat_status():
 
 
 def api_chat_file(filename):
-    """Serve a chat attachment."""
-    from chat_room import CHAT_FILES_DIR
+    """Serve a chat attachment — samo učesnicima razgovora.
+
+    UUID ime fajla nije tajna (prosledi se, procuri kroz logove/istoriju),
+    pa preuzimanje zahteva da je fajl prikačen poruci i da je tražilac
+    učesnik tog kanala (krug 4, stavka 7)."""
+    from chat_room import CHAT_FILES_DIR, get_attachment_channel, user_in_channel
 
     if not re.match(r'^[a-f0-9]{32}\.\w{1,5}$', filename):
         return jsonify({'success': False, 'message': 'Невалидан фајл.'}), 404
+
+    channel = get_attachment_channel(filename)
+    if channel is None:
+        return jsonify({'success': False, 'message': 'Фајл није пронађен.'}), 404
+    if not user_in_channel(session['user_id'], channel):
+        return jsonify({'success': False,
+                        'message': 'Немате приступ овом разговору.'}), 403
 
     file_path = CHAT_FILES_DIR / filename
     if not file_path.is_file():

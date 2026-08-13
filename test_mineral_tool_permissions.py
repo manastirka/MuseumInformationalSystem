@@ -11,7 +11,10 @@ class MineralToolPermissionTests(unittest.TestCase):
         self.vehicle_routes = Path('blueprints/vehicles.py').read_text(encoding='utf-8')
 
     def test_mineral_collection_type_maps_to_mineral_module(self):
-        self.assertIn("'mineral': 'mineral_database'", self.collections_routes)
+        # The mapping moved from blueprints/collections.py into the central
+        # registry; assert the runtime mapping instead of grepping source.
+        from collection_registry import COLLECTION_TYPE_MODULE_MAP
+        self.assertEqual(COLLECTION_TYPE_MODULE_MAP.get('mineral'), 'mineral_database')
 
     def test_mineral_tools_are_available_to_mineral_module_users(self):
         self.assertIn("@collections_bp.route('/admin/inventory_book')\n@module_access_required('mineral_database')", self.collections_routes)

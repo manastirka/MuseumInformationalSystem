@@ -80,6 +80,7 @@ class PostgresAuthSystem:
                             u.theme_density,
                             u.theme_palette,
                             u.active_custom_theme_id,
+                            u.auth_version,
                             r.name as role,
                             COALESCE(d.name, ep.department) as department
                         FROM users u
@@ -140,7 +141,8 @@ class PostgresAuthSystem:
                         'theme_style': user['theme_style'],
                         'theme_density': user['theme_density'],
                         'theme_palette': user['theme_palette'],
-                        'active_custom_theme_id': user.get('active_custom_theme_id')
+                        'active_custom_theme_id': user.get('active_custom_theme_id'),
+                        'auth_version': user.get('auth_version') or 1,
                     }
 
         except Exception as e:
@@ -238,6 +240,7 @@ class PostgresAuthSystem:
                         SET password_hash = %s,
                             salt = %s,
                             is_first_login = FALSE,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                     """, (password_hash, salt, datetime.now(), email))

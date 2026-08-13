@@ -81,6 +81,56 @@ def enqueue_job(cursor, fotografija_id: int, tip: str) -> None:
     )
 
 
+def reconcile_intake_pending(min_age_minutes: int = 30) -> dict:
+    """Idempotentno uparivanje namera intake-a sa stvarnim stanjem (stavka 5).
+
+    Za svaku nameru (fototeka_intake_pending) stariju od praga:
+      * red fotografije postoji  -> finalizacija je ispala, briše se samo namera;
+      * reda nema, RAW postoji   -> siroče propalog commit-a: briše se RAW i namera;
+      * reda nema, RAW ne postoji-> briše se namera (fajl nikad nije postavljen
+        ili ga je cleanup već uklonio).
+    Sme da se pušta koliko god puta (worker je zove periodično)."""
+    stats = {'finalized': 0, 'orphan_removed': 0, 'stale_cleared': 0}
+    arhiva = get_arhiva_path()
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, raw_putanja FROM fototeka_intake_pending
+                WHERE created_at < now() - make_interval(mins => %s)
+                ORDER BY id
+                FOR UPDATE SKIP LOCKED
+                """,
+                (min_age_minutes,),
+            )
+            pending = cur.fetchall()
+            for row in pending:
+                pending_id = row['id'] if isinstance(row, dict) else row[0]
+                raw_rel = row['raw_putanja'] if isinstance(row, dict) else row[1]
+                cur.execute('SELECT 1 FROM fotografije WHERE raw_putanja = %s',
+                            (raw_rel,))
+                if cur.fetchone():
+                    stats['finalized'] += 1
+                else:
+                    raw_full = arhiva / raw_rel
+                    if raw_full.exists():
+                        try:
+                            raw_full.unlink()
+                            stats['orphan_removed'] += 1
+                            logger.warning(
+                                "Intake reconcile: uklonjeno RAW siroče %s", raw_rel)
+                        except OSError:
+                            logger.exception(
+                                "Intake reconcile: RAW siroče %s nije uklonjeno — "
+                                "namera ostaje za sledeći prolaz", raw_rel)
+                            continue
+                    else:
+                        stats['stale_cleared'] += 1
+                cur.execute('DELETE FROM fototeka_intake_pending WHERE id = %s',
+                            (pending_id,))
+    return stats
+
+
 def reclaim_stale_jobs() -> int:
     """Return jobs stuck in 'radi' (worker died mid-job) to the queue.
 

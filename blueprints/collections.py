@@ -3,6 +3,7 @@
 from flask import Blueprint, current_app, flash, redirect, session, url_for
 
 import collection_management_views
+import museum_content_views
 import museum_overview_views
 from collection_registry import (
     COLLECTION_LIST_ENTRIES,
@@ -32,6 +33,29 @@ def _ensure_collection_type_access(collection_type):
     return None
 
 
+def _load_collection_database_for_list(museum_app, entry):
+    """Resolve the collection payload for a list view.
+
+    Bilja and Sanja are read from PostgreSQL PER REQUEST — the process-global
+    caches are refreshed only in the worker that performed a write, so another
+    gunicorn worker would keep serving stale rows. A read failure surfaces as
+    'collection unavailable' (503) instead of a fake empty collection."""
+    import bilja_collections_db
+    from collection_bootstrap_support import CollectionUnavailableError
+
+    if entry.collection_type in bilja_collections_db.COLLECTIONS:
+        try:
+            return bilja_collections_db.load_collection(entry.collection_type)
+        except Exception as exc:
+            raise CollectionUnavailableError(entry.collection_type) from exc
+    if entry.collection_type == 'sanja_paleogene_neogene_mammals':
+        try:
+            return collection_management_views._load_sanja_database_payload()
+        except Exception as exc:
+            raise CollectionUnavailableError(entry.collection_type) from exc
+    return getattr(museum_app, entry.database_attr)
+
+
 def _render_collection_list(entry):
     """Render a registered collection list view."""
     import app as museum_app
@@ -43,7 +67,7 @@ def _render_collection_list(entry):
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
-    database = getattr(museum_app, entry.database_attr)
+    database = _load_collection_database_for_list(museum_app, entry)
     records = database['specimens']
     if entry.strip_source_file:
         records = [
@@ -226,8 +250,8 @@ def museum_databases():
         scientific_papers_database=museum_app.scientific_papers_database,
         collection_databases=build_collection_database_map(museum_app),
         conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
-        visitor_records=museum_app.VISITOR_RECORDS,
-        research_projects=museum_app.RESEARCH_PROJECTS,
+        visitor_records=museum_content_views.load_visitor_records(),
+        research_projects=museum_content_views.load_research_projects(),
         get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         user_has_module_access=museum_app.user_has_module_access,
     )

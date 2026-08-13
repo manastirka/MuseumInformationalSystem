@@ -35,8 +35,16 @@ def get_db_connection():
 # 0. SANJA PALEOGENE/NEOGENE MAMMAL COLLECTION
 # ============================================================================
 
+class SanjaStaleWriteError(RuntimeError):
+    """The edit was based on an outdated version of the record."""
+
+
 def sanja_table_exists():
-    """Return True when the sanja_paleogene_neogene_mammals table is present."""
+    """Return True when the sanja_paleogene_neogene_mammals table is present.
+
+    A probe failure RAISES instead of reporting "no table": treating a
+    transient DB outage as "nema PostgreSQL konfiguracije" used to silently
+    reroute reads/writes to the stale JSON fallback."""
     conn = None
     try:
         conn = get_db_connection()
@@ -45,9 +53,6 @@ def sanja_table_exists():
         exists = cur.fetchone()[0] is not None
         cur.close()
         return exists
-    except Exception as e:
-        logger.warning(f"Sanja table existence check failed: {e}")
-        return False
     finally:
         if conn is not None:
             conn.close()
@@ -80,11 +85,134 @@ def get_sanja_specimens():
             conn.close()
 
 
+def get_sanja_specimen(specimen_id):
+    """Return one specimen dict (with an 'updated_at' version stamp) or None."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, source_row, specimen, updated_at "
+            "FROM sanja_paleogene_neogene_mammals WHERE id = %s",
+            (int(specimen_id),),
+        )
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            return None
+        spec = dict(row[2]) if row[2] else {}
+        spec['id'] = row[0]
+        if row[1] is not None:
+            spec['source_row'] = row[1]
+        spec['updated_at'] = row[3].isoformat()
+        return spec
+    except Exception as e:
+        logger.error(f"Error loading Sanja specimen {specimen_id}: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def insert_sanja_specimen(spec):
+    """Insert ONE new specimen row in its own transaction; return the new id.
+
+    The table has no sequence (ids mirror the legacy JSON), so id/source_row
+    are assigned under a table lock — concurrent adds cannot collide."""
+    import json as _json
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "LOCK TABLE sanja_paleogene_neogene_mammals IN SHARE ROW EXCLUSIVE MODE"
+        )
+        cur.execute(
+            "SELECT COALESCE(MAX(id), 0) + 1, COALESCE(MAX(source_row), 1) + 1 "
+            "FROM sanja_paleogene_neogene_mammals"
+        )
+        new_id, new_source_row = cur.fetchone()
+        record = dict(spec)
+        record['id'] = new_id
+        record['source_row'] = new_source_row
+        cur.execute(
+            """
+            INSERT INTO sanja_paleogene_neogene_mammals (id, source_row, specimen, updated_at)
+            VALUES (%s, %s, %s::jsonb, now())
+            """,
+            (new_id, new_source_row, _json.dumps(record, ensure_ascii=False)),
+        )
+        conn.commit()
+        cur.close()
+        return new_id
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        logger.error(f"Error inserting Sanja specimen: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def update_sanja_specimen(specimen_id, spec, expected_version):
+    """Update ONE specimen row; refuse a stale write. Returns False when the
+    row no longer exists.
+
+    expected_version is the 'updated_at' stamp the edit form was rendered
+    with (get_sanja_specimen); a mismatch means somebody saved in the
+    meantime and raises SanjaStaleWriteError instead of overwriting."""
+    import json as _json
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT source_row, updated_at FROM sanja_paleogene_neogene_mammals "
+            "WHERE id = %s FOR UPDATE",
+            (int(specimen_id),),
+        )
+        row = cur.fetchone()
+        if row is None:
+            conn.rollback()
+            return False
+        if (expected_version or '') != row[1].isoformat():
+            conn.rollback()
+            raise SanjaStaleWriteError(
+                f"Sanja specimen {specimen_id} changed since the form was loaded"
+            )
+        record = dict(spec)
+        record['id'] = int(specimen_id)
+        if row[0] is not None:
+            record['source_row'] = row[0]
+        cur.execute(
+            """
+            UPDATE sanja_paleogene_neogene_mammals
+               SET specimen = %s::jsonb, updated_at = now()
+             WHERE id = %s
+            """,
+            (_json.dumps(record, ensure_ascii=False), int(specimen_id)),
+        )
+        conn.commit()
+        cur.close()
+        return True
+    except SanjaStaleWriteError:
+        raise
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        logger.error(f"Error updating Sanja specimen {specimen_id}: {e}")
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def replace_sanja_specimens(specimens):
     """Upsert every specimen and delete any no longer present, in one transaction.
 
-    Mirrors the existing whole-payload save model: the caller passes the full
-    specimen list, and this makes the table match it atomically.
+    EXPLICIT IMPORT ONLY (scripts/migrate_sanja_to_postgres.py): the UI works
+    row-level (insert/update_sanja_specimen) and must never delete-all-not-in-list.
     """
     import json as _json
     conn = None
@@ -137,7 +265,11 @@ def replace_sanja_specimens(specimens):
 # ============================================================================
 
 def digitized_profiles_table_exists():
-    """Return True when the digitized_profiles table is present."""
+    """Return True when the digitized_profiles table is present.
+
+    A probe failure RAISES instead of reporting "no table": treating a
+    transient DB outage as "nema PostgreSQL konfiguracije" used to silently
+    reroute reads/writes to the stale JSON fallback (krug 4, stavka 5)."""
     conn = None
     try:
         conn = get_db_connection()
@@ -146,9 +278,6 @@ def digitized_profiles_table_exists():
         exists = cur.fetchone()[0] is not None
         cur.close()
         return exists
-    except Exception as e:
-        logger.warning(f"digitized_profiles table existence check failed: {e}")
-        return False
     finally:
         if conn is not None:
             conn.close()

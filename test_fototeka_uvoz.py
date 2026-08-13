@@ -65,12 +65,16 @@ class _FakeConnection:
     def __init__(self, cursor):
         self._cursor = cursor
         self.commits = 0
+        self.rollbacks = 0
 
     def cursor(self):
         return self._cursor
 
     def commit(self):
         self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
 
     def __enter__(self):
         return self
@@ -178,6 +182,7 @@ class RunBatchImportTests(unittest.TestCase):
             fototeka_views, 'get_postgres_connection', lambda: conn)
         patcher.start()
         self.addCleanup(patcher.stop)
+        self.conn = conn
         return cur
 
     def test_dry_run_writes_nothing(self):
@@ -340,6 +345,39 @@ class RunBatchImportTests(unittest.TestCase):
         teren_insert = [p for sql, p in cur.executed
                         if 'INSERT INTO fototeka_tereni' in sql][0]
         self.assertEqual(teren_insert[2], 'sjovanovic@nhmbeo.rs')
+
+    def test_greska_u_intakeu_radi_rollback_i_prekida_uvoz(self):
+        """Regresija (revizija 2026-08, stavka 3): izuzetak iz intake-a se
+        gutao unutar otvorene transakcije, pa je izlaz iz `with conn` bloka
+        COMMIT-ovao polu-upis dok je RAW već bio obrisan — sledeći run bi
+        original proglasio duplikatom i sklonio ga. Greška mora da uradi
+        rollback i stigne do pozivaoca; original ostaje u ulazu."""
+        _write_jpeg(self.kustos / 'M-77_2026-07-02_01.jpg')
+        cur = self._patch_db({
+            'SPLIT_PART': [{'email': 'sjovanovic@nhmbeo.rs'}],
+            'WHERE sha256': [],
+            'FROM minerals': [('77',)],
+        })
+
+        def fake_intake(cur, temp_path, original_ime, file_size, ext, **kw):
+            cur.execute('INSERT INTO fotografije (original_ime) VALUES (%s)',
+                        (original_ime,))
+            raise RuntimeError('пукла веза ка бази усред уписа')
+
+        patcher = patch.object(fototeka_views, '_intake_photo_from_path', fake_intake)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        with self.assertRaises(RuntimeError):
+            fototeka_views.run_batch_import(dry_run=False)
+
+        self.assertGreaterEqual(self.conn.rollbacks, 1)
+        # original nije nigde premešten — čeka ispravan ponovni uvoz
+        self.assertTrue((self.kustos / 'M-77_2026-07-02_01.jpg').exists())
+        # prekinut uvoz ne sme da upiše run log
+        run_inserts = [sql for sql, _ in cur.executed
+                       if sql.startswith('INSERT INTO fototeka_uvoz_run')]
+        self.assertEqual(run_inserts, [])
 
     def test_name_collision_in_target_gets_suffix(self):
         odrediste = self.kustos / 'obradjeno' / 'duplikati'

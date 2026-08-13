@@ -197,18 +197,18 @@ def _build_sanja_statistics(records):
 
 
 def _sanja_pg():
-    """Return the phase3a_databases module when PostgreSQL is configured AND the
-    Sanja table exists, else None (so the JSON fallback is used). phase3a_databases
-    raises at import without DATABASE_URL, so the import is guarded."""
+    """Return the phase3a_databases module when PostgreSQL is the Sanja backend.
+
+    None only for the two CLEAN pre-migration states: DATABASE_URL unset, or
+    the table legitimately absent. A runtime failure of the probe RAISES —
+    with PostgreSQL configured, silently falling back to the JSON file could
+    serve stale data and later overwrite newer rows."""
     if not os.environ.get('DATABASE_URL'):
         return None
-    try:
-        import phase3a_databases
-        if phase3a_databases.sanja_table_exists():
-            return phase3a_databases
-    except Exception as exc:
-        logger.warning("Sanja PostgreSQL backend unavailable, using JSON: %s", exc)
-    return None
+    import phase3a_databases
+    if not phase3a_databases.sanja_table_exists():
+        return None
+    return phase3a_databases
 
 
 def _sanja_empty_payload():
@@ -222,17 +222,8 @@ def _sanja_empty_payload():
     }
 
 
-def _load_sanja_database_payload():
-    # Postgres-preferred: the table is the source of truth once it exists.
-    pg = _sanja_pg()
-    if pg is not None:
-        specimens = pg.get_sanja_specimens()
-        payload = _sanja_empty_payload()
-        payload['specimens'] = specimens
-        payload['statistics'] = _build_sanja_statistics(specimens)
-        return payload
-
-    # JSON fallback (development / pre-migration).
+def _load_sanja_json_payload():
+    """Load the JSON store (development / pre-migration backend only)."""
     try:
         return json.loads(_SANJA_DATABASE_PATH.read_text(encoding='utf-8'))
     except FileNotFoundError:
@@ -245,26 +236,50 @@ def _load_sanja_database_payload():
         raise
 
 
+def _save_sanja_json_payload(payload):
+    """Write the JSON store (development / pre-migration backend only)."""
+    payload['statistics'] = _build_sanja_statistics(payload.get('specimens', []))
+    payload.setdefault('metadata', {})['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    from runtime_lock_utils import write_json_file
+    # Write atomically (temp file + fsync + os.replace under an exclusive lock)
+    # so a crash, full disk, or concurrent writer can never truncate the live
+    # database into a corrupt/partial file.
+    write_json_file(_SANJA_DATABASE_PATH, payload, indent=2)
+    _set_sanja_app_cache(payload)
+
+
+def _set_sanja_app_cache(payload):
+    try:
+        import app as museum_app
+        museum_app.SANJA_PALEOGENE_NEOGENE_MAMMALS_DATABASE = payload
+    except Exception as exc:
+        logger.warning("Could not refresh Sanja database cache after save: %s", exc)
+
+
+def _load_sanja_database_payload():
+    # Postgres-preferred: the table is the source of truth once it exists.
+    pg = _sanja_pg()
+    if pg is not None:
+        specimens = pg.get_sanja_specimens()
+        payload = _sanja_empty_payload()
+        payload['specimens'] = specimens
+        payload['statistics'] = _build_sanja_statistics(specimens)
+        return payload
+    return _load_sanja_json_payload()
+
+
 def _save_sanja_database_payload(payload):
     payload['statistics'] = _build_sanja_statistics(payload.get('specimens', []))
     payload.setdefault('metadata', {})['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     pg = _sanja_pg()
     if pg is not None:
-        # Atomic upsert+prune inside one transaction; PostgreSQL is the store.
+        # Atomic upsert+prune inside one transaction. EXPLICIT IMPORT ONLY —
+        # the UI form handlers work row-level and never call this.
         pg.replace_sanja_specimens(payload.get('specimens', []))
+        _set_sanja_app_cache(payload)
     else:
-        from runtime_lock_utils import write_json_file
-        # Write atomically (temp file + fsync + os.replace under an exclusive lock)
-        # so a crash, full disk, or concurrent writer can never truncate the live
-        # database into a corrupt/partial file.
-        write_json_file(_SANJA_DATABASE_PATH, payload, indent=2)
-
-    try:
-        import app as museum_app
-        museum_app.SANJA_PALEOGENE_NEOGENE_MAMMALS_DATABASE = payload
-    except Exception as exc:
-        logger.warning("Could not refresh Sanja database cache after save: %s", exc)
+        _save_sanja_json_payload(payload)
 
 
 def _find_sanja_record(records, record_id):
@@ -283,19 +298,110 @@ def _apply_sanja_form_data(item_data):
     return item_data
 
 
+def _sanja_unavailable_redirect(collection_info):
+    flash(
+        'База крупних сисара палеогена и неогена тренутно није доступна, па '
+        'измена није сачувана. Обратите се администратору.',
+        'danger',
+    )
+    return redirect(url_for(collection_info['route']))
+
+
+def _render_sanja_form(collection_info, item_data, is_edit):
+    return render_template(
+        'admin_add_sanja_paleogene_neogene_mammal.html',
+        collection_type='sanja_paleogene_neogene_mammals',
+        collection_name=collection_info['name'],
+        collection_route=collection_info['route'],
+        item=item_data or {},
+        is_edit=is_edit,
+    )
+
+
 def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None):
+    # The backend is chosen ONCE per request: load and save must never pick
+    # independently (a probe flapping between them used to let a stale JSON
+    # read overwrite newer PostgreSQL rows).
+    try:
+        pg = _sanja_pg()
+    except Exception:
+        logger.exception('Sanja PostgreSQL backend probe failed')
+        return _sanja_unavailable_redirect(collection_info)
+    if pg is not None:
+        return _handle_sanja_form_pg(pg, collection_info, record_id)
+    return _handle_sanja_form_json(collection_info, record_id)
+
+
+def _handle_sanja_form_pg(pg, collection_info, record_id):
+    """Row-level CRUD against PostgreSQL: single-row insert/update in one
+    transaction, with an updated_at version check refusing stale writes."""
+    is_edit = record_id is not None
+    item_data = None
+    if is_edit:
+        try:
+            rid = int(record_id)
+        except (TypeError, ValueError):
+            rid = None
+        try:
+            item_data = pg.get_sanja_specimen(rid) if rid is not None else None
+        except Exception:
+            logger.exception('Sanja PostgreSQL read failed')
+            return _sanja_unavailable_redirect(collection_info)
+        if item_data is None:
+            flash('Примерак није пронађен.', 'danger')
+            return redirect(url_for(collection_info['route']))
+
+    if request.method == 'POST':
+        try:
+            if is_edit:
+                expected_version = request.form.get('_version', '')
+                spec = dict(item_data)
+                spec.pop('updated_at', None)
+                _apply_sanja_form_data(spec)
+                try:
+                    updated = pg.update_sanja_specimen(rid, spec, expected_version)
+                except pg.SanjaStaleWriteError:
+                    flash(
+                        'Примерак је у међувремену измењен из друге сесије — '
+                        'ова измена НИЈЕ сачувана. Отворите примерак поново и '
+                        'поновите унос.',
+                        'danger',
+                    )
+                    return redirect(url_for(collection_info['route']))
+                if not updated:
+                    flash('Примерак није пронађен.', 'danger')
+                    return redirect(url_for(collection_info['route']))
+                flash('Примерак је успешно ажуриран.', 'success')
+            else:
+                spec = {'collection_group': _SANJA_COLLECTION_GROUP}
+                _apply_sanja_form_data(spec)
+                pg.insert_sanja_specimen(spec)
+                flash('Предмет је успешно додат у базу крупних сисара палеогена и неогена!', 'success')
+        except Exception:
+            logger.exception('Sanja PostgreSQL write failed')
+            return _sanja_unavailable_redirect(collection_info)
+        _refresh_sanja_app_cache()
+        return redirect(url_for(collection_info['route']))
+
+    return _render_sanja_form(collection_info, item_data, is_edit)
+
+
+def _refresh_sanja_app_cache():
+    try:
+        _set_sanja_app_cache(_load_sanja_database_payload())
+    except Exception as exc:
+        logger.warning("Could not refresh Sanja database cache after save: %s", exc)
+
+
+def _handle_sanja_form_json(collection_info, record_id):
+    """Whole-payload JSON flow — development / pre-migration backend only."""
     is_edit = record_id is not None
     try:
-        payload = _load_sanja_database_payload()
+        payload = _load_sanja_json_payload()
     except (OSError, json.JSONDecodeError):
         # Refuse to proceed on a failed/corrupt read: saving on top of an empty
         # fallback would silently wipe every existing record.
-        flash(
-            'База крупних сисара палеогена и неогена тренутно није доступна, па '
-            'измена није сачувана. Обратите се администратору.',
-            'danger',
-        )
-        return redirect(url_for(collection_info['route']))
+        return _sanja_unavailable_redirect(collection_info)
     records = payload.setdefault('specimens', [])
     item_data = _find_sanja_record(records, record_id) if is_edit else None
 
@@ -315,7 +421,7 @@ def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None)
             records.append(item_data)
 
         _apply_sanja_form_data(item_data)
-        _save_sanja_database_payload(payload)
+        _save_sanja_json_payload(payload)
 
         flash_message = (
             'Примерак је успешно ажуриран.'
@@ -325,14 +431,7 @@ def _handle_sanja_paleogene_neogene_mammal_form(collection_info, record_id=None)
         flash(flash_message, 'success')
         return redirect(url_for(collection_info['route']))
 
-    return render_template(
-        'admin_add_sanja_paleogene_neogene_mammal.html',
-        collection_type='sanja_paleogene_neogene_mammals',
-        collection_name=collection_info['name'],
-        collection_route=collection_info['route'],
-        item=item_data or {},
-        is_edit=is_edit,
-    )
+    return _render_sanja_form(collection_info, item_data, is_edit)
 
 
 def _handle_add_sanja_paleogene_neogene_mammal_item(collection_info):
@@ -365,7 +464,9 @@ def _handle_bilja_collection_form(collection_key, collection_info, record_id=Non
     if request.method == 'POST':
         action = (request.form.get('_action') or '').strip()
         if is_edit and action == 'delete':
-            bilja_db.delete_specimen(collection_key, int(record_id))
+            if not bilja_db.delete_specimen(collection_key, int(record_id)):
+                flash('Примерак није пронађен — брисање није извршено.', 'danger')
+                return redirect(url_for(collection_info['route']))
             audit_support.record_audit(
                 action=audit_support.ACTION_DELETE,
                 entity_type=f'bilja:{collection_key}',
@@ -380,8 +481,10 @@ def _handle_bilja_collection_form(collection_key, collection_info, record_id=Non
                 (tuple(cfg['int_fields']) + tuple(cfg['text_fields']))}
 
         if is_edit:
-            bilja_db.update_specimen(collection_key, int(record_id), form)
-            flash('Примерак је успешно ажуриран.', 'success')
+            if bilja_db.update_specimen(collection_key, int(record_id), form):
+                flash('Примерак је успешно ажуриран.', 'success')
+            else:
+                flash('Примерак није пронађен — измена није сачувана.', 'danger')
         else:
             bilja_db.add_specimen(collection_key, form)
             flash(f'Примерак је додат у збирку: {collection_info["name"]}.', 'success')

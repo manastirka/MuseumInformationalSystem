@@ -12,6 +12,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 os.environ.setdefault('FLASK_ENV', 'testing')
@@ -292,7 +293,98 @@ class _ClientTestCase(unittest.TestCase):
         return cursor
 
 
+def _plain_db_url():
+    return os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg://', 'postgresql://')
+
+
 class DocumentUploadTests(_ClientTestCase):
+    """Стварни PostgreSQL: dedup (sha256) i redosled verzija (MAX+1) su tačno
+    tok gde fake kursor sa unapred upisanim odgovorom ne dokazuje ono što je
+    stvarno upisano posle commit-a."""
+
+    UPLOAD_EMAIL = 'upload.tok.revizija@example.invalid'
+    UPLOAD_EMAIL_2 = 'upload.tok.revizija.drugi@example.invalid'
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import psycopg
+        except ImportError:
+            raise unittest.SkipTest('psycopg nije instaliran')
+        cls.psycopg = psycopg
+        try:
+            with psycopg.connect(_plain_db_url(), connect_timeout=3) as conn:
+                conn.execute('SELECT 1')
+        except Exception:
+            raise unittest.SkipTest('test baza nije dostupna')
+        with psycopg.connect(_plain_db_url()) as conn:
+            sql = (Path(__file__).parent / 'migration' / '022_document_library.sql'
+                   ).read_text(encoding='utf-8')
+            conn.execute(sql)
+
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(self._ocisti_bazu)
+        self._ocisti_bazu()
+
+    def _ocisti_bazu(self):
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            conn.execute(
+                'DELETE FROM documents WHERE created_by_email IN (%s, %s)',
+                (self.UPLOAD_EMAIL, self.UPLOAD_EMAIL_2))
+            conn.commit()
+
+    def _login_kao(self, email, department=GEOLOGY):
+        self.login({
+            'user_id': 10, 'user_email': email, 'user_name': 'Тест Радник',
+            'user_role': 'employee', 'is_admin': False,
+            'user_department': department, 'is_department_head': False,
+        })
+
+    def _dokument(self, **overrides):
+        row = {
+            'title': 'Постојећи документ', 'description': None,
+            'category': 'obrasci_zahtevi', 'department': GEOLOGY,
+            'created_by_email': self.UPLOAD_EMAIL,
+        }
+        row.update(overrides)
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO documents (title, description, category, department, created_by_email)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id
+                """,
+                (row['title'], row['description'], row['category'],
+                 row['department'], row['created_by_email']))
+            document_id = cur.fetchone()[0]
+            conn.commit()
+        return document_id
+
+    def _verzija(self, document_id, **overrides):
+        row = {
+            'version_no': 1,
+            'file_path': f'obrasci_zahtevi/{document_id}/v01_seed.pdf',
+            'original_filename': 'seed.pdf', 'mime_type': 'application/pdf',
+            'file_size': 10, 'sha256': 'a' * 64, 'status': 'nacrt',
+            'uploaded_by_email': self.UPLOAD_EMAIL,
+        }
+        row.update(overrides)
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            conn.execute(
+                """
+                INSERT INTO document_versions
+                    (document_id, version_no, file_path, original_filename,
+                     mime_type, file_size, sha256, uploaded_by_email)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (document_id, row['version_no'], row['file_path'],
+                 row['original_filename'], row['mime_type'], row['file_size'],
+                 row['sha256'], row['uploaded_by_email']))
+            conn.commit()
+
+    def _redirect_document_id(self, response):
+        location = response.headers['Location']
+        return int(location.rstrip('/').rsplit('/', 1)[-1])
 
     def test_upload_requires_login(self):
         response = self.post('/dokumenti/upload', data={})
@@ -300,11 +392,7 @@ class DocumentUploadTests(_ClientTestCase):
         self.assertIn('/login', response.headers['Location'])
 
     def test_upload_new_document_stores_file_and_metadata(self):
-        cursor = self.use_db({
-            'INSERT INTO documents': {'id': 42},
-            'INSERT INTO document_versions': {'id': 100},
-        })
-        self.login(EMPLOYEE)
+        self._login_kao(self.UPLOAD_EMAIL)
         payload = 'Садржај обрасца'.encode('utf-8')
         response = self.post(
             '/dokumenti/upload',
@@ -317,41 +405,42 @@ class DocumentUploadTests(_ClientTestCase):
             content_type='multipart/form-data',
         )
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/dokumenti/42', response.headers['Location'])
+        document_id = self._redirect_document_id(response)
+        self.assertIn(f'/dokumenti/{document_id}', response.headers['Location'])
 
-        doc_insert = next(
-            params for sql, params in cursor.executed if 'INSERT INTO documents' in sql
-        )
-        self.assertEqual(doc_insert[0], 'Молба за годишњи одмор')
-        self.assertEqual(doc_insert[2], 'obrasci_zahtevi')
-        self.assertEqual(doc_insert[3], GEOLOGY)
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            conn.row_factory = self.psycopg.rows.dict_row
+            doc = conn.execute(
+                'SELECT title, category, department, created_by_email '
+                'FROM documents WHERE id = %s', (document_id,)).fetchone()
+            self.assertEqual(doc['title'], 'Молба за годишњи одмор')
+            self.assertEqual(doc['category'], 'obrasci_zahtevi')
+            self.assertEqual(doc['department'], GEOLOGY)
 
-        version_insert = next(
-            params for sql, params in cursor.executed
-            if 'INSERT INTO document_versions' in sql
-        )
-        document_id, version_no, relative_path = version_insert[0], version_insert[1], version_insert[2]
-        self.assertEqual(document_id, 42)
-        self.assertEqual(version_no, 1)
-        self.assertTrue(relative_path.startswith('obrasci_zahtevi/42/v01_'))
-        self.assertTrue(relative_path.endswith('.pdf'))
-        self.assertEqual(version_insert[3], 'Молба за годишњи одмор.pdf')
+            version = conn.execute(
+                'SELECT document_id, version_no, file_path, original_filename, sha256 '
+                'FROM document_versions WHERE document_id = %s', (document_id,)).fetchone()
+            self.assertEqual(version['version_no'], 1)
+            self.assertTrue(version['file_path'].startswith(f'obrasci_zahtevi/{document_id}/v01_'))
+            self.assertTrue(version['file_path'].endswith('.pdf'))
+            self.assertEqual(version['original_filename'], 'Молба за годишњи одмор.pdf')
 
-        import hashlib
-        self.assertEqual(version_insert[6], hashlib.sha256(payload).hexdigest())
+            import hashlib
+            self.assertEqual(version['sha256'], hashlib.sha256(payload).hexdigest())
 
-        stored = os.path.join(self.storage_dir, relative_path)
+            audit_count = conn.execute(
+                'SELECT count(*) AS n FROM document_audit_log WHERE document_id = %s',
+                (document_id,)).fetchone()['n']
+            self.assertEqual(audit_count, 1)
+
+        stored = os.path.join(self.storage_dir, version['file_path'])
         self.assertTrue(os.path.isfile(stored))
         with open(stored, 'rb') as handle:
             self.assertEqual(handle.read(), payload)
         self.assertFalse(os.listdir(os.path.join(self.storage_dir, 'temp')))
 
-        audit = [sql for sql, _ in cursor.executed if 'INSERT INTO document_audit_log' in sql]
-        self.assertEqual(len(audit), 1)
-
     def test_upload_rejects_forbidden_extension(self):
-        cursor = self.use_db({})
-        self.login(EMPLOYEE)
+        self._login_kao(self.UPLOAD_EMAIL)
         response = self.post(
             '/dokumenti/upload',
             data={
@@ -361,11 +450,14 @@ class DocumentUploadTests(_ClientTestCase):
             content_type='multipart/form-data',
         )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(cursor.executed, [])
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            count = conn.execute(
+                'SELECT count(*) FROM documents WHERE created_by_email = %s',
+                (self.UPLOAD_EMAIL,)).fetchone()[0]
+        self.assertEqual(count, 0)
 
     def test_upload_rejects_oversized_file(self):
-        cursor = self.use_db({})
-        self.login(EMPLOYEE)
+        self._login_kao(self.UPLOAD_EMAIL)
         with patch.object(document_library_views, 'MAX_DOCUMENT_SIZE', 10):
             response = self.post(
                 '/dokumenti/upload',
@@ -376,50 +468,53 @@ class DocumentUploadTests(_ClientTestCase):
                 content_type='multipart/form-data',
             )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(cursor.executed, [])
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            count = conn.execute(
+                'SELECT count(*) FROM documents WHERE created_by_email = %s',
+                (self.UPLOAD_EMAIL,)).fetchone()[0]
+        self.assertEqual(count, 0)
 
     def test_upload_duplicate_version_rejected(self):
         payload = b'same content'
-        cursor = self.use_db({
-            'FROM documents WHERE id = %s': _doc(),
-            'AND sha256 = %s': {'exists': 1},
-        })
-        self.login(EMPLOYEE)
+        import hashlib
+        document_id = self._dokument()
+        self._verzija(document_id, sha256=hashlib.sha256(payload).hexdigest())
+        self._login_kao(self.UPLOAD_EMAIL)
         response = self.post(
             '/dokumenti/upload',
             data={
-                'document_id': '42',
+                'document_id': str(document_id),
                 'file': (io.BytesIO(payload), 'ponovo.pdf'),
             },
             content_type='multipart/form-data',
         )
         self.assertEqual(response.status_code, 302)
-        inserts = [sql for sql, _ in cursor.executed if 'INSERT INTO document_versions' in sql]
-        self.assertEqual(inserts, [])
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            count = conn.execute(
+                'SELECT count(*) FROM document_versions WHERE document_id = %s',
+                (document_id,)).fetchone()[0]
+        self.assertEqual(count, 1, 'duplikat sadržaja ne sme kreirati novu verziju')
 
     def test_upload_new_version_increments_number(self):
-        cursor = self.use_db({
-            'FROM documents WHERE id = %s': _doc(),
-            'AND sha256 = %s': None,
-            'MAX(version_no)': {'max_version': 3},
-            'INSERT INTO document_versions': {'id': 104},
-        })
-        self.login(OTHER_EMPLOYEE)
+        document_id = self._dokument()
+        self._verzija(document_id, version_no=3, sha256='b' * 64)
+        self._login_kao(self.UPLOAD_EMAIL_2)
         response = self.post(
             '/dokumenti/upload',
             data={
-                'document_id': '42',
+                'document_id': str(document_id),
                 'file': (io.BytesIO(b'nova verzija'), 'молба-в4.pdf'),
             },
             content_type='multipart/form-data',
         )
         self.assertEqual(response.status_code, 302)
-        version_insert = next(
-            params for sql, params in cursor.executed
-            if 'INSERT INTO document_versions' in sql
-        )
-        self.assertEqual(version_insert[1], 4)
-        self.assertTrue(version_insert[2].startswith('obrasci_zahtevi/42/v04_'))
+        with self.psycopg.connect(_plain_db_url()) as conn:
+            conn.row_factory = self.psycopg.rows.dict_row
+            version = conn.execute(
+                'SELECT version_no, file_path FROM document_versions '
+                'WHERE document_id = %s AND version_no = 4', (document_id,)).fetchone()
+        self.assertIsNotNone(version, 'nova verzija mora biti upisana kao broj 4')
+        self.assertTrue(version['file_path'].startswith(f'obrasci_zahtevi/{document_id}/v04_'))
 
 
 class DocumentWorkflowTests(_ClientTestCase):

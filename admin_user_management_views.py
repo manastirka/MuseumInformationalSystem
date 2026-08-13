@@ -154,24 +154,30 @@ def grant_module_access(*, load_module_access, save_module_access, module_access
     module_name = module['name']
     changed = False
 
+    success_message = None
     if module.get('default_access', False):
         restricted_users = module.get('restricted_users', [])
         if user_email in restricted_users:
             restricted_users.remove(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је враћен кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је враћен кориснику.'
         else:
             flash('Корисник већ има приступ овом модулу (подразумевани приступ).', 'info')
     else:
         if user_email not in module.get('authorized_users', []):
             module.setdefault('authorized_users', []).append(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је дат кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је дат кориснику.'
         else:
             flash('Корисник већ има приступ овом модулу.', 'info')
 
     if changed:
-        save_module_access()
+        if not save_module_access():
+            # Упис није успео — одбаци измену из меморије и НЕ пријављуј успех.
+            load_module_access(force=True)
+            flash('Чување измене није успело — приступ НИЈЕ додељен. Покушајте поново.', 'error')
+            return redirect(url_for('manage_user_access', selected_user=user_email))
+        flash(success_message, 'success')
         audit_support.record_audit(
             action=audit_support.ACTION_PERMISSION_GRANT,
             entity_type='module_access',
@@ -200,12 +206,13 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
     module_name = module['name']
     changed = False
 
+    success_message = None
     if module.get('default_access', False):
         module.setdefault('restricted_users', [])
         if user_email not in module['restricted_users']:
             module['restricted_users'].append(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је укинут кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је укинут кориснику.'
         else:
             flash('Корисник већ нема приступ овом модулу.', 'info')
     else:
@@ -213,12 +220,17 @@ def revoke_module_access(*, load_module_access, save_module_access, module_acces
         if user_email in authorized_users:
             authorized_users.remove(user_email)
             changed = True
-            flash(f'Приступ модулу "{module_name}" је укинут кориснику.', 'success')
+            success_message = f'Приступ модулу "{module_name}" је укинут кориснику.'
         else:
             flash('Корисник није имао приступ овом модулу.', 'info')
 
     if changed:
-        save_module_access()
+        if not save_module_access():
+            # Упис није успео — одбаци измену из меморије и НЕ пријављуј успех.
+            load_module_access(force=True)
+            flash('Чување измене није успело — приступ НИЈЕ укинут. Покушајте поново.', 'error')
+            return redirect(url_for('manage_user_access', selected_user=user_email))
+        flash(success_message, 'success')
         audit_support.record_audit(
             action=audit_support.ACTION_PERMISSION_REVOKE,
             entity_type='module_access',
@@ -543,6 +555,39 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
         return jsonify({'success': False, 'message': ', '.join(errors)}), 400
 
     try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                if user_id:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(r.name, 'employee')
+                        FROM users u
+                        LEFT JOIN roles r ON u.role_id = r.id
+                        WHERE u.id = %s
+                          AND LOWER(u.email) = LOWER(%s)
+                        """,
+                        (user_id, email),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(r.name, 'employee')
+                        FROM users u
+                        LEFT JOIN roles r ON u.role_id = r.id
+                        WHERE LOWER(u.email) = LOWER(%s)
+                        """,
+                        (email,),
+                    )
+                target_row = cur.fetchone()
+        if target_row is None:
+            return jsonify({'success': False, 'message': 'Изабрани корисник није пронађен.'}), 404
+        if target_row[0] == 'admin' and email.lower() != (session.get('user_email') or '').lower():
+            return jsonify({
+                'success': False,
+                'message': 'Не можете ресетовати лозинку другог администраторског налога — '
+                           'админ налог може да мења само његов власник.',
+            }), 403
+
         add_sentry_breadcrumb(
             category='password_manager',
             message='Admin password reset requested',
@@ -558,6 +603,7 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
                         SET password_hash = %s,
                             salt = %s,
                             is_first_login = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE id = %s
                           AND LOWER(email) = LOWER(%s)
@@ -571,6 +617,7 @@ def api_password_manager_reset(*, password_validator, password_hasher, log_secur
                         SET password_hash = %s,
                             salt = %s,
                             is_first_login = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                         """,
@@ -705,6 +752,7 @@ def api_password_manager_toggle_status(*, log_security_event):
                         """
                         UPDATE users
                         SET is_active = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE id = %s
                           AND LOWER(email) = LOWER(%s)
@@ -716,6 +764,7 @@ def api_password_manager_toggle_status(*, log_security_event):
                         """
                         UPDATE users
                         SET is_active = %s,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                         """,

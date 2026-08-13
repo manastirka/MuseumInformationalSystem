@@ -16,6 +16,156 @@ from mineral_database_pg import MineralDatabase
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
+SEED_TAG = 'pytest-seed-postgres-tests'
+
+
+def _database_name(url: str) -> str:
+    return url.rstrip('/').rsplit('/', 1)[-1].split('?')[0]
+
+
+def ensure_reference_data(engine, database_url):
+    """Обезбеди податке које ови тестови проверавају (образац из
+    test_revizija_codex.EmployeeEmailNotNull): ако подаци фале а повезана
+    база је *_test — убаци минималан сет и врати state за
+    cleanup_reference_data; ако база НИЈЕ *_test — SkipTest са разлогом
+    (жива база се не сеедује из тестова)."""
+    state = {
+        'bird_record_ids': [],
+        'bird_species_ids': [],
+        'mineral_ids': [],
+        'inventory_ids': [],
+    }
+    with engine.connect() as conn:
+        missing_birds = conn.execute(text("""
+            SELECT COUNT(*)
+            FROM bird_ringing_records br
+            JOIN bird_species bs ON bs.id = br.species_id
+            WHERE br.coordinates IS NOT NULL
+              AND strpos(bs.species_name, 'Parus') > 0
+              AND br.location IS NOT NULL
+              AND br.ringer IS NOT NULL
+              AND br.event_date IS NOT NULL
+        """)).scalar() == 0
+        missing_minerals = conn.execute(text(
+            "SELECT COUNT(*) FROM minerals WHERE inventory_number IS NOT NULL"
+        )).scalar() == 0
+        missing_inventory = conn.execute(text(
+            "SELECT COUNT(*) FROM inventory_entries WHERE inventory_number IS NOT NULL"
+        )).scalar() == 0
+
+    if not (missing_birds or missing_minerals or missing_inventory):
+        return state
+
+    db_name = _database_name(database_url)
+    if not db_name.endswith('_test'):
+        raise unittest.SkipTest(
+            f'referentni podaci fale (ptice={missing_birds}, '
+            f'minerali={missing_minerals}, inventar={missing_inventory}), '
+            f'a baza "{db_name}" nije *_test — ne seedujem živu bazu; '
+            'testovi zahtevaju postojeće podatke ili *_test bazu')
+
+    try:
+        _seed_reference_data(engine, state, missing_birds, missing_minerals,
+                             missing_inventory)
+    except BaseException:
+        cleanup_reference_data(engine, state)
+        raise
+    return state
+
+
+def _seed_reference_data(engine, state, missing_birds, missing_minerals,
+                         missing_inventory):
+    with engine.begin() as conn:
+        if missing_birds:
+            species_ids = []
+            for name in ('Parus major', 'Erithacus rubecula'):
+                row = conn.execute(text(
+                    'INSERT INTO bird_species (species_name) VALUES (:name) '
+                    'ON CONFLICT (species_name) DO NOTHING RETURNING id'
+                ), {'name': name}).fetchone()
+                if row is not None:
+                    state['bird_species_ids'].append(row[0])
+                    species_ids.append(row[0])
+                else:
+                    species_ids.append(conn.execute(text(
+                        'SELECT id FROM bird_species WHERE species_name = :name'
+                    ), {'name': name}).scalar())
+
+            record_specs = (
+                (species_ids[0], 'PY-SEED-0001', 'Велико ратно острво (seed)',
+                 20.4489, 44.8125, '2024-05-10'),
+                (species_ids[0], 'PY-SEED-0002', 'Велико ратно острво (seed)',
+                 20.4489, 44.8125, '2023-04-18'),
+                (species_ids[1], 'PY-SEED-0003', 'Обедска бара (seed)',
+                 None, None, '2024-06-02'),
+            )
+            for sid, ring, location, lon, lat, day in record_specs:
+                params = {'ring': ring, 'sid': sid, 'loc': location,
+                          'day': day, 'ringer': 'Тест Прстеновач (seed)',
+                          'notes': SEED_TAG}
+                if lon is None:
+                    row = conn.execute(text("""
+                        INSERT INTO bird_ringing_records
+                            (ring_number, species_id, location, event_date,
+                             ringer, notes)
+                        VALUES (:ring, :sid, :loc, :day, :ringer, :notes)
+                        RETURNING id
+                    """), params).fetchone()
+                else:
+                    row = conn.execute(text("""
+                        INSERT INTO bird_ringing_records
+                            (ring_number, species_id, location, coordinates,
+                             event_date, ringer, notes)
+                        VALUES (:ring, :sid, :loc,
+                                ST_GeogFromText(
+                                    'SRID=4326;POINT(' || :lon || ' ' || :lat || ')'),
+                                :day, :ringer, :notes)
+                        RETURNING id
+                    """), {**params, 'lon': lon, 'lat': lat}).fetchone()
+                state['bird_record_ids'].append(row[0])
+
+        if missing_minerals:
+            row = conn.execute(text("""
+                INSERT INTO minerals
+                    (inventory_number, item_name, card_locality, quantity,
+                     comments)
+                VALUES ('999901', 'Тест кварц (seed)',
+                        'Тест локалитет (seed)', 1, :tag)
+                ON CONFLICT (inventory_number) DO NOTHING RETURNING id
+            """), {'tag': SEED_TAG}).fetchone()
+            if row is not None:
+                state['mineral_ids'].append(row[0])
+
+        if missing_inventory:
+            row = conn.execute(text("""
+                INSERT INTO inventory_entries
+                    (inventory_number, inventory_number_raw, name, locality,
+                     quantity, sheet, row_number, category, notes)
+                VALUES ('999901', '999901', 'Тест кварц (seed)',
+                        'Тест локалитет (seed)', '1', 'seed', 1,
+                        'минерали', :tag)
+                ON CONFLICT (inventory_number) DO NOTHING RETURNING id
+            """), {'tag': SEED_TAG}).fetchone()
+            if row is not None:
+                state['inventory_ids'].append(row[0])
+
+
+def cleanup_reference_data(engine, state):
+    """Обриши ТАЧНО оно што је _seed_reference_data убацио (по запамћеним
+    ID-јевима), редом који поштује FK (записи пре врста)."""
+    if not any(state.values()):
+        return
+    with engine.begin() as conn:
+        for table, key in (
+            ('bird_ringing_records', 'bird_record_ids'),
+            ('bird_species', 'bird_species_ids'),
+            ('minerals', 'mineral_ids'),
+            ('inventory_entries', 'inventory_ids'),
+        ):
+            for row_id in state[key]:
+                conn.execute(text(f'DELETE FROM {table} WHERE id = :id'),
+                             {'id': row_id})
+
 
 class PostgresIntegrationTests(unittest.TestCase):
     @classmethod
@@ -34,10 +184,21 @@ class PostgresIntegrationTests(unittest.TestCase):
             if engine is not None:
                 engine.dispose()
             raise unittest.SkipTest(f'PostgreSQL is not usable: {exc}')
+        cls._seed_state = None
+        try:
+            cls._seed_state = ensure_reference_data(cls.engine, cls.database_url)
+        except BaseException:
+            cls.engine.dispose()
+            raise
 
     @classmethod
     def tearDownClass(cls):
-        cls.engine.dispose()
+        try:
+            state = getattr(cls, '_seed_state', None)
+            if state is not None:
+                cleanup_reference_data(cls.engine, state)
+        finally:
+            cls.engine.dispose()
 
     def test_basic_connection_and_main_table_counts(self):
         expected_tables = (

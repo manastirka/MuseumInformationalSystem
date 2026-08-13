@@ -305,9 +305,37 @@ def should_update(news_file: str, min_hours: int = 6) -> bool:
         return True
 
 
+def _fresh_unique_items(existing: List[Dict], new_items: List[Dict]) -> List[Dict]:
+    """New items not already present by id or very similar title."""
+    existing_ids = {n.get('id') for n in existing}
+    existing_titles = {n.get('title', '').lower()[:50] for n in existing}
+    fresh = []
+    for item in new_items:
+        title_prefix = item.get('title', '').lower()[:50]
+        if item['id'] in existing_ids or title_prefix in existing_titles:
+            continue
+        fresh.append(item)
+        existing_ids.add(item['id'])
+        existing_titles.add(title_prefix)
+    return fresh
+
+
+def _pg_should_update(min_hours: int = 6) -> bool:
+    import science_news_store
+    last = science_news_store.last_auto_fetch_at()
+    if last is None:
+        return True
+    hours_since = (datetime.now(last.tzinfo) - last).total_seconds() / 3600
+    return hours_since >= min_hours
+
+
 def update_science_news(app_root: str, force: bool = False) -> Dict:
     """
     Update science news from RSS feeds.
+
+    Skladište bira science_news_store (krug 4, stavka 5): PostgreSQL kad je
+    konfigurisan, JSON fajl samo kao razvojno/pre-migraciono stanje. Kvar
+    baze prekida ažuriranje sa 'error' — nikad tihi prelaz na fajl.
 
     Args:
         app_root: Application root directory
@@ -316,17 +344,35 @@ def update_science_news(app_root: str, force: bool = False) -> Dict:
     Returns:
         Dict with update status
     """
+    import science_news_store
+
     news_file = os.path.join(app_root, 'data', 'science_news.json')
 
+    try:
+        use_pg = science_news_store.uses_pg()
+    except Exception as exc:
+        logger.error("Science news DB probe failed; NOT falling back to JSON: %s", exc)
+        return {'status': 'error', 'reason': 'db_unavailable'}
+
     # Check if update is needed
-    if not force and not should_update(news_file):
+    try:
+        fresh_enough = (_pg_should_update() if use_pg
+                        else should_update(news_file))
+    except Exception as exc:
+        logger.error("Science news freshness check failed: %s", exc)
+        return {'status': 'error', 'reason': 'db_unavailable'}
+    if not force and not fresh_enough:
         logger.info("Science news recently updated, skipping")
         return {'status': 'skipped', 'reason': 'recently_updated'}
 
     logger.info("Starting science news update...")
 
     # Load existing news
-    existing_news = load_existing_news(news_file)
+    try:
+        existing_news = science_news_store.get_all_news(news_file)
+    except Exception as exc:
+        logger.error("Science news load failed; NOT falling back to JSON: %s", exc)
+        return {'status': 'error', 'reason': 'db_unavailable'}
 
     # Fetch new items from RSS
     new_items = fetch_rss_news()
@@ -335,7 +381,23 @@ def update_science_news(app_root: str, force: bool = False) -> Dict:
         logger.warning("No new items fetched from RSS feeds")
         return {'status': 'no_new_items', 'existing_count': len(existing_news)}
 
-    # Merge and save
+    if use_pg:
+        fresh = _fresh_unique_items(existing_news, new_items)
+        try:
+            science_news_store.insert_fetched_items(news_file, fresh)
+        except Exception as exc:
+            logger.error("Science news DB write failed: %s", exc)
+            return {'status': 'error', 'reason': 'save_failed'}
+        logger.info(f"Science news updated in PostgreSQL: {len(fresh)} new of "
+                    f"{len(new_items)} fetched")
+        return {
+            'status': 'success',
+            'total_items': len(existing_news) + len(fresh),
+            'new_items': len(fresh),
+            'updated_at': datetime.now().isoformat()
+        }
+
+    # Merge and save (JSON, pre-migraciono stanje)
     merged = merge_news(existing_news, new_items)
 
     if save_news(news_file, merged):

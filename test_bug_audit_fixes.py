@@ -6,6 +6,7 @@ identifier used in BUG_AUDIT_2026-05-29.md (C# = critical, H# = high, M# = mediu
 """
 
 import os
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault('FLASK_ENV', 'testing')
@@ -78,11 +79,15 @@ class TestAddUser:
         """H1: max([]) crashed when the in-memory employee dict was empty
         (the production default). H2: the user was never persisted to PostgreSQL.
         The fix persists via PostgresAuthSystem.create_user and lets the DB
-        assign the id."""
+        assign the id. Since revizija 2026-08 (#5) the handler additionally
+        requires the caller's role (allow-lista) and a password_validator, so
+        the test acts as an admin with a policy-passing password."""
         fake_auth = MagicMock()
         fake_auth.create_user.return_value = 42
         ph = MagicMock()
         ph.hash_password.return_value = ('hash', 'salt')
+        pv = MagicMock()
+        pv.validate.return_value = (True, [])
         with patch('postgres_auth.get_postgres_auth', return_value=fake_auth):
             with museum_app.app.test_request_context(
                 '/admin/add_user',
@@ -96,11 +101,14 @@ class TestAddUser:
                     'password': 'longenough1',
                 },
             ):
+                flask.session['user_role'] = 'admin'  # allow-lista: admin sme employee
                 resp = employee_admin_views.handle_add_user(
                     get_museum_employees=lambda: {},   # empty fallback (production default)
                     get_employee_directory=lambda: [],
                     password_hasher=ph,
+                    password_validator=pv,
                 )
+        pv.validate.assert_called_once_with('longenough1')
         fake_auth.create_user.assert_called_once()
         called = fake_auth.create_user.call_args.kwargs
         assert called['email'] == 'newuser@museum.rs'
@@ -113,6 +121,8 @@ class TestAddUser:
         handler must report failure rather than flashing a bogus success."""
         fake_auth = MagicMock()
         fake_auth.create_user.return_value = None
+        pv = MagicMock()
+        pv.validate.return_value = (True, [])
         with patch('postgres_auth.get_postgres_auth', return_value=fake_auth):
             with museum_app.app.test_request_context(
                 '/admin/add_user',
@@ -125,12 +135,15 @@ class TestAddUser:
                     'password': 'longenough1',
                 },
             ):
+                flask.session['user_role'] = 'admin'  # allow-lista: admin sme employee
                 resp = employee_admin_views.handle_add_user(
                     get_museum_employees=lambda: {},
                     get_employee_directory=lambda: [],
                     password_hasher=MagicMock(),
+                    password_validator=pv,
                 )
                 flashed = flask.get_flashed_messages(category_filter=['error'])
+        fake_auth.create_user.assert_called_once()
         assert resp.status_code == 302
         assert flashed, "an error must be flashed when persistence fails"
 
@@ -139,26 +152,56 @@ class TestAddUser:
 # H8 — museum_content_views.handle_add_visitor
 # ---------------------------------------------------------------------------
 class TestAddVisitor:
+    class _RecordingCursor:
+        def __init__(self):
+            self.executed = []
+
+        def execute(self, query, params=None):
+            self.executed.append((query, params))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
     def test_H8_blank_group_size_does_not_crash(self):
         """H8: int(request.form.get('group_size', 1)) crashed with ValueError
         when the number field was submitted blank (default only applies when the
-        key is absent, not when it is an empty string)."""
-        records = []
-        with museum_app.app.test_request_context(
-            '/admin/add_visitor',
-            method='POST',
-            data={
-                'date': '2026-05-29',
-                'visitor_type': 'individual',
-                'group_size': '',          # blank field
-                'age_category': 'adult',
-                'ticket_type': 'full',
-            },
-        ):
-            resp = museum_content_views.handle_add_visitor(visitor_records=records)
-        assert resp.status_code == 302
-        assert len(records) == 1
-        assert records[0]['group_size'] == 1  # blank falls back to 1
+        key is absent, not when it is an empty string). Since batch 62c9336
+        (migracija 040) the record is persisted to PostgreSQL, so the fallback
+        is asserted on the INSERT parameters instead of an in-memory list."""
+        cur = self._RecordingCursor()
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+
+        @contextmanager
+        def fake_get_conn(*args, **kwargs):
+            yield conn
+
+        with patch.object(museum_content_views, 'get_postgres_connection', fake_get_conn):
+            with museum_app.app.test_request_context(
+                '/admin/add_visitor',
+                method='POST',
+                data={
+                    'date': '2026-05-29',
+                    'visitor_type': 'individual',
+                    'group_size': '',          # blank field
+                    'age_category': 'adult',
+                    'ticket_type': 'full',
+                },
+            ):
+                resp = museum_content_views.handle_add_visitor()
+        assert resp.status_code == 302  # success redirect, not the error re-render
+        inserts = [(q, p) for q, p in cur.executed
+                   if 'INSERT INTO visitor_records' in q]
+        assert len(inserts) == 1
+        _, params = inserts[0]
+        # Column order: visit_date, visitor_type, group_size, ...
+        assert params[0] == '2026-05-29'
+        assert params[1] == 'individual'
+        assert params[2] == 1  # blank falls back to 1
+        conn.commit.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

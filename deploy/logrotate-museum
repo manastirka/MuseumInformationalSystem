@@ -1,7 +1,9 @@
 # Backstop log rotation for MuseumInfoSystem (the app log itself already rotates
 # via Python's RotatingFileHandler; this covers gunicorn/nginx-style log files).
 # Install: sudo cp deploy/logrotate-museum /etc/logrotate.d/museum-info-system
+# Paths: dev checkout, prod (/opt/mis/app), plus the shared /var/log location.
 /home/aleksandarlukovic/MuseumInfoSystem/logs/*.log
+/opt/mis/app/logs/*.log
 /var/log/museum-info-system/*.log {
     weekly
     rotate 8

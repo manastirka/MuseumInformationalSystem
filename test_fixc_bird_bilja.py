@@ -106,90 +106,146 @@ def test_valid_pagination_preserved():
 
 
 # ---------------------------------------------------------------------------
-# Finding 2: run_job isolates a failing batch instead of aborting the import
+# Finding 2 (revidirano u krugu 4, stavka 8): delimičan uvoz NE postoji.
+# Raniji ugovor (bad row se preskače, ostatak se upiše) je ukinut kao kršenje
+# projektnog pravila 3 — sada red koji ne može da se parsira ulazi u listu
+# grešaka (parse_job), a neuspeh upisa znači rollback + nenulti exit (main).
 # ---------------------------------------------------------------------------
 
-class _BatchFailingCursor:
-    """executemany rejects any batch containing the poison value; per-row
-    execute rejects only the poison row. Mimics psycopg savepoint behavior:
-    a failed transaction block does not persist its rows."""
+def test_parse_job_prikuplja_greske_umesto_preskakanja(tmp_path):
+    rows = [('a', 'x'), ('LOSE',), ('b', 'y')]
 
-    POISON = 'POISON'
-
-    def __init__(self):
-        self.connection = self
-        self.rows = []  # successfully persisted rows
-        self._txn_rows = None
-
-    # connection.transaction() -> context manager (savepoint)
-    @contextmanager
-    def transaction(self):
-        self._txn_rows = []
-        try:
-            yield self
-        except Exception:
-            # rollback: discard rows staged in this block
-            self._txn_rows = None
-            raise
-        else:
-            self.rows.extend(self._txn_rows)
-            self._txn_rows = None
-
-    def executemany(self, stmt, batch):
-        for params in batch:
-            if self.POISON in params:
-                raise RuntimeError('value rejected by DB')
-            self._txn_rows.append(params)
-
-    def execute(self, stmt, params):
-        if self.POISON in params:
-            raise RuntimeError('value rejected by DB')
-        self._txn_rows.append(params)
-
-
-def test_flush_batch_skips_only_bad_row():
-    cur = _BatchFailingCursor()
-    batch = [
-        ('a',), ('b',), (_BatchFailingCursor.POISON,), ('c',),
-    ]
-    inserted, skipped = ibc._flush_batch(cur, 'INSERT ...', batch, 'tbl')
-
-    assert inserted == 3, f'expected 3 good rows persisted, got {inserted}'
-    assert skipped == 1, f'expected 1 poison row skipped, got {skipped}'
-    assert ('a',) in cur.rows
-    assert ('b',) in cur.rows
-    assert ('c',) in cur.rows
-    assert (_BatchFailingCursor.POISON,) not in cur.rows
-
-
-def test_flush_batch_clean_batch_uses_bulk_path():
-    cur = _BatchFailingCursor()
-    batch = [('a',), ('b',), ('c',)]
-    inserted, skipped = ibc._flush_batch(cur, 'INSERT ...', batch, 'tbl')
-    assert inserted == 3
-    assert skipped == 0
-    assert len(cur.rows) == 3
-
-
-def test_run_job_does_not_abort_on_bad_row(tmp_path):
-    cur = _BatchFailingCursor()
-    rows = [('a',), (_BatchFailingCursor.POISON,), ('b',)]
+    def mapper(row, src):
+        if row == ('LOSE',):
+            raise ValueError('neparsiv red')
+        return row + (src,)
 
     job = {
         'table': 'tbl',
         'file': 'dummy.xlsx',
         'sheet': 'Sheet1',
         'kind': 'xlsx',
-        'mapper': lambda row, src: row,
+        'mapper': mapper,
     }
-
-    # avoid real file/sheet access
     with mock.patch.object(ibc, 'BILJA_DIR', tmp_path):
         (tmp_path / 'dummy.xlsx').write_text('x')
-        with mock.patch.dict(ibc.INSERT_STATEMENTS, {'tbl': 'INSERT ...'}, clear=False), \
-                mock.patch.object(ibc, '_iter_xlsx_rows', lambda p, s: iter(rows)):
-            inserted, skipped = ibc.run_job(cur, job)
+        with mock.patch.object(ibc, '_iter_xlsx_rows', lambda p, s: iter(rows)):
+            parsed, empty, errors = ibc.parse_job(job)
 
-    assert inserted == 2, f'good rows should persist, got inserted={inserted}'
-    assert skipped == 1, f'only the poison row should be skipped, got skipped={skipped}'
-    assert (_BatchFailingCursor.POISON,) not in cur.rows
+    assert len(parsed) == 2
+    assert empty == 0
+    assert len(errors) == 1 and 'neparsiv red' in errors[0]
+
+
+class _ScriptedCursor:
+    """Odgovara na plan-upite; executemany puca kao da je baza odbila red."""
+
+    def __init__(self, conn):
+        self.conn = conn
+        self._pending = None
+        self.executemany_called = False
+
+    def execute(self, query, params=None):
+        q = ' '.join(query.split())
+        if 'current_database' in q:
+            self._pending = ('testdb',)
+        elif 'to_regclass' in q:
+            self._pending = (True,)
+        elif 'count(*)' in q:
+            self._pending = (0,)
+        else:
+            self._pending = None
+
+    def executemany(self, stmt, rows):
+        self.executemany_called = True
+        raise RuntimeError('DB je odbila red')
+
+    def fetchone(self):
+        return self._pending
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _ScriptedConn:
+    def __init__(self):
+        self.cursor_obj = _ScriptedCursor(self)
+        self.rolled_back = False
+        self.committed = False
+
+    def cursor(self):
+        return self.cursor_obj
+
+    def rollback(self):
+        self.rolled_back = True
+
+    def commit(self):
+        self.committed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _fake_job_env(tmp_path):
+    job = {
+        'table': 'tbl',
+        'file': 'dummy.xlsx',
+        'sheet': 'Sheet1',
+        'kind': 'xlsx',
+        'mapper': lambda row, src: row + (src,),
+    }
+    (tmp_path / 'dummy.xlsx').write_text('x')
+    return job
+
+
+def test_main_neuspeh_upisa_znaci_rollback_i_nenulti_exit(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://x@localhost/testdb')
+    conn = _ScriptedConn()
+    job = _fake_job_env(tmp_path)
+    with mock.patch.object(ibc, 'BILJA_DIR', tmp_path), \
+            mock.patch.object(ibc, 'JOBS', [job]), \
+            mock.patch.dict(ibc.INSERT_STATEMENTS, {'tbl': 'INSERT ...'}, clear=False), \
+            mock.patch.object(ibc, '_iter_xlsx_rows', lambda p, s: iter([('a', 'x')])), \
+            mock.patch.object(ibc.psycopg, 'connect', lambda url: conn):
+        code = ibc.main(['--execute', '--database', 'testdb'])
+
+    assert code != 0, 'delimicni/neuspeli uvoz ne sme da vrati uspeh'
+    assert conn.rolled_back, 'neuspeh upisa mora da izazove rollback'
+    assert not conn.committed
+
+
+def test_main_bez_execute_je_dry_run_bez_upisa(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://x@localhost/testdb')
+    conn = _ScriptedConn()
+    job = _fake_job_env(tmp_path)
+    with mock.patch.object(ibc, 'BILJA_DIR', tmp_path), \
+            mock.patch.object(ibc, 'JOBS', [job]), \
+            mock.patch.dict(ibc.INSERT_STATEMENTS, {'tbl': 'INSERT ...'}, clear=False), \
+            mock.patch.object(ibc, '_iter_xlsx_rows', lambda p, s: iter([('a', 'x')])), \
+            mock.patch.object(ibc.psycopg, 'connect', lambda url: conn):
+        code = ibc.main([])
+
+    assert code == 0
+    assert not conn.cursor_obj.executemany_called, 'dry-run ne sme da upisuje'
+    assert not conn.committed
+
+
+def test_main_execute_bez_database_se_odbija(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://x@localhost/testdb')
+    conn = _ScriptedConn()
+    job = _fake_job_env(tmp_path)
+    with mock.patch.object(ibc, 'BILJA_DIR', tmp_path), \
+            mock.patch.object(ibc, 'JOBS', [job]), \
+            mock.patch.dict(ibc.INSERT_STATEMENTS, {'tbl': 'INSERT ...'}, clear=False), \
+            mock.patch.object(ibc, '_iter_xlsx_rows', lambda p, s: iter([('a', 'x')])), \
+            mock.patch.object(ibc.psycopg, 'connect', lambda url: conn):
+        code = ibc.main(['--execute'])
+
+    assert code != 0
+    assert not conn.cursor_obj.executemany_called

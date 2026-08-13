@@ -375,13 +375,19 @@ def _insert_veza(cur, fotografija_id, veza):
     if veza is None:
         return
     if veza['tip'] == 'predmet':
+        # mineral_id (migr. 048): stabilan FK za mineralošku zbirku — prati
+        # preimenovanje/brisanje minerala; NULL za druge zbirke/nepoklopljeno.
         cur.execute(
             """
-            INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj)
-            VALUES (%s, %s, %s)
+            INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj, mineral_id)
+            VALUES (%s, %s, %s,
+                    CASE WHEN %s = 'mineral'
+                         THEN (SELECT id FROM minerals WHERE inventory_number = %s LIMIT 1)
+                    END)
             ON CONFLICT (fotografija_id, database_name, inventarni_broj) DO NOTHING
             """,
-            (fotografija_id, veza['database_name'], veza['inventarni_broj']),
+            (fotografija_id, veza['database_name'], veza['inventarni_broj'],
+             veza['database_name'], veza['inventarni_broj']),
         )
     elif veza['tip'] == 'teren':
         cur.execute(
@@ -763,6 +769,67 @@ def _place_raw_exclusive(temp_path, raw_full):
     os.unlink(temp_path)
 
 
+# Namera mlađa od ovoga se smatra živim (možda konkurentnim) unosom i ne sme
+# se preuzeti; usklađeno sa pragom reconcile_intake_pending u workeru.
+INTAKE_CLAIM_STALE_MINUTES = 30
+
+
+def _record_intake_intent(raw_rel, sha256, original_ime):
+    """Upiši nameru intake-a u fototeka_intake_pending, u SOPSTVENOJ kratkoj
+    transakciji, PRE postavljanja RAW fajla. Ako spoljni commit posle padne,
+    ovaj red ostaje i reconciler (fototeka_jobs.reconcile_intake_pending) zna
+    da RAW na toj putanji bez DB reda nije write-once original nego siroče.
+
+    Vraća claim_token ako je OVAJ proces postao vlasnik namere (svež upis ili
+    preuzimanje bajate namere starije od INTAKE_CLAIM_STALE_MINUTES). None
+    znači da svežu nameru za istu putanju drži drugi, verovatno konkurentan
+    unos — pozivalac tada NE sme ni da postavlja ni da briše fajl na putanji."""
+    token = uuid.uuid4().hex
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO fototeka_intake_pending
+                    (sha256, raw_putanja, original_ime, claim_token)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (raw_putanja) DO UPDATE
+                    SET sha256 = EXCLUDED.sha256,
+                        original_ime = EXCLUDED.original_ime,
+                        claim_token = EXCLUDED.claim_token,
+                        created_at = now()
+                    WHERE fototeka_intake_pending.created_at
+                          < now() - make_interval(mins => %s)
+                RETURNING claim_token
+                """,
+                (sha256, raw_rel, original_ime, token,
+                 INTAKE_CLAIM_STALE_MINUTES),
+            )
+            claimed = cur.fetchone() is not None
+    return token if claimed else None
+
+
+def _reclaim_orphan_raw(cur, raw_rel, raw_full, claim_token):
+    """Sme li zauzeta RAW putanja da se preuzme? Da — samo ako je NIJEDAN red
+    fotografije ne referencira, a red namere (fototeka_intake_pending) je upisao
+    OVAJ proces (claim_token): to je siroče propalog intake-a (commit pao posle
+    postavljanja fajla). Putanja je sadržajno adresirana (sha256 u imenu), pa je
+    sadržaj identičan našem. Pravi write-once original (sa DB redom) se NIKAD ne
+    dira, a tuđ (konkurentan) intake se NIKAD ne briše."""
+    if not claim_token:
+        return False
+    cur.execute('SELECT 1 FROM fotografije WHERE raw_putanja = %s', (raw_rel,))
+    if cur.fetchone():
+        return False
+    cur.execute(
+        'SELECT 1 FROM fototeka_intake_pending '
+        'WHERE raw_putanja = %s AND claim_token = %s',
+        (raw_rel, claim_token))
+    if not cur.fetchone():
+        return False
+    Path(raw_full).unlink(missing_ok=True)
+    return True
+
+
 def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
                             autor_email, opis, tags, datum_override, veza,
                             u_prijemnom_redu, poreklo, vidljivost='javno'):
@@ -772,8 +839,14 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
     tags + link and enqueues the derivative job. On success temp_path is
     consumed; on dedup/invalid it is left for the caller to clean up. If any DB
     step fails after the file is placed, exactly that file is removed so a
-    rolled-back transaction leaves no orphan. Returns (fotografija_id, None) or
-    (None, skip_reason)."""
+    rolled-back transaction leaves no orphan.
+
+    Redosled protiv siročića (revizija 2026-08, stavka 5): prvo NAMERA u
+    fototeka_intake_pending (sopstvena transakcija), pa fajl, pa red + brisanje
+    namere u transakciji pozivaoca. Ako spoljni commit padne, namera ostaje:
+    ponovni upload isti sadržaj preuzima zauzetu putanju umesto lažne kolizije,
+    a reconciler periodično čisti zaostala siročad. Returns (fotografija_id,
+    None) or (None, skip_reason)."""
     sha256 = fototeka_jobs.sha256_of_file(temp_path)
     if ext in PIL_DECODABLE_EXTENSIONS:
         try:
@@ -816,13 +889,25 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         datum=datum_snimanja,
     )
     raw_full = fototeka_jobs.get_arhiva_path() / raw_rel
-    # Place the RAW first, exclusively: a collision (leftover orphan or a
-    # concurrent upload of the same content) is refused here, never overwritten.
+    # Namera PRE fajla — sopstvena kratka transakcija, preživljava pad
+    # spoljnog commit-a i čini siroče prepoznatljivim. Bez vlasništva nad
+    # redom namere (konkurentan unos iste fotografije drži svežu nameru)
+    # ovaj proces ne sme ni da postavlja ni da briše fajl na putanji —
+    # inače gubitnik pri čišćenju briše RAW pobednika.
+    claim_token = _record_intake_intent(raw_rel, sha256, original_ime)
+    if claim_token is None:
+        return None, (f'{original_ime}: иста фотографија се управо додаје у '
+                      f'другом уносу — покушајте поново за неколико минута')
+    # Place the RAW first, exclusively: a collision is refused here, never
+    # overwritten — osim kad je zauzeta putanja dokazano siroče propalog
+    # intake-a (nema DB reda + namera je NAŠA), koje se preuzima.
     try:
         _place_raw_exclusive(temp_path, raw_full)
     except FileExistsError:
-        return None, (f'{original_ime}: идентична датотека већ постоји у '
-                      f'архиви (није преписана)')
+        if not _reclaim_orphan_raw(cur, raw_rel, raw_full, claim_token):
+            return None, (f'{original_ime}: идентична датотека већ постоји у '
+                          f'архиви (није преписана)')
+        _place_raw_exclusive(temp_path, raw_full)
 
     # The RAW is now ours. If any DB step fails, remove exactly this file so the
     # rolled-back transaction leaves no orphan in the write-once archive.
@@ -845,6 +930,10 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
         _replace_tags(cur, fotografija_id, tags)
         _insert_veza(cur, fotografija_id, veza)
         fototeka_jobs.enqueue_job(cur, fotografija_id, 'derivati')
+        # Finalizacija namere u ISTOJ transakciji kao red: commit briše nameru
+        # atomski sa upisom reda; pad commit-a ostavlja nameru za reconciler.
+        cur.execute('DELETE FROM fototeka_intake_pending WHERE raw_putanja = %s',
+                    (raw_rel,))
     except BaseException:
         Path(raw_full).unlink(missing_ok=True)
         raise
@@ -1329,15 +1418,17 @@ def handle_obrisi(fotografija_id):
                 """,
                 (fotografija_id,),
             )
-    naziv = (photo or {}).get('original_ime') or ''
-    audit_support.record_audit(
-        action=audit_support.ACTION_DELETE,
-        entity_type='fotografije',
-        entity_id=fotografija_id,
-        summary=f'Фотографија #{fotografija_id} уклоњена из Фототеке (soft delete)'
-                + (f' — {naziv}' if naziv else ''),
-        old_values={'id': fotografija_id, 'original_ime': naziv or None},
-    )
+            naziv = photo.get('original_ime') or ''
+            # Audit у истој трансакцији — брисање без трага се не commit-ује.
+            audit_support.record_audit(
+                action=audit_support.ACTION_DELETE,
+                entity_type='fotografije',
+                entity_id=fotografija_id,
+                summary=f'Фотографија #{fotografija_id} уклоњена из Фототеке (soft delete)'
+                        + (f' — {naziv}' if naziv else ''),
+                old_values={'id': fotografija_id, 'original_ime': naziv or None},
+                cursor=cur,
+            )
     flash('Фотографија је уклоњена из Фототеке (оригинал остаје у архиви).', 'success')
     return redirect(url_for('fototeka.fototeka_galerija'))
 
@@ -2046,10 +2137,16 @@ def handle_import_confirm():
     zbirka = (request.form.get('zbirka') or 'mineral').strip()
     if zbirka not in get_zbirka_labels():
         zbirka = 'mineral'
-    rezime = run_batch_import(
-        dry_run=False, default_zbirka=zbirka,
-        izvor='ui', pokrenuo_email=_session_email(session),
-    )
+    try:
+        rezime = run_batch_import(
+            dry_run=False, default_zbirka=zbirka,
+            izvor='ui', pokrenuo_email=_session_email(session),
+        )
+    except Exception as greska:
+        logger.exception('Batch uvoz prekinut greškom')
+        flash(f'Увоз је прекинут грешком: {greska} — ништа није делимично '
+              f'уписано, датотеке остају у улазу за поновни покушај.', 'danger')
+        return redirect(url_for('fototeka.fototeka_import'))
     if rezime['uvezeno']:
         flash(
             f"Увезено фотографија: {rezime['uvezeno']} — "
@@ -2280,8 +2377,14 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                             u_prijemnom_redu=klasifikovano['u_prijemnom_redu'],
                             poreklo='import',
                         )
-                    except Exception as greska:  # jedan fajl ne obara ceo uvoz
-                        fotografija_id, reason = None, f'neočekivana greška: {greska}'
+                    except Exception:
+                        # Polu-upis ne sme da se commit-uje: intake je posle pada
+                        # već uklonio RAW, a commit-ovan red bi sledeći run naveo
+                        # da original proglasi duplikatom i skloni ga — trajan
+                        # gubitak. Rollback pa greška ide pozivaocu; original
+                        # ostaje u ulazu za ponovni pokušaj.
+                        conn.rollback()
+                        raise
                     finally:
                         if temp_path.exists():
                             temp_path.unlink()
@@ -2305,10 +2408,7 @@ def run_batch_import(*, dry_run=True, default_zbirka='mineral',
                 stavka['ishod'] = 'neuspesno'
                 stavka['poruka'] = reason or 'непозната грешка'
                 brojaci['neuspesno'] += 1
-                if reason and reason.startswith('neočekivana greška'):
-                    pass  # prolazna greška (baza/disk): fajl ostaje za sledeći run
-                else:
-                    _premesti_original(path, folder / 'neuspesno')
+                _premesti_original(path, folder / 'neuspesno')
 
     run_id = None
     if not dry_run:

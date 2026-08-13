@@ -11,8 +11,9 @@ bind = os.environ.get('GUNICORN_BIND', '127.0.0.1:8000')
 backlog = 2048
 
 # Worker processes
-# NOTE: with in-memory rate limiting (default), login throttling is per-worker.
-# Set RATELIMIT_STORAGE_URL to a Redis URL if using multiple workers.
+# NOTE: rate limiting prati REDIS_URL čim je podešen (deljen preko svih
+# workera); memory:// (per-worker) važi samo bez Redisa — sa WORKERS > 1
+# ProductionConfig to odbija na startu.
 workers = int(os.environ.get('WORKERS', '1'))
 # gthread umesto sync: rute za slike (serve_derivat/serve_raw) su kratke -
 # provera prava + DB upit, a sam prenos fajla ide preko nginx X-Accel-Redirect

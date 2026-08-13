@@ -16,15 +16,52 @@ import make_fixtures as mk
 import uvezi_arhivske_liste_cli as cli
 
 try:
-    from postgres_service import get_postgres_connection
+    from postgres_service import get_database_url, get_postgres_connection
     _DB_OK = True
 except Exception as exc:  # pragma: no cover
     _DB_OK = False
     _DB_ERR = exc
 
 _DB = pytest.mark.skipif(not _DB_OK, reason='нема базе')
-_EMPLOYEE = 'Милош Мрваљевић'   # постојећи корисник (мапира се поуздано)
+_EMPLOYEE = 'Милош Мрваљевић'   # корисник на кога се име из фајла мапира
 _EMAIL = 'milos.mrvaljevic@nhmbeo.rs'
+
+
+@pytest.fixture
+def milos_korisnik():
+    """Обезбеди корисника на кога plan_import мапира име из фајла (образац из
+    test_revizija_codex.EmployeeEmailNotNull): ако га нема а база је *_test —
+    убаци га па обриши после теста; на не-*_test бази — skip са разлогом."""
+    with get_postgres_connection() as conn, conn.cursor() as cur:
+        cur.execute("SELECT id FROM users WHERE email = %s", (_EMAIL,))
+        exists = cur.fetchone() is not None
+    if exists:
+        yield
+        return
+
+    from urllib.parse import urlsplit
+    db_name = urlsplit(get_database_url()).path.lstrip('/')
+    if not db_name.endswith('_test'):
+        pytest.skip(
+            f'корисник {_EMAIL} не постоји, а база „{db_name}" није *_test — '
+            'не убацујем кориснике у живу базу')
+
+    with get_postgres_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO users (email, password_hash, salt, full_name, is_active) "
+            "VALUES (%s, 'test-hash', 'test-salt', %s, TRUE) "
+            "ON CONFLICT (email) DO NOTHING RETURNING id",
+            (_EMAIL, _EMPLOYEE))
+        row = cur.fetchone()
+        conn.commit()
+    inserted_id = row[0] if row else None
+    try:
+        yield
+    finally:
+        if inserted_id is not None:
+            with get_postgres_connection() as conn, conn.cursor() as cur:
+                cur.execute("DELETE FROM users WHERE id = %s", (inserted_id,))
+                conn.commit()
 
 
 @pytest.fixture
@@ -62,7 +99,7 @@ def test_resolve_owner_fallback_na_korisnika():
 
 # --- план (dry-run): дедупликација + прескакање годишњег ---
 @_DB
-def test_plan_dry_run(arhiva):
+def test_plan_dry_run(arhiva, milos_korisnik):
     with get_postgres_connection() as conn, conn.cursor() as cur:
         results = cli.plan_import(arhiva, None, cur)
     by_file = {r['file']: r for r in results}
@@ -80,7 +117,7 @@ def test_plan_dry_run(arhiva):
 
 # --- стваран упис + чишћење ---
 @_DB
-def test_execute_upisuje_arhiva(arhiva):
+def test_execute_upisuje_arhiva(arhiva, milos_korisnik):
     try:
         with get_postgres_connection() as conn, conn.cursor() as cur:
             results = cli.plan_import(arhiva, None, cur)

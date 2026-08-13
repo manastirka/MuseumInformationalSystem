@@ -1,8 +1,16 @@
 """Shared route implementations for employee admin views."""
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, session, url_for
 
 import audit_support
+
+
+# Која улога сме да креира коју улогу: admin све; direktor све осим admin.
+# Ниже улоге не долазе до руте (гејт на blueprint-у), па намерно немају унос.
+CREATABLE_ROLES_BY_CALLER = {
+    'admin': {'admin', 'direktor', 'sef_odeljenja', 'employee'},
+    'direktor': {'direktor', 'sef_odeljenja', 'employee'},
+}
 
 
 def render_employees_database(*, get_employee_directory):
@@ -42,7 +50,8 @@ def render_employee_profiles_database(*, get_employee_directory):
     )
 
 
-def handle_add_user(*, get_museum_employees, get_employee_directory, password_hasher):
+def handle_add_user(*, get_museum_employees, get_employee_directory,
+                    password_hasher, password_validator):
     """Handle rendering and submission of the add-user form."""
     if request.method == 'POST':
         email = request.form.get('email')
@@ -56,8 +65,15 @@ def handle_add_user(*, get_museum_employees, get_employee_directory, password_ha
             flash('Сви поља су обавезна.', 'error')
             return redirect(url_for('add_user'))
 
-        if not password or len(password) < 8:
-            flash('Лозинка је обавезна и мора имати најмање 8 карактера.', 'error')
+        caller_role = session.get('user_role', '')
+        if role not in CREATABLE_ROLES_BY_CALLER.get(caller_role, set()):
+            flash(f'Немате дозволу да креирате корисника са улогом „{role}".', 'error')
+            return redirect(url_for('add_user'))
+
+        is_valid, password_errors = password_validator.validate(password)
+        if not is_valid:
+            flash('Лозинка не задовољава политику: ' + ', '.join(password_errors),
+                  'error')
             return redirect(url_for('add_user'))
 
         employees = get_museum_employees()

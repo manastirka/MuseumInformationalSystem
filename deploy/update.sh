@@ -43,7 +43,8 @@ log "installing pinned dependencies"
 "$VENV/bin/pip" install -q -r requirements.lock
 
 log "applying any new database migrations"
-"$VENV/bin/python" deploy/run_migrations.py apply
+"$VENV/bin/python" deploy/run_migrations.py apply --execute \
+    --database "${MUSEUM_DB_NAME:-museum_system}"
 
 log "restarting $SERVICE"
 sudo systemctl restart "$SERVICE"

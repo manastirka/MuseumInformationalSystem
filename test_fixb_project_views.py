@@ -18,6 +18,20 @@ from pathlib import Path
 
 import project_views
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _planner_db_u_memoriji(monkeypatch):
+    """Stavka 10 (revizija 2026-08): planer je prešao na PostgreSQL — unit
+    testovi rade nad in-memory zamenom da ne diraju pravu bazu."""
+    store = {}
+    monkeypatch.setattr(project_views, '_planner_state_read_db',
+                        lambda: store.get('state'))
+    monkeypatch.setattr(project_views, '_planner_state_write_db',
+                        lambda state, user: store.__setitem__('state', state))
+    yield store
+
 
 def test_sanitize_preserves_curator():
     """A curator value posted back from the client must survive sanitize."""
@@ -42,8 +56,9 @@ def test_sanitize_preserves_curator():
     assert sanitized['specs'].get('curator') == 'Александар Луковић'
 
 
-def test_resync_save_preserves_last_active_view(tmp_path, monkeypatch):
-    """Auto-layout re-sync must not wipe last_active_view from disk."""
+def test_resync_save_preserves_last_active_view(tmp_path, monkeypatch,
+                                                _planner_db_u_memoriji):
+    """Auto-layout re-sync must not wipe last_active_view iz sačuvanog stanja."""
     planner_file = tmp_path / 'space_planner_state.json'
 
     # Persist a state at an OLD auto_layout_version that carries a real
@@ -84,7 +99,7 @@ def test_resync_save_preserves_last_active_view(tmp_path, monkeypatch):
     # Sanity: the sync branch ran and bumped the version.
     assert state['auto_layout_version'] == project_views.PROJECT_AUTO_LAYOUT_VERSION
 
-    # The bug: the re-sync save wrote last_active_view=None to disk, so the
-    # NEXT read from disk loses the view.
-    on_disk = json.loads(planner_file.read_text(encoding='utf-8'))
-    assert on_disk.get('last_active_view') == 'depot'
+    # The bug: the re-sync save wrote last_active_view=None, so the NEXT
+    # read loses the view. Stanje sada živi u bazi (in-memory zamena).
+    sacuvano = _planner_db_u_memoriji['state']
+    assert sacuvano.get('last_active_view') == 'depot'

@@ -262,33 +262,21 @@ def add_heritage_item():
 @admin_required
 def add_visitor():
     """Add new visitor record."""
-    import app as museum_app
-
-    return museum_content_views.handle_add_visitor(
-        visitor_records=museum_app.VISITOR_RECORDS,
-    )
+    return museum_content_views.handle_add_visitor()
 
 
 @content_bp.route('/admin/add_research', methods=['GET', 'POST'])
 @admin_required
 def add_research():
     """Add new research project record."""
-    import app as museum_app
-
-    return museum_content_views.handle_add_research(
-        research_projects=museum_app.RESEARCH_PROJECTS,
-    )
+    return museum_content_views.handle_add_research()
 
 
 @content_bp.route('/admin/visitors_database')
 @admin_required
 def visitors_database():
     """View visitors database."""
-    import app as museum_app
-
-    return museum_content_views.render_visitors_database(
-        visitor_records=museum_app.VISITOR_RECORDS,
-    )
+    return museum_content_views.render_visitors_database()
 
 
 @content_bp.route('/admin/export_visitors_to_pdf')
@@ -304,21 +292,14 @@ def export_visitors_to_pdf():
 @admin_required
 def research_database():
     """View research projects database."""
-    import app as museum_app
-
-    return museum_content_views.render_research_database(
-        research_projects=museum_app.RESEARCH_PROJECTS,
-    )
+    return museum_content_views.render_research_database()
 
 
 @content_bp.route('/admin/export_research_to_pdf/<int:project_id>')
 @admin_required
 def export_research_to_pdf(project_id):
     """Export one research project to PDF."""
-    import app as museum_app
-
     return museum_content_views.export_research_to_pdf(
-        research_projects=museum_app.RESEARCH_PROJECTS,
         project_id=project_id,
         list_endpoint='research_database',
     )

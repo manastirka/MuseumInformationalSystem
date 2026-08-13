@@ -29,7 +29,10 @@ def _unwrap(response):
 # ---------------------------------------------------------------------------
 
 def _add_news(data):
-    with mock.patch.object(depot_science_views, 'update_json_file') as upd:
+    # Skladište (krug 4: science_news_store, PG/JSON) je mokovano — testira se
+    # samo validacija/koercija ulaza u api_add_science_news.
+    with mock.patch.object(depot_science_views.science_news_store,
+                           'add_news_item') as upd:
         upd.side_effect = lambda *a, **k: None
         with museum_app.app.test_request_context(
             '/api/science-news', method='POST', json=data

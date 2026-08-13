@@ -912,22 +912,65 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_employee_directory=museum_app.get_employee_directory,
         )
 
-    def test_add_user_route_delegates_to_employee_admin_module(self):
+    def test_add_user_route_behaviour_form_and_db_write(self):
+        """Понашање руте, не садржај извора: GET враћа форму, а успешан
+        POST као админ уписује корисника у базу (users) — проверава се
+        ред у бази, не потписи позива унутрашњег модула."""
+        import psycopg
+
+        db_url = os.environ.get('DATABASE_URL', '')
+        db_name = db_url.rstrip('/').rsplit('/', 1)[-1].split('?')[0]
+        if not db_name.endswith('_test'):
+            self.skipTest('DATABASE_URL није *_test база — заштита живих података')
+        plain_url = db_url.replace('postgresql+psycopg://', 'postgresql://')
+        try:
+            with psycopg.connect(plain_url, connect_timeout=3):
+                pass
+        except Exception:
+            self.skipTest('PostgreSQL (*_test) није доступан')
+
         self._login(role='admin')
 
-        with patch.object(
-            museum_app.employee_admin_views,
-            'handle_add_user',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/add_user', base_url=self.base_url)
-
+        response = self.client.get('/admin/add_user', base_url=self.base_url)
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            get_museum_employees=museum_app.get_museum_employees,
-            get_employee_directory=museum_app.get_employee_directory,
-            password_hasher=museum_app.password_hasher,
-        )
+        self.assertIn(b'name="email"', response.data)
+
+        email = 'novi.korisnik@example.invalid'
+
+        def _obrisi():
+            with psycopg.connect(plain_url) as conn:
+                conn.execute(
+                    "DELETE FROM audit_log WHERE new_values->>'email' = %s", (email,))
+                conn.execute("DELETE FROM users WHERE email = %s", (email,))
+                conn.commit()
+
+        _obrisi()
+        try:
+            response = self.client.post(
+                '/admin/add_user',
+                data={
+                    'email': email,
+                    'full_name': 'Синтетички Корисник',
+                    'department': 'Тест одељење',
+                    'position': 'кустос',
+                    'role': 'employee',
+                    'password': 'Sinteticka!Lozinka2026',
+                },
+                base_url=self.base_url,
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertIn('/admin/employees_database', response.headers['Location'])
+
+            with psycopg.connect(plain_url) as conn:
+                cur = conn.execute(
+                    "SELECT u.full_name, r.name AS role_name FROM users u "
+                    "JOIN roles r ON r.id = u.role_id WHERE u.email = %s", (email,))
+                row = cur.fetchone()
+            self.assertIsNotNone(row, 'POST /admin/add_user није уписао корисника у базу')
+            self.assertEqual(row[0], 'Синтетички Корисник')
+            self.assertEqual(row[1], 'employee')
+        finally:
+            _obrisi()
 
     def test_system_reports_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
@@ -1047,9 +1090,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/add_visitor', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            visitor_records=museum_app.VISITOR_RECORDS,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_visitors_database_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
@@ -1062,9 +1103,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/visitors_database', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            visitor_records=museum_app.VISITOR_RECORDS,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_export_visitors_pdf_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
@@ -1092,9 +1131,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/add_research', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            research_projects=museum_app.RESEARCH_PROJECTS,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_research_database_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
@@ -1107,9 +1144,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/research_database', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            research_projects=museum_app.RESEARCH_PROJECTS,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_export_research_pdf_route_delegates_to_museum_content_module(self):
         self._login(role='admin')
@@ -1123,7 +1158,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         mocked_handler.assert_called_once_with(
-            research_projects=museum_app.RESEARCH_PROJECTS,
             project_id=7,
             list_endpoint='research_database',
         )
@@ -1487,7 +1521,15 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
                 museum_app.museum_overview_views,
                 'render_museum_databases',
                 return_value=museum_app.app.response_class('ok', status=200),
-            ) as mocked_handler:
+            ) as mocked_handler, patch.object(
+                museum_app.museum_content_views,
+                'load_visitor_records',
+                return_value=[],
+            ), patch.object(
+                museum_app.museum_content_views,
+                'load_research_projects',
+                return_value=[],
+            ):
                 response = self.client.get('/admin/museum_databases', base_url=self.base_url)
         finally:
             active_library_database = museum_app.LIBRARY_DATABASE
@@ -1506,8 +1548,8 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             scientific_papers_database=museum_app.scientific_papers_database,
             collection_databases=collection_registry.build_collection_database_map(museum_app),
             conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
-            visitor_records=museum_app.VISITOR_RECORDS,
-            research_projects=museum_app.RESEARCH_PROJECTS,
+            visitor_records=[],
+            research_projects=[],
             get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
             user_has_module_access=museum_app.user_has_module_access,
         )

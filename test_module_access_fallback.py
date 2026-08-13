@@ -65,6 +65,21 @@ def _healthy_conn_factory(value):
     return lambda: _OneRowConn(value)
 
 
+class _NoRowCursor(_OneRowCursor):
+    """Baza dostupna, ali NEMA reda za traženi ključ."""
+
+    def fetchone(self):
+        return None
+
+
+def _no_row_conn_factory():
+    def factory():
+        conn = _OneRowConn(None)
+        conn.cursor_obj = _NoRowCursor(None)
+        return conn
+    return factory
+
+
 class ModuleAccessFallbackTests(unittest.TestCase):
     def setUp(self):
         # Izoluj procesni keš između testova.
@@ -157,6 +172,31 @@ class ModuleAccessFallbackTests(unittest.TestCase):
                 get_postgres_connection=_raising_conn(),
             )
         self.assertEqual(served, {'smtp': 'real.host'})
+
+    # --- Krug 4 #4: DB dostupna bez reda NE čita JSON fajl ---
+    def test_bez_db_reda_json_fajl_ne_vaskrsava(self):
+        """Uz podešen DATABASE_URL odsustvo DB reda znači 'nema posebnih
+        ovlašćenja', ne 'pročitaj fajl' — stara ovlašćenja iz JSON fajla ne
+        smeju da ožive mimo baze (JSON samo uz eksplicitan import)."""
+        import json
+        import os
+        import tempfile
+        with tempfile.NamedTemporaryFile(
+                'w', suffix='.json', delete=False) as fh:
+            json.dump({'mineral_database':
+                       {'authorized_users': ['uljez@example.invalid']}}, fh)
+        self.addCleanup(os.unlink, fh.name)
+        served = mas.load_module_access_data(
+            module_access_file=fh.name,
+            current_mtime=1234.0,  # fajl postoji i deluje svež
+            default_access=self.default_access,
+            get_postgres_connection=_no_row_conn_factory(),
+        )
+        self.assertEqual(
+            served['mineral_database']['authorized_users'],
+            self.default_access['mineral_database']['authorized_users'],
+            'odsustvo DB reda je oživelo ovlašćenja iz JSON fajla',
+        )
 
     # --- Regres: nekonfigurisan DB (dev, file mode) i dalje radi bez izuzetka ---
     def test_file_mode_no_db_still_defaults(self):

@@ -62,6 +62,9 @@ def _jpeg_bytes(size=(600, 400)):
 class _FakeCursor:
     def __init__(self, canned=None):
         self.canned = dict(canned or {})
+        # Upsert namere (krug 4, stavka 2) vraća red kad je claim uspeo —
+        # u jednokorisničkom fake sloju claim uvek uspeva.
+        self.canned.setdefault('INSERT INTO fototeka_intake_pending', (1,))
         self._pending = None
         self.executed = []
 
@@ -162,6 +165,12 @@ class RawIntakeTests(unittest.TestCase):
                                       'FOTOTEKA_MEDIA_PATH': str(Path(self.tmp, 'media'))})
         env.start()
         self.addCleanup(env.stop)
+        # Protokol namere (stavka 5) piše u fototeka_intake_pending kroz
+        # sopstvenu konekciju — ovde fake, da testovi ostanu bez baze.
+        intent = patch.object(fototeka_views, 'get_postgres_connection',
+                              lambda: _FakeConnection(_FakeCursor()))
+        intent.start()
+        self.addCleanup(intent.stop)
 
     def test_raw_accepted_without_pil_validation(self):
         # a .cr2 with a valid RAW/TIFF signature is archived without PIL

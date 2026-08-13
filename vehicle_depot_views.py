@@ -82,8 +82,16 @@ def handle_add_vehicle_reservation(*, phase3a_databases, get_vehicle_reservation
     except Exception as exc:
         if conn is not None:
             conn.rollback()
-        logger.error("Error adding reservation to PostgreSQL: %s", exc)
-        flash('Грешка при креирању резервације. Покушајте поново.', 'error')
+        from psycopg import errors as pg_errors
+        if isinstance(exc, pg_errors.ExclusionViolation):
+            # EXCLUDE ograničenje (migr. 049): vozilo je već rezervisano u
+            # izabranom periodu — konflikt, ne tehnička greška.
+            logger.info("Odbijena preklopljena rezervacija vozila %s", vehicle_id)
+            flash('Возило је већ резервисано у изабраном периоду. '
+                  'Изаберите други термин или друго возило.', 'error')
+        else:
+            logger.exception("Error adding reservation to PostgreSQL")
+            flash('Грешка при креирању резервације. Покушајте поново.', 'error')
     finally:
         if conn is not None:
             conn.close()

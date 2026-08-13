@@ -1,0 +1,18 @@
+# Noćni backup MIS-a na nhmb-srv01 — repo primerak stvarne produkcijske
+# jedinice (/etc/systemd/system/backup-nhmb.service). Skripta živi u
+# /usr/local/bin/backup-nhmb.sh; izvor u repou je deploy/backup-nhmb.sh.
+# Instalacija: deploy/RUNBOOK-backup-nhmb.md.
+# deploy.sh korak 1 pokreće ovu jedinicu ručno pre svakog deploja.
+
+[Unit]
+Description=Nocni backup MIS-a
+After=network.target postgresql.service
+Wants=postgresql.service
+# Pad backupa mora da se ČUJE — tihi neuspeh znači da /backup stari danima.
+OnFailure=mis-alarm@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup-nhmb.sh
+Nice=10
+IOSchedulingClass=idle

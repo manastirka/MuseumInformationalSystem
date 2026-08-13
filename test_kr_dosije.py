@@ -326,3 +326,120 @@ def test_kreiranje_dosijea_i_pdf(client):
         with get_postgres_connection() as conn, conn.cursor() as cur:
             cur.execute('DELETE FROM kr_dosije WHERE id = %s', (dosije_id,))
             conn.commit()
+
+
+# ===========================================================================
+# 4) ПРИСТУПАЧНОСТ — претрага предмета је WAI-ARIA combobox (без базе)
+# ===========================================================================
+class TestPretragaPredmetaCombobox:
+    """Ревизија 2026-08 (батч 6, ставка 3): autocomplete мора бити употребљив
+    тастатуром и најављен читачу екрана. Проверава се шаблон: улога combobox
+    са aria-expanded/aria-activedescendant, listbox са option редовима које
+    JS гради, тастатурна навигација и live порука о броју резултата."""
+
+    @pytest.fixture(scope='class')
+    def forma(self):
+        putanja = Path(__file__).parent / 'templates' / 'kr_dosije_forma.html'
+        return putanja.read_text(encoding='utf-8')
+
+    def test_input_je_combobox(self, forma):
+        import re
+        ulaz = re.search(r'<input[^>]*id="krPredmetPretraga"[^>]*>', forma)
+        assert ulaz, 'нема поља krPredmetPretraga'
+        atributi = ulaz.group(0)
+        assert 'role="combobox"' in atributi
+        assert 'aria-expanded=' in atributi
+        assert 'aria-controls="krPredmetRezultati"' in atributi
+        assert 'aria-autocomplete="list"' in atributi
+
+    def test_lista_je_listbox_sa_option_redovima(self, forma):
+        import re
+        lista = re.search(r'<ul[^>]*id="krPredmetRezultati"[^>]*>', forma)
+        assert lista, 'нема листе krPredmetRezultati'
+        assert 'role="listbox"' in lista.group(0)
+        # JS сваком резултату даје улогу option + стабилан id за activedescendant
+        assert "setAttribute('role', 'option')" in forma
+        assert "'krPredmetOpcija-' + i" in forma
+        assert 'aria-activedescendant' in forma
+
+    def test_tastaturna_navigacija(self, forma):
+        for taster in ("'ArrowDown'", "'ArrowUp'", "'Enter'", "'Escape'"):
+            assert taster in forma, 'нема обраде тастера {}'.format(taster)
+
+    def test_live_poruka_o_broju_rezultata(self, forma):
+        import re
+        status = re.search(r'<div[^>]*id="krPredmetStatus"[^>]*>', forma)
+        assert status, 'нема live региона krPredmetStatus'
+        assert 'aria-live="polite"' in status.group(0)
+        assert 'Нема резултата.' in forma
+        assert 'резултат' in forma
+
+
+# ===========================================================================
+# 5) UPLOAD FOTOGRAFIJA — obrisan duplikat i tačan brojač (batch 6, stavka 8)
+# ===========================================================================
+class _FotoFakeCursor:
+    """SHA lookup + INSERT veze sa RETURNING; ponašanje se zadaje unapred."""
+
+    def __init__(self, sha_row=None, link_inserted=True):
+        self.sha_row = sha_row
+        self.link_inserted = link_inserted
+        self.executed = []
+        self._pending = None
+
+    def execute(self, sql, params=None):
+        squashed = ' '.join(sql.split())
+        self.executed.append(squashed)
+        self._pending = None
+        if 'FROM fotografije WHERE sha256' in squashed:
+            self._pending = self.sha_row
+        elif 'INSERT INTO foto_veza_kr_dosije' in squashed:
+            self._pending = (42,) if self.link_inserted else None
+
+    def fetchone(self):
+        return self._pending
+
+
+class TestUploadObrisanDuplikat:
+    def _fake_upload(self, tmp_path, monkeypatch, sha_row):
+        import io as _io
+        import kr_dosije_views as views
+        from werkzeug.datastructures import FileStorage
+
+        media = tmp_path / 'media'
+        media.mkdir()
+        monkeypatch.setattr(views.fototeka_jobs, 'get_media_path', lambda: media)
+        cur = _FotoFakeCursor(sha_row=sha_row)
+        uploaded = FileStorage(stream=_io.BytesIO(b'\xff\xd8\xff\xdbJPEGDATA'),
+                               filename='slika.jpg')
+        return views._intake_web_file(cur, uploaded, 'qa@example.com'), cur
+
+    def test_obrisan_duplikat_se_odbija_sa_porukom(self, tmp_path, monkeypatch):
+        """SHA pogodak na OBRISAN zapis ne sme da se veže: prikaz filtrira
+        obrisana=FALSE, pa bi korisnik dobio "dodato" a slika nevidljiva."""
+        (foto_id, reason), _ = self._fake_upload(
+            tmp_path, monkeypatch, sha_row=(7, True, 'spremna'))
+        assert foto_id is None
+        assert reason is not None
+        assert 'обрисана' in reason
+        assert 'бр. 7' in reason
+
+    def test_ziv_duplikat_se_vezuje(self, tmp_path, monkeypatch):
+        (foto_id, reason), _ = self._fake_upload(
+            tmp_path, monkeypatch, sha_row=(7, False, 'spremna'))
+        assert foto_id == 7
+        assert reason is None
+
+
+class TestLinkFotoBrojac:
+    def test_link_vraca_true_kad_je_red_umetnut(self):
+        import kr_dosije_views as views
+        cur = _FotoFakeCursor(link_inserted=True)
+        assert views._link_foto(cur, 7, 5, 'pre', 'qa@x') is True
+        assert any('RETURNING id' in sql for sql in cur.executed)
+
+    def test_link_vraca_false_na_konflikt(self):
+        """ON CONFLICT DO NOTHING: veza već postoji — brojač ne sme da raste."""
+        import kr_dosije_views as views
+        cur = _FotoFakeCursor(link_inserted=False)
+        assert views._link_foto(cur, 7, 5, 'pre', 'qa@x') is False

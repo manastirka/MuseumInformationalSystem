@@ -936,6 +936,22 @@ def api_approve_archive_request(request_id):
         message = 'Захтев је успешно одобрен'
         if archive_ref:
             message += f' и архивиран под бројем {archive_ref}'
+        # Пропратне акције са грешком не смеју да прођу нечујно: одобрење
+        # остаје, али онај ко одобрава мора да види да возило НИЈЕ
+        # резервисано и зашто (ревизија 2026-08, ставка 4).
+        warning = None
+        if side_effects is not None and (
+            side_effects.get('success') is False
+            or side_effects.get('error')
+            or side_effects.get('vehicle_error')
+        ):
+            reason = (
+                side_effects.get('vehicle_error')
+                or side_effects.get('error')
+                or 'непозната грешка'
+            )
+            warning = f'УПОЗОРЕЊЕ: возило НИЈЕ резервисано — {reason}'
+            message += f'. {warning}'
         return jsonify(
             {
                 'success': True,
@@ -943,6 +959,7 @@ def api_approve_archive_request(request_id):
                 'final': is_final,
                 'archive_reference': archive_ref,
                 'side_effects': side_effects,
+                'warning': warning,
             }
         )
     except Exception as exc:

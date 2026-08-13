@@ -124,6 +124,8 @@
     { id: 'ck-link', label: 'Линк на картици', fg: function (c) { return c.link; }, bg: function (c) { return c.card; } }
   ];
 
+  var contrastFailing = false;
+
   function renderContrast() {
     var box = $('contrastReadout');
     if (!box) return;
@@ -142,6 +144,12 @@
     });
     var warn = $('contrastWarn');
     if (warn) warn.hidden = !anyFail;
+    contrastFailing = anyFail;
+    // Сервер одбија чување теме која пада AA — угаси дугмад док има пада.
+    ['ccSave', 'ccApply'].forEach(function (id) {
+      var btn = $(id);
+      if (btn) btn.disabled = anyFail;
+    });
   }
 
   // ---- пуни осврт: примени преглед на цео документ -------------------------
@@ -331,6 +339,7 @@
   }
 
   function saveTheme() {
+    if (contrastFailing) { flash('Тема не задовољава AA контраст — исправите означене парове пре чувања.', false); return; }
     var name = collectName();
     if (!name) { flash('Унесите назив теме.', false); var n = $('cc-name'); if (n) n.focus(); return; }
     var body = { name: name, definition: working };
@@ -345,6 +354,7 @@
 
   function applyEditorTheme() {
     // Сачувај (нову или измену) па примени.
+    if (contrastFailing) { flash('Тема не задовољава AA контраст — исправите означене парове пре примене.', false); return; }
     var name = collectName();
     if (!name) { flash('Унесите назив теме пре примене.', false); return; }
     var body = { name: name, definition: working };

@@ -52,11 +52,17 @@ class SistemHubTests(unittest.TestCase):
             self.assertTrue(resp.headers['Location'].endswith('#' + tab), path)
 
     def test_old_routes_redirect_to_hub_for_director(self):
+        # Технички табови (подешавања, пошта) су admin_only од 2026-08 —
+        # директора шаљу на /dashboard; пословни (извештаји, ревизија) у хаб.
         self._login(role='direktor')
+        admin_only_paths = {'/admin/system-settings', '/admin/mail-settings'}
         for path, tab in OLD_ROUTES.items():
             resp = self.client.get(path, base_url=self.base_url)
             self.assertEqual(resp.status_code, 302, path)
-            self.assertIn('/admin/sistem', resp.headers['Location'], path)
+            if path in admin_only_paths:
+                self.assertIn('/dashboard', resp.headers['Location'], path)
+            else:
+                self.assertIn('/admin/sistem', resp.headers['Location'], path)
 
     # --- 2. Embedded renders content (bare layout) ---
     def test_embedded_renders_bare_content(self):

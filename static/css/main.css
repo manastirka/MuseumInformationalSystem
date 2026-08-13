@@ -44,7 +44,10 @@
     --bg-nav: #1f2937;
     --text-primary: #1f2937;
     --text-secondary: #6b7280;
-    --text-muted: #9ca3af;
+    /* #9ca3af je davao ~2.5:1 na beloj kartici — pad AA ugradjen u sam token
+       (revizija 2026-08, stavka 9). #667085: 4.97:1 na --bg-card, 4.64:1 na
+       --bg-body; meri se u test_kontrast_hardkod.py. */
+    --text-muted: #667085;
     --border-color: #e5e7eb;
 
     /* Accent & elevated surfaces */
@@ -4856,7 +4859,7 @@ html[data-density="kompakt"][data-style="terenska"] {
         --bg-hover: #f3f4f6;
         --text-primary: #1f2937;
         --text-secondary: #6b7280;
-        --text-muted: #9ca3af;
+        --text-muted: #667085;
         --border-color: #e5e7eb;
         --gray-50: #f9fafb;
         --gray-100: #f3f4f6;

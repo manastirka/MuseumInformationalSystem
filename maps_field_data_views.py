@@ -5,6 +5,7 @@ import logging
 from flask import jsonify, request, session
 from psycopg.rows import dict_row
 
+from app_core_support import can_access_owned_record
 from postgres_service import get_postgres_connection
 import audit_support
 
@@ -225,7 +226,7 @@ def api_update_field_data(item_id):
 
         user_email = session.get('user_email', '')
         user_role = session.get('user_role', '')
-        if row['created_by'] != user_email and user_role != 'admin':
+        if not can_access_owned_record(row['created_by'], user_email, user_role):
             return jsonify({'success': False, 'message': 'Немате дозволу'}), 403
 
         data = request.get_json()
@@ -288,7 +289,7 @@ def api_delete_field_data(item_id, *, image_storage_factory):
 
         user_email = session.get('user_email', '')
         user_role = session.get('user_role', '')
-        if row['created_by'] != user_email and user_role != 'admin':
+        if not can_access_owned_record(row['created_by'], user_email, user_role):
             return jsonify({'success': False, 'message': 'Немате дозволу'}), 403
 
         try:

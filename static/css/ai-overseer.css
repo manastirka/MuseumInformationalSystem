@@ -16,11 +16,11 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border: none;
-    color: white;
+    color: var(--on-accent);
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -30,7 +30,7 @@
 
 .ai-help-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    box-shadow: var(--shadow-lg);
 }
 
 .ai-status-dot {
@@ -40,15 +40,15 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 2px solid var(--bg-card);
 }
 
 .ai-status-dot.available {
-    background: #10b981;
+    background: var(--success);
 }
 
 .ai-status-dot.unavailable {
-    background: #ef4444;
+    background: var(--danger);
 }
 
 /* Help Panel */
@@ -58,9 +58,10 @@
     right: 0;
     width: 350px;
     max-height: 500px;
-    background: white;
+    background: var(--bg-card);
+    color: var(--text-primary);
     border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
     animation: slideUp 0.3s ease;
 }
@@ -77,8 +78,8 @@
 }
 
 .ai-help-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--on-accent);
     padding: 16px;
     display: flex;
     justify-content: space-between;
@@ -89,7 +90,7 @@
 .ai-close-btn {
     background: none;
     border: none;
-    color: white;
+    color: var(--on-accent);
     font-size: 24px;
     cursor: pointer;
     line-height: 1;
@@ -116,23 +117,25 @@
 .ai-search-box input {
     flex: 1;
     padding: 10px 14px;
-    border: 2px solid #e5e7eb;
+    border: 2px solid var(--border-color);
     border-radius: 10px;
+    background: var(--bg-card);
+    color: var(--text-primary);
     font-size: 14px;
     transition: border-color 0.2s;
 }
 
 .ai-search-box input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--primary);
 }
 
 .ai-search-box button {
     padding: 10px 14px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border: none;
     border-radius: 10px;
-    color: white;
+    color: var(--on-accent);
     cursor: pointer;
     transition: opacity 0.2s;
 }
@@ -149,7 +152,7 @@
 
 .ai-loading {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-secondary);
     padding: 20px;
 }
 
@@ -158,7 +161,7 @@
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 2px solid #667eea;
+    border: 2px solid var(--primary);
     border-top-color: transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -171,7 +174,7 @@
 }
 
 .ai-answer, .ai-search-result, .ai-guidance, .ai-tips, .ai-analysis {
-    background: #f9fafb;
+    background: var(--bg-elevated);
     padding: 14px;
     border-radius: 10px;
     font-size: 14px;
@@ -183,29 +186,29 @@
 }
 
 .ai-error {
-    background: #fef2f2;
-    color: #dc2626;
+    background: var(--danger-soft);
+    color: var(--danger);
     padding: 12px;
     border-radius: 10px;
     font-size: 14px;
 }
 
 .ai-info {
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: var(--info-soft);
+    color: var(--info);
     padding: 12px;
     border-radius: 10px;
     font-size: 14px;
 }
 
 .ai-warning {
-    color: #d97706;
+    color: var(--warning);
     font-size: 13px;
     margin: 8px 0;
 }
 
 .ai-tip {
-    color: #059669;
+    color: var(--success-text);
     font-size: 13px;
     margin: 8px 0;
 }
@@ -230,29 +233,30 @@
     flex: 1;
     min-width: 120px;
     padding: 10px 12px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
+    color: var(--text-primary);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .ai-quick-actions button:hover {
-    background: #e5e7eb;
-    border-color: #d1d5db;
+    background: var(--bg-hover);
+    border-color: var(--border-color);
 }
 
 /* Suggestions Popup */
 .ai-suggestions-popup {
     position: absolute;
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
     z-index: 10000;
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
 }
 
 .ai-suggestions-list {
@@ -270,7 +274,7 @@
 }
 
 .ai-suggestion-item:hover {
-    background: #f3f4f6;
+    background: var(--bg-hover);
 }
 
 .ai-suggestion-item .ai-icon {
@@ -285,7 +289,7 @@
     transform: translateY(-50%);
     width: 20px;
     height: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -302,7 +306,7 @@
 .ai-field-indicator svg {
     width: 12px;
     height: 12px;
-    color: white;
+    color: var(--on-accent);
 }
 
 /* Responsive */
@@ -326,43 +330,3 @@
     }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .ai-help-panel {
-        background: #1f2937;
-        color: #f9fafb;
-    }
-
-    .ai-search-box input {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f9fafb;
-    }
-
-    .ai-search-box input::placeholder {
-        color: #9ca3af;
-    }
-
-    .ai-answer, .ai-search-result, .ai-guidance, .ai-tips, .ai-analysis {
-        background: #374151;
-    }
-
-    .ai-quick-actions button {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f9fafb;
-    }
-
-    .ai-quick-actions button:hover {
-        background: #4b5563;
-    }
-
-    .ai-suggestions-popup {
-        background: #1f2937;
-        border-color: #4b5563;
-    }
-
-    .ai-suggestion-item:hover {
-        background: #374151;
-    }
-}

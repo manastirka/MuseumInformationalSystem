@@ -13,6 +13,20 @@ from unittest.mock import patch
 
 import project_views
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _planner_db_u_memoriji(monkeypatch):
+    """Stavka 10 (revizija 2026-08): planer je prešao na PostgreSQL — unit
+    testovi rade nad in-memory zamenom da ne diraju pravu bazu."""
+    store = {}
+    monkeypatch.setattr(project_views, '_planner_state_read_db',
+                        lambda: store.get('state'))
+    monkeypatch.setattr(project_views, '_planner_state_write_db',
+                        lambda state, user: store.__setitem__('state', state))
+    yield store
+
 
 LIBRARY = project_views.PROJECT_SPACE_LIBRARY
 

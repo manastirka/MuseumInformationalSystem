@@ -124,23 +124,40 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(app.config['RATELIMIT_STORAGE_URL'], 'redis://redis:6379/0')
 
+    SERVICE_ACCOUNTS = ('nginx', 'www-data')
+
     def test_gunicorn_config_does_not_run_as_developer_account(self):
+        # The run user comes from the environment (systemd sets it); it must
+        # never be hardcoded to the developer account.
         content = Path('gunicorn.conf.py').read_text(encoding='utf-8')
-        self.assertIn("user = os.environ.get('GUNICORN_RUN_USER', 'www-data')", content)
-        self.assertIn("group = os.environ.get('GUNICORN_RUN_GROUP', 'www-data')", content)
-        self.assertNotIn("user = 'aleksandarlukovic'", content)
-        self.assertNotIn("group = 'aleksandarlukovic'", content)
+        self.assertIn("user = os.environ.get('GUNICORN_RUN_USER') or None", content)
+        self.assertIn("group = os.environ.get('GUNICORN_RUN_GROUP') or None", content)
+        self.assertNotIn('aleksandarlukovic', content)
 
     def test_service_files_do_not_run_as_developer_account(self):
+        import re as _re
+
         service_content = Path('museum-system.service').read_text(encoding='utf-8')
-        self.assertIn('User=www-data', service_content)
-        self.assertIn('Group=www-data', service_content)
+        for directive in ('User', 'Group'):
+            match = _re.search(rf'^{directive}=(\S+)$', service_content, _re.MULTILINE)
+            self.assertIsNotNone(match, f'{directive}= missing from museum-system.service')
+            self.assertIn(match.group(1), self.SERVICE_ACCOUNTS,
+                          f'{directive}={match.group(1)} is not a service account')
+        run_user = _re.search(r'^Environment="GUNICORN_RUN_USER=(\S+)"$',
+                              service_content, _re.MULTILINE)
+        self.assertIsNotNone(run_user, 'GUNICORN_RUN_USER missing from museum-system.service')
+        self.assertIn(run_user.group(1), self.SERVICE_ACCOUNTS)
         self.assertNotIn('User=aleksandarlukovic', service_content)
         self.assertNotIn('Group=aleksandarlukovic', service_content)
 
         control_center_content = Path('museum_control_center.py').read_text(encoding='utf-8')
-        self.assertIn('User=www-data', control_center_content)
-        self.assertIn('Group=www-data', control_center_content)
+        cc_users = _re.findall(r'^User=(\S+)$', control_center_content, _re.MULTILINE)
+        cc_groups = _re.findall(r'^Group=(\S+)$', control_center_content, _re.MULTILINE)
+        self.assertTrue(cc_users and cc_groups,
+                        'museum_control_center.py no longer templates a systemd unit')
+        for account in cc_users + cc_groups:
+            self.assertIn(account, self.SERVICE_ACCOUNTS,
+                          f'{account} is not a service account')
 
     def test_start_production_script_safely_loads_env_and_requires_secret_key(self):
         content = Path('start_production.sh').read_text(encoding='utf-8')

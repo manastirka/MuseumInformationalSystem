@@ -306,13 +306,6 @@ def api_timesheet_submit(report_id):
     return timesheet_employee_views.api_timesheet_submit(report_id)
 
 
-@timesheet_bp.route('/api/timesheet/<int:report_id>/approve', methods=['POST'])
-@admin_required
-def api_timesheet_approve(report_id):
-    """Approve a report via employee view API."""
-    return timesheet_employee_views.api_timesheet_approve(report_id)
-
-
 @timesheet_bp.route('/api/timesheet/<int:report_id>/reject', methods=['POST'])
 @admin_or_department_head_required
 def api_timesheet_reject(report_id):

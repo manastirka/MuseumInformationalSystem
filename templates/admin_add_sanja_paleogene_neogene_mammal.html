@@ -28,6 +28,8 @@
     <form method="POST" id="addSanjaMammalForm" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="collection_type" value="{{ collection_type }}">
+        {# Верзија реда (updated_at) при отварању форме — сервер одбија упис ако је примерак у међувремену измењен. #}
+        <input type="hidden" name="_version" value="{{ item.get('updated_at', '') }}">
 
         <div class="row">
             <div class="col-lg-8">

@@ -1,9 +1,23 @@
 """Shared curator collection bootstrap data and lazy loader helpers."""
 
 import logging
+import os
 
 
 logger = logging.getLogger(__name__)
+
+
+class CollectionUnavailableError(RuntimeError):
+    """A curator collection cannot be served from the database right now."""
+
+
+def demo_fallback_allowed():
+    """The hardcoded demo specimens are allowed ONLY with an explicit opt-in
+    (DEMO_MODE) or in the test runner — production must surface a clear
+    'collection unavailable' failure instead of demo data."""
+    if os.environ.get('DEMO_MODE', '').strip().lower() in ('1', 'true', 'yes', 'on'):
+        return True
+    return os.environ.get('FLASK_ENV') == 'testing' or bool(os.environ.get('TESTING'))
 
 
 _PHASE3A_COLLECTION_LOADERS = {
@@ -1134,14 +1148,22 @@ class CollectionBootstrapSupport:
         self.cultural_heritage_database = CULTURAL_HERITAGE_DATABASE
 
     def load_collection_database(self, collection_type, fallback_data):
-        """Load a curator collection from PostgreSQL when configured, else use fallback data."""
+        """Load a curator collection from PostgreSQL when configured.
+
+        The demo fallback data is served only with explicit DEMO_MODE/TESTING;
+        otherwise a load failure (or missing PostgreSQL config) raises
+        CollectionUnavailableError, rendered as a 503 by the app error handler."""
         if self._database_url and self._phase3a_databases is not None:
             loader_name = _PHASE3A_COLLECTION_LOADERS.get(collection_type)
             if loader_name:
                 try:
                     return getattr(self._phase3a_databases, loader_name)()
                 except Exception as exc:
-                    logger.warning("Failed to load %s from PostgreSQL: %s", collection_type, exc)
+                    logger.error("Failed to load %s from PostgreSQL: %s", collection_type, exc)
+                    if not demo_fallback_allowed():
+                        raise CollectionUnavailableError(collection_type) from exc
+        elif not demo_fallback_allowed():
+            raise CollectionUnavailableError(collection_type)
         return fallback_data
 
     def _get_cached_phase3a_database(self, *, cache_attr, loader_name, primary_key, fallback_data):

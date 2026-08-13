@@ -330,7 +330,10 @@ class UploadVisibilityTests(_RouteTestCase):
     upload public."""
 
     def test_classic_multipost_private_stays_private(self):
-        cur = self.use_db({'INSERT INTO fotografije': {'id': 21}})
+        cur = self.use_db({
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
+            'INSERT INTO fotografije': {'id': 21},
+        })
         self.login(AUTHOR)
         r = self.post('/fototeka/upload',
                       data={'files': (_jpeg_bytes(), 'a.jpg'),
@@ -340,7 +343,10 @@ class UploadVisibilityTests(_RouteTestCase):
         self.assertEqual(_insert_vidljivost(cur), 'privatno')
 
     def test_sequential_single_private_stays_private(self):
-        cur = self.use_db({'INSERT INTO fotografije': {'id': 22}})
+        cur = self.use_db({
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
+            'INSERT INTO fotografije': {'id': 22},
+        })
         self.login(AUTHOR)
         r = self.post('/fototeka/upload/jedan',
                       data={'file': (_jpeg_bytes(), 'a.jpg'),
@@ -351,7 +357,10 @@ class UploadVisibilityTests(_RouteTestCase):
         self.assertEqual(_insert_vidljivost(cur), 'privatno')
 
     def test_sequential_single_default_is_public(self):
-        cur = self.use_db({'INSERT INTO fotografije': {'id': 23}})
+        cur = self.use_db({
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
+            'INSERT INTO fotografije': {'id': 23},
+        })
         self.login(AUTHOR)
         self.post('/fototeka/upload/jedan',
                   data={'file': (_jpeg_bytes(), 'a.jpg'), 'veza_tip': 'bez'},

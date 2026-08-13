@@ -135,7 +135,9 @@ class EntityRefTests(unittest.TestCase):
         fototeka_views._insert_veza(cursor, 5, ref)
         sql, params = cursor.executed[-1]
         self.assertIn('INSERT INTO foto_veza_predmet', sql)
-        self.assertEqual(params, (5, 'mineral', 'ПМ 12'))
+        # migr. 048: uz tekstualni par ide i rezolucija mineral_id (database_name
+        # + inventarni broj se ponavljaju u CASE podupitu za FK).
+        self.assertEqual(params, (5, 'mineral', 'ПМ 12', 'mineral', 'ПМ 12'))
 
     def test_teren_projekat_izlozba_refs(self):
         self.assertEqual(
@@ -226,7 +228,10 @@ class _RouteTestCase(unittest.TestCase):
 class ReceptionQueueTests(_RouteTestCase):
 
     def test_upload_flag_sets_reception_queue(self):
-        cursor = self.use_db({'INSERT INTO fotografije': {'id': 9}})
+        cursor = self.use_db({
+            'INSERT INTO fototeka_intake_pending': {'claim_token': 'tok'},
+            'INSERT INTO fotografije': {'id': 9},
+        })
         self.login(AUTHOR)
         response = self.post(
             '/fototeka/upload',

@@ -24,12 +24,17 @@ def _assert_fresh_import_state(expression):
     after import*. When the whole suite runs in one process, earlier test
     modules may legitimately initialize this shared state, so the check must
     happen in a fresh interpreter to stay order-independent.
+
+    The env is pinned with direct assignment (not setdefault): the suite
+    process inherits .env values (FLASK_ENV=production, SESSION_TYPE=redis)
+    once any earlier module imports app and load_dotenv() runs, and the
+    subprocess must import under the testing config regardless.
     """
     code = (
         "import os;"
-        "os.environ.setdefault('FLASK_ENV', 'testing');"
-        "os.environ.setdefault('SECRET_KEY', 'test-secret');"
-        "os.environ.setdefault('REDIS_URL', '');"
+        "os.environ.update({"
+        "'FLASK_ENV': 'testing', 'SECRET_KEY': 'test-secret',"
+        "'REDIS_URL': '', 'SESSION_TYPE': 'filesystem'});"
         "import app;"
         f"assert {expression}, {expression!r}"
     )

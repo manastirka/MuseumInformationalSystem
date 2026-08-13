@@ -207,6 +207,33 @@ def can_user_verify_report_for_department(
     return True
 
 
+def _notify_user_best_effort(cur, user_email, title, message, icon, ntype):
+    """Upis notifikacije NE SME da obori poslovnu promenu koja je već upisana
+    (potpis se commit-uje u sopstvenoj transakciji u timesheet_postgres):
+    ranije je pad ovog INSERT-a rušio celu rutu — admin vidi „Грешка", a lista
+    je već odobrena i zaključana, pa ponovni pokušaj dobija „Само поднете...".
+    SAVEPOINT čini notifikaciju best-effort unutar tekuće transakcije, a otkaz
+    se loguje sa punim kontekstom."""
+    if not user_email:
+        return
+    try:
+        cur.execute('SAVEPOINT user_notif')
+        cur.execute(
+            """
+            INSERT INTO user_notifications (user_email, title, message, icon, type)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (user_email, title, message, icon, ntype),
+        )
+        cur.execute('RELEASE SAVEPOINT user_notif')
+    except Exception:
+        logger.exception('Нотификација није уписана (%s: %s)', user_email, title)
+        try:
+            cur.execute('ROLLBACK TO SAVEPOINT user_notif')
+        except Exception:
+            logger.exception('ROLLBACK TO SAVEPOINT user_notif није успео')
+
+
 def _signature_plan(session_data, target_department, target_employee_email,
                     department_heads):
     """Одреди план двостепеног потписа за дату листу и тренутног корисника.
@@ -987,9 +1014,10 @@ def api_admin_employee_analytics():
                 'category_breakdown': category_breakdown,
             }
         )
-    except Exception as exc:
+    except Exception:
         logger.exception('Error loading employee analytics')
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+        return jsonify({'success': False,
+                        'message': 'Грешка при учитавању аналитике запосленог.'})
 
 
 def api_admin_get_timesheet_report(report_id, timesheet_repository):
@@ -1012,8 +1040,10 @@ def api_admin_get_timesheet_report(report_id, timesheet_repository):
                 return _forbidden_json()
 
         return jsonify({'success': True, 'report': report})
-    except Exception as exc:
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+    except Exception:
+        logger.exception('Error loading timesheet report %s', report_id)
+        return jsonify({'success': False,
+                        'message': 'Грешка при учитавању извештаја.'})
 
 
 def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
@@ -1106,33 +1136,16 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                             message = 'Извештај је одобрен и закључан (оба потписа присутна).'
                             notif_msg = (f"Ваша радна листа за {month_name} "
                                          f"{report['year']}. је одобрена (шеф и директор).")
-                        if employee_email:
-                            cur.execute(
-                                """
-                                INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                VALUES (%s, %s, %s, 'bi-check-circle', 'success')
-                                """,
-                                (
-                                    employee_email,
-                                    'Радна листа одобрена',
-                                    notif_msg,
-                                ),
-                            )
+                        _notify_user_best_effort(
+                            cur, employee_email, 'Радна листа одобрена',
+                            notif_msg, 'bi-check-circle', 'success')
                     else:
                         message = ('Потпис забележен. Радна листа чека још један '
                                    'потпис пре коначног одобрења.')
-                        if employee_email:
-                            cur.execute(
-                                """
-                                INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                VALUES (%s, %s, %s, 'bi-hourglass-split', 'info')
-                                """,
-                                (
-                                    employee_email,
-                                    'Радна листа — потпис забележен',
-                                    f"Ваша радна листа за {month_name} {report['year']}. има један потпис и чека још један.",
-                                ),
-                            )
+                        _notify_user_best_effort(
+                            cur, employee_email, 'Радна листа — потпис забележен',
+                            f"Ваша радна листа за {month_name} {report['year']}. има један потпис и чека још један.",
+                            'bi-hourglass-split', 'info')
                     conn.commit()
                     return jsonify({'success': True, 'message': message,
                                     'approved': approved_now})
@@ -1177,25 +1190,19 @@ def api_admin_approve_timesheet_report(report_id, timesheet_repository=None):
                     )
                     message = 'Верификација извештаја је повучена. Извештај је враћен у статус „поднет“ и чека поновну верификацију.'
 
-                    if employee_email:
-                        cur.execute(
-                            """
-                            INSERT INTO user_notifications (user_email, title, message, icon, type)
-                            VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
-                            """,
-                            (
-                                employee_email,
-                                'Верификација повучена',
-                                f"Верификација ваше радне листе за {month_name} {report['year']}. је повучена. "
-                                f"Извештај је враћен у статус „поднет“ и чека поновну верификацију.",
-                            ),
-                        )
+                    _notify_user_best_effort(
+                        cur, employee_email, 'Верификација повучена',
+                        f"Верификација ваше радне листе за {month_name} {report['year']}. је повучена. "
+                        f"Извештај је враћен у статус „поднет“ и чека поновну верификацију.",
+                        'bi-arrow-counterclockwise', 'warning')
 
                 conn.commit()
 
         return jsonify({'success': True, 'message': message})
-    except Exception as exc:
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+    except Exception:
+        logger.exception('Error approving/withdrawing timesheet report %s', report_id)
+        return jsonify({'success': False,
+                        'message': 'Грешка при обради извештаја.'})
 
 
 def api_admin_batch_approve_timesheet_reports(timesheet_repository):
@@ -1273,25 +1280,16 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                         fully = bool(sig.data.get('approved'))
                         (approved_ids if fully else partial_ids).append(report['id'])
                         employee_email = report.get('employee_email')
-                        if employee_email:
-                            if fully:
-                                cur.execute(
-                                    """
-                                    INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                    VALUES (%s, %s, %s, 'bi-check-circle', 'success')
-                                    """,
-                                    (employee_email, 'Радна листа одобрена',
-                                     f"Ваша радна листа за {_month_name(report)} {report['year']}. је одобрена (шеф и директор)."),
-                                )
-                            else:
-                                cur.execute(
-                                    """
-                                    INSERT INTO user_notifications (user_email, title, message, icon, type)
-                                    VALUES (%s, %s, %s, 'bi-hourglass-split', 'info')
-                                    """,
-                                    (employee_email, 'Радна листа — потпис забележен',
-                                     f"Ваша радна листа за {_month_name(report)} {report['year']}. има један потпис и чека још један."),
-                                )
+                        if fully:
+                            _notify_user_best_effort(
+                                cur, employee_email, 'Радна листа одобрена',
+                                f"Ваша радна листа за {_month_name(report)} {report['year']}. је одобрена (шеф и директор).",
+                                'bi-check-circle', 'success')
+                        else:
+                            _notify_user_best_effort(
+                                cur, employee_email, 'Радна листа — потпис забележен',
+                                f"Ваша радна листа за {_month_name(report)} {report['year']}. има један потпис и чека још један.",
+                                'bi-hourglass-split', 'info')
                     conn.commit()
                     processed_count = len(approved_ids) + len(partial_ids)
                     skipped_count = len(report_ids) - processed_count
@@ -1349,17 +1347,11 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
                     [(rid, admin_email) for rid in existing_ids],
                 )
                 for report in existing_reports:
-                    employee_email = report.get('employee_email')
-                    if employee_email:
-                        cur.execute(
-                            """
-                            INSERT INTO user_notifications (user_email, title, message, icon, type)
-                            VALUES (%s, %s, %s, 'bi-arrow-counterclockwise', 'warning')
-                            """,
-                            (employee_email, 'Верификација повучена',
-                             f"Верификација ваше радне листе за {_month_name(report)} {report['year']}. је повучена. "
-                             f"Извештај чека поновну верификацију."),
-                        )
+                    _notify_user_best_effort(
+                        cur, report.get('employee_email'), 'Верификација повучена',
+                        f"Верификација ваше радне листе за {_month_name(report)} {report['year']}. је повучена. "
+                        f"Извештај чека поновну верификацију.",
+                        'bi-arrow-counterclockwise', 'warning')
                 conn.commit()
 
         processed_count = len(existing_ids)
@@ -1371,8 +1363,10 @@ def api_admin_batch_approve_timesheet_reports(timesheet_repository):
             'success': True, 'message': message,
             'processed': processed_count, 'skipped': skipped_count,
         })
-    except Exception as exc:
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+    except Exception:
+        logger.exception('Error in batch timesheet approve/withdraw')
+        return jsonify({'success': False,
+                        'message': 'Грешка при групној обради извештаја.'})
 
 
 def api_admin_export_timesheet_report(report_id, timesheet_repository):
@@ -1464,8 +1458,10 @@ def api_admin_delete_timesheet_report(report_id, timesheet_repository):
                 'message': f'Извештај је обрисан ({days_deleted} дана, {entries_deleted} уноса)',
             }
         )
-    except Exception as exc:
-        return jsonify({'success': False, 'message': f'Грешка: {str(exc)}'})
+    except Exception:
+        logger.exception('Error deleting timesheet report %s', report_id)
+        return jsonify({'success': False,
+                        'message': 'Грешка при брисању извештаја.'})
 
 
 # ---------------------------------------------------------------------------

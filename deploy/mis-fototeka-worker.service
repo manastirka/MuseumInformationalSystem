@@ -4,7 +4,7 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now mis-fototeka-worker
 # On the DEV machine adjust User/WorkingDirectory/ExecStart to the local
-# checkout (like deploy/museum-backup.service does).
+# checkout.
 
 [Unit]
 Description=MIS Fototeka worker (derivati + fixity)

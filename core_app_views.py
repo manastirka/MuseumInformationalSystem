@@ -359,6 +359,7 @@ def handle_login(
             session['is_admin'] = authenticated_user['role'] == 'admin'
             session['user_department'] = authenticated_user.get('department', '')
             session['is_department_head'] = authenticated_user.get('role') in DEPARTMENT_HEAD_ROLES
+            session['auth_version'] = authenticated_user.get('auth_version') or 1
             session['museum_theme'] = normalize_theme_mode(authenticated_user.get('theme_mode'))
             session['museum_accent'] = normalize_theme_accent(authenticated_user.get('theme_accent'))
             session['museum_style'] = normalize_theme_style(authenticated_user.get('theme_style'))
@@ -491,6 +492,10 @@ def handle_change_password(
                 return redirect(url_for(change_password_endpoint))
 
             if success:
+                # Promena lozinke podiže users.auth_version — osveži i sesiju,
+                # pa tekuća (upravo autentifikovana) sesija preživljava dok sve
+                # OSTALE sesije ovog naloga padaju pri sledećem zahtevu.
+                session['auth_version'] = int(session.get('auth_version') or 1) + 1
                 log_security_event(
                     'password_changed',
                     {

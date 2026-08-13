@@ -215,7 +215,7 @@
                                         <span class="badge bg-primary me-1"><i class="bi bi-mortarboard me-1"></i>Едукација</span>
                                         {% endif %}
                                         {% if exhibition.guided_tours %}
-                                        <span class="badge bg-info me-1"><i class="bi bi-person-walking me-1"></i>Воденe туре</span>
+                                        <span class="badge bg-info me-1"><i class="bi bi-person-walking me-1"></i>Водене туре</span>
                                         {% endif %}
                                         {% if exhibition.catalog_available %}
                                         <span class="badge bg-warning text-dark"><i class="bi bi-book me-1"></i>Каталог</span>
@@ -470,7 +470,7 @@ function showExhibitionDetails(exhibitionId) {
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" ${exhibition.guided_tours ? 'checked' : ''} disabled>
-                            <label class="form-check-label">Воденe туре</label>
+                            <label class="form-check-label">Водене туре</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" ${exhibition.catalog_available ? 'checked' : ''} disabled>

@@ -70,7 +70,7 @@ class TestHashPasswordForStorageNoInjection:
             return real_run(*args, **kwargs)
 
         monkeypatch.setattr(mcc.subprocess, 'run', fake_run)
-        mcc.hash_password_for_storage('Muzej2024!')
+        mcc.hash_password_for_storage('Primer-lozinke-za-hash-1!')
         assert called['subprocess'] is False, (
             'hashing must happen in-process, not via subprocess'
         )
@@ -125,3 +125,35 @@ class TestBuildUserUpdateCommandNoSqlInjection:
         assert "abc'def" not in sql
         # Provided as a -v variable assignment instead.
         assert any(a == "pw=abc'def" for a in cmd)
+
+
+class TestNoDefaultPasswords:
+    """Revizija 2026-08, stavka 7: bez fiksnih podrazumevanih lozinki u repou;
+    privremena/reset lozinka je slučajna (16–20) i prolazi isti PasswordValidator
+    kao veb."""
+
+    def test_literal_muzej_lozinke_nema_u_izvoru(self):
+        src = open(mcc.__file__, encoding='utf-8').read()
+        assert 'Muzej2024' not in src, (
+            'fiksna podrazumevana lozinka ne sme postojati u repou'
+        )
+
+    def test_generisana_lozinka_je_16_do_20_i_slozena(self):
+        gen = mcc.MuseumControlCenter.generate_strong_password
+        for _ in range(20):
+            pw = gen(object())
+            assert 16 <= len(pw) <= 20
+            assert any(c.isupper() for c in pw)
+            assert any(c.islower() for c in pw)
+            assert any(c.isdigit() for c in pw)
+            assert any(c in '!@#$%^&*()' for c in pw)
+
+    def test_generisana_lozinka_prolazi_veb_validator(self):
+        pw = mcc.MuseumControlCenter.generate_strong_password(object())
+        valid, greske = mcc.validate_password_for_storage(pw)
+        assert valid, greske
+
+    def test_kratka_lozinka_pada_na_veb_validatoru(self):
+        valid, greske = mcc.validate_password_for_storage('Kratka1!')
+        assert not valid
+        assert greske

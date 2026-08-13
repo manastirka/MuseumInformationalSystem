@@ -347,7 +347,7 @@ class MineralDatabase:
                     WHERE id = :id
                 """)
 
-                conn.execute(query, {
+                result = conn.execute(query, {
                     'id': mineral_id,
                     'inventory_number': mineral_data.get('inventory_number', ''),
                     'item_name': mineral_data.get('item_name', ''),
@@ -364,6 +364,35 @@ class MineralDatabase:
                     'bibliography_flag': mineral_data.get('bibliography_flag', False),
                     'quantity': mineral_data.get('quantity', 1)
                 })
+
+                if result.rowcount == 0:
+                    conn.rollback()
+                    logger.warning(f"Update matched no mineral with ID: {mineral_id}")
+                    return False
+
+                # Veza fotografija (foto_veza_predmet, migr. 048) prati
+                # preimenovanje inventarnog broja u ISTOJ transakciji: prvo
+                # se uklone veze koje bi posle preimenovanja bile duplikati
+                # (ista fotografija već vezana i na novi broj), pa se ostale
+                # prevedu na novi broj.
+                new_inventory = mineral_data.get('inventory_number', '')
+                conn.execute(text("""
+                    DELETE FROM foto_veza_predmet v
+                    WHERE v.mineral_id = :id
+                      AND v.inventarni_broj <> :inv
+                      AND EXISTS (
+                          SELECT 1 FROM foto_veza_predmet d
+                          WHERE d.fotografija_id = v.fotografija_id
+                            AND d.database_name = v.database_name
+                            AND d.inventarni_broj = :inv
+                            AND d.id <> v.id
+                      )
+                """), {'id': mineral_id, 'inv': new_inventory})
+                conn.execute(text("""
+                    UPDATE foto_veza_predmet
+                    SET inventarni_broj = :inv
+                    WHERE mineral_id = :id AND inventarni_broj <> :inv
+                """), {'id': mineral_id, 'inv': new_inventory})
 
                 conn.commit()
                 logger.info(f"Updated mineral with ID: {mineral_id}")
@@ -387,8 +416,23 @@ class MineralDatabase:
 
         try:
             with self.engine.connect() as conn:
+                # Legacy veze bez mineral_id (nepoklopljeni backfill) čiste se
+                # po tekstualnom paru u ISTOJ transakciji; veze sa mineral_id
+                # padaju uz ON DELETE CASCADE (migr. 048).
+                conn.execute(text("""
+                    DELETE FROM foto_veza_predmet
+                    WHERE database_name = 'mineral'
+                      AND mineral_id IS NULL
+                      AND inventarni_broj = (
+                          SELECT inventory_number FROM minerals WHERE id = :id
+                      )
+                """), {'id': mineral_id})
                 query = text("DELETE FROM minerals WHERE id = :id")
-                conn.execute(query, {'id': mineral_id})
+                result = conn.execute(query, {'id': mineral_id})
+                if result.rowcount == 0:
+                    conn.rollback()
+                    logger.warning(f"Delete matched no mineral with ID: {mineral_id}")
+                    return False
                 conn.commit()
                 logger.info(f"Deleted mineral with ID: {mineral_id}")
                 return True
@@ -417,8 +461,10 @@ class MineralDatabase:
                 return "1"
 
         except Exception as e:
+            # Транзијентна DB грешка не сме да „измисли" инвентарски број 1 —
+            # куратор би преписао постојећи запис (ревизија #6).
             logger.error(f"Error getting next inventory number: {e}")
-            return "1"
+            raise
 
     def get_mineral_by_inventory_number(self, inv_number: str) -> Optional[Dict]:
         """Get mineral by inventory number (supports M12345 or 12345 format)."""

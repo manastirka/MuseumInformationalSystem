@@ -156,11 +156,11 @@ from security_utils import (
     admin_required,
     module_access_required,
     log_security_event,
-    get_client_ip
+    get_client_ip,
+    validate_session_auth_version,
 )
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from rate_limit_ext import limiter
 from flask_session import Session
 from flask_babel import Babel, gettext as _, lazy_gettext as _l
 
@@ -288,6 +288,22 @@ def refresh_shared_runtime_settings():
         apply_shared_system_settings(admin_system_views.load_saved_settings())
     except Exception as exc:
         logging.getLogger(__name__).warning("Could not refresh shared system settings: %s", exc)
+
+
+def auth_version_check_enabled(flask_app):
+    """Gejt opoziva sesija — namerno ODVOJEN od shared_settings_db_enabled,
+    da testovi koji simuliraju prod za deljena podešavanja ne uvuku i
+    opoziv (sintetičke sesije bez auth_version bi padale)."""
+    return bool(os.environ.get('DATABASE_URL')) and not flask_app.config.get('TESTING', False)
+
+
+@app.before_request
+def enforce_session_auth_version():
+    """Opoziv sesije: deaktivacija/promena uloge/lozinke podiže users.auth_version,
+    pa sesija sa starom verzijom pada odmah umesto da živi do isteka."""
+    if not auth_version_check_enabled(app):
+        return None
+    return validate_session_auth_version()
 
 # Trust proxy headers from nginx (1 proxy hop)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -464,15 +480,13 @@ globals().update(
     )
 )
 
-# Initialize rate limiter
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    # Sensitive endpoints keep explicit tighter limits; this default should not
-    # block normal internal navigation and collection work.
-    default_limits=["10000 per day", "1000 per hour"],
-    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
+# Initialize rate limiter (shared instance from rate_limit_ext; blueprints
+# attach @limiter.limit decorators on it without importing app).
+app.config.setdefault(
+    'RATELIMIT_STORAGE_URI',
+    app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
 )
+limiter.init_app(app)
 
 app_blueprint_support.apply_endpoint_rate_limits(app, limiter)
 
@@ -1339,11 +1353,10 @@ except Exception as _bilja_exc:  # pragma: no cover
     BILJA_RECENTNI_MORSKI_MEKUSCI_DATABASE = deepcopy(_empty_bilja)
 
 
-# Visitor Records Database
-VISITOR_RECORDS = []
-
-# Research Projects Database
-RESEARCH_PROJECTS = []
+# Посете и истраживачки пројекти: PostgreSQL табеле visitor_records /
+# research_projects (миграција 040); čitanje/upis у museum_content_views.
+# Процесне листе су уклоњене — нису преживљавале рестарт ни делиле stanje
+# између gunicorn радника.
 
 # Vozila i rezervacije: PostgreSQL je jedini izvor istine (ZADATAK #3).
 # Nema JSON fajl-fallback-a — pad baze se propagira kao jasna greška, a jedini

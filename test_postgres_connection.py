@@ -8,6 +8,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
+from test_postgres_implementation import (
+    cleanup_reference_data,
+    ensure_reference_data,
+)
+
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -29,10 +34,21 @@ class PostgresConnectionTests(unittest.TestCase):
             if engine is not None:
                 engine.dispose()
             raise unittest.SkipTest(f'PostgreSQL is not usable: {exc}')
+        cls._seed_state = None
+        try:
+            cls._seed_state = ensure_reference_data(cls.engine, database_url)
+        except BaseException:
+            cls.engine.dispose()
+            raise
 
     @classmethod
     def tearDownClass(cls):
-        cls.engine.dispose()
+        try:
+            state = getattr(cls, '_seed_state', None)
+            if state is not None:
+                cleanup_reference_data(cls.engine, state)
+        finally:
+            cls.engine.dispose()
 
     def test_core_tables_are_reachable(self):
         expected_tables = {

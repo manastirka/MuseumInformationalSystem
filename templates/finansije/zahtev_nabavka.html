@@ -735,6 +735,17 @@
         });
     }
 
+    // Vrednosti iz baze (opis stavke, arhivska referenca...) idu u innerHTML —
+    // escape obavezan, unos kontroliše podnosilac zahteva.
+    function esc(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // Load saved requests
     function loadSavedRequests() {
         fetch('/api/nabavka/list')
@@ -745,14 +756,14 @@
                     tbody.innerHTML = data.requests.map(req => `
                         <tr>
                             <td>${req.id}</td>
-                            <td>${req.datum}</td>
-                            <td>${req.opis}</td>
+                            <td>${esc(req.datum)}</td>
+                            <td>${esc(req.opis)}</td>
                             <td>${parseFloat(req.procenjeno).toLocaleString('sr-RS')} РСД</td>
                             <td>
                                 <span class="badge bg-${getStatusColor(req.status)}">
-                                    ${req.status_label || getStatusText(req.status)}
+                                    ${esc(req.status_label || getStatusText(req.status))}
                                 </span>
-                                ${req.archive_reference ? `<div class="small text-muted">${req.archive_reference}</div>` : ''}
+                                ${req.archive_reference ? `<div class="small text-muted">${esc(req.archive_reference)}</div>` : ''}
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" onclick="viewRequest(${req.id})">

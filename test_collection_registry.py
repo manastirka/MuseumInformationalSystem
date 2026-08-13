@@ -65,10 +65,18 @@ class TestCollectionRegistry:
             assert entry.collection_export_enabled is False
 
     def test_build_collection_database_map_covers_all_registry_entries(self):
-        database_map = build_collection_database_map(museum_app)
+        # get_meteorite_collection_database only caches (and so only returns a
+        # stable object) when PG has specimens; stub it so the wiring — the map
+        # resolves the meteorite entry through that getter — is what's asserted.
+        meteorite_sentinel = {'specimens': [], 'statistics': {}}
+        with patch.object(
+            museum_app, 'get_meteorite_collection_database',
+            return_value=meteorite_sentinel,
+        ):
+            database_map = build_collection_database_map(museum_app)
         assert set(database_map) == {entry.module_key for entry in COLLECTION_LIST_ENTRIES}
         assert database_map['botany_collection'] is museum_app.BOTANY_COLLECTION_DATABASE
-        assert database_map['meteorite_collection'] is museum_app.get_meteorite_collection_database()
+        assert database_map['meteorite_collection'] is meteorite_sentinel
 
 
 class TestCollectionListRoutes:
@@ -249,7 +257,22 @@ class TestCollectionRegistryEdgeCases:
             sess['user_email'] = 'user@example.com'
             sess['user_role'] = 'admin'
 
+        # The real database is loaded from environment data that an empty test
+        # DB does not have; stub it so the strip behavior is what's under test.
+        # (Sanja se od revizije 2026-08 čita iz baze po zahtevu, ne iz
+        # procesnog globala — stub ide na loader.)
+        stub_database = {
+            'specimens': [
+                {'id': 1, 'name': 'Mammut', 'source_file': 'sanja.xlsx'},
+                {'id': 2, 'name': 'Deinotherium', 'source_file': 'sanja.xlsx'},
+            ],
+            'statistics': {'total': 2},
+        }
         with patch.object(
+            museum_app.collection_management_views,
+            '_load_sanja_database_payload',
+            return_value=stub_database,
+        ), patch.object(
             museum_app.collection_management_views,
             'render_standard_collection_database',
             return_value=museum_app.app.response_class('ok', status=200),
@@ -260,6 +283,7 @@ class TestCollectionRegistryEdgeCases:
         records = mocked_handler.call_args.kwargs['records']
         assert records
         assert all('source_file' not in record for record in records)
+        assert [record['name'] for record in records] == ['Mammut', 'Deinotherium']
 
     def test_museum_overview_renders_with_empty_collection_map(self):
         client = museum_app.app.test_client()

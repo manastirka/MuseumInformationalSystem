@@ -53,6 +53,18 @@ CREATE TABLE IF NOT EXISTS vehicle_reservations (
     CONSTRAINT positive_km CHECK (estimated_km IS NULL OR estimated_km >= 0)
 );
 
+-- Aktivne rezervacije istog vozila ne smeju da se preklapaju po datumu
+-- (migration/049; zahteva btree_gist).
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+ALTER TABLE vehicle_reservations
+    DROP CONSTRAINT IF EXISTS excl_vehicle_rezervacije_preklapanje;
+ALTER TABLE vehicle_reservations
+    ADD CONSTRAINT excl_vehicle_rezervacije_preklapanje
+    EXCLUDE USING gist (
+        vehicle_id WITH =,
+        daterange(start_date, end_date, '[]') WITH &&
+    ) WHERE (status = 'Активна');
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_vehicles_status ON vehicles(status);
 CREATE INDEX IF NOT EXISTS idx_vehicles_type ON vehicles(type);

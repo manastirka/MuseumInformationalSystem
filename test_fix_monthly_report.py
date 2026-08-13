@@ -72,24 +72,20 @@ _TMP_OUT = '/tmp/museum-test-monthly-report-out'
 
 def _run(header, daily):
     """Run the real export, but redirect doc.save to a writable tmp dir (the
-    production exports/timesheets/ dir is owned by nginx and not writable here)."""
+    production exports/timesheets/ dir is owned by nginx and not writable here).
+    Document uses __slots__, so save is patched on the class, not the instance."""
     os.makedirs(_TMP_OUT, exist_ok=True)
     saved = {}
-    real_document = twe.Document
+    from docx.document import Document as _DocClass
+    real_save = _DocClass.save
 
-    def _doc_factory(*args, **kwargs):
-        doc = real_document(*args, **kwargs)
-
-        def _save(path):
-            tmp_path = os.path.join(_TMP_OUT, os.path.basename(path))
-            saved['path'] = tmp_path
-            return type(doc).save(doc, tmp_path)
-
-        doc.save = _save
-        return doc
+    def _save(doc, path):
+        tmp_path = os.path.join(_TMP_OUT, os.path.basename(path))
+        saved['path'] = tmp_path
+        return real_save(doc, tmp_path)
 
     with patch.object(twe.psycopg, 'connect', return_value=_FakeConn(header, daily)), \
-         patch.object(twe, 'Document', _doc_factory):
+         patch.object(_DocClass, 'save', _save):
         twe.generate_word_document(1, 'postgresql://fake/db')
     return saved.get('path')
 

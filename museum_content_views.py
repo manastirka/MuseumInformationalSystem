@@ -51,60 +51,129 @@ def handle_add_book(*, library_database, save_library_database, phase3a_database
     return render_template('admin_add_book.html')
 
 
-def handle_add_visitor(*, visitor_records):
-    """Handle visitor record creation form."""
+def load_visitor_records():
+    """Load visitor records from PostgreSQL (raises on failure)."""
+    with get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, visit_date AS date, visitor_type, group_size,
+                       age_category, nationality, ticket_type, guided_tour,
+                       exhibition, feedback_rating, notes
+                FROM visitor_records
+                ORDER BY visit_date DESC NULLS LAST, id DESC
+                """
+            )
+            return cur.fetchall()
+
+
+def load_research_projects():
+    """Load research projects from PostgreSQL (raises on failure)."""
+    with get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, project_code, principal_investigator,
+                       department, research_area, start_date, end_date,
+                       funding_source, budget, status, description,
+                       publications, collaborators, keywords
+                FROM research_projects
+                ORDER BY start_date DESC NULLS LAST, id DESC
+                """
+            )
+            return cur.fetchall()
+
+
+def handle_add_visitor():
+    """Handle visitor record creation form (persists to PostgreSQL)."""
     if request.method == 'POST':
-        visitor_data = {
-            'id': max((record.get('id', 0) for record in visitor_records), default=0) + 1,
-            'date': request.form.get('date', '').strip(),
-            'visitor_type': request.form.get('visitor_type', '').strip(),
-            'group_size': int(request.form.get('group_size', '').strip())
-            if request.form.get('group_size', '').strip().isdigit()
-            else 1,
-            'age_category': request.form.get('age_category', '').strip(),
-            'nationality': request.form.get('nationality', 'Србија').strip(),
-            'ticket_type': request.form.get('ticket_type', '').strip(),
-            'guided_tour': request.form.get('guided_tour') == 'on',
-            'exhibition': request.form.get('exhibition', '').strip(),
-            'feedback_rating': request.form.get('feedback_rating', '').strip(),
-            'notes': request.form.get('notes', '').strip(),
-        }
-        visitor_records.append(visitor_data)
+        try:
+            with get_postgres_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO visitor_records (
+                            visit_date, visitor_type, group_size, age_category,
+                            nationality, ticket_type, guided_tour, exhibition,
+                            feedback_rating, notes
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            request.form.get('date', '').strip() or None,
+                            request.form.get('visitor_type', '').strip(),
+                            int(request.form.get('group_size', '').strip())
+                            if request.form.get('group_size', '').strip().isdigit()
+                            else 1,
+                            request.form.get('age_category', '').strip(),
+                            request.form.get('nationality', 'Србија').strip(),
+                            request.form.get('ticket_type', '').strip(),
+                            request.form.get('guided_tour') == 'on',
+                            request.form.get('exhibition', '').strip(),
+                            request.form.get('feedback_rating', '').strip(),
+                            request.form.get('notes', '').strip(),
+                        ),
+                    )
+                conn.commit()
+        except Exception:
+            logger.exception("Error saving visitor record")
+            flash('Грешка при чувању посете — податак НИЈЕ забележен.', 'error')
+            return render_template('admin_add_visitor.html')
+
         flash('Посета је успешно забележена!', 'success')
         return redirect(url_for('visitors_database'))
 
     return render_template('admin_add_visitor.html')
 
 
-def handle_add_research(*, research_projects):
-    """Handle research project creation form."""
+def handle_add_research():
+    """Handle research project creation form (persists to PostgreSQL)."""
     if request.method == 'POST':
-        research_data = {
-            'id': max((project.get('id', 0) for project in research_projects), default=0) + 1,
-            'title': request.form.get('title', '').strip(),
-            'project_code': request.form.get('project_code', '').strip(),
-            'principal_investigator': request.form.get('principal_investigator', '').strip(),
-            'department': request.form.get('department', '').strip(),
-            'research_area': request.form.get('research_area', '').strip(),
-            'start_date': request.form.get('start_date', '').strip(),
-            'end_date': request.form.get('end_date', '').strip(),
-            'funding_source': request.form.get('funding_source', '').strip(),
-            'budget': request.form.get('budget', '').strip(),
-            'status': request.form.get('status', 'У току').strip(),
-            'description': request.form.get('description', '').strip(),
-            'publications': request.form.get('publications', '').strip(),
-            'collaborators': request.form.get('collaborators', '').strip(),
-            'keywords': request.form.get('keywords', '').strip(),
-        }
-        research_projects.append(research_data)
+        try:
+            with get_postgres_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO research_projects (
+                            title, project_code, principal_investigator,
+                            department, research_area, start_date, end_date,
+                            funding_source, budget, status, description,
+                            publications, collaborators, keywords
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            request.form.get('title', '').strip(),
+                            request.form.get('project_code', '').strip(),
+                            request.form.get('principal_investigator', '').strip(),
+                            request.form.get('department', '').strip(),
+                            request.form.get('research_area', '').strip(),
+                            request.form.get('start_date', '').strip() or None,
+                            request.form.get('end_date', '').strip() or None,
+                            request.form.get('funding_source', '').strip(),
+                            request.form.get('budget', '').strip(),
+                            request.form.get('status', 'У току').strip(),
+                            request.form.get('description', '').strip(),
+                            request.form.get('publications', '').strip(),
+                            request.form.get('collaborators', '').strip(),
+                            request.form.get('keywords', '').strip(),
+                        ),
+                    )
+                conn.commit()
+        except Exception:
+            logger.exception("Error saving research project")
+            flash('Грешка при чувању пројекта — податак НИЈЕ забележен.', 'error')
+            return render_template('admin_add_research.html')
+
         flash('Истраживачки пројекат је успешно додат!', 'success')
         return redirect(url_for('research_database'))
 
     return render_template('admin_add_research.html')
 
 
-def render_visitors_database(*, visitor_records):
+def render_visitors_database():
     """Render visitor records database page."""
+    visitor_records = load_visitor_records()
     return render_template(
         'admin_visitors_database.html',
         visitors=visitor_records,
@@ -118,8 +187,9 @@ def export_visitors_to_pdf(*, visitors_endpoint='visitors_database'):
     return redirect(url_for(visitors_endpoint))
 
 
-def render_research_database(*, research_projects):
+def render_research_database():
     """Render research projects database page."""
+    research_projects = load_research_projects()
     return render_template(
         'admin_research_database.html',
         projects=research_projects,
@@ -127,10 +197,10 @@ def render_research_database(*, research_projects):
     )
 
 
-def export_research_to_pdf(*, research_projects, project_id, list_endpoint='research_database'):
+def export_research_to_pdf(*, project_id, list_endpoint='research_database'):
     """Export a single research project to PDF."""
     project = next(
-        (entry for entry in research_projects if str(entry.get('id')) == str(project_id)),
+        (entry for entry in load_research_projects() if str(entry.get('id')) == str(project_id)),
         None,
     )
     if project is None:
