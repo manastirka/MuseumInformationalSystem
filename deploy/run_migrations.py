@@ -10,6 +10,9 @@ Commands:
                                                     #   (host, database, files)
     python deploy/run_migrations.py apply --execute --database mis_db
                                                     # actually run pending files
+                                                    #   (--applied-log <fajl>:
+                                                    #   upiši svaki primenjen fajl,
+                                                    #   za rollback poruku deploja)
     python deploy/run_migrations.py baseline        # DRY RUN: verify schema vs
                                                     #   files, show what would be
                                                     #   marked applied
@@ -206,7 +209,18 @@ def cmd_status():
         conn.close()
 
 
-def cmd_apply(execute, database):
+def _log_applied(applied_log, filename):
+    """Upiši primenjen fajl u evidenciju pokušaja (za rollback poruku deploja)."""
+    if not applied_log:
+        return
+    try:
+        with open(applied_log, 'a', encoding='utf-8') as fh:
+            fh.write(filename + '\n')
+    except OSError as exc:
+        print(f"  UPOZORENJE: ne mogu da upišem {applied_log}: {exc}")
+
+
+def cmd_apply(execute, database, applied_log=None):
     conn = _connect()
     try:
         cur = conn.cursor()
@@ -251,6 +265,7 @@ def cmd_apply(execute, database):
                 cur.execute(sql)
                 cur.execute("INSERT INTO schema_migrations(filename) VALUES (%s)", (f,))
                 conn.commit()
+                _log_applied(applied_log, f)
             except Exception as exc:
                 conn.rollback()
                 print(f"  FAILED on {f}: {exc}")
@@ -432,12 +447,20 @@ def main():
             return 1
         database = args[idx + 1]
         del args[idx:idx + 2]
+    applied_log = None
+    if '--applied-log' in args:
+        idx = args.index('--applied-log')
+        if idx + 1 >= len(args):
+            print("--applied-log traži putanju fajla odmah iza sebe.")
+            return 1
+        applied_log = args[idx + 1]
+        del args[idx:idx + 2]
     args = [a for a in args if a != '--execute']
     cmd = args[0] if args else 'status'
     if cmd == 'status':
         return cmd_status()
     if cmd == 'apply':
-        return cmd_apply(execute, database)
+        return cmd_apply(execute, database, applied_log)
     if cmd == 'baseline':
         return cmd_baseline(execute, database)
     if cmd == 'mark':

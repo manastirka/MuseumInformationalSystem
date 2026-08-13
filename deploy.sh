@@ -9,6 +9,10 @@ APP=/opt/mis/app
 VENV=/opt/mis/venv
 HEALTH_URL="${MIS_HEALTH_URL:-https://localhost/healthz}"
 NGINX_CONF="${MIS_NGINX_CONF:-/etc/nginx/conf.d/mis.conf}"
+DB_NAME="${MIS_DB_NAME:-mis_db}"
+BACKUP_DIR="${MIS_PREDEPLOY_BACKUP_DIR:-/backup}"
+PRE_DUMP=""
+MIG_LOG=""
 
 echo "== 1/7 Backup pre deploja =="
 systemctl start backup-nhmb.service
@@ -28,6 +32,23 @@ rollback() {
     echo "!! DEPLOY PAO — vraćam kod na ${PREV:0:12} i restartujem servis"
     sudo -u mis git -C "$APP" reset --hard "$PREV"
     sudo -u mis "$VENV/bin/pip" install -q -r "$APP/requirements.lock" || true
+    # Kod je vraćen, ali migracije se commit-uju pojedinačno — šema ostaje
+    # kakva je bila u trenutku pada. Restore baze je Aleksandrova odluka,
+    # deploy ga NIKAD ne radi sam.
+    if [[ -n "${MIG_LOG:-}" && -s "$MIG_LOG" ]]; then
+        echo "!! ======================================================="
+        echo "!! PAŽNJA: ŠEMA BAZE JE ISPRED KODA. U ovom pokušaju su"
+        echo "!! primenjene (i commit-ovane) sledeće migracije:"
+        sed 's/^/!!     /' "$MIG_LOG"
+        echo "!! Baza NIJE automatski vraćena. Ako je restore potreban,"
+        echo "!! ručno (posle provere šta je smoke oborio):"
+        echo "!!     sudo -u postgres pg_restore --clean --if-exists -d $DB_NAME $PRE_DUMP"
+        echo "!! Snimak stanja pre migracija: $PRE_DUMP"
+        echo "!! ======================================================="
+    elif [[ -n "${PRE_DUMP:-}" && -f "$PRE_DUMP" ]]; then
+        echo "!! Nijedna migracija nije primenjena u ovom pokušaju — šema"
+        echo "!! odgovara vraćenom kodu (snimak: $PRE_DUMP)."
+    fi
     if [[ -n "$NGINX_PRE" && -f "$NGINX_PRE" && -f "$NGINX_CONF" ]] \
             && ! diff -q "$NGINX_PRE" "$NGINX_CONF" >/dev/null 2>&1; then
         echo "!! vraćam nginx konfig na stanje pre deploja"
@@ -48,10 +69,22 @@ sudo -u mis git -C "$APP" pull --ff-only
 echo "== 3/7 Zavisnosti (pinovane, requirements.lock) =="
 sudo -u mis "$VENV/bin/pip" install -r "$APP/requirements.lock" -q
 
+echo "== 3a/7 Snimak baze pre migracija (pg_dump) =="
+# Migracije se commit-uju pojedinačno i nemaju undo — ovaj snimak je jedini
+# put nazad ako migracija prođe a smoke test padne.
+NEW_SHA="$(sudo -u mis git -C "$APP" rev-parse HEAD)"
+PRE_DUMP="$BACKUP_DIR/pre-deploy-${NEW_SHA:0:12}.dump"
+install -d -m 755 "$BACKUP_DIR"
+sudo -u postgres pg_dump -Fc "$DB_NAME" > "$PRE_DUMP"
+echo "  snimak: $PRE_DUMP"
+
 echo "== 3b/7 Migracije šeme (SQL fajlovi iz migration/) =="
 # Neinteraktivno, ali --database mora da se poklopi sa current_database() —
-# runner odbija ako .env pokazuje na pogrešnu bazu.
-sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply --execute --database ${MIS_DB_NAME:-mis_db}"
+# runner odbija ako .env pokazuje na pogrešnu bazu. --applied-log pamti šta
+# je ovaj pokušaj stvarno primenio, za rollback poruku.
+MIG_LOG="$(mktemp /tmp/mis-migracije-primenjene.XXXXXX)"
+chown mis "$MIG_LOG"
+sudo -u mis bash -c "cd $APP && $VENV/bin/python deploy/run_migrations.py apply --execute --database $DB_NAME --applied-log $MIG_LOG"
 
 echo "== 4/7 Sistemski fajlovi (systemd/nginx/logrotate) =="
 # PROD primerak je AUTORITATIVAN za backup-nhmb.sh, restore-proba.sh i
