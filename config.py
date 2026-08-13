@@ -37,9 +37,15 @@ class Config:
     SESSION_COOKIE_HTTPONLY: bool = os.environ.get('SESSION_COOKIE_HTTPONLY', 'True').lower() == 'true'
     SESSION_COOKIE_SAMESITE: str = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 
-    # Rate Limiting
+    # Rate Limiting — memory:// znači PO RADNIKU (svaki gunicorn worker broji
+    # za sebe), pa podrazumevano pratimo REDIS_URL čim je podešen; memory://
+    # ostaje samo za okruženja bez Redisa (testovi, sandbox).
     RATELIMIT_ENABLED: bool = os.environ.get('RATELIMIT_ENABLED', 'True').lower() == 'true'
-    RATELIMIT_STORAGE_URL: str = os.environ.get('RATELIMIT_STORAGE_URL', 'memory://')
+    RATELIMIT_STORAGE_URL: str = (
+        os.environ.get('RATELIMIT_STORAGE_URL')
+        or os.environ.get('REDIS_URL')
+        or 'memory://'
+    )
     RATELIMIT_STRATEGY: str = 'fixed-window'
     RATELIMIT_HEADERS_ENABLED: bool = True
 
