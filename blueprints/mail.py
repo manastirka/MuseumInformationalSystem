@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Blueprint, current_app, flash, jsonify, redirect, session, url_for
 
 import mail_views
-from security_utils import admin_required, login_required
+from security_utils import admin_only, login_required
 
 
 mail_bp = Blueprint('mail', __name__)
@@ -39,7 +39,7 @@ def mail_client_page():
 
 
 @mail_bp.route('/mail/settings')
-@admin_required
+@admin_only
 def mail_settings_page():
     """Backward-compatible redirect to centralized admin mail settings."""
     return redirect(url_for('admin_mail_configuration'))
@@ -152,21 +152,21 @@ def api_mail_sync():
 
 
 @mail_bp.route('/api/mail/settings', methods=['GET'])
-@admin_required
+@admin_only
 def api_mail_settings_get():
     """Return mail settings for the current user."""
     return mail_views.api_mail_settings_get()
 
 
 @mail_bp.route('/api/mail/settings', methods=['POST'])
-@admin_required
+@admin_only
 def api_mail_settings_save():
     """Save mail settings for the current user."""
     return mail_views.api_mail_settings_save()
 
 
 @mail_bp.route('/api/mail/test-connection', methods=['POST'])
-@admin_required
+@admin_only
 def api_mail_test_connection():
     """Test IMAP or SMTP connection."""
     return mail_views.api_mail_test_connection()

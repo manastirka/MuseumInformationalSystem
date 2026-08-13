@@ -250,6 +250,34 @@ def test_admin_prolazi_na_smtp_rute():
     assert resp.status_code != 403, resp.get_data(as_text=True)
 
 
+def test_direktor_403_na_stare_mail_rute():
+    """Круг 4 #3: старе mail руте (GET/POST подешавања, test-connection) не
+    смеју да заобиђу admin_only границу постављену у батчу 1."""
+    client = _login(_client(), email='direktor.revizija@example.invalid',
+                    role='direktor')
+    for method, path in (
+        ('GET', '/api/mail/settings'),
+        ('POST', '/api/mail/settings'),
+        ('POST', '/api/mail/test-connection'),
+    ):
+        resp = client.open(path, method=method, json={}, base_url=BASE)
+        assert resp.status_code == 403, (
+            f'{method} {path}: {resp.status_code} '
+            f'{resp.get_data(as_text=True)[:200]}')
+    # Страница /mail/settings није API — admin_only тамо преусмерава на
+    # dashboard уместо 403, али директор не сме да прође на садржај.
+    resp = client.get('/mail/settings', base_url=BASE)
+    assert resp.status_code == 302, resp.get_data(as_text=True)
+    assert '/mail' not in (resp.headers.get('Location') or '').replace(
+        'dashboard', ''), resp.headers.get('Location')
+
+
+def test_admin_prolazi_na_stare_mail_rute():
+    client = _login(_client(), email='admin.revizija@example.invalid', role='admin')
+    resp = client.get('/api/mail/settings', base_url=BASE)
+    assert resp.status_code != 403, resp.get_data(as_text=True)
+
+
 def test_direktor_403_na_sistemske_rute():
     client = _login(_client(), email='direktor.revizija@example.invalid',
                     role='direktor')
