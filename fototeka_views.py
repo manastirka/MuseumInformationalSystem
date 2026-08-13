@@ -769,34 +769,61 @@ def _place_raw_exclusive(temp_path, raw_full):
     os.unlink(temp_path)
 
 
+# Namera mlađa od ovoga se smatra živim (možda konkurentnim) unosom i ne sme
+# se preuzeti; usklađeno sa pragom reconcile_intake_pending u workeru.
+INTAKE_CLAIM_STALE_MINUTES = 30
+
+
 def _record_intake_intent(raw_rel, sha256, original_ime):
     """Upiši nameru intake-a u fototeka_intake_pending, u SOPSTVENOJ kratkoj
     transakciji, PRE postavljanja RAW fajla. Ako spoljni commit posle padne,
     ovaj red ostaje i reconciler (fototeka_jobs.reconcile_intake_pending) zna
-    da RAW na toj putanji bez DB reda nije write-once original nego siroče."""
+    da RAW na toj putanji bez DB reda nije write-once original nego siroče.
+
+    Vraća claim_token ako je OVAJ proces postao vlasnik namere (svež upis ili
+    preuzimanje bajate namere starije od INTAKE_CLAIM_STALE_MINUTES). None
+    znači da svežu nameru za istu putanju drži drugi, verovatno konkurentan
+    unos — pozivalac tada NE sme ni da postavlja ni da briše fajl na putanji."""
+    token = uuid.uuid4().hex
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO fototeka_intake_pending (sha256, raw_putanja, original_ime)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (raw_putanja) DO UPDATE SET created_at = now()
+                INSERT INTO fototeka_intake_pending
+                    (sha256, raw_putanja, original_ime, claim_token)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (raw_putanja) DO UPDATE
+                    SET sha256 = EXCLUDED.sha256,
+                        original_ime = EXCLUDED.original_ime,
+                        claim_token = EXCLUDED.claim_token,
+                        created_at = now()
+                    WHERE fototeka_intake_pending.created_at
+                          < now() - make_interval(mins => %s)
+                RETURNING claim_token
                 """,
-                (sha256, raw_rel, original_ime),
+                (sha256, raw_rel, original_ime, token,
+                 INTAKE_CLAIM_STALE_MINUTES),
             )
+            claimed = cur.fetchone() is not None
+    return token if claimed else None
 
 
-def _reclaim_orphan_raw(cur, raw_rel, raw_full):
+def _reclaim_orphan_raw(cur, raw_rel, raw_full, claim_token):
     """Sme li zauzeta RAW putanja da se preuzme? Da — samo ako je NIJEDAN red
-    fotografije ne referencira, a postoji zabeležena namera (fototeka_intake_
-    pending): to je siroče propalog intake-a (commit pao posle postavljanja
-    fajla). Putanja je sadržajno adresirana (sha256 u imenu), pa je sadržaj
-    identičan našem. Pravi write-once original (sa DB redom) se NIKAD ne dira."""
+    fotografije ne referencira, a red namere (fototeka_intake_pending) je upisao
+    OVAJ proces (claim_token): to je siroče propalog intake-a (commit pao posle
+    postavljanja fajla). Putanja je sadržajno adresirana (sha256 u imenu), pa je
+    sadržaj identičan našem. Pravi write-once original (sa DB redom) se NIKAD ne
+    dira, a tuđ (konkurentan) intake se NIKAD ne briše."""
+    if not claim_token:
+        return False
     cur.execute('SELECT 1 FROM fotografije WHERE raw_putanja = %s', (raw_rel,))
     if cur.fetchone():
         return False
-    cur.execute('SELECT 1 FROM fototeka_intake_pending WHERE raw_putanja = %s',
-                (raw_rel,))
+    cur.execute(
+        'SELECT 1 FROM fototeka_intake_pending '
+        'WHERE raw_putanja = %s AND claim_token = %s',
+        (raw_rel, claim_token))
     if not cur.fetchone():
         return False
     Path(raw_full).unlink(missing_ok=True)
@@ -863,15 +890,21 @@ def _intake_photo_from_path(cur, temp_path, original_ime, file_size, ext, *,
     )
     raw_full = fototeka_jobs.get_arhiva_path() / raw_rel
     # Namera PRE fajla — sopstvena kratka transakcija, preživljava pad
-    # spoljnog commit-a i čini siroče prepoznatljivim.
-    _record_intake_intent(raw_rel, sha256, original_ime)
+    # spoljnog commit-a i čini siroče prepoznatljivim. Bez vlasništva nad
+    # redom namere (konkurentan unos iste fotografije drži svežu nameru)
+    # ovaj proces ne sme ni da postavlja ni da briše fajl na putanji —
+    # inače gubitnik pri čišćenju briše RAW pobednika.
+    claim_token = _record_intake_intent(raw_rel, sha256, original_ime)
+    if claim_token is None:
+        return None, (f'{original_ime}: иста фотографија се управо додаје у '
+                      f'другом уносу — покушајте поново за неколико минута')
     # Place the RAW first, exclusively: a collision is refused here, never
     # overwritten — osim kad je zauzeta putanja dokazano siroče propalog
-    # intake-a (nema DB reda + postoji namera), koje se preuzima.
+    # intake-a (nema DB reda + namera je NAŠA), koje se preuzima.
     try:
         _place_raw_exclusive(temp_path, raw_full)
     except FileExistsError:
-        if not _reclaim_orphan_raw(cur, raw_rel, raw_full):
+        if not _reclaim_orphan_raw(cur, raw_rel, raw_full, claim_token):
             return None, (f'{original_ime}: идентична датотека већ постоји у '
                           f'архиви (није преписана)')
         _place_raw_exclusive(temp_path, raw_full)
