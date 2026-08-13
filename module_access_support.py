@@ -171,6 +171,13 @@ def load_json_settings_data(
         logger.info("Loaded %s from PostgreSQL shared settings", setting_key)
         return db_value
 
+    if get_postgres_connection is not None:
+        # Baza je dostupna, reda nema: to znači "nema posebnih podešavanja",
+        # ne "pročitaj fajl" — inače stara ovlašćenja iz JSON fajla vaskrsnu
+        # mimo baze. Fajl ulazi u igru samo eksplicitnim import-om
+        # (scripts/migration/import_shared_setting_json.py).
+        return deepcopy(default_value)
+
     try:
         if file_path and current_mtime is not None:
             file_value = load_json_file(file_path)
