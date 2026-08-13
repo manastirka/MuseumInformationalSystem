@@ -174,6 +174,26 @@ def test_vesti_pad_baze_je_503_ne_json(tmp_path):
     assert 'Застарела вест' not in resp.get_data(as_text=True)
 
 
+# --- Ставка 6: XSS у набавци + цурење str(exc) -------------------------------
+
+def test_nabavka_tabela_koristi_esc():
+    """Опис набавке и архивска референца из базе иду у innerHTML — морају
+    кроз esc() (образац из батча 7)."""
+    src = (Path(__file__).parent / 'templates' / 'finansije' /
+           'zahtev_nabavka.html').read_text(encoding='utf-8')
+    assert 'function esc(' in src
+    assert '${esc(req.opis)}' in src
+    assert '${esc(req.archive_reference)}' in src
+    assert '<td>${req.opis}</td>' not in src
+
+
+def test_admin_system_views_ne_curi_izuzetke():
+    """Сиров str(exc) не сме у JSON одговор системских рута."""
+    src = (Path(__file__).parent / 'admin_system_views.py'
+           ).read_text(encoding='utf-8')
+    assert 'str(exc)' not in src
+
+
 # --- Дигитализовани профили: кар пробе није тихи JSON ------------------------
 
 def test_profili_pad_probe_je_503_ne_json(tmp_path):

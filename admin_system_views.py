@@ -321,9 +321,10 @@ def api_table_stats():
         return jsonify({'success': True, 'tables': tables})
     except RuntimeError:
         return jsonify({'success': False, 'error': 'Database not configured'})
-    except Exception as exc:
-        logger.error("Error getting table stats: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+    except Exception:
+        logger.exception("Error getting table stats")
+        return jsonify({'success': False,
+                        'error': 'Грешка при читању статистике табела'})
 
 
 def api_vacuum_database():
@@ -337,9 +338,9 @@ def api_vacuum_database():
         return jsonify({'success': True})
     except RuntimeError:
         return jsonify({'success': False, 'error': 'Database not configured'})
-    except Exception as exc:
-        logger.error("Error running vacuum: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+    except Exception:
+        logger.exception("Error running vacuum")
+        return jsonify({'success': False, 'error': 'Грешка при VACUUM операцији'})
 
 
 def api_get_logs():
@@ -362,9 +363,9 @@ def api_get_logs():
                             break
 
         return jsonify({'success': True, 'logs': logs})
-    except Exception as exc:
-        logger.error("Error reading logs: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+    except Exception:
+        logger.exception("Error reading logs")
+        return jsonify({'success': False, 'error': 'Грешка при читању логова'})
 
 
 def api_download_logs():
@@ -377,9 +378,10 @@ def api_download_logs():
                 download_name='museum_system_logs.log',
             )
         return jsonify({'success': False, 'error': 'Log file not found'}), 404
-    except Exception as exc:
-        logger.error("Error downloading logs: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+    except Exception:
+        logger.exception("Error downloading logs")
+        return jsonify({'success': False,
+                        'error': 'Грешка при преузимању логова'}), 500
 
 
 def api_clear_cache():
@@ -388,6 +390,6 @@ def api_clear_cache():
         gc.collect()
         logger.info("System cache cleared")
         return jsonify({'success': True})
-    except Exception as exc:
-        logger.error("Error clearing cache: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+    except Exception:
+        logger.exception("Error clearing cache")
+        return jsonify({'success': False, 'error': 'Грешка при чишћењу кеша'})
