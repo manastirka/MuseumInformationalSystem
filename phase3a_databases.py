@@ -265,7 +265,11 @@ def replace_sanja_specimens(specimens):
 # ============================================================================
 
 def digitized_profiles_table_exists():
-    """Return True when the digitized_profiles table is present."""
+    """Return True when the digitized_profiles table is present.
+
+    A probe failure RAISES instead of reporting "no table": treating a
+    transient DB outage as "nema PostgreSQL konfiguracije" used to silently
+    reroute reads/writes to the stale JSON fallback (krug 4, stavka 5)."""
     conn = None
     try:
         conn = get_db_connection()
@@ -274,9 +278,6 @@ def digitized_profiles_table_exists():
         exists = cur.fetchone()[0] is not None
         cur.close()
         return exists
-    except Exception as e:
-        logger.warning(f"digitized_profiles table existence check failed: {e}")
-        return False
     finally:
         if conn is not None:
             conn.close()

@@ -7,9 +7,9 @@ import os
 from datetime import datetime
 
 from flask import current_app, jsonify, request, session
-from runtime_lock_utils import load_json_file, update_json_file
 from postgres_service import get_postgres_connection
 import audit_support
+import science_news_store
 
 logger = logging.getLogger(__name__)
 
@@ -31,21 +31,6 @@ _REGION_NAMES = {
 
 def _science_news_file():
     return os.path.join(current_app.root_path, 'data', 'science_news.json')
-
-
-def _load_science_news():
-    news_file = _science_news_file()
-    try:
-        if os.path.exists(news_file):
-            return load_json_file(news_file, default=[])
-    except Exception as exc:
-        logger.error("Error loading science news: %s", exc)
-    return []
-
-
-def _save_science_news(all_news):
-    news_file = _science_news_file()
-    update_json_file(news_file, lambda _current: list(all_news), default=[])
 
 
 def _registry_localities(cur):
@@ -166,12 +151,17 @@ def api_get_localities(*, get_mineral_database):
 
 
 def api_get_science_news():
-    """Get curated science news from JSON storage with optional filters."""
+    """Get curated science news (PostgreSQL, migracija 053) with filters."""
     search_query = request.args.get('q', '').strip().lower()
     category_filter = request.args.get('category', '').strip()
     region_filter = request.args.get('region', '').strip()
 
-    all_news = _load_science_news()
+    try:
+        all_news = science_news_store.get_all_news(_science_news_file())
+    except Exception as exc:
+        logger.error("Science news store unavailable: %s", exc)
+        return jsonify({'success': False,
+                        'message': 'Научне вести тренутно нису доступне.'}), 503
 
     if category_filter:
         all_news = [item for item in all_news if item.get('category') == category_filter]
@@ -231,30 +221,21 @@ def api_add_science_news():
     }
 
     try:
-        def _add_news(existing_news):
-            payload = [item for item in list(existing_news or []) if item.get('id') != news_id]
-            payload.insert(0, news_item)
-            return payload[:100]
-
-        update_json_file(_science_news_file(), _add_news, default=[])
+        science_news_store.add_news_item(_science_news_file(), news_item)
         return jsonify({'success': True, 'news': news_item})
-    except Exception as exc:
-        logger.error("Error saving science news: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error saving science news")
+        return jsonify({'success': False,
+                        'message': 'Чување вести није успело.'}), 500
 
 
 def api_delete_science_news(*, news_id):
     """Delete a science news item."""
-    news_file = _science_news_file()
-    if not os.path.exists(news_file):
-        return jsonify({'success': False, 'message': 'News file not found'}), 404
-
     try:
-        update_json_file(
-            news_file,
-            lambda all_news: [item for item in list(all_news or []) if item.get('id') != news_id],
-            default=[],
-        )
+        found = science_news_store.delete_news_item(_science_news_file(), news_id)
+        if not found:
+            return jsonify({'success': False,
+                            'message': 'Вест није пронађена.'}), 404
         audit_support.record_audit(
             action=audit_support.ACTION_DELETE,
             entity_type='science_news',
@@ -262,9 +243,10 @@ def api_delete_science_news(*, news_id):
             summary=f'Обрисана научна вест #{news_id}',
         )
         return jsonify({'success': True})
-    except Exception as exc:
-        logger.error("Error deleting science news: %s", exc)
-        return jsonify({'success': False, 'message': str(exc)}), 500
+    except Exception:
+        logger.exception("Error deleting science news")
+        return jsonify({'success': False,
+                        'message': 'Брисање вести није успело.'}), 500
 
 
 def api_get_locality_detail(locality_name, *, get_mineral_database):

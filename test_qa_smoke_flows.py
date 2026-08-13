@@ -246,11 +246,14 @@ class QASmokeFlowTests(unittest.TestCase):
             news_file = Path(tmpdir) / 'science_news.json'
 
             self._login_session(email='admin@nhmbeo.rs', role='admin', name='Admin User')
+            # Ovaj smoke pokriva JSON (pre-migraciono) skladište; PG putanju
+            # pokriva test_revizija_krug4.py na museum_system_test bazi.
+            import science_news_store
             with patch.object(
                 museum_app.depot_science_views,
                 '_science_news_file',
                 return_value=str(news_file),
-            ):
+            ), patch.object(science_news_store, 'uses_pg', lambda: False):
                 create_response = self.client.post(
                     '/api/science-news',
                     json={

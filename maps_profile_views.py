@@ -37,18 +37,20 @@ def save_digitized_profiles(profiles_path, profiles):
 
 
 def _profiles_pg():
-    """Return phase3a_databases when PostgreSQL is configured AND the
-    digitized_profiles table exists, else None (so the JSON file is used).
-    phase3a_databases raises at import without DATABASE_URL, so it is guarded."""
+    """Return the phase3a_databases module when PostgreSQL is the backend.
+
+    None only for the two CLEAN pre-migration states: DATABASE_URL unset, or
+    the table legitimately absent. A runtime failure of the probe RAISES —
+    with PostgreSQL configured, silently falling back to the JSON file could
+    serve stale data and later overwrite newer rows (obrazac Sanja, batch 6).
+    JSON u bazu ulazi samo jednokratnim import-om
+    (scripts/migrate_digitized_profiles_to_postgres.py)."""
     if not os.environ.get('DATABASE_URL'):
         return None
-    try:
-        import phase3a_databases
-        if phase3a_databases.digitized_profiles_table_exists():
-            return phase3a_databases
-    except Exception as exc:
-        logger.warning("Digitized-profiles PostgreSQL backend unavailable, using JSON: %s", exc)
-    return None
+    import phase3a_databases
+    if not phase3a_databases.digitized_profiles_table_exists():
+        return None
+    return phase3a_databases
 
 
 def api_map_elevation(*, sample_elevation_at_point):
@@ -203,8 +205,14 @@ def api_map_cross_profile(
 
 def api_digitized_profiles_list(*, profiles_path):
     """List all digitized cross-section profiles."""
-    pg = _profiles_pg()
-    profiles = pg.get_digitized_profiles() if pg is not None else load_digitized_profiles(profiles_path)
+    try:
+        pg = _profiles_pg()
+        profiles = (pg.get_digitized_profiles() if pg is not None
+                    else load_digitized_profiles(profiles_path))
+    except Exception:
+        logger.exception("Digitized profiles backend unavailable")
+        return jsonify({'success': False,
+                        'message': 'Дигитализовани профили тренутно нису доступни.'}), 503
     summary = []
     for profile in profiles:
         profile_id = profile.get('id')
@@ -228,12 +236,17 @@ def api_digitized_profiles_list(*, profiles_path):
 
 def api_digitized_profile_get(profile_id, *, profiles_path):
     """Get a single digitized profile."""
-    pg = _profiles_pg()
-    if pg is not None:
-        profile = pg.get_digitized_profile(profile_id)
-    else:
-        profiles = load_digitized_profiles(profiles_path)
-        profile = next((entry for entry in profiles if entry.get('id') == profile_id), None)
+    try:
+        pg = _profiles_pg()
+        if pg is not None:
+            profile = pg.get_digitized_profile(profile_id)
+        else:
+            profiles = load_digitized_profiles(profiles_path)
+            profile = next((entry for entry in profiles if entry.get('id') == profile_id), None)
+    except Exception:
+        logger.exception("Digitized profile backend unavailable for %s", profile_id)
+        return jsonify({'success': False,
+                        'message': 'Дигитализовани профили тренутно нису доступни.'}), 503
     if not profile:
         return jsonify({'success': False, 'message': 'Профил није пронађен'}), 404
     return jsonify({'success': True, 'data': profile})
