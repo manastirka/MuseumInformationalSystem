@@ -1,0 +1,51 @@
+[Unit]
+Description=Museum Information System - Gunicorn
+After=network.target postgresql.service
+
+[Service]
+Type=exec
+PermissionsStartOnly=true
+User=nginx
+Group=nginx
+WorkingDirectory=/home/aleksandarlukovic/MuseumInfoSystem
+Environment="PATH=/home/aleksandarlukovic/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="FLASK_ENV=production"
+Environment="PYTHONPATH=/home/aleksandarlukovic/MuseumInfoSystem"
+Environment="GUNICORN_BIND=127.0.0.1:8000"
+Environment="GUNICORN_PIDFILE=/run/museum/museum_info_system.pid"
+Environment="LOG_DIR=/var/log/museum-info-system"
+Environment="LOG_FILE=/var/log/museum-info-system/museum_info_system.log"
+Environment="GUNICORN_RUN_USER=nginx"
+Environment="GUNICORN_RUN_GROUP=nginx"
+ExecStartPre=/usr/bin/mkdir -p /home/aleksandarlukovic/MuseumInfoSystem/storage/uploads
+ExecStartPre=/usr/bin/mkdir -p /home/aleksandarlukovic/MuseumInfoSystem/exports
+ExecStartPre=/usr/bin/mkdir -p /home/aleksandarlukovic/MuseumInfoSystem/flask_session
+ExecStartPre=/usr/bin/mkdir -p /var/log/museum-info-system
+ExecStartPre=/usr/bin/chown -R nginx:nginx /home/aleksandarlukovic/MuseumInfoSystem/storage
+ExecStartPre=/usr/bin/chown -R nginx:nginx /home/aleksandarlukovic/MuseumInfoSystem/exports
+ExecStartPre=/usr/bin/chown -R nginx:nginx /home/aleksandarlukovic/MuseumInfoSystem/flask_session
+ExecStartPre=/usr/bin/chown -R nginx:nginx /var/log/museum-info-system
+ExecStartPre=/usr/bin/rm -f /run/museum/museum_info_system.pid
+ExecStart=/bin/bash /home/aleksandarlukovic/MuseumInfoSystem/systemd_start.sh
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=35
+Restart=always
+RestartSec=10
+
+# Security hardening
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+NoNewPrivileges=true
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/data
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/exports
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/storage
+ReadWritePaths=/home/aleksandarlukovic/MuseumInfoSystem/flask_session
+ReadWritePaths=/var/log/museum-info-system
+ReadWritePaths=/run/museum
+RuntimeDirectory=museum
+LogsDirectory=museum-info-system
+
+[Install]
+WantedBy=multi-user.target
