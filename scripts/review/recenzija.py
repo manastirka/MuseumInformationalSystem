@@ -173,6 +173,29 @@ def podrazumevani_opseg() -> str:
     return f"{h}^..{h}" if h else "HEAD~1..HEAD"
 
 
+# Измене које не траже рецензију. НАМЕРНО правило, не модел: одлуку „да ли
+# ово треба прегледати" не сме да доноси ништа што уме да погреши, иначе се
+# рецензија тихо не уради. Локални модели су мерено непоуздани (види
+# MIS/poredjenje-modela.md) и овде немају шта да траже.
+TRIVIJALNI_NASTAVCI = {".md", ".txt", ".rst"}
+TRIVIJALNI_DIREKTORIJUMI = ("docs/", "docs_archive/")
+
+
+def je_trivijalno(opseg: str) -> str | None:
+    """Врати разлог за прескакање, или None ако рецензија треба."""
+    fajlovi = [f for f in git("diff", "--name-only", opseg).splitlines() if f]
+    if not fajlovi:
+        return None
+    for f in fajlovi:
+        nastavak = "." + f.rsplit(".", 1)[-1] if "." in f else ""
+        if nastavak in TRIVIJALNI_NASTAVCI:
+            continue
+        if any(f.startswith(d) for d in TRIVIJALNI_DIREKTORIJUMI):
+            continue
+        return None
+    return f"мењано само {len(fajlovi)} документационих фајлова"
+
+
 def napravi_prompt(opseg: str) -> tuple[str, str]:
     komiti = git("log", "--format=%h %s", opseg)
     fajlovi = git("diff", "--stat", opseg)
@@ -208,6 +231,8 @@ def main() -> int:
                    help="колико независних рецензија је потребно")
     p.add_argument("--timeout", type=int, default=900, help="секунди по рецензенту")
     p.add_argument("--stanje", action="store_true", help="само прикажи ко је слободан")
+    p.add_argument("--svakako", action="store_true",
+                   help="прегледај и кад су мењани само документациони фајлови")
     a = p.parse_args()
 
     if a.stanje:
@@ -217,6 +242,12 @@ def main() -> int:
     prompt, komiti = napravi_prompt(opseg)
     if not komiti:
         print(f"Нема коммита у опсегу {opseg} — нема шта да се прегледа.")
+        return 0
+
+    if not a.svakako and (razlog := je_trivijalno(opseg)):
+        print(f"Прескачем {opseg}: {razlog}.")
+        print("Квота фронтир модела се чува за измене кода. "
+              "Форсирај са --svakako ако ипак хоћеш рецензију.")
         return 0
 
     stanje = ucitaj_stanje()
