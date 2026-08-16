@@ -80,11 +80,26 @@ def obradi() -> int:
         izlaz = (p.stdout or "").strip()
 
         if p.returncode == 0:
-            stavka.unlink()
             preskoceno = "Прескачем" in izlaz
-            zabelezi(f"- `{h}` · {vreme} · "
+            # Извештај се пише под КРАТКИМ хешом (recenzija.py: rev-parse --short).
+            kratki = subprocess.run(
+                ["git", "rev-parse", "--short", h], cwd=REPO,
+                capture_output=True, text=True).stdout.strip() or h[:7]
+            izvestaj = KOREN / f"{kratki}.md"
+
+            if not preskoceno and not izvestaj.is_file():
+                # Излазни кôд каже „готово", а извештаја нема. Не бришемо
+                # ставку и не пишемо успех — то би било тихо гутање грешке.
+                stavka.write_text(f"pokusaja={pokusaja}\n")
+                zabelezi(f"- `{kratki}` · {vreme} · **СУМЊИВО** — кôд 0 али "
+                         f"извештај не постоји; ставка остаје у реду")
+                print(f"{h}: кôд 0 без извештаја — остаје у реду")
+                continue
+
+            stavka.unlink()
+            zabelezi(f"- `{kratki}` · {vreme} · "
                      + ("прескочено (само документација)" if preskoceno
-                        else f"готово, извештај `recenzije/{h}.md`"))
+                        else f"готово, извештај `recenzije/{kratki}.md`"))
             print(f"{h}: готово")
         elif p.returncode == 75:
             stavka.write_text(f"pokusaja={pokusaja}\n")

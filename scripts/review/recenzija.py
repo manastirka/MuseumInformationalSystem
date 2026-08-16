@@ -167,6 +167,22 @@ def git(*a) -> str:
                           text=True).stdout.strip()
 
 
+def opseg_postoji(opseg: str) -> bool:
+    """Да ли git уме да разреши оба краја опсега.
+
+    Битно: `git()` намерно чита само stdout, па нераздрешив опсег даје празан
+    стринг који је до 16.08.2026 изгледао исто као „нема шта да се прегледа".
+    Због тога је `red.py` брисао ставку из реда и уписивао „готово" за merge
+    који никад није прегледан. Отуд ова изричита провера.
+    """
+    for kraj in [k for k in opseg.split("..") if k]:
+        p = subprocess.run(["git", "rev-parse", "--verify", "--quiet", kraj + "^{commit}"],
+                           cwd=REPO, capture_output=True, text=True)
+        if p.returncode != 0:
+            return False
+    return True
+
+
 def podrazumevani_opseg() -> str:
     """Последњи merge на main — то је оно што треба прегледати."""
     h = git("log", "--merges", "-1", "--format=%H")
@@ -239,6 +255,12 @@ def main() -> int:
         return prikazi_stanje()
 
     opseg = a.opseg or podrazumevani_opseg()
+
+    if not opseg_postoji(opseg):
+        print(f"Опсег {opseg} се не може разрешити — коммит не постоји у овом "
+              f"клону. Ово НИЈЕ „нема шта да се прегледа”.", file=sys.stderr)
+        return 2
+
     prompt, komiti = napravi_prompt(opseg)
     if not komiti:
         print(f"Нема коммита у опсегу {opseg} — нема шта да се прегледа.")

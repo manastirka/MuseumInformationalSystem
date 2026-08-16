@@ -6,18 +6,31 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO"
 
-echo "=== 1. git кука после merge-а ==="
-cat > .git/hooks/post-merge <<'KUKA'
-#!/bin/bash
-# МИС: сваки merge иде у ред за рецензију. Не рецензира одмах — тајмер
-# то ради кад рецензент буде слободан, па merge никад не чека.
+echo "=== 1. git куке ==="
+# ДВЕ куке, не једна. `post-merge` се пали само кад merge прође аутоматски;
+# merge са конфликтом корисник завршава са `git commit`, што пали `post-commit`.
+# Управо ти merge-еви — где је ручно спајање најризичније — иначе би
+# систематски пролазили без рецензије и без трага.
+# `red.py dodaj` је идемпотентан, па двострука пријава не смета.
+TELO='#!/bin/bash
+# МИС: сваки merge иде у ред за рецензију. Не рецензира одмах — тајмер то
+# ради кад рецензент буде слободан, па merge никад не чека.
 h="$(git rev-parse HEAD)"
 if git rev-parse -q --verify "$h^2" >/dev/null 2>&1; then
-    python3 "$(git rev-parse --show-toplevel)/scripts/review/red.py" dodaj "$h" || true
-fi
-KUKA
-chmod +x .git/hooks/post-merge
-echo "    .git/hooks/post-merge постављена"
+    koren="$(git rev-parse --show-toplevel)"
+    if ! python3 "$koren/scripts/review/red.py" dodaj "$h"; then
+        # Неуспех уписа у ред се НЕ гута — иначе merge прође, рецензија
+        # никад не буде заказана, и нигде нема трага.
+        echo "УПОЗОРЕЊЕ: $h није уписан у ред за рецензију!" >&2
+        echo "  Упиши ручно: python3 scripts/review/red.py dodaj $h" >&2
+    fi
+fi'
+
+for kuka in post-merge post-commit; do
+    printf '%s\n' "$TELO" > ".git/hooks/$kuka"
+    chmod +x ".git/hooks/$kuka"
+    echo "    .git/hooks/$kuka постављена"
+done
 
 echo "=== 2. systemd тајмер (корисник, на сваких 15 min) ==="
 UNITS="$HOME/.config/systemd/user"
