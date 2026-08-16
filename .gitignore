@@ -122,6 +122,7 @@ static/*
 !static/css/
 !static/js/
 
+
 # --- ML model weights ---
 *.pt
 
@@ -251,3 +252,15 @@ data/uskladi_knjigu_depo_konflikti.csv
 cypress/screenshots/
 cypress/videos/
 cypress/downloads/
+
+# ============================================
+# Изузеци — МОРАЈУ на крај фајла
+# ============================================
+# Правила изнад (static/*, *.png) искључују и ове две слике, а КОД их тражи
+# по имену: collection_media_views._send_placeholder и
+# fototeka_views._send_placeholder. Без њих свеж клон враћа 404 уместо
+# placeholder-а. По 4 KB; остатак static/images/ (52 MB) и даље иде rsync-ом.
+!static/images/
+static/images/*
+!static/images/specimen-placeholder.png
+!static/images/specimen-placeholder-thumb.png
