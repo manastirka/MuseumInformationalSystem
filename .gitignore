@@ -229,9 +229,7 @@ data/dem_serbia
 # --- Empty/stale files ---
 sudo
 
-# --- Desktop/service files (machine-specific) ---
 museum-control-center.desktop
-museum-system.service
 
 # --- Node / JS tooling ---
 node_modules/
