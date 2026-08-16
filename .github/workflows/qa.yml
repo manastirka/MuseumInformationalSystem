@@ -9,6 +9,70 @@ on:
   pull_request:
 
 jobs:
+  # Секрети се НЕ виде у `if:` на нивоу посла — GitHub тамо не даје `secrets`
+  # контекст, па израз испадне празан и посао се ТИХО прескочи. Зато се
+  # провера ради у обичном кораку, где секрети јесу доступни као env, а
+  # резултат путује даље кроз outputs. Ако нешто фали, испише се ::warning::
+  # са списком — прескакање мора да се види, не да се ћутке прогута.
+  secrets-check:
+    name: Provera secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full_qa: ${{ steps.provera.outputs.full_qa }}
+      zap: ${{ steps.provera.outputs.zap }}
+      redis: ${{ steps.provera.outputs.redis }}
+
+    steps:
+      - name: Које све свите могу да се покрену
+        id: provera
+        env:
+          QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+          QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+          QA_EMPLOYEE_EMAIL: ${{ secrets.QA_EMPLOYEE_EMAIL }}
+          QA_EMPLOYEE_PASSWORD: ${{ secrets.QA_EMPLOYEE_PASSWORD }}
+          QA_FIRST_LOGIN_EMAIL: ${{ secrets.QA_FIRST_LOGIN_EMAIL }}
+          QA_FIRST_LOGIN_PASSWORD: ${{ secrets.QA_FIRST_LOGIN_PASSWORD }}
+          QA_RESET_TARGET_EMAIL: ${{ secrets.QA_RESET_TARGET_EMAIL }}
+          QA_ARCHIVE_EMAIL: ${{ secrets.QA_ARCHIVE_EMAIL }}
+          QA_ARCHIVE_PASSWORD: ${{ secrets.QA_ARCHIVE_PASSWORD }}
+          QA_REDIS_URL: ${{ secrets.QA_REDIS_URL }}
+          QA_STAGING_URL: ${{ secrets.QA_STAGING_URL }}
+        run: |
+          set -u
+          nedostaje=""
+          for ime in QA_DATABASE_URL QA_ADMIN_EMAIL QA_ADMIN_PASSWORD \
+                     QA_EMPLOYEE_EMAIL QA_EMPLOYEE_PASSWORD \
+                     QA_FIRST_LOGIN_EMAIL QA_FIRST_LOGIN_PASSWORD \
+                     QA_RESET_TARGET_EMAIL QA_ARCHIVE_EMAIL QA_ARCHIVE_PASSWORD; do
+            if [ -z "${!ime}" ]; then
+              nedostaje="$nedostaje $ime"
+            fi
+          done
+
+          if [ -z "$nedostaje" ]; then
+            echo "full_qa=true" >> "$GITHUB_OUTPUT"
+            echo "Пуна локална QA свита: покреће се."
+          else
+            echo "full_qa=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Пуна QA свита прескочена::Недостају secrets:$nedostaje"
+          fi
+
+          if [ -n "$QA_REDIS_URL" ]; then
+            echo "redis=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "redis=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=k6 без ауторизације::QA_REDIS_URL није постављен, k6 иде без пријаве."
+          fi
+
+          if [ -n "$QA_STAGING_URL" ]; then
+            echo "zap=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "zap=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=ZAP прескочен::QA_STAGING_URL није постављен."
+          fi
+
   qa-lint:
     name: QA Lint
     runs-on: ubuntu-latest
@@ -63,11 +127,12 @@ jobs:
   full-local-qa:
     name: Full Local QA
     needs:
+      - secrets-check
       - qa-lint
       - python-qa
+    if: needs.secrets-check.outputs.full_qa == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    if: ${{ secrets.QA_DATABASE_URL != '' && secrets.QA_ADMIN_EMAIL != '' && secrets.QA_ADMIN_PASSWORD != '' && secrets.QA_EMPLOYEE_EMAIL != '' && secrets.QA_EMPLOYEE_PASSWORD != '' && secrets.QA_FIRST_LOGIN_EMAIL != '' && secrets.QA_FIRST_LOGIN_PASSWORD != '' && secrets.QA_RESET_TARGET_EMAIL != '' && secrets.QA_ARCHIVE_EMAIL != '' && secrets.QA_ARCHIVE_PASSWORD != '' }}
     env:
       DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
       SECRET_KEY: ${{ secrets.QA_SECRET_KEY }}
@@ -88,7 +153,7 @@ jobs:
       QA_INCLUDE_LINT: "1"
       QA_INCLUDE_PLAYWRIGHT: "1"
       QA_INCLUDE_K6: "1"
-      QA_K6_ENABLE_AUTH: ${{ secrets.QA_REDIS_URL != '' }}
+      QA_K6_ENABLE_AUTH: ${{ needs.secrets-check.outputs.redis }}
 
     steps:
       - name: Checkout
@@ -123,9 +188,11 @@ jobs:
 
   zap-baseline:
     name: ZAP Baseline
+    needs:
+      - secrets-check
+    if: needs.secrets-check.outputs.zap == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: ${{ secrets.QA_STAGING_URL != '' }}
 
     steps:
       - name: Run OWASP ZAP baseline scan
