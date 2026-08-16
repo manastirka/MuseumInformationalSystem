@@ -253,6 +253,3 @@ data/uskladi_knjigu_depo_konflikti.csv
 cypress/screenshots/
 cypress/videos/
 cypress/downloads/
-
-# --- Dev-masinski helper (referencira ga samo negitovani museum-system.service) ---
-systemd_start.sh
