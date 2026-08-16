@@ -241,3 +241,18 @@ data/*.lock
 data/.*.lock
 data/system_settings.json
 data/weather_forecast_daily_cache.json
+
+# --- Radni ulazni podaci kustosa (izvor istine je baza, ovo su samo ulazi uvoza) ---
+Bilja/
+Sanja/
+data/arhiva/
+data/uskladi_knjigu_depo_konflikti.csv
+.directory
+
+# --- QA artefakti ---
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# --- Dev-masinski helper (referencira ga samo negitovani museum-system.service) ---
+systemd_start.sh
