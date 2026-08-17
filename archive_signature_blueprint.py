@@ -13,6 +13,8 @@ from observability import add_sentry_breadcrumb, capture_observability_exception
 from postgres_service import get_postgres_connection
 from security_utils import admin_or_department_head_required, admin_required, login_required
 
+import odobravanje_prekidac
+
 logger = logging.getLogger(__name__)
 
 APP_ROOT = Path(__file__).resolve().parent
@@ -1699,7 +1701,8 @@ def api_sign_document(sig_id):
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT requester_email, status FROM document_signatures WHERE id = %s",
+                    "SELECT requester_email, status, document_type "
+                    "FROM document_signatures WHERE id = %s",
                     (sig_id,),
                 )
                 row = cur.fetchone()
@@ -1713,17 +1716,48 @@ def api_sign_document(sig_id):
                 if row[1] != 'pending_signature':
                     return jsonify({'success': False, 'message': 'Документ није у статусу за потписивање'}), 400
 
+                # Следећи корак се РАЧУНА, не претпоставља.
+                #
+                # Раније је овде безусловно стајало 'pending_legal_verification',
+                # па заставица `requires_legal_verification` из
+                # `signature_templates` није значила ништа — приказивала се у
+                # подешавањима, а ток је ишао мимо ње. Сад се чита, и уз њу
+                # прекидач `verifikacija_arhive`.
+                #
+                # Прескочена верификација НЕ значи „верификовано": поља
+                # legal_verified_* остају празна, што се види у приказу.
+                cur.execute(
+                    """
+                    SELECT COALESCE(requires_legal_verification, TRUE),
+                           COALESCE(requires_approver_signature, TRUE)
+                    FROM signature_templates WHERE document_type = %s
+                    """,
+                    (row[2],),
+                )
+                sablon = cur.fetchone()
+                # Непознат тип документа → најстрожи ток, не најлакши.
+                trazi_verifikaciju, trazi_odobrenje = sablon if sablon else (True, True)
+                if trazi_verifikaciju and not odobravanje_prekidac.verifikacija_arhive_ukljucena():
+                    trazi_verifikaciju = False
+
+                if trazi_verifikaciju:
+                    novi_status = 'pending_legal_verification'
+                elif trazi_odobrenje:
+                    novi_status = 'pending_approval'
+                else:
+                    novi_status = 'verified'
+
                 cur.execute(
                     """
                     UPDATE document_signatures
                     SET requester_signed_at = NOW(),
                         requester_signature_valid = TRUE,
                         requester_certificate_info = %s,
-                        status = 'pending_legal_verification',
+                        status = %s,
                         updated_at = NOW()
                     WHERE id = %s
                     """,
-                    (psycopg.types.json.Json(certificate_info), sig_id),
+                    (psycopg.types.json.Json(certificate_info), novi_status, sig_id),
                 )
 
                 cur.execute(

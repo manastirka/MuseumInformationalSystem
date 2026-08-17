@@ -35,10 +35,14 @@ KLJUC_DOKUMENTI = "odobravanje_dokumenata"
 # Рок предаје (тек месец извештаја + 1–10. наредног). Иста породица
 # прекидача, али ОДВОЈЕН: одобравање и рок су две различите одлуке.
 KLJUC_ROK = "rok_predaje_izvestaja"
+# Правна верификација у модулу Архива (потпис подносиоца → правна служба →
+# одобравач). Опет одвојено: то је трећа особа у ланцу, не иста одлука.
+KLJUC_VERIFIKACIJA = "verifikacija_arhive"
 
 ENV_IZVESTAJI = "MIS_ODOBRAVANJE_IZVESTAJA"
 ENV_DOKUMENTI = "MIS_ODOBRAVANJE_DOKUMENATA"
 ENV_ROK = "MIS_ROK_PREDAJE"
+ENV_VERIFIKACIJA = "MIS_VERIFIKACIJA_ARHIVE"
 
 # Статуси које уводи угашен прекидач.
 STATUS_IZVESTAJ_BEZ = "BEZ_ODOBRENJA"
@@ -121,6 +125,16 @@ def odobravanje_dokumenata_ukljuceno() -> bool:
     return _ukljuceno(KLJUC_DOKUMENTI, ENV_DOKUMENTI)
 
 
+def verifikacija_arhive_ukljucena() -> bool:
+    """Тражи ли потписан документ у Архиви правну верификацију.
+
+    Угашено НЕ значи „документ је верификован" — значи да тај корак не
+    постоји, па поља `legal_verified_*` остају празна. Разлика мора да
+    остане видљива, исто као код одобравања извештаја.
+    """
+    return _ukljuceno(KLJUC_VERIFIKACIJA, ENV_VERIFIKACIJA)
+
+
 def rok_predaje_ukljucen() -> bool:
     """Важи ли рок: месец извештаја + 1–10. у наредном месецу.
 
@@ -136,9 +150,11 @@ def stanje() -> dict:
         KLJUC_IZVESTAJI: odobravanje_izvestaja_ukljuceno(),
         KLJUC_DOKUMENTI: odobravanje_dokumenata_ukljuceno(),
         KLJUC_ROK: rok_predaje_ukljucen(),
+        KLJUC_VERIFIKACIJA: verifikacija_arhive_ukljucena(),
         "env_preklop": {
             ENV_IZVESTAJI: _iz_okruzenja(ENV_IZVESTAJI),
             ENV_DOKUMENTI: _iz_okruzenja(ENV_DOKUMENTI),
             ENV_ROK: _iz_okruzenja(ENV_ROK),
+            ENV_VERIFIKACIJA: _iz_okruzenja(ENV_VERIFIKACIJA),
         },
     }
