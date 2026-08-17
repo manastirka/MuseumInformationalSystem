@@ -1,5 +1,6 @@
 """Картица прекидача у админ панелу — да приказ никад не тврди више него што зна."""
 import os
+import pathlib
 
 os.environ.setdefault('FLASK_ENV', 'testing')
 os.environ.setdefault('SECRET_KEY', 'test-secret')
@@ -81,3 +82,46 @@ def test_rok_ima_svoje_reci_a_ne_odobravanje(kartica):
     assert 'рок важи' in html
     assert 'Месец који још није почео остаје' in html \
         or 'месец који још није почео' in html.lower()
+
+
+# --- позив ка серверу -------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def blok():
+    """Само наш део скрипте — остатак стране има своје, старије позиве."""
+    izvor = (pathlib.Path('templates') / SABLON).read_text(encoding='utf-8')
+    # Почетак је помоћник `misOdgovor`, не сам слушалац догађаја — иначе
+    # би тело помоћника испало из исечка и тест би проверавао пола ствари.
+    pocetak = izvor.index('async function misOdgovor')
+    return izvor[pocetak:]
+
+
+def test_poziv_ide_kroz_secureFetch(blok):
+    """CSRFProtect важи за цео app (app.py:373). Голи `fetch` добије HTML
+    страницу грешке 400, а `response.json()` на њој пукне са
+    „Unexpected token '<'" — порука која кориснику не значи ништа.
+    Тачно то се десило 17.08.2026 при првом покушају гашења прекидача.
+
+    Токен додаје `secureFetch` из базног шаблона — не измишља се други
+    начин, јер два начина значе да ће један остати без токена.
+    """
+    assert blok.count('secureFetch(') == 2, 'оба POST позива иду кроз secureFetch'
+    assert 'await fetch(' not in blok, 'остао је голи fetch без CSRF токена'
+
+
+def test_odgovor_koji_nije_json_daje_razumljivu_poruku(blok):
+    """Кад сервер врати HTML, корисник мора да сазна ШТА се десило —
+    не да добије грешку парсера."""
+    assert 'misOdgovor' in blok
+    assert 'HTTP ' in blok, 'порука мора да носи стварни статус'
+    assert 'await r.json()' not in blok, 'сирови r.json() пуца на HTML одговору'
+
+
+def test_oba_bazna_sablona_daju_secureFetch_i_token():
+    """Страница се рендерује самостално и у iframe-у (?embedded=1). Ако
+    један од два базна шаблона нема помоћник или мета ознаку, дугме би
+    радило само на једном месту."""
+    for baza in ('base.html', 'base_embedded.html'):
+        tekst = (pathlib.Path('templates') / baza).read_text(encoding='utf-8')
+        assert 'name="csrf-token"' in tekst, baza
+        assert 'function secureFetch' in tekst, baza
