@@ -265,8 +265,12 @@ def test_profili_pad_probe_je_503_ne_json(tmp_path):
     client = _login(_client(), email='radnik.krug4@example.invalid', role='employee')
 
     import phase3a_databases
-    with patch.object(museum_app, 'DIGITIZED_PROFILES_PATH', str(profili_json),
-                      create=True), \
+    # `create=True` је овде био штетан: атрибут се зове `_DIGITIZED_PROFILES_PATH`
+    # (app.py:1585, прослеђује га blueprints/maps.py:249), па је mock правио НОВ,
+    # никад читан атрибут. Тврдња „нема stari_profil у одговору" гледала је
+    # прави data/digitized_profiles.json, у коме тог профила ионако нема.
+    # Без `create=True` тест пада гласно ако се атрибут икад преименује.
+    with patch.object(museum_app, '_DIGITIZED_PROFILES_PATH', str(profili_json)), \
          patch.object(phase3a_databases, 'digitized_profiles_table_exists',
                       side_effect=RuntimeError('baza pala')):
         resp = client.get('/api/map/digitized-profiles', base_url=BASE)
