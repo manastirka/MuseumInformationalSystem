@@ -233,8 +233,37 @@ def api_odobravanje():
             raise RuntimeError('Prekidač odobravanja nije upisan')
 
         ko = session.get('user_email') or 'admin'
-        primenjeno = ({} if (ukljuceno or razresi is None)
-                      else razresi(ko, izvrsi=True))
+        # Прекидач је ОД САДА уписан. Разрешавање затечених иде у засебној
+        # трансакцији и може да падне независно — рецензија мерџа a507044
+        # је нашла да је тада враћана порука „Прекидач није промењен", што
+        # је неистина: база каже искључено, а панел је приказивао укључено.
+        # Делимичан неуспех се зато пријављује КАО делимичан.
+        try:
+            primenjeno = ({} if (ukljuceno or razresi is None)
+                          else razresi(ko, izvrsi=True))
+        except Exception as exc:
+            logger.error("Прекидач %s УПИСАН, разрешавање затечених пало: %s",
+                         kljuc, exc)
+            audit_support.record_audit(
+                action=audit_support.ACTION_UPDATE,
+                entity_type='system_settings', entity_id=kljuc,
+                summary=f'Прекидач {kljuc} постављен на {ukljuceno}, '
+                        f'разрешавање затечених НИЈЕ прошло',
+                # Текст изузетка НЕ иде овде: `test_admin_system_views_ne_curi_izuzetke`
+                # брани цео фајл од сировог текста грешке — и то дословно, па
+                # чак ни коментар не сме да га помене. Правило је добро:
+                # једном ослабљено, важило би и за одговоре ка кориснику.
+                # Детаљ већ стоји у `logger.error` изнад, са временом.
+                new_values={kljuc: ukljuceno, 'razresavanje_proslo': False},
+            )
+            return jsonify({
+                'success': False,
+                'prekidac_upisan': True,
+                'error': ('Прекидач ЈЕСТЕ промењен, али затечене ставке нису '
+                          'затворене. Оне и даље чекају одобрење. Заврши то '
+                          'командом: python3 scripts/odobravanje.py '
+                          f'iskljuci {tok} --execute'),
+            }), 500
 
         audit_support.record_audit(
             action=audit_support.ACTION_UPDATE,

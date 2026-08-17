@@ -98,7 +98,15 @@ def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
     print(f"Прекидач уписан: {kljuc} = {ukljuceno}")
 
     if posao is not None:
-        rezultat = posao('cli', izvrsi=True)
+        try:
+            rezultat = posao('cli', izvrsi=True)
+        except Exception as exc:
+            # Прекидач је већ уписан — не сме да испадне да ништа није урађено.
+            print(f"\nПРЕКИДАЧ ЈЕ УПИСАН, али разрешавање затечених није "
+                  f"прошло: {exc}", file=sys.stderr)
+            print(f"Затечене ставке и даље чекају. Понови исту команду када "
+                  f"разрешиш узрок.", file=sys.stderr)
+            return 1
         print(f"Разрешено затечених: {rezultat['promenjeno']}")
     elif tok != 'rok':
         print('Затечени редови се НЕ враћају у ред за одобрење — оно што је '
