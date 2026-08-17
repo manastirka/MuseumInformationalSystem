@@ -201,6 +201,8 @@ def api_odobravanje():
     TOKOVI = {
         'izvestaji': odobravanje_prekidac.KLJUC_IZVESTAJI,
         'dokumenti': odobravanje_prekidac.KLJUC_DOKUMENTI,
+        # Рок нема ред који чека — гашење не разрешава ништа уназад.
+        'rok': odobravanje_prekidac.KLJUC_ROK,
     }
     try:
         data = request.get_json() or {}
@@ -215,12 +217,13 @@ def api_odobravanje():
         izvrsi = bool(data.get('izvrsi'))
         kljuc = TOKOVI[tok]
 
-        razresi = (odobravanje_razresavanje.razresi_izvestaje
-                   if tok == 'izvestaji'
-                   else odobravanje_razresavanje.razresi_dokumente)
+        razresi = {
+            'izvestaji': odobravanje_razresavanje.razresi_izvestaje,
+            'dokumenti': odobravanje_razresavanje.razresi_dokumente,
+        }.get(tok)
 
         if not izvrsi:
-            pregled = {} if ukljuceno else razresi('pregled', izvrsi=False)
+            pregled = {} if (ukljuceno or razresi is None) else razresi('pregled', izvrsi=False)
             return jsonify({'success': True, 'pregled': pregled})
 
         podesavanja = load_saved_settings(force=True) or {}
@@ -230,7 +233,8 @@ def api_odobravanje():
             raise RuntimeError('Prekidač odobravanja nije upisan')
 
         ko = session.get('user_email') or 'admin'
-        primenjeno = {} if ukljuceno else razresi(ko, izvrsi=True)
+        primenjeno = ({} if (ukljuceno or razresi is None)
+                      else razresi(ko, izvrsi=True))
 
         audit_support.record_audit(
             action=audit_support.ACTION_UPDATE,

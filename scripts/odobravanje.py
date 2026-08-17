@@ -31,16 +31,21 @@ except Exception:
 import odobravanje_prekidac as prekidac  # noqa: E402
 import odobravanje_razresavanje as razresavanje  # noqa: E402
 
+# Трећа ставка нема шта да разрешава — рок није ред који чека, него правило.
 TOKOVI = {
-    'izvestaji': (prekidac.KLJUC_IZVESTAJI, 'месечни извештаји (радне листе)'),
-    'dokumenti': (prekidac.KLJUC_DOKUMENTI, 'библиотека докумената'),
+    'izvestaji': (prekidac.KLJUC_IZVESTAJI, 'месечни извештаји (радне листе)',
+                  prekidac.odobravanje_izvestaja_ukljuceno),
+    'dokumenti': (prekidac.KLJUC_DOKUMENTI, 'библиотека докумената',
+                  prekidac.odobravanje_dokumenata_ukljuceno),
+    'rok': (prekidac.KLJUC_ROK, 'рок предаје (до 10. у наредном месецу)',
+            prekidac.rok_predaje_ukljucen),
 }
 
 
 def _stanje() -> int:
     s = prekidac.stanje()
     print('Одобравање:')
-    for ime, (kljuc, opis) in TOKOVI.items():
+    for ime, (kljuc, opis, _) in TOKOVI.items():
         print(f"  {ime:<11} {'УКЉУЧЕНО' if s[kljuc] else 'ИСКЉУЧЕНО'}   {opis}")
     preklop = {k: v for k, v in s['env_preklop'].items() if v is not None}
     if preklop:
@@ -58,9 +63,8 @@ def _stanje() -> int:
 
 
 def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
-    kljuc, opis = TOKOVI[tok]
-    trenutno = (prekidac.odobravanje_izvestaja_ukljuceno() if tok == 'izvestaji'
-                else prekidac.odobravanje_dokumenata_ukljuceno())
+    kljuc, opis, procitaj = TOKOVI[tok]
+    trenutno = procitaj()
 
     print(f"Ток: {opis}")
     print(f"Сада: {'УКЉУЧЕНО' if trenutno else 'ИСКЉУЧЕНО'}"
@@ -70,7 +74,7 @@ def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
         return 0
 
     posao = None
-    if not ukljuceno:
+    if not ukljuceno and tok in ('izvestaji', 'dokumenti'):
         posao = (razresavanje.razresi_izvestaje if tok == 'izvestaji'
                  else razresavanje.razresi_dokumente)
         pregled = posao('dry-run', izvrsi=False)
@@ -96,7 +100,7 @@ def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
     if posao is not None:
         rezultat = posao('cli', izvrsi=True)
         print(f"Разрешено затечених: {rezultat['promenjeno']}")
-    else:
+    elif tok != 'rok':
         print('Затечени редови се НЕ враћају у ред за одобрење — оно што је '
               'већ затворено остаје затворено.')
     return 0
