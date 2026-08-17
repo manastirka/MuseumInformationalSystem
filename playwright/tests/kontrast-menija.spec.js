@@ -38,18 +38,18 @@ for (const rezim of REZIMI) {
       await page.evaluate(([r, s]) => {
         document.documentElement.setAttribute('data-theme', r);
         document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
-        if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
-        else document.documentElement.setAttribute('data-style', s);
+        if (s === 'institucionalna') {document.documentElement.removeAttribute('data-style');}
+        else {document.documentElement.setAttribute('data-style', s);}
       }, [rezim, stil]);
       await page.waitForTimeout(300);
 
       const problemi = [];
       for (const m of MENIJI) {
         const dug = page.locator(m.sel).first();
-        if (!(await dug.count())) continue;
+        if (!(await dug.count())) {continue;}
         await dug.click({ timeout: 3000 }).catch(() => {});
         await page.waitForTimeout(300);
-        if (!(await page.locator('.dropdown-menu.show').count())) continue;
+        if (!(await page.locator('.dropdown-menu.show').count())) {continue;}
 
         const rez = await new AxeBuilder({ page })
           .include('.dropdown-menu.show')      // samo otvoreni meni
@@ -92,8 +92,8 @@ for (const rezim of REZIMI) {
       await page.evaluate(([r, s]) => {
         document.documentElement.setAttribute('data-theme', r);
         document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
-        if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
-        else document.documentElement.setAttribute('data-style', s);
+        if (s === 'institucionalna') {document.documentElement.removeAttribute('data-style');}
+        else {document.documentElement.setAttribute('data-style', s);}
       }, [rezim, stil]);
       await page.waitForTimeout(250);
 
@@ -110,7 +110,7 @@ for (const rezim of REZIMI) {
         await page.waitForTimeout(500);
         info = await page.evaluate(() => {
           const t = document.querySelector('.tooltip-inner');
-          if (!t || t.offsetParent === null) return null;
+          if (!t || t.offsetParent === null) {return null;}
           const cs = getComputedStyle(t);
           return { bg: cs.backgroundColor, color: cs.color };
         });
@@ -140,14 +140,14 @@ for (const rezim of REZIMI) {
       await page.evaluate(([r, s]) => {
         document.documentElement.setAttribute('data-theme', r);
         document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
-        if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
-        else document.documentElement.setAttribute('data-style', s);
+        if (s === 'institucionalna') {document.documentElement.removeAttribute('data-style');}
+        else {document.documentElement.setAttribute('data-style', s);}
       }, [rezim, stil]);
       await page.waitForTimeout(250);
 
       const info = await page.evaluate(() => {
         const sel = document.getElementById('userSelect');
-        if (!sel || sel.options.length < 2) return null;
+        if (!sel || sel.options.length < 2) {return null;}
         const opt = sel.options[1];
         const cs = getComputedStyle(sel), ocs = getComputedStyle(opt);
         return { optColor: ocs.color, optBg: ocs.backgroundColor, colorScheme: cs.colorScheme };

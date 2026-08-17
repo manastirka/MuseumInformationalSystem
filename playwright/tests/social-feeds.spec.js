@@ -30,15 +30,15 @@ async function login(page) {
 function collectOurErrors(page) {
   const errors = [];
   page.on('console', m => {
-    if (m.type() !== 'error') return;
+    if (m.type() !== 'error') {return;}
     const url = (m.location() && m.location().url) || '';
-    if (isFacebook(url)) return;
-    if (isHeadlessGpuNoise(m.text(), url)) return;
+    if (isFacebook(url)) {return;}
+    if (isHeadlessGpuNoise(m.text(), url)) {return;}
     errors.push(m.text().slice(0, 200) + '  @ ' + url);
   });
   page.on('pageerror', e => {
     const s = String(e);
-    if (isHeadlessGpuNoise(s, '')) return;
+    if (isHeadlessGpuNoise(s, '')) {return;}
     errors.push('pageerror: ' + s.slice(0, 200));
   });
   return errors;

@@ -31,7 +31,9 @@ const OLD_MONTH = (oldIdx % 12) + 1;
 
 function runSeed(mode, monthsBack) {
   const args = [SEED, mode, ''];
-  if (monthsBack != null) args.push(String(monthsBack));
+  if (monthsBack !== null && monthsBack !== undefined) {
+    args.push(String(monthsBack));
+  }
   return execFileSync('python', args, {
     cwd: REPO_ROOT,
     encoding: 'utf8',

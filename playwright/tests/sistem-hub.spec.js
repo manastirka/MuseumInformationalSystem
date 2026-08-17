@@ -21,7 +21,7 @@ function attachErrorSink(page) {
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
       const t = msg.text();
-      if (/is not defined|ReferenceError|is not a function/i.test(t)) errors.push(t);
+      if (/is not defined|ReferenceError|is not a function/i.test(t)) {errors.push(t);}
     }
   });
   page.on('pageerror', (err) => errors.push(String(err)));

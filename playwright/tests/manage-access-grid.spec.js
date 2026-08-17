@@ -17,6 +17,7 @@ async function login(page) {
   await page.waitForLoadState('networkidle');
 }
 
+/* global showUserModules */ // funkcija iz app JS-a, postoji u stranici
 // Izaberi prvog stvarnog korisnika i vrati mu email.
 async function selectFirstUser(page) {
   const email = await page.evaluate(() => {

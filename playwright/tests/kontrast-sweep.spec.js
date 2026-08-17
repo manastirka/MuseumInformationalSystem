@@ -49,12 +49,12 @@ test(`sweep ${rezim} x ${stil}`, async ({ page }) => {
     let resp;
     try { resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 }); }
     catch { continue; }
-    if (!resp || resp.status() !== 200) continue;
+    if (!resp || resp.status() !== 200) {continue;}
     await postaviTemu(page, rezim, stil);
     await page.waitForTimeout(200);
 
     // 1) osnovna strana
-    for (const p of await izmeriKontrast(page)) nalazi.push({ url, gde: 'strana', ...p });
+    for (const p of await izmeriKontrast(page)) {nalazi.push({ url, gde: 'strana', ...p });}
 
     // 2) modali preko svojih trigera
     const trigeri = await page.locator('[data-bs-toggle="modal"]').all();
@@ -65,7 +65,7 @@ test(`sweep ${rezim} x ${stil}`, async ({ page }) => {
         await page.waitForTimeout(500);
         const sel = target && target.startsWith('#') ? target : '.modal.show';
         if (await page.locator(sel).count()) {
-          for (const p of await izmeriKontrast(page, sel)) nalazi.push({ url, gde: `modal ${sel}`, ...p });
+          for (const p of await izmeriKontrast(page, sel)) {nalazi.push({ url, gde: `modal ${sel}`, ...p });}
         }
         await page.keyboard.press('Escape');
         await page.waitForTimeout(250);
@@ -80,7 +80,7 @@ test(`sweep ${rezim} x ${stil}`, async ({ page }) => {
         await page.waitForTimeout(250);
         const meni = page.locator('.dropdown-menu.show').first();
         if (await meni.count()) {
-          for (const p of await izmeriKontrast(page, '.dropdown-menu.show')) nalazi.push({ url, gde: 'dropdown', ...p });
+          for (const p of await izmeriKontrast(page, '.dropdown-menu.show')) {nalazi.push({ url, gde: 'dropdown', ...p });}
         }
         await page.keyboard.press('Escape');
       } catch { /* preskoči */ }
