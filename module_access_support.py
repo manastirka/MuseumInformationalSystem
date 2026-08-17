@@ -176,6 +176,16 @@ def load_json_settings_data(
         # ne "pročitaj fajl" — inače stara ovlašćenja iz JSON fajla vaskrsnu
         # mimo baze. Fajl ulazi u igru samo eksplicitnim import-om
         # (scripts/migration/import_shared_setting_json.py).
+        #
+        # Grana je legitimna na svežoj bazi, ali na produkciji red POSTOJI, pa
+        # njegov nestanak znači nevolju (loš restore, ručno obrisan red). Stara
+        # grana je pisala "Loaded %s from %s"; ova je ćutala, pa se prelazak na
+        # podrazumevana ovlašćenja nije video u journalctl-u.
+        logger.warning(
+            "Deljena podešavanja '%s': baza dostupna, reda NEMA — služim "
+            "podrazumevane vrednosti. Na svežoj bazi je to očekivano; inače "
+            "proveri tabelu app_shared_settings.", setting_key,
+        )
         return deepcopy(default_value)
 
     try:
