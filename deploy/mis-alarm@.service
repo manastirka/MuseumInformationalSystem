@@ -1,10 +1,28 @@
-# Mejl-alarm za pale jedinice: u [Unit] sekciji ciljne jedinice stoji
-# OnFailure=mis-alarm@%n.service. Zahteva podešen lokalni MTA / mailx
-# (s-nail) na serveru; primalac je root (alias u /etc/aliases).
+# Аларм за пале системске јединице на nhmb-srv01.
+#
+# ЗАШТО НЕ САМО МЕЈЛ
+# Ранија верзија је звала `mail`. Провером 17.08.2026: на проду не постоји ни
+# `mail`, ни `mailx`, ни `s-nail`, а postfix је неактиван — аларм би пао при
+# самом покушају слања, па пад бекапа не би оставио НИКАКАВ траг. Аларм који
+# не стиже гори је од непостојећег, јер ствара утисак да неко гледа.
+#
+# КАНАЛ КОЈИ РАДИ ДАНАС
+# Пише маркер у /var/lib/mis/alarm/. Дневна провера са dev машине
+# (scripts/nadzor/provera_proda.py, преко Tailscale-а) чита те маркере.
+# Маркер преживљава и кад јединица касније буде ручно рестартована — што
+# `systemctl is-failed` више не показује.
+# Мејл се И ДАЉЕ шаље ако на систему постоји `mail`, па канал проради сам од
+# себе чим се MTA подеси, без измене ове јединице.
+#
+# Ако маркер НЕ може да се упише, ова јединица намерно пада — тиха грешка у
+# алармном систему била би најгора могућа.
+#
+# Употреба: у [Unit] циљне јединице стоји OnFailure=mis-alarm@%n.service
 
 [Unit]
-Description=Mejl alarm: pala jedinica %i
+Description=Alarm: pala jedinica %i
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'systemctl status --no-pager --lines=30 "%i" | mail -s "[nhmb-srv01] PALA JEDINICA: %i" root'
+ExecStartPre=/usr/bin/install -d -m 0755 /var/lib/mis/alarm
+ExecStart=/bin/sh -c 'set -u; d=/var/lib/mis/alarm; f="$d/$(date +%%Y-%%m-%%dT%%H%%M%%S)-%i.txt"; systemctl status --no-pager --lines=50 "%i" > "$f" 2>&1 || true; test -s "$f" || { echo "ALARM: marker za %i nije upisan" >&2; exit 1; }; chmod 0644 "$f"; if command -v mail >/dev/null 2>&1; then mail -s "[nhmb-srv01] PALA JEDINICA: %i" root < "$f" || true; fi'
