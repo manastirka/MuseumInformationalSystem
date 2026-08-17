@@ -125,3 +125,36 @@ def test_oba_bazna_sablona_daju_secureFetch_i_token():
         tekst = (pathlib.Path('templates') / baza).read_text(encoding='utf-8')
         assert 'name="csrf-token"' in tekst, baza
         assert 'function secureFetch' in tekst, baza
+
+
+# --- делимичан неуспех ------------------------------------------------------
+
+def test_delimican_neuspeh_ne_vraca_prekidac(blok):
+    """Упис прекидача и разрешавање затеченог су ДВЕ трансакције.
+
+    Ако друга падне, прекидач је већ уписан. Враћање дугмета на старо би
+    приказ довело у раскорак са базом — панел би тврдио „укључено" док база
+    каже „искључено". Нашла рецензија мерџа `a507044`.
+    """
+    assert 'prekidac_upisan' in blok, \
+        'клијент мора да разликује делимичан од потпуног неуспеха'
+    # У тој грани се излази без `vrati()` — дугме остаје тамо где јесте.
+    grana = blok[blok.index('rez.prekidac_upisan'):]
+    kraj = grana.index('throw new Error')
+    assert 'vrati()' not in grana[:kraj], \
+        'делимичан неуспех не сме да враћа прекидач'
+
+
+def test_server_ne_tvrdi_da_nista_nije_promenjeno(izvor_servera):
+    """Порука мора да каже да је прекидач ЈЕСТЕ промењен, и шта још треба."""
+    deo = izvor_servera[izvor_servera.index('def api_odobravanje'):]
+    deo = deo[:deo.index('def api_save_general_settings')]
+    assert "'prekidac_upisan': True" in deo
+    assert 'Прекидач ЈЕСТЕ промењен' in deo
+    assert 'scripts/odobravanje.py' in deo, \
+        'порука мора да каже КАКО да се посао доврши'
+
+
+@pytest.fixture(scope='module')
+def izvor_servera():
+    return pathlib.Path('admin_system_views.py').read_text(encoding='utf-8')

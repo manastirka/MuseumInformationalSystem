@@ -701,7 +701,17 @@ document.querySelectorAll('.prekidac-odobravanja').forEach(function (el) {
                 body: JSON.stringify({tok: tok, ukljuceno: zeljeno, izvrsi: true})
             });
             const rez = await misOdgovor(r);
-            if (!rez.success) { throw new Error(rez.error || 'промена није успела'); }
+            if (!rez.success) {
+                // Делимичан неуспех: прекидач ЈЕ уписан, само затечено није
+                // затворено. Враћање дугмета би приказ довело у раскорак са
+                // базом — гори исход од саме грешке.
+                if (rez.prekidac_upisan) {
+                    poruka.innerHTML = '<span class="text-warning">' +
+                        (rez.error || 'делимично примењено') + '</span>';
+                    return;
+                }
+                throw new Error(rez.error || 'промена није успела');
+            }
             const n = (rez.primenjeno && rez.primenjeno.promenjeno) || 0;
             poruka.innerHTML = '<span class="text-success">Сачувано.' +
                 (n ? ' Затворено ставки: ' + n + '.' : '') + ' Освежи страницу.</span>';
