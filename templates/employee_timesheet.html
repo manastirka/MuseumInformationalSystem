@@ -136,6 +136,19 @@
         </div>
     </div>
 </div>
+{% elif status == 'BEZ_ODOBRENJA' %}
+<div class="row">
+    <div class="col-12">
+        {# Намерно НЕ зелено: листа јесте завршена, али је нико није потписао.
+           Боја и текст морају да разликују „завршено" од „одобрено". #}
+        <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+            <i class="bi bi-file-earmark-check"></i>
+            <strong>Завршено без одобравања</strong> Ваша радна листа за {{ months[selected_month-1][1] }} {{ selected_year }} је предата и закључана.
+            <small class="d-block mt-1">Одобравање је тренутно искључено, па потпис шефа одељења и директора није тражен.</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 {% elif status == 'SUBMITTED' %}
 <div class="row">
     <div class="col-12">
@@ -207,8 +220,9 @@
 <!-- Date Restriction Warning (only in entry mode) -->
 {# Кад је унос закључан (прошао рок), јасна порука без дугмета за захтев —
    откључавање сада иде преко администратора (по кориснику/месецу). Статуси
-   SUBMITTED/APPROVED имају сопствене банере, па се овде не дуплирају. #}
-{% if is_entry_page and not can_edit and status not in ['SUBMITTED', 'APPROVED'] %}
+   SUBMITTED/APPROVED/BEZ_ODOBRENJA имају сопствене банере, па се овде не
+   дуплирају. #}
+{% if is_entry_page and not can_edit and status not in ['SUBMITTED', 'APPROVED', 'BEZ_ODOBRENJA'] %}
 <div class="row">
     <div class="col-12">
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -244,6 +258,8 @@
                         <span class="badge bg-warning text-dark p-2"><i class="bi bi-hourglass-split me-1"></i>Поднето на преглед</span>
                         {% elif status == 'APPROVED' %}
                         <span class="badge bg-success p-2"><i class="bi bi-check-circle me-1"></i>Одобрено</span>
+                        {% elif status == 'BEZ_ODOBRENJA' %}
+                        <span class="badge bg-secondary p-2"><i class="bi bi-file-earmark-check me-1"></i>Без одобравања</span>
                         {% elif status == 'REJECTED' %}
                         <span class="badge bg-danger p-2"><i class="bi bi-x-circle me-1"></i>Враћено</span>
                         {% else %}

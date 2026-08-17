@@ -28,6 +28,8 @@ except ImportError:
     ConnectionPool = None
 from serbian_holidays import SerbianHolidays
 
+import odobravanje_prekidac
+
 logger = logging.getLogger(__name__)
 
 # Database URL from environment
@@ -713,8 +715,10 @@ def save_timesheet_to_postgres(
                             "откључавање од шефа одељења."
                         )
 
-                    # Check status - SUBMITTED or APPROVED cannot be edited
-                    if existing['status'] in ('SUBMITTED', 'APPROVED'):
+                    # Предато или завршено се не мења. BEZ_ODOBRENJA је
+                    # завршено стање исто колико и APPROVED — разлика је само
+                    # у томе да ли је неко потписао.
+                    if existing['status'] in odobravanje_prekidac.IZVESTAJ_NEIZMENJIV:
                         return TimesheetResult.fail(
                             TimesheetErrorType.LOCKED,
                             "Радна листа је поднета/одобрена и не може се мењати."
@@ -1295,7 +1299,7 @@ def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bo
 
     Returns: (can_edit, message)
     """
-    if status in ('SUBMITTED', 'APPROVED'):
+    if status in odobravanje_prekidac.IZVESTAJ_NEIZMENJIV:
         return False, "Радна листа је поднета/одобрена и не може се мењати."
 
     # DRAFT or REJECTED: allow editing during the report month or days 1-10 of next month
@@ -1380,38 +1384,62 @@ def submit_timesheet(report_id: int, user_email: str) -> TimesheetResult:
                             message
                         )
 
+                # Кад је одобравање ИСКЉУЧЕНО, слање завршава посао: нема
+                # кога да чека. Статус је BEZ_ODOBRENJA, НЕ APPROVED — поља
+                # потписа (is_verified, head_verified_*, director_verified_*)
+                # остају празна и приказ то мора да каже. Извештај који нико
+                # није потписао не сме да личи на потписан.
+                trazi_potpis = odobravanje_prekidac.odobravanje_izvestaja_ukljuceno()
+                novi_status = ('SUBMITTED' if trazi_potpis
+                               else odobravanje_prekidac.STATUS_IZVESTAJ_BEZ)
+
                 # Update status. Clear editable_until — the report is back
                 # under review, the temp window from a prior reject/revoke
                 # no longer applies.
                 cur.execute("""
                     UPDATE timesheet_reports
-                    SET status = 'SUBMITTED',
+                    SET status = %s,
                         is_locked = TRUE,
                         is_verified = FALSE,
                         submitted_at = NOW(),
                         editable_until = NULL
                     WHERE id = %s
-                """, (report_id,))
+                """, (novi_status, report_id))
+
+                if not trazi_potpis:
+                    beleska = ('Поднето док је одобравање искључено — '
+                               'завршено без потписа шефа и директора')
+                elif report['status'] == 'REJECTED':
+                    beleska = 'Поновно поднето на преглед'
+                else:
+                    beleska = 'Поднето на преглед'
 
                 # Log to status history
                 cur.execute("""
                     INSERT INTO timesheet_status_history
                     (report_id, old_status, new_status, changed_by, note)
-                    VALUES (%s, %s, 'SUBMITTED', %s, %s)
-                """, (report_id, report['status'], user_email,
-                      'Поновно поднето на преглед' if report['status'] == 'REJECTED'
-                      else 'Поднето на преглед'))
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (report_id, report['status'], novi_status, user_email,
+                      beleska))
 
                 conn.commit()
 
                 was_rejected = report['status'] == 'REJECTED'
+                if not trazi_potpis:
+                    poruka = ('Радна листа је завршена. Одобравање је '
+                              'искључено, па потпис шефа и директора није '
+                              'тражен — листа је означена као „Без одобравања".')
+                elif was_rejected:
+                    poruka = 'Радна листа је поново поднета на преглед'
+                else:
+                    poruka = 'Радна листа је успешно поднета на преглед'
+
                 return TimesheetResult.ok({
                     'report_id': report_id,
-                    'status': 'SUBMITTED',
+                    'status': novi_status,
                     'was_rejected': was_rejected,
-                    'message': ('Радна листа је поново поднета на преглед'
-                                if was_rejected
-                                else 'Радна листа је успешно поднета на преглед'),
+                    'trazen_potpis': trazi_potpis,
+                    'message': poruka,
                 })
 
     except psycopg.Error as e:
@@ -1783,7 +1811,8 @@ def force_edit_timesheet(report_id: int, admin_email: str,
                 # админ/директор. Ово затвара трку — статус је прочитан истом
                 # трансакцијом која ради UPDATE, па директорово одобрење у
                 # међувремену не може да пропусти шефов захтев.
-                if old_status == 'APPROVED' and not allow_approved_reopen:
+                if (old_status in odobravanje_prekidac.IZVESTAJ_ZAVRSEN
+                        and not allow_approved_reopen):
                     return TimesheetResult.fail(
                         TimesheetErrorType.PERMISSION_DENIED,
                         "Оверен извештај може да врати само администратор или "
@@ -1996,7 +2025,7 @@ def admin_unlock_entry(employee_email: str, month: int, year: int,
                     (report_id,),
                 )
                 status = cur.fetchone()['status']
-                if status in ('SUBMITTED', 'APPROVED'):
+                if status in odobravanje_prekidac.IZVESTAJ_NEIZMENJIV:
                     return TimesheetResult.fail(
                         TimesheetErrorType.VALIDATION_ERROR,
                         f"Листа за {month}/{year} је већ у току одобравања "
