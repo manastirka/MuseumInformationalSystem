@@ -5,7 +5,6 @@
 //     `.dashboard-header h1` (специфичност 0,2,1) газио Bootstrap `.h5`).
 //  3) „Администрација" НИЈЕ у падајућем менију Базе података (изравната група),
 //     али админ панел ОСТАЈЕ у главној навигацији, а базе остају као ставке.
-/* global document, getComputedStyle */
 const { test, expect } = require('@playwright/test');
 
 const EMAIL = process.env.CYPRESS_ADMIN_EMAIL || process.env.QA_EMAIL;

@@ -22,7 +22,7 @@ async function login(page) {
 async function ubaciPanel(page) {
   await page.evaluate(() => {
     const old = document.getElementById('kontrast-status-panel');
-    if (old) old.remove();
+    if (old) {old.remove();}
     const panel = document.createElement('div');
     panel.id = 'kontrast-status-panel';
     panel.style.cssText = 'padding:24px; display:flex; gap:16px; position:relative; z-index:1;';
@@ -65,6 +65,10 @@ test('табела резервација: слободно=зелена, зау
   const free = page.locator('#calendarBody .vehicle-status-free').first();
   await expect(free).toBeVisible();
   const freeBg = await free.evaluate(el => getComputedStyle(el).backgroundColor);
+  // Провидна подлога значи да ћелија нема статусни токен и да се види
+  // Bootstrap подлога испод — управо регресија коју овај тест хвата.
+  expect(freeBg).not.toEqual('rgba(0, 0, 0, 0)');
+  expect(freeBg).toMatch(/^rgb/);
   const rootFree = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--status-free-bg').trim());
   expect(rootFree).not.toEqual('');           // токен дефинисан

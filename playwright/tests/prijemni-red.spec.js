@@ -35,7 +35,7 @@ test('prijemni red je dostupan iz menija i prikazuje nevezane fotografije', asyn
   await expect(redovi.first().locator('a:has-text("Допуни"), button:has-text("Допуни")')).toHaveCount(1);
 });
 
-test('fotografija bez veze je u redu i kad zastavica kaže suprotno', async ({ page, request }) => {
+test('fotografija bez veze je u redu i kad zastavica kaže suprotno', async ({ page }) => {
   test.skip(!EMAIL || !PASS, 'QA kredencijali su potrebni.');
   await login(page);
   await page.goto('/fototeka/prijemni-red');

@@ -45,8 +45,8 @@ async function postaviTemu(page, rezim, stil) {
   await page.evaluate(([r, s]) => {
     document.documentElement.setAttribute('data-theme', r);
     document.documentElement.setAttribute('data-bs-theme', r === 'dark' ? 'dark' : 'light');
-    if (s === 'institucionalna') document.documentElement.removeAttribute('data-style');
-    else document.documentElement.setAttribute('data-style', s);
+    if (s === 'institucionalna') {document.documentElement.removeAttribute('data-style');}
+    else {document.documentElement.setAttribute('data-style', s);}
   }, [rezim, stil]);
   await page.waitForTimeout(200);
 }
@@ -75,8 +75,8 @@ async function postaviPaletu(page, paleta, gustina, rezim) {
       root.removeAttribute('data-theme');
       root.setAttribute('data-bs-theme', 'light');
     }
-    if (g === 'komforno') root.removeAttribute('data-density');
-    else root.setAttribute('data-density', g);
+    if (g === 'komforno') {root.removeAttribute('data-density');}
+    else {root.setAttribute('data-density', g);}
   }, [paleta, gustina, rezim]);
   await page.waitForTimeout(200);
 }
@@ -85,8 +85,8 @@ async function postaviPaletu(page, paleta, gustina, rezim) {
 async function postaviAkcenat(page, akcenat) {
   await page.evaluate((a) => {
     const root = document.documentElement;
-    if (!a || a === 'podrazumevano') root.removeAttribute('data-accent');
-    else root.setAttribute('data-accent', a);
+    if (!a || a === 'podrazumevano') {root.removeAttribute('data-accent');}
+    else {root.setAttribute('data-accent', a);}
   }, akcenat);
   await page.waitForTimeout(120);
 }
@@ -110,7 +110,7 @@ async function izmeriKontrast(page, korenSelektor) {
   try {
     return await izmeriUStanju(page, korenSelektor);
   } finally {
-    if (stariProzor) await page.setViewportSize(stariProzor);
+    if (stariProzor) {await page.setViewportSize(stariProzor);}
   }
 }
 
@@ -121,9 +121,9 @@ async function izmeriUStanju(page, korenSelektor) {
     // ВИШЕ плоча, а текст који пада може бити у било којој — мерење само прве
     // (она са сликом, без текста) лажно прође.
     const koreni = koren ? [...document.querySelectorAll(koren)] : [document.body];
-    if (!koreni.length) return [];
+    if (!koreni.length) {return [];}
     const selektorZa = (el) => {
-      if (el.id) return '#' + el.id;
+      if (el.id) {return '#' + el.id;}
       const cls = (el.className && typeof el.className === 'string')
         ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '';
       return el.tagName.toLowerCase() + cls;
@@ -141,7 +141,7 @@ async function izmeriUStanju(page, korenSelektor) {
     const uLepljivom = (el) => {
       for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
         const p = getComputedStyle(n).position;
-        if (p === 'fixed' || p === 'sticky') return true;
+        if (p === 'fixed' || p === 'sticky') {return true;}
       }
       return false;
     };
@@ -160,7 +160,7 @@ async function izmeriUStanju(page, korenSelektor) {
         const cs = getComputedStyle(n);
         if (/(auto|scroll)/.test(cs.overflowX)) {
           const nr = n.getBoundingClientRect();
-          if (r.right > nr.left + n.clientWidth + 1 || r.left < nr.left - 1) return true;
+          if (r.right > nr.left + n.clientWidth + 1 || r.left < nr.left - 1) {return true;}
         }
       }
       return false;
@@ -171,13 +171,13 @@ async function izmeriUStanju(page, korenSelektor) {
     for (const el of svi) {
       const tekst = [...el.childNodes]
         .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
-      if (!tekst || samoEmoji(tekst) || uLepljivom(el) || isecenHscroll(el)) continue;
+      if (!tekst || samoEmoji(tekst) || uLepljivom(el) || isecenHscroll(el)) {continue;}
       const cs = getComputedStyle(el);
-      if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue;
+      if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) {continue;}
       const r = el.getBoundingClientRect();
-      if (r.width < 4 || r.height < 4) continue;
+      if (r.width < 4 || r.height < 4) {continue;}
       // ван екрана — не мери се
-      if (r.bottom < 0 || r.top > (window.scrollY + window.innerHeight + 4000)) continue;
+      if (r.bottom < 0 || r.top > (window.scrollY + window.innerHeight + 4000)) {continue;}
       const px = parseFloat(cs.fontSize);
       const bold = (parseInt(cs.fontWeight, 10) || 400) >= 700;
       out.push({
@@ -195,7 +195,7 @@ async function izmeriUStanju(page, korenSelektor) {
     return out;
   }, korenSelektor);
 
-  if (!kandidati.length) return [];
+  if (!kandidati.length) {return [];}
 
   // 2) сакриј СВЕ текстове па сними — остаје чиста позадина.
   //
@@ -204,7 +204,7 @@ async function izmeriUStanju(page, korenSelektor) {
   // селектором (нпр. `--navbar-text` на навигацији). Такав текст остане видљив,
   // мери се ГЛИФ уместо позадине и испадне „злато на злату" ≈ 1.15:1 — лажна
   // пријава. Декларација у style атрибуту бије сваки селектор, па хвата и њих.
-  const vraceno = await page.evaluate(() => {
+  const obradjeno = await page.evaluate(() => {
     const stari = [];
     for (const el of document.querySelectorAll('*')) {
       stari.push([el, el.style.getPropertyValue('color'), el.style.getPropertyPriority('color'),
@@ -214,12 +214,17 @@ async function izmeriUStanju(page, korenSelektor) {
     }
     window.__kontrastVrati = () => {
       for (const [el, boja, prio, senka] of stari) {
-        if (boja) el.style.setProperty('color', boja, prio); else el.style.removeProperty('color');
-        if (senka) el.style.setProperty('text-shadow', senka); else el.style.removeProperty('text-shadow');
+        if (boja) {el.style.setProperty('color', boja, prio);} else {el.style.removeProperty('color');}
+        if (senka) {el.style.setProperty('text-shadow', senka);} else {el.style.removeProperty('text-shadow');}
       }
     };
     return document.querySelectorAll('*').length;
   });
+  if (!obradjeno) {
+    // Празна страница би дала нула кандидата и „уредан" налаз без иједног
+    // измереног пиксела — тиха лажна потврда.
+    throw new Error('kontrast: strana nema nijedan element, merenje je besmisleno');
+  }
 
   const snimak = (await page.screenshot({ fullPage: true })).toString('base64');
 
@@ -238,7 +243,7 @@ async function izmeriUStanju(page, korenSelektor) {
 
     const parseRgb = (s) => {
       const m = s.match(/rgba?\(([^)]+)\)/);
-      if (!m) return null;
+      if (!m) {return null;}
       const d = m[1].split(',').map((x) => parseFloat(x.trim()));
       return { r: d[0], g: d[1], b: d[2], a: d.length > 3 ? d[3] : 1 };
     };
@@ -260,7 +265,7 @@ async function izmeriUStanju(page, korenSelektor) {
     const out = [];
     for (const k of kand) {
       const fg0 = parseRgb(k.fg);
-      if (!fg0) continue;
+      if (!fg0) {continue;}
       // узорак: неколико тачака унутар кутије текста
       const tacke = [];
       const nx = 5, ny = 3;
@@ -275,14 +280,14 @@ async function izmeriUStanju(page, korenSelektor) {
       const brojac = new Map();
       for (const [px0, py0] of tacke) {
         const px = Math.round(px0 * skala), py = Math.round(py0 * skala);
-        if (px < 0 || py < 0 || px >= c.width || py >= c.height) continue;
+        if (px < 0 || py < 0 || px >= c.width || py >= c.height) {continue;}
         const d = ctx.getImageData(px, py, 1, 1).data;
         const kljuc = `${d[0] >> 3},${d[1] >> 3},${d[2] >> 3}`;
         const rec = brojac.get(kljuc) || { n: 0, r: d[0], g: d[1], b: d[2] };
         rec.n++;
         brojac.set(kljuc, rec);
       }
-      if (!brojac.size) continue;
+      if (!brojac.size) {continue;}
       const dom = [...brojac.values()].sort((a, b) => b.n - a.n)[0];
       const najgoriBg = { r: dom.r, g: dom.g, b: dom.b, a: 1 };
       const fg = fg0.a < 1 ? spoji(fg0, najgoriBg) : fg0;
@@ -303,7 +308,7 @@ async function izmeriUStanju(page, korenSelektor) {
   }, [snimak, kandidati]);
 
   // 4) врати текст
-  await page.evaluate(() => { if (window.__kontrastVrati) window.__kontrastVrati(); });
+  await page.evaluate(() => { if (window.__kontrastVrati) {window.__kontrastVrati();} });
 
   return padovi;
 }

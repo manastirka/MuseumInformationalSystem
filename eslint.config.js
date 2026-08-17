@@ -49,6 +49,11 @@ module.exports = [
       sourceType: 'module',
       globals: {
         ...globals.node,
+        // Telo `page.evaluate(() => ...)` se izvrsava U PREGLEDACU, ne u
+        // Node-u — `document`, `window` i `getComputedStyle` tamo postoje.
+        // Bez ovoga ESLint ih prijavljuje kao no-undef, sto je bio razlog
+        // sto je QA Lint padao na svakom push-u (124 greske, 17.08.2026).
+        ...globals.browser,
         test: 'readonly',
         expect: 'readonly'
       }
