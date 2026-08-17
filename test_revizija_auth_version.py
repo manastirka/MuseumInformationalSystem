@@ -175,11 +175,97 @@ def test_migracija_051_postoji_i_dodaje_kolonu():
     assert 'ADD COLUMN IF NOT EXISTS auth_version' in sql
 
 
-def test_bump_na_promenama_prava():
-    """Sva mesta koja menjaju prava moraju da podižu auth_version."""
-    src_admin = open('admin_user_management_views.py').read()
-    assert src_admin.count('auth_version = auth_version + 1') >= 4
-    src_auth = open('postgres_auth.py').read()
-    assert 'auth_version = auth_version + 1' in src_auth
-    src_mcc = open('museum_control_center.py').read()
-    assert src_mcc.count('auth_version = auth_version + 1') >= 4
+# Свако додељивање auth_version-у у SET клаузули; облик десне стране може
+# да буде `+ 1` или условни `+ CASE WHEN ...`, па се тражи само леви део.
+OPOZIV = 'auth_version = auth_version'
+
+# ЗАШТО ПО ФУНКЦИЈИ, А НЕ БРОЈАЊЕМ ПО ФАЈЛУ
+# Претходна верзија овог теста бројала је појављивања низа у ЦЕЛОМ фајлу
+# (`count(...) >= 4`). Такав тест пролази и када функција коју треба да штити
+# нема ниједан опозив — довољно је да га имају суседне. Тако је
+# `api_password_manager_force_change` био без опозива сесије, а свита зелена.
+# Провера по функцији пада тачно на месту које је попустило.
+MESTA_SA_OPOZIVOM = [
+    ('admin_user_management_views.py', 'api_password_manager_reset'),
+    ('admin_user_management_views.py', 'api_password_manager_force_change'),
+    ('admin_user_management_views.py', 'api_password_manager_toggle_status'),
+    ('museum_control_center.py', 'reset_user_password'),
+    ('museum_control_center.py', 'force_password_change'),
+    ('museum_control_center.py', 'toggle_user_status'),
+    ('museum_control_center.py', 'reset_and_show_password'),
+    ('museum_control_center.py', 'set_temporary_password'),
+    ('migrate_all_employees_to_postgres.py', 'update_existing_user'),
+]
+
+
+def _izvor_funkcije(putanja, ime):
+    import ast
+    tekst = (Path(__file__).parent / putanja).read_text(encoding='utf-8')
+    for cvor in ast.walk(ast.parse(tekst)):
+        if isinstance(cvor, ast.FunctionDef) and cvor.name == ime:
+            return ast.get_source_segment(tekst, cvor) or ''
+    raise AssertionError(f'{putanja}: нема функције {ime} — тест је застарео')
+
+
+@pytest.mark.parametrize('putanja,funkcija', MESTA_SA_OPOZIVOM)
+def test_svaka_promena_prava_opoziva_sesiju(putanja, funkcija):
+    assert OPOZIV in _izvor_funkcije(putanja, funkcija), (
+        f'{putanja}:{funkcija} мења права или лозинку, а не подиже '
+        f'auth_version — постојећа сесија задржава стара права')
+
+
+def test_force_change_stvarno_salje_bump_u_bazu():
+    """Не гледа извор него SQL који је СТВАРНО извршен.
+
+    Провера изнад пада ако низ нестане из функције; ова пада и ако низ остане
+    али заврши у грани која се не извршава.
+    """
+    import admin_user_management_views as auv
+
+    izvrseno = []
+
+    class _Cur:
+        rowcount = 1
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def execute(self, sql, params=None):
+            izvrseno.append(sql)
+
+    class _Conn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def cursor(self, **kw):
+            return _Cur()
+
+        def commit(self):
+            pass
+
+        def rollback(self):
+            pass
+
+    app = Flask(__name__)
+    app.secret_key = 'test'
+    with app.test_request_context(
+            '/api/admin/password_manager/force_change', method='POST',
+            json={'user_id': 7, 'email': 'neko@nhmbeo.rs'}):
+        session['user_email'] = 'admin@nhmbeo.rs'
+        with mock.patch.object(auv, 'get_postgres_connection',
+                               lambda *a, **k: _Conn()), \
+             mock.patch.object(auv, 'audit_support'), \
+             mock.patch.object(auv, 'add_sentry_breadcrumb', lambda **k: None):
+            odgovor = auv.api_password_manager_force_change(
+                log_security_event=lambda *a, **k: None)
+
+    telo = odgovor[0] if isinstance(odgovor, tuple) else odgovor
+    assert telo.get_json()['success'] is True, telo.get_json()
+    assert izvrseno, 'ниједан SQL није извршен'
+    assert any(OPOZIV in sql for sql in izvrseno), izvrseno

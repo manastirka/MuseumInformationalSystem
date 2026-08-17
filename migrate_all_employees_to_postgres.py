@@ -69,9 +69,14 @@ def update_existing_user(cur, email, name, position, department, role):
             full_name = %s,
             position = %s,
             department_id = %s,
-            role_id = %s
+            role_id = %s,
+            -- Опозив сесије само кад се улога СТВАРНО мења. Безусловни bump
+            -- би при сваком покретању синхронизације избацио све запослене.
+            -- У SET изразу `role_id` са десне стране је СТАРА вредност реда.
+            auth_version = auth_version
+                + CASE WHEN role_id IS DISTINCT FROM %s THEN 1 ELSE 0 END
         WHERE LOWER(email) = LOWER(%s)
-    """, (name, position, department_id, role_id, email))
+    """, (name, position, department_id, role_id, role_id, email))
     return True
 
 

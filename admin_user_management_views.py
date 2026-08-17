@@ -682,6 +682,7 @@ def api_password_manager_force_change(*, log_security_event):
                         """
                         UPDATE users
                         SET is_first_login = TRUE,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE id = %s
                           AND LOWER(email) = LOWER(%s)
@@ -693,6 +694,7 @@ def api_password_manager_force_change(*, log_security_event):
                         """
                         UPDATE users
                         SET is_first_login = TRUE,
+                            auth_version = auth_version + 1,
                             updated_at = %s
                         WHERE LOWER(email) = LOWER(%s)
                         """,

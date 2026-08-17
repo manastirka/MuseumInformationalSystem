@@ -2556,7 +2556,11 @@ WantedBy=multi-user.target
 
         try:
             update_command, update_sql = build_user_update_command(
-                set_clause="is_first_login = TRUE, updated_at = NOW()",
+                # Опозив сесије иде уз обавезну промену лозинке — иначе
+                # компромитован налог наставља да ради до истека сесије (8 h).
+                set_clause="is_first_login = TRUE, "
+                           "auth_version = auth_version + 1, "
+                           "updated_at = NOW()",
                 email=email,
             )
 
