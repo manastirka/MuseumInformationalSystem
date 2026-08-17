@@ -36,6 +36,12 @@ df --output=target,pcent / /backup 2>/dev/null | tail -n +2
 echo "###ZDRAVLJE"
 curl -sk --max-time 10 https://127.0.0.1/healthz 2>/dev/null || echo NEDOSTUPNO
 
+echo "###STABLA_PROD"
+cd /data 2>/dev/null && find . -mindepth 1 -maxdepth 2 -type d -printf '%P\n' 2>/dev/null | sort
+
+echo "###STABLA_BEKAP"
+cd /backup/current/data 2>/dev/null && find . -mindepth 1 -maxdepth 2 -type d -printf '%P\n' 2>/dev/null | sort
+
 echo "###PROBA"
 systemctl show restore-proba.service -p ExecMainStartTimestamp --value
 
