@@ -58,6 +58,13 @@ def admin_audit_log():
     return audit_log_views.render_audit_log()
 
 
+@admin_bp.route('/api/admin/settings/odobravanje', methods=['POST'])
+@admin_only
+def api_odobravanje():
+    """Прекидач одобравања (преглед или примена)."""
+    return admin_system_views.api_odobravanje()
+
+
 @admin_bp.route('/api/admin/settings/general', methods=['POST'])
 @admin_only
 def api_save_general_settings():
