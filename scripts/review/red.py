@@ -116,6 +116,15 @@ def obradi() -> int:
         else:
             stavka.write_text(f"pokusaja={pokusaja}\n")
             print(f"{h}: грешка (кôд {p.returncode}), покушај {pokusaja}")
+            # Први неуспех се уписује у дневник ОДМАХ. Раније се писало тек
+            # после 20 покушаја, па је `a507044` шест пута падао на
+            # `Argument list too long` а у PREGLED.md ниједног трага —
+            # видело се само ако неко ручно погледа бројач у реду.
+            # Стдио под systemd тајмером нико не чита.
+            if pokusaja == 1:
+                zabelezi(f"- `{h[:7]}` · {vreme} · **ГРЕШКА** (кôд "
+                         f"{p.returncode}, покушај 1/{MAX_POKUSAJA}) — "
+                         f"{((p.stderr or izlaz) or 'без поруке').strip()[:160]}")
             if pokusaja >= MAX_POKUSAJA:
                 ODUSTALO.mkdir(parents=True, exist_ok=True)
                 stavka.rename(ODUSTALO / h)

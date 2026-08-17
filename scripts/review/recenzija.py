@@ -86,7 +86,8 @@ def je_limit(tekst: str) -> bool:
 
 
 # --------------------------------------------------------------- рецензенти
-def pokreni(cmd: list[str], cwd: Path, timeout: int, kroz_tmux: bool = False):
+def pokreni(cmd: list[str], cwd: Path, timeout: int, kroz_tmux: bool = False,
+            ulaz: str | None = None):
     """Врати (returncode, stdout+stderr). Grok тражи да постоји контролни
     терминал а да излаз иде у фајл — зато иде кроз tmux."""
     if kroz_tmux:
@@ -108,14 +109,22 @@ def pokreni(cmd: list[str], cwd: Path, timeout: int, kroz_tmux: bool = False):
         tekst = izlaz.read_text(errors="replace") if izlaz.is_file() else ""
         m = re.search(r"IZLAZNI_KOD=(\d+)", tekst)
         return (int(m.group(1)) if m else 124), tekst
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                       timeout=timeout, stdin=subprocess.DEVNULL)
+    # `stdin=DEVNULL` остаје подразумевано (codex иначе поједе улаз
+    # позиваоца), али кад промпт иде кроз stdin, шаље се овуда.
+    p = subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        input=ulaz, stdin=None if ulaz is not None else subprocess.DEVNULL)
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
+# ARG_MAX: цео diff иде у промпт, а `execve` има горњу границу за све
+# аргументе заједно. Мерџ `a507044` је дао diff од 549 KB и `claude` је падао
+# са `OSError: [Errno 7] Argument list too long` — ШЕСТ пута заредом, а нигде
+# трага, јер ред одустаје тек после 20 покушаја. Промпт зато иде кроз stdin.
 def recenzent_claude(prompt: str, timeout: int):
     kod, izlaz = pokreni(
-        ["claude", "-p", prompt, "--output-format", "json"], REPO, timeout)
+        ["claude", "-p", "--output-format", "json"], REPO, timeout,
+        ulaz=prompt)
     try:
         d = json.loads(izlaz[izlaz.index("{"):izlaz.rindex("}") + 1])
         if d.get("is_error"):
@@ -128,8 +137,8 @@ def recenzent_claude(prompt: str, timeout: int):
 def recenzent_codex(prompt: str, timeout: int):
     out = Path(f"/tmp/codex-recenzija-{sada()}.txt")
     kod, izlaz = pokreni(
-        ["codex", "exec", "--sandbox", "read-only", "-o", str(out), prompt],
-        REPO, timeout)
+        ["codex", "exec", "--sandbox", "read-only", "-o", str(out), "-"],
+        REPO, timeout, ulaz=prompt)
     if kod == 0 and out.is_file():
         return out.read_text(errors="replace").strip(), None
     return None, izlaz[-400:]
