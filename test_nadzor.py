@@ -38,6 +38,8 @@ def _odeljci(**preklopi):
         'ZDRAVLJE': ['{"db":"ok","redis":"ok","status":"ok"}'],
         'PROBA': [time.strftime('%a %Y-%m-%d %H:%M:%S CEST',
                                 time.localtime(sada - 5 * 86400))],
+        'STABLA_PROD': ['mis', 'mis/cif_files', 'mis/media', 'arhiva', 'share'],
+        'STABLA_BEKAP': ['mis', 'mis/cif_files', 'arhiva', 'share'],
     }
     osnovno.update(preklopi)
     return osnovno
@@ -128,3 +130,29 @@ def test_kolektor_na_produ_ne_menja_stanje():
     for red in tela:
         for z in zabranjeno:
             assert z not in red, f'сакупљач мења стање: {red!r}'
+
+
+def test_poznati_izuzetak_nije_nalaz(nadzor):
+    """`mis/media` недостаје у бекапу и то се зна — не сме да звони сваки дан."""
+    nalazi, u_redu = nadzor.procena(_odeljci())
+    assert not any('НИЈЕ У БЕКАПУ' in n for n in nalazi), nalazi
+    assert any('осим познатих' in u for u in u_redu), u_redu
+
+
+def test_nova_grana_van_bekapa_je_nalaz(nadzor):
+    """Ово је поента провере: грана која ИСПАДНЕ из бекапа мора да се чује.
+
+    17.08.2026 нико није знао да `/data/mis/media` није у бекапу док се није
+    ручно упоредило. Следећи пут се чује ујутру.
+    """
+    nalazi, _ = nadzor.procena(_odeljci(
+        STABLA_PROD=['mis', 'mis/cif_files', 'mis/media', 'arhiva', 'share'],
+        STABLA_BEKAP=['mis', 'mis/cif_files', 'mis/media', 'share']))
+    assert any('НИЈЕ У БЕКАПУ' in n and 'arhiva' in n for n in nalazi), nalazi
+
+
+def test_prazan_popis_stabala_ne_lazira_uspeh(nadzor):
+    """Ако сакупљач не врати списак, провера ћути — али НЕ тврди да је у реду."""
+    nalazi, u_redu = nadzor.procena(_odeljci(STABLA_PROD=[], STABLA_BEKAP=[]))
+    assert not any('гране' in u for u in u_redu), u_redu
+    assert not any('НИЈЕ У БЕКАПУ' in n for n in nalazi), nalazi

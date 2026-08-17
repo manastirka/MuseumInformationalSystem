@@ -15,9 +15,10 @@
     3. пале јединице (systemctl is-failed)
     4. маркере аларма у /var/lib/mis/alarm — хватају и пад који је у
        међувремену ручно поправљен, што is-failed више не показује
-    5. слободан простор на / и /backup
-    6. здравље апликације (/healthz кроз nginx)
-    7. када је последњи пут рађена проба враћања бекапа
+    5. гране у /data којих нема у бекапу
+    6. слободан простор на / и /backup
+    7. здравље апликације (/healthz кроз nginx)
+    8. када је последњи пут рађена проба враћања бекапа
 
 ИЗЛАЗ
     0 = све у реду, 1 = бар један налаз. Извештај иде на стдио и у
@@ -144,14 +145,39 @@ def procena(o: dict) -> tuple[list[str], list[str]]:
         else:
             u_redu.append(f"{tacka} заузет {zauzeto}%")
 
-    # 5. здравље апликације
+    # 5. гране података које нису у бекапу
+    #
+    # 17.08.2026: `/data/mis/media` (223 MB) НЕ постоји у /backup/current/data.
+    # То је највероватније намерно — то су изведени приказни фајлови
+    # (jpg/thumb) које fototeka worker поново прави из `/data/arhiva`, а
+    # arhiva ЈЕСТЕ у бекапу. Скрипта бекапа је root-only, па се не може
+    # прочитати и потврдити. Изузетак стоји овде именован, да зна да
+    # га неко јесте видео — а свака НОВА грана која испадне из бекапа
+    # одмах постаје налаз.
+    POZNATI_IZUZECI = {
+        'mis/media': 'изведени приказни фајлови, обновиви из mis/arhiva',
+        'mis/uploads': 'привремени пријем, празан',
+    }
+    na_produ_grane = {r.strip() for r in o.get('STABLA_PROD', []) if r.strip()}
+    u_bekapu = {r.strip() for r in o.get('STABLA_BEKAP', []) if r.strip()}
+    if na_produ_grane and u_bekapu:
+        nedostaju = sorted(na_produ_grane - u_bekapu - set(POZNATI_IZUZECI))
+        if nedostaju:
+            nalazi.append('НИЈЕ У БЕКАПУ: ' + ', '.join(nedostaju))
+        else:
+            poznato = sorted(set(POZNATI_IZUZECI) & na_produ_grane)
+            u_redu.append('све гране /data су у бекапу'
+                          + (f' (осим познатих: {", ".join(poznato)})'
+                             if poznato else ''))
+
+    # 6. здравље апликације
     zdravlje = " ".join(o.get("ZDRAVLJE", [])).strip()
     if '"status":"ok"' in zdravlje.replace(" ", ""):
         u_redu.append("апликација одговара, healthz ok")
     else:
         nalazi.append(f"ЗДРАВЉЕ: /healthz није ok → {zdravlje[:120] or 'празно'}")
 
-    # 6. проба враћања бекапа
+    # 7. проба враћања бекапа
     proba = " ".join(o.get("PROBA", [])).strip()
     if not proba or proba == "n/a":
         nalazi.append("ПРОБА ВРАЋАЊА: нема податка да је икад покренута")
