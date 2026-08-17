@@ -637,6 +637,25 @@ function clearCache() {
 </script>
 
 <script>
+// CSRFProtect важи за цео app (app.py:373). Заглавље са токеном додаје
+// `secureFetch` из базног шаблона — исти помоћник који користе сви остали
+// POST позиви на овој страници. Голи `fetch` овде је 17.08.2026 вратио
+// HTML страницу грешке 400, а `response.json()` на њој даје
+// „Unexpected token '<'", што кориснику не значи ништа.
+
+// Одговор који није JSON се НЕ гута и не претвара у загонетку: враћа се
+// порука са стварним статусом, да се види шта се десило.
+async function misOdgovor(r) {
+    const tekst = await r.text();
+    try {
+        return JSON.parse(tekst);
+    } catch (e) {
+        throw new Error('сервер није вратио JSON (HTTP ' + r.status + ')' +
+            (r.status === 400 ? ' — вероватно истекла сесија, освежи страницу'
+                              : ''));
+    }
+}
+
 document.querySelectorAll('.prekidac-odobravanja').forEach(function (el) {
     el.addEventListener('change', async function () {
         const tok = el.dataset.tok;
@@ -647,12 +666,12 @@ document.querySelectorAll('.prekidac-odobravanja').forEach(function (el) {
         poruka.innerHTML = '<span class="text-muted">Проверавам…</span>';
         let pregled;
         try {
-            const r = await fetch('/api/admin/settings/odobravanje', {
+            const r = await secureFetch('/api/admin/settings/odobravanje', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({tok: tok, ukljuceno: zeljeno, izvrsi: false})
             });
-            pregled = await r.json();
+            pregled = await misOdgovor(r);
             if (!pregled.success) { throw new Error(pregled.error || 'преглед није успео'); }
         } catch (e) {
             poruka.innerHTML = '<span class="text-danger">Није промењено: ' + e.message + '</span>';
@@ -676,12 +695,12 @@ document.querySelectorAll('.prekidac-odobravanja').forEach(function (el) {
         if (!window.confirm(tekst)) { vrati(); poruka.innerHTML = ''; return; }
 
         try {
-            const r = await fetch('/api/admin/settings/odobravanje', {
+            const r = await secureFetch('/api/admin/settings/odobravanje', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({tok: tok, ukljuceno: zeljeno, izvrsi: true})
             });
-            const rez = await r.json();
+            const rez = await misOdgovor(r);
             if (!rez.success) { throw new Error(rez.error || 'промена није успела'); }
             const n = (rez.primenjeno && rez.primenjeno.promenjeno) || 0;
             poruka.innerHTML = '<span class="text-success">Сачувано.' +
