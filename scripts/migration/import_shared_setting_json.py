@@ -24,10 +24,17 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO))
 
+# Ključevi koje aplikacija ZAISTA čita (module_access_support.py,
+# admin_system_views.py). Bez ovog spiska alat je primao bilo šta: greška u
+# kucanju („module_acces") upisala bi nov red koji niko ne čita, a alat bi
+# ispisao „Upisano" — lažna poruka o uspehu, i to na produkciji, pod pritiskom.
+POZNATI_KLJUCEVI = ('dashboard_preferences', 'module_access', 'system_settings')
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('setting_key', help="ključ u app_shared_settings (npr. module_access)")
+    parser.add_argument('setting_key', choices=POZNATI_KLJUCEVI,
+                        help="ključ u app_shared_settings")
     parser.add_argument('json_file', help="putanja JSON fajla za uvoz")
     parser.add_argument('--execute', action='store_true',
                         help='zaista upiši (bez ovoga: dry-run)')
