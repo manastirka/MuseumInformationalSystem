@@ -87,9 +87,18 @@ def zovi(uputstvo: str, tekst: str, timeout: int) -> str:
             cwd=radni, capture_output=True, text=True, timeout=timeout,
             stdin=subprocess.DEVNULL,  # без овога codex поједе улаз позиваоца
         )
-        if izlaz.is_file():
-            return izlaz.read_text(encoding="utf-8").strip()
-        raise RuntimeError((p.stderr or p.stdout or "непознат неуспех")[-300:])
+        # Постојање -o фајла НИЈЕ доказ успеха: codex га направи пре него што
+        # почне да пише. Ако падне у међувремену (истекла квота, ауторизација,
+        # прекид), фајл остане празан или крњ, а права порука је само у stderr.
+        # Без ове провере алат би вратио кôд 0 и празан текст — тачно оно тихо
+        # гутање грешке које овде не сме да прође.
+        rezultat = izlaz.read_text(encoding="utf-8").strip() if izlaz.is_file() else ""
+        if p.returncode != 0 or not rezultat:
+            razlog = (p.stderr or p.stdout or "").strip()
+            raise RuntimeError(
+                f"codex завршио кôдом {p.returncode}, излаз {len(rezultat)} знакова"
+                + (f": {razlog[-300:]}" if razlog else " — без поруке о грешци"))
+        return rezultat
 
 
 def main() -> int:
