@@ -39,6 +39,9 @@ TOKOVI = {
                   prekidac.odobravanje_dokumenata_ukljuceno),
     'rok': (prekidac.KLJUC_ROK, 'рок предаје (до 10. у наредном месецу)',
             prekidac.rok_predaje_ukljucen),
+    'verifikacija': (prekidac.KLJUC_VERIFIKACIJA,
+                     'правна верификација у Архиви',
+                     prekidac.verifikacija_arhive_ukljucena),
 }
 
 
@@ -74,6 +77,7 @@ def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
         return 0
 
     posao = None
+    # Само та два тока имају ред који чека; рок и верификација су правила.
     if not ukljuceno and tok in ('izvestaji', 'dokumenti'):
         posao = (razresavanje.razresi_izvestaje if tok == 'izvestaji'
                  else razresavanje.razresi_dokumente)
@@ -108,7 +112,7 @@ def _postavi(tok: str, ukljuceno: bool, izvrsi: bool) -> int:
                   f"разрешиш узрок.", file=sys.stderr)
             return 1
         print(f"Разрешено затечених: {rezultat['promenjeno']}")
-    elif tok != 'rok':
+    elif tok not in ('rok', 'verifikacija'):
         print('Затечени редови се НЕ враћају у ред за одобрење — оно што је '
               'већ затворено остаје затворено.')
     return 0

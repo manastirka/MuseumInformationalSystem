@@ -201,8 +201,10 @@ def api_odobravanje():
     TOKOVI = {
         'izvestaji': odobravanje_prekidac.KLJUC_IZVESTAJI,
         'dokumenti': odobravanje_prekidac.KLJUC_DOKUMENTI,
-        # Рок нема ред који чека — гашење не разрешава ништа уназад.
+        # Рок и верификација немају ред који чека — гашење не разрешава
+        # ништа уназад, само мења правило од сада надаље.
         'rok': odobravanje_prekidac.KLJUC_ROK,
+        'verifikacija': odobravanje_prekidac.KLJUC_VERIFIKACIJA,
     }
     try:
         data = request.get_json() or {}

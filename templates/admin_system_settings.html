@@ -94,7 +94,9 @@
                             ('dokumenti', 'Документа', 'библиотека докумената',
                              'odobravanje_dokumenata', odobravanje.zateceno.dokumenti),
                             ('rok', 'Рок предаје', 'месец извештаја + 1–10. наредног',
-                             'rok_predaje_izvestaja', none)
+                             'rok_predaje_izvestaja', none),
+                            ('verifikacija', 'Правна верификација', 'корак правне службе у Архиви',
+                             'verifikacija_arhive', none)
                         ] %}
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
@@ -111,9 +113,9 @@
                                 <div class="mt-2 small">
                                     Стање:
                                     {% if odobravanje[kljuc] %}
-                                        <span class="badge bg-success">{{ 'рок важи' if tok == 'rok' else 'одобравање укључено' }}</span>
+                                        <span class="badge bg-success">{{ {'rok': 'рок важи', 'verifikacija': 'верификација се тражи'}.get(tok, 'одобравање укључено') }}</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">{{ 'рок не важи' if tok == 'rok' else 'одобравање искључено' }}</span>
+                                        <span class="badge bg-secondary">{{ {'rok': 'рок не важи', 'verifikacija': 'верификација се прескаче'}.get(tok, 'одобравање искључено') }}</span>
                                     {% endif %}
                                 </div>
                                 {% if ceka is not none %}
@@ -121,11 +123,19 @@
                                     Тренутно чека одобрење: <strong>{{ ceka }}</strong>
                                 </div>
                                 {% else %}
+                                {% if tok == 'rok' %}
                                 <div class="mt-1 small text-muted">
                                     Угашен рок пушта предају и измену за <strong>протекле</strong>
                                     месеце било ког дана. Месец који још није почео остаје
                                     немогућ и без рока.
                                 </div>
+                                {% else %}
+                                <div class="mt-1 small text-muted">
+                                    Потписан документ прескаче корак правне службе и иде
+                                    право одобравачу. Поља <em>legal_verified</em> остају
+                                    празна — прескочено се не приказује као верификовано.
+                                </div>
+                                {% endif %}
                                 {% endif %}
                                 <div class="mt-2 small" id="poruka-{{ tok }}"></div>
                             </div>
