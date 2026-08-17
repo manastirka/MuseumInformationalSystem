@@ -11,11 +11,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import psutil
-from flask import current_app, jsonify, render_template, request, send_file
+from flask import (current_app, jsonify, render_template, request,
+                   send_file, session)
 from psycopg.rows import dict_row
 
 import module_access_support
 from postgres_service import get_database_url, get_postgres_connection
+
+import audit_support
+import odobravanje_prekidac
+import odobravanje_razresavanje
 
 logger = logging.getLogger(__name__)
 
@@ -167,13 +172,79 @@ def render_admin_system_settings():
     except Exception as exc:
         logger.error("Error loading settings: %s", exc)
 
+    try:
+        odobravanje = odobravanje_prekidac.stanje()
+        odobravanje['zateceno'] = odobravanje_razresavanje.prebroj_zatecene()
+    except Exception as exc:
+        # Страница не пада због прекидача, али ни не тврди да зна стање.
+        logger.error("Stanje prekidača odobravanja nije očitano: %s", exc)
+        odobravanje = None
+
     return render_template(
         'admin_system_settings.html',
         db_stats=db_stats,
         system_info=system_info,
         recent_logs=recent_logs,
         settings=settings,
+        odobravanje=odobravanje,
     )
+
+
+def api_odobravanje():
+    """Укључи/искључи одобравање за један ток.
+
+    Подразумевано је ПРЕГЛЕД: врати шта би се променило и колико редова би
+    се затворило, без иједне измене. Стварна промена тражи `izvrsi: true` —
+    исто правило као `--execute` у скриптама, јер гашење затвара и оно што
+    већ чека и то се не поништава само од себе.
+    """
+    TOKOVI = {
+        'izvestaji': odobravanje_prekidac.KLJUC_IZVESTAJI,
+        'dokumenti': odobravanje_prekidac.KLJUC_DOKUMENTI,
+    }
+    try:
+        data = request.get_json() or {}
+        tok = data.get('tok')
+        if tok not in TOKOVI:
+            return jsonify({'success': False,
+                            'error': 'Непознат ток одобравања'}), 400
+        if not isinstance(data.get('ukljuceno'), bool):
+            return jsonify({'success': False,
+                            'error': 'Недостаје вредност прекидача'}), 400
+        ukljuceno = data['ukljuceno']
+        izvrsi = bool(data.get('izvrsi'))
+        kljuc = TOKOVI[tok]
+
+        razresi = (odobravanje_razresavanje.razresi_izvestaje
+                   if tok == 'izvestaji'
+                   else odobravanje_razresavanje.razresi_dokumente)
+
+        if not izvrsi:
+            pregled = {} if ukljuceno else razresi('pregled', izvrsi=False)
+            return jsonify({'success': True, 'pregled': pregled})
+
+        podesavanja = load_saved_settings(force=True) or {}
+        podesavanja[kljuc] = ukljuceno
+        if not save_settings(podesavanja):
+            # Ако упис падне, корисник види грешку — не поруку о успеху.
+            raise RuntimeError('Prekidač odobravanja nije upisan')
+
+        ko = session.get('user_email') or 'admin'
+        primenjeno = {} if ukljuceno else razresi(ko, izvrsi=True)
+
+        audit_support.record_audit(
+            action=audit_support.ACTION_UPDATE,
+            entity_type='system_settings', entity_id=kljuc,
+            summary=('Одобравање укључено' if ukljuceno else 'Одобравање искључено')
+                    + f' — {tok}',
+            new_values={kljuc: ukljuceno, 'razreseno': primenjeno},
+        )
+        logger.warning("Прекидач %s постављен на %s (%s)", kljuc, ukljuceno, ko)
+        return jsonify({'success': True, 'primenjeno': primenjeno})
+    except Exception as exc:
+        logger.error("Greška pri promeni prekidača odobravanja: %s", exc)
+        return jsonify({'success': False,
+                        'error': 'Прекидач одобравања није промењен.'}), 500
 
 
 def api_save_general_settings():

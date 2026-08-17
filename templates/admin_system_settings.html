@@ -68,6 +68,82 @@
         </div>
     </div>
 
+    <!-- Одобравање -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pen me-2"></i>
+                        Одобравање месечних извештаја и докумената
+                    </h5>
+                </div>
+                <div class="card-body">
+                {% if odobravanje %}
+                    <p class="text-muted small mb-3">
+                        Кад је одобравање искључено, слање завршава посао — извештај се
+                        закључава са ознаком <strong>„Без одобравања"</strong>, а поља за
+                        потпис шефа одељења и директора остају празна. Такав извештај се
+                        <strong>никад не приказује као одобрен</strong>. Гашење затвара и
+                        оно што већ чека; поновно укључивање не враћа затворено у ред.
+                    </p>
+                    <div class="row g-3">
+                        {% for tok, naziv, opis, kljuc, ceka in [
+                            ('izvestaji', 'Месечни извештаји', 'радне листе запослених',
+                             'odobravanje_izvestaja', odobravanje.zateceno.izvestaji),
+                            ('dokumenti', 'Документа', 'библиотека докумената',
+                             'odobravanje_dokumenata', odobravanje.zateceno.dokumenti)
+                        ] %}
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input prekidac-odobravanja"
+                                           type="checkbox" role="switch"
+                                           id="prekidac-{{ tok }}" data-tok="{{ tok }}"
+                                           {% if odobravanje[kljuc] %}checked{% endif %}
+                                           >
+                                    <label class="form-check-label" for="prekidac-{{ tok }}">
+                                        <strong>{{ naziv }}</strong> — {{ opis }}
+                                    </label>
+                                </div>
+                                <div class="mt-2 small">
+                                    Стање:
+                                    {% if odobravanje[kljuc] %}
+                                        <span class="badge bg-success">одобравање укључено</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">одобравање искључено</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-1 small text-muted">
+                                    Тренутно чека одобрење: <strong>{{ ceka }}</strong>
+                                </div>
+                                <div class="mt-2 small" id="poruka-{{ tok }}"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% set preklopi = odobravanje.env_preklop %}
+                    {% if preklopi.MIS_ODOBRAVANJE_IZVESTAJA is not none
+                          or preklopi.MIS_ODOBRAVANJE_DOKUMENATA is not none %}
+                    <div class="alert alert-warning mt-3 mb-0 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Промењива окружења преклапа подешавање из базе — дугме овде неће
+                        имати ефекта док се тај преклоп не уклони са сервера.
+                    </div>
+                    {% endif %}
+                {% else %}
+                    {# Не тврдимо да знамо стање ако није очитано. #}
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-octagon me-1"></i>
+                        Стање прекидача се тренутно не може очитати. Провери лог и базу —
+                        до тада важи подразумевано: одобравање <strong>укључено</strong>.
+                    </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Settings Sections -->
     <div class="row g-4">
         <!-- General Settings -->
@@ -547,4 +623,64 @@ function clearCache() {
     .catch(error => alert('Грешка: ' + error));
 }
 </script>
+
+<script>
+document.querySelectorAll('.prekidac-odobravanja').forEach(function (el) {
+    el.addEventListener('change', async function () {
+        const tok = el.dataset.tok;
+        const zeljeno = el.checked;
+        const poruka = document.getElementById('poruka-' + tok);
+        const vrati = function () { el.checked = !zeljeno; };
+
+        poruka.innerHTML = '<span class="text-muted">Проверавам…</span>';
+        let pregled;
+        try {
+            const r = await fetch('/api/admin/settings/odobravanje', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tok: tok, ukljuceno: zeljeno, izvrsi: false})
+            });
+            pregled = await r.json();
+            if (!pregled.success) { throw new Error(pregled.error || 'преглед није успео'); }
+        } catch (e) {
+            poruka.innerHTML = '<span class="text-danger">Није промењено: ' + e.message + '</span>';
+            vrati();
+            return;
+        }
+
+        let tekst;
+        if (zeljeno) {
+            tekst = 'Поново укључити одобравање за „' + tok + '"?\n\n' +
+                    'Оно што је већ затворено без одобравања ОСТАЈЕ затворено — ' +
+                    'не враћа се у ред за потпис.';
+        } else {
+            const p = pregled.pregled || {};
+            const broj = (p.pronadjeno !== undefined) ? p.pronadjeno : (p.dokumenata || 0);
+            tekst = 'Искључити одобравање за „' + tok + '"?\n\n' +
+                    'Одмах ће се затворити ' + broj + ' ставки које сада чекају одобрење. ' +
+                    'Биће означене као „Без одобравања", без потписа. Ово се не поништава ' +
+                    'поновним укључивањем.';
+        }
+        if (!window.confirm(tekst)) { vrati(); poruka.innerHTML = ''; return; }
+
+        try {
+            const r = await fetch('/api/admin/settings/odobravanje', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tok: tok, ukljuceno: zeljeno, izvrsi: true})
+            });
+            const rez = await r.json();
+            if (!rez.success) { throw new Error(rez.error || 'промена није успела'); }
+            const n = (rez.primenjeno && rez.primenjeno.promenjeno) || 0;
+            poruka.innerHTML = '<span class="text-success">Сачувано.' +
+                (n ? ' Затворено ставки: ' + n + '.' : '') + ' Освежи страницу.</span>';
+        } catch (e) {
+            // Грешка се НЕ гута: прекидач се враћа и корисник види зашто.
+            poruka.innerHTML = '<span class="text-danger">Није промењено: ' + e.message + '</span>';
+            vrati();
+        }
+    });
+});
+</script>
+
 {% endblock %}

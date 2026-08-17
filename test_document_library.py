@@ -523,13 +523,58 @@ class DocumentWorkflowTests(_ClientTestCase):
         document, version = _doc(), _version(status='nacrt')
         cursor = self.use_db({
             'WHERE v.id = %s': _joined_row(document, version),
-            "SET status = 'na_odobrenju'": {'id': version['id']},
+            "SET status = %s, submitted_at": {'id': version['id']},
         })
         self.login(EMPLOYEE)
         response = self.post(f"/dokumenti/verzija/{version['id']}/posalji")
         self.assertEqual(response.status_code, 302)
-        submits = [sql for sql, _ in cursor.executed if "SET status = 'na_odobrenju'" in sql]
+        submits = [
+            params for sql, params in cursor.executed
+            if 'SET status = %s, submitted_at' in sql
+        ]
         self.assertEqual(len(submits), 1)
+        # Са УКЉУЧЕНИМ одобравањем верзија мора да оде на одобрење, не да
+        # постане важећа. Ово је тврдња о вредности, не о тексту упита.
+        self.assertEqual(submits[0][0], 'na_odobrenju')
+
+    def test_iskljuceno_odobravanje_cini_verziju_odmah_vazecom(self):
+        """Прекидач угашен: верзија важи одмах, али НЕ пише „Одобрено".
+
+        Документ и даље сме да има само једну важећу верзију, па претходна
+        мора да оде у архиву — исто као при правом одобрењу.
+        """
+        import document_library_views as dlv
+        document, version = _doc(), _version(status='nacrt')
+        cursor = self.use_db({
+            'WHERE v.id = %s': _joined_row(document, version),
+            "SET status = %s, submitted_at": {'id': version['id']},
+        })
+        self.login(EMPLOYEE)
+        with patch.object(dlv.odobravanje_prekidac,
+                          'odobravanje_dokumenata_ukljuceno', lambda: False):
+            response = self.post(f"/dokumenti/verzija/{version['id']}/posalji")
+        self.assertEqual(response.status_code, 302)
+
+        submits = [
+            params for sql, params in cursor.executed
+            if 'SET status = %s, submitted_at' in sql
+        ]
+        self.assertEqual(len(submits), 1)
+        self.assertEqual(submits[0][0], 'bez_odobrenja')
+
+        # Никад 'odobreno': то стање значи да га је неко прегледао и потписао.
+        self.assertFalse(
+            [sql for sql, _ in cursor.executed if "SET status = 'odobreno'" in sql],
+            'верзија без рецензента не сме да добије статус одобрене')
+
+        arhive = [
+            params for sql, params in cursor.executed
+            if "SET status = 'arhivirano'" in sql and 'WHERE document_id' in sql
+        ]
+        self.assertEqual(len(arhive), 1,
+                         'претходна важећа верзија мора да оде у архиву')
+        self.assertEqual(arhive[0][0], document['id'])
+        self.assertEqual(sorted(arhive[0][1]), ['bez_odobrenja', 'odobreno'])
 
     def test_other_employee_cannot_submit_someone_elses_draft(self):
         document, version = _doc(), _version(status='nacrt')
@@ -558,7 +603,11 @@ class DocumentWorkflowTests(_ClientTestCase):
             params for sql, params in cursor.executed
             if "SET status = 'arhivirano'" in sql and 'WHERE document_id' in sql
         )
-        self.assertEqual(archive, (document['id'], version['id']))
+        # Архивира се свака ПРЕТХОДНА важећа верзија — и одобрена и она
+        # завршена без одобравања. Документ никад не сме имати две важеће.
+        self.assertEqual(archive[0], document['id'])
+        self.assertEqual(sorted(archive[1]), ['bez_odobrenja', 'odobreno'])
+        self.assertEqual(archive[2], version['id'])
 
     def test_self_approval_returns_403(self):
         document = _doc()

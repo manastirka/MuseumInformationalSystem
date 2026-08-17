@@ -10,6 +10,8 @@ from psycopg.rows import dict_row
 from postgres_service import get_postgres_connection
 from serbian_holidays import SerbianHolidays
 
+import odobravanje_prekidac
+
 logger = logging.getLogger(__name__)
 
 MONTH_NAMES = [
@@ -519,6 +521,7 @@ def render_timesheet_entry():
     edit_restriction_message = ""
     needs_approval = False
     is_approved = False
+    is_bez_odobrenja = False
     has_approved_request = False
     has_pending_request = False
     show_submit_button = False
@@ -568,6 +571,9 @@ def render_timesheet_entry():
 
     if status == 'APPROVED':
         is_approved = True
+    # НЕ уписује се у is_approved: листа завршена док је одобравање искључено
+    # није одобрена. Приказ мора да их разликује, зато посебна застава.
+    is_bez_odobrenja = status == odobravanje_prekidac.STATUS_IZVESTAJ_BEZ
 
     user_department, user_position = _resolve_employee_profile(
         user_email,
@@ -607,6 +613,7 @@ def render_timesheet_entry():
                 needs_approval=needs_approval,
                 has_pending_request=has_pending_request,
                 is_approved=is_approved,
+                is_bez_odobrenja=is_bez_odobrenja,
                 has_approved_request=has_approved_request,
                 is_entry_page=True,
                 status=status,
@@ -673,6 +680,7 @@ def render_timesheet_view():
                 needs_approval=False,
                 has_pending_request=False,
                 is_approved=False,
+                is_bez_odobrenja=False,
                 has_approved_request=False,
                 is_entry_page=False,
             )
@@ -768,12 +776,14 @@ def api_save_timesheet():
                         ),
                     )
                     report_row = cur.fetchone()
-                    if report_row and report_row['status'] in ('SUBMITTED', 'APPROVED'):
-                        status_label = (
-                            'поднета на преглед'
-                            if report_row['status'] == 'SUBMITTED'
-                            else 'одобрена'
-                        )
+                    if (report_row and report_row['status']
+                            in odobravanje_prekidac.IZVESTAJ_NEIZMENJIV):
+                        status_label = {
+                            'SUBMITTED': 'поднета на преглед',
+                            'APPROVED': 'одобрена',
+                            odobravanje_prekidac.STATUS_IZVESTAJ_BEZ:
+                                'завршена без одобравања',
+                        }.get(report_row['status'], 'закључана')
                         return (
                             jsonify(
                                 {
@@ -1075,7 +1085,8 @@ def api_timesheet_force_edit(report_id):
         # department head — that would bypass the unlock-request flow. Only
         # admin/direktor may return an approved report to entry.
         report_status = status_row.get('status') if status_row else None
-        if report_status == 'APPROVED' and session.get('user_role') not in ('admin', 'direktor'):
+        if (report_status in odobravanje_prekidac.IZVESTAJ_ZAVRSEN
+                and session.get('user_role') not in ('admin', 'direktor')):
             return jsonify(
                 {
                     'success': False,
@@ -1099,7 +1110,7 @@ def api_timesheet_force_edit(report_id):
         # Откључавање већ ОВЕРЕНЕ листе је осетљива радња — остави траг.
         # Статус пре измене долази из закључане трансакције (FOR UPDATE),
         # па важи за све улоге — админ прескаче scope-грану изнад.
-        if result.data.get('old_status') == 'APPROVED':
+        if result.data.get('old_status') in odobravanje_prekidac.IZVESTAJ_ZAVRSEN:
             try:
                 from audit_support import record_audit
                 record_audit(

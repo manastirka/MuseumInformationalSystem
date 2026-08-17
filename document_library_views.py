@@ -31,6 +31,8 @@ from werkzeug.utils import secure_filename
 
 from postgres_service import get_postgres_connection
 
+import odobravanje_prekidac
+
 
 DOCUMENT_CATEGORIES = {
     'obrasci_zahtevi': 'Обрасци и захтеви',
@@ -46,8 +48,14 @@ DOCUMENT_STATUS_LABELS = {
     'nacrt': 'Нацрт',
     'na_odobrenju': 'На одобрењу',
     'odobreno': 'Одобрено',
+    'bez_odobrenja': 'Без одобравања',
     'arhivirano': 'Архивирано',
 }
+
+# Верзије које важе — оне које корисници стварно виде и користе. Отад па
+# надаље се пише ОВА константа, не низ 'odobreno', јер је сваки заборављен
+# филтер значио да верзија постоји а нико је не види.
+VAZECE_VERZIJE = ('odobreno', 'bez_odobrenja')
 
 ALLOWED_DOCUMENT_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
@@ -96,7 +104,7 @@ def can_view_document_version(session_data, document, version) -> bool:
     """Approved versions are visible to every logged-in user. Drafts, pending
     and archived versions are visible only to the uploader, admins, the
     director, and the head of the document's department."""
-    if version.get('status') == 'odobreno':
+    if version.get('status') in VAZECE_VERZIJE:
         return True
     if _session_is_admin(session_data) or _session_is_director(session_data):
         return True
@@ -208,7 +216,8 @@ def render_documents_list():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             params = []
-            filters = ['d.is_active = TRUE', "v.status = 'odobreno'"]
+            filters = ['d.is_active = TRUE', 'v.status = ANY(%s)']
+            params.append(list(VAZECE_VERZIJE))
             if selected_category:
                 filters.append('d.category = %s')
                 params.append(selected_category)
@@ -525,20 +534,41 @@ def handle_submit_for_approval(version_id):
                 _session_is_admin(session) or _session_is_director(session)
             ):
                 abort(403)
+            # Кад је одобравање ИСКЉУЧЕНО, слање завршава посао: верзија
+            # одмах важи. Статус је 'bez_odobrenja', НЕ 'odobreno' —
+            # reviewed_by_email остаје празно и то мора да се види.
+            trazi_odobrenje = odobravanje_prekidac.odobravanje_dokumenata_ukljuceno()
+            novi_status = ('na_odobrenju' if trazi_odobrenje
+                           else odobravanje_prekidac.STATUS_DOKUMENT_BEZ)
             cur.execute(
                 """
                 UPDATE document_versions
-                SET status = 'na_odobrenju', submitted_at = now()
+                SET status = %s, submitted_at = now()
                 WHERE id = %s AND status = 'nacrt'
                 RETURNING id
                 """,
-                (version_id,),
+                (novi_status, version_id),
             )
             if not cur.fetchone():
                 flash('Верзија није у статусу нацрта.', 'warning')
                 return redirect(url_for('documents.dokumenti_detalj', document_id=version['document_id']))
-            _log_document_action(cur, version['document_id'], version_id, 'submit', user_email)
-    flash('Верзија је послата на одобрење.', 'success')
+            if not trazi_odobrenje:
+                # Иста радња као при одобрењу: претходна важећа верзија иде у
+                # архиву, да документ никад нема две важеће верзије одједном.
+                cur.execute(
+                    """
+                    UPDATE document_versions
+                    SET status = 'arhivirano'
+                    WHERE document_id = %s AND status = ANY(%s) AND id <> %s
+                    """,
+                    (version['document_id'], list(VAZECE_VERZIJE), version_id),
+                )
+            _log_document_action(cur, version['document_id'], version_id,
+                                 'submit' if trazi_odobrenje else 'submit_bez_odobrenja',
+                                 user_email)
+    flash('Верзија је послата на одобрење.' if trazi_odobrenje
+          else 'Одобравање докумената је искључено — верзија је одмах важећа, '
+               'означена као „Без одобравања".', 'success')
     return redirect(url_for('documents.dokumenti_detalj', document_id=version['document_id']))
 
 
@@ -570,9 +600,9 @@ def handle_approve_version(version_id):
                 """
                 UPDATE document_versions
                 SET status = 'arhivirano'
-                WHERE document_id = %s AND status = 'odobreno' AND id <> %s
+                WHERE document_id = %s AND status = ANY(%s) AND id <> %s
                 """,
-                (version['document_id'], version_id),
+                (version['document_id'], list(VAZECE_VERZIJE), version_id),
             )
             _log_document_action(cur, version['document_id'], version_id, 'approve', user_email)
     flash('Верзија је одобрена.', 'success')
@@ -624,13 +654,13 @@ def handle_archive_version(version_id):
                 """
                 UPDATE document_versions
                 SET status = 'arhivirano'
-                WHERE id = %s AND status = 'odobreno'
+                WHERE id = %s AND status = ANY(%s)
                 RETURNING id
                 """,
-                (version_id,),
+                (version_id, list(VAZECE_VERZIJE)),
             )
             if not cur.fetchone():
-                flash('Само одобрене верзије се архивирају.', 'warning')
+                flash('Архивирају се само важеће верзије.', 'warning')
                 return redirect(url_for('documents.dokumenti_detalj', document_id=version['document_id']))
             _log_document_action(cur, version['document_id'], version_id, 'archive', user_email)
     flash('Верзија је архивирана.', 'success')

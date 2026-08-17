@@ -21,6 +21,10 @@
                                     <span class="badge bg-warning text-dark ms-2" title="Одобрено административно: {{ report.header.admin_approved_by }} {{ report.header.admin_approved_at.strftime('%d.%m.%Y') if report.header.admin_approved_at else '' }}"><i class="bi bi-shield-check"></i> Одобрено административно</span>
                                 {% elif report.header.status == 'APPROVED' %}
                                     <span class="badge bg-success ms-2">Одобрено</span>
+                                {# Завршено док је одобравање било искључено: нема ниједног потписа.
+                                   Никад зелено — иначе се не разликује од стварно одобреног. #}
+                                {% elif report.header.status == 'BEZ_ODOBRENJA' %}
+                                    <span class="badge bg-secondary ms-2" title="Предато док је одобравање искључено — без потписа шефа и директора"><i class="bi bi-file-earmark-check"></i> Без одобравања</span>
                                 {% elif report.header.status == 'SUBMITTED' %}
                                     <span class="badge bg-warning text-dark ms-2">Поднето</span>
                                 {% elif report.header.status == 'REJECTED' %}
@@ -45,7 +49,7 @@
                                 {% if can_verify is defined and not can_verify %}disabled title="Овај извештај не одобравате Ви"{% else %}data-bs-toggle="modal" data-bs-target="#rejectModal"{% endif %}>
                             <i class="bi bi-x-circle me-1"></i> Врати
                         </button>
-                        {% elif report.header.status is defined and report.header.status == 'APPROVED' %}
+                        {% elif report.header.status is defined and report.header.status in ['APPROVED', 'BEZ_ODOBRENJA'] %}
                         <button type="button" class="btn btn-warning"
                                 {% if can_verify is defined and not can_verify %}disabled title="Овај извештај не враћате Ви (одобрава шеф одељења)"{% else %}onclick="forceEdit({{ report.header.id }})"{% endif %}>
                             <i class="bi bi-pencil me-1"></i> Врати запосленом на измену

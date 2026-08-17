@@ -685,10 +685,59 @@ class TestSubmitOwnership(unittest.TestCase):
             result = tp.submit_timesheet(5, 'zaposleni@nhmbeo.rs')
         self.assertTrue(result.success)
         sql = executed_sql(cursor)
-        self.assertIn("status = 'SUBMITTED'", sql)
+        # Статус се више не уписује у текст упита него шаље као параметар —
+        # тако прекидач одобравања може да га промени. Тврдња о ВРЕДНОСТИ је
+        # уз то јача: раније се доказивало само да се низ појавио у SQL-у.
+        self.assertIn('SET status = %s', sql)
+        self.assertEqual(result.data['status'], 'SUBMITTED',
+                         'са укљученим одобравањем листа иде на преглед')
         self.assertIn('is_locked = TRUE', sql)
         self.assertIn('editable_until = NULL', sql,
                       'Podnošenje mora da zatvori raniji 24h prozor')
+
+    def test_iskljuceno_odobravanje_zavrsava_listu_bez_potpisa(self):
+        """Прекидач угашен: слање завршава посао, али НЕ проглашава одобрено.
+
+        Ово је цела поента измене — извештај не сме да чека потпис који неће
+        доћи, али ни да лаже да га има.
+        """
+        import timesheet_postgres as tp
+        window_end = datetime.now(timezone.utc) + timedelta(hours=12)
+        cursor = RecordingCursor(fetchone_queue=[
+            {'id': 5, 'month': 6, 'year': 2026, 'status': 'DRAFT',
+             'employee_email': 'zaposleni@nhmbeo.rs',
+             'editable_until': window_end, 'window_active': True},
+        ])
+        with patch.object(tp.odobravanje_prekidac,
+                          'odobravanje_izvestaja_ukljuceno', lambda: False):
+            with patch.object(tp, 'get_pg_connection', conn_cm_for(cursor)):
+                result = tp.submit_timesheet(5, 'zaposleni@nhmbeo.rs')
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['status'], 'BEZ_ODOBRENJA')
+        self.assertFalse(result.data['trazen_potpis'])
+
+        sql = executed_sql(cursor)
+        # Никад APPROVED: то стање значи да су шеф и директор потписали.
+        self.assertNotIn("'APPROVED'", sql)
+        # is_verified остаје FALSE — поља потписа се не попуњавају.
+        self.assertIn('is_verified = FALSE', sql)
+        self.assertIn('is_locked = TRUE', sql)
+
+        upisani_statusi = [
+            params for sql_, params in cursor.executed
+            if 'SET status = %s' in sql_
+        ]
+        self.assertEqual(upisani_statusi[0][0], 'BEZ_ODOBRENJA')
+
+        istorija = [
+            params for sql_, params in cursor.executed
+            if 'INSERT INTO timesheet_status_history' in sql_
+        ]
+        self.assertEqual(len(istorija), 1, 'промена стања мора да остави траг')
+        self.assertEqual(istorija[0][2], 'BEZ_ODOBRENJA')
+        self.assertIn('одобравање искључено', istorija[0][4],
+                      'из историје мора да се види ЗАШТО нема потписа')
 
     def test_submit_only_from_draft_or_rejected(self):
         import timesheet_postgres as tp
