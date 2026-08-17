@@ -25,8 +25,11 @@ def _stanje(**preklopi):
     s = {
         'odobravanje_izvestaja': True,
         'odobravanje_dokumenata': False,
+        'odobravanje_izvestaja_rok': True,
+        'rok_predaje_izvestaja': True,
         'env_preklop': {'MIS_ODOBRAVANJE_IZVESTAJA': None,
-                        'MIS_ODOBRAVANJE_DOKUMENATA': None},
+                        'MIS_ODOBRAVANJE_DOKUMENATA': None,
+                        'MIS_ROK_PREDAJE': None},
         'zateceno': {'izvestaji': 34, 'dokumenti': 2},
     }
     s.update(preklopi)
@@ -63,8 +66,18 @@ def test_env_preklop_je_vidljivo_upozorenje(kartica):
     """Дугме без ефекта је горе од дугмета којег нема — мора да се каже."""
     html = kartica.render(odobravanje=_stanje(
         env_preklop={'MIS_ODOBRAVANJE_IZVESTAJA': False,
-                     'MIS_ODOBRAVANJE_DOKUMENATA': None}))
+                     'MIS_ODOBRAVANJE_DOKUMENATA': None,
+                     'MIS_ROK_PREDAJE': None}))
     assert 'окружења преклапа' in html
 
     bez = kartica.render(odobravanje=_stanje())
     assert 'окружења преклапа' not in bez
+
+
+def test_rok_ima_svoje_reci_a_ne_odobravanje(kartica):
+    """Рок није одобравање — ознака мора да каже „важи", не „укључено"."""
+    html = kartica.render(odobravanje=_stanje())
+    assert 'рок važi' not in html          # ћирилица, не мешано писмо
+    assert 'рок важи' in html
+    assert 'Месец који још није почео остаје' in html \
+        or 'месец који још није почео' in html.lower()

@@ -92,7 +92,9 @@
                             ('izvestaji', 'Месечни извештаји', 'радне листе запослених',
                              'odobravanje_izvestaja', odobravanje.zateceno.izvestaji),
                             ('dokumenti', 'Документа', 'библиотека докумената',
-                             'odobravanje_dokumenata', odobravanje.zateceno.dokumenti)
+                             'odobravanje_dokumenata', odobravanje.zateceno.dokumenti),
+                            ('rok', 'Рок предаје', 'месец извештаја + 1–10. наредног',
+                             'rok_predaje_izvestaja', none)
                         ] %}
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
@@ -109,22 +111,32 @@
                                 <div class="mt-2 small">
                                     Стање:
                                     {% if odobravanje[kljuc] %}
-                                        <span class="badge bg-success">одобравање укључено</span>
+                                        <span class="badge bg-success">{{ 'рок важи' if tok == 'rok' else 'одобравање укључено' }}</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">одобравање искључено</span>
+                                        <span class="badge bg-secondary">{{ 'рок не важи' if tok == 'rok' else 'одобравање искључено' }}</span>
                                     {% endif %}
                                 </div>
+                                {% if ceka is not none %}
                                 <div class="mt-1 small text-muted">
                                     Тренутно чека одобрење: <strong>{{ ceka }}</strong>
                                 </div>
+                                {% else %}
+                                <div class="mt-1 small text-muted">
+                                    Угашен рок пушта предају и измену за <strong>протекле</strong>
+                                    месеце било ког дана. Месец који још није почео остаје
+                                    немогућ и без рока.
+                                </div>
+                                {% endif %}
                                 <div class="mt-2 small" id="poruka-{{ tok }}"></div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                     {% set preklopi = odobravanje.env_preklop %}
-                    {% if preklopi.MIS_ODOBRAVANJE_IZVESTAJA is not none
-                          or preklopi.MIS_ODOBRAVANJE_DOKUMENATA is not none %}
+                    {# Не набрајамо кључеве поименце: недостајући кључ у Jinja-и
+                       је `undefined`, што пролази кроз `is not none` и упозорење
+                       би искакало увек. Ово гледа саме вредности. #}
+                    {% if preklopi.values() | reject('none') | list %}
                     <div class="alert alert-warning mt-3 mb-0 small">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         Промењива окружења преклапа подешавање из базе — дугме овде неће

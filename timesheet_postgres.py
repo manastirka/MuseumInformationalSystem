@@ -1274,6 +1274,17 @@ def can_submit_for_review(month: int, year: int) -> Tuple[bool, str]:
     if today.year == year and today.month == month:
         return True, ""
 
+    # Прекидач гаси РОК, не и здрав разум: извештај за месец који још није
+    # почео остаје немогућ. То није ограничење него бесмислица — запослени
+    # не може да пријави рад који се још није десио.
+    if not odobravanje_prekidac.rok_predaje_ukljucen():
+        if (year, month) < (today.year, today.month):
+            return True, ""
+        return False, (
+            f"Радна листа за {month}/{year} се односи на месец који још "
+            f"није почео."
+        )
+
     if month == 12:
         submit_month, submit_year = 1, year + 1
     else:
@@ -1308,6 +1319,16 @@ def can_edit_timesheet_by_status(month: int, year: int, status: str) -> Tuple[bo
     # Check if today is within the report month
     if today.year == year and today.month == month:
         return True, ""
+
+    # Исти прекидач као при подношењу — иначе би нацрт могао да се поднесе,
+    # а не и да се измени, што је недоследно и збуњује запосленог.
+    if not odobravanje_prekidac.rok_predaje_ukljucen():
+        if (year, month) < (today.year, today.month):
+            return True, ""
+        return False, (
+            f"Радна листа за {month}/{year} се односи на месец који још "
+            f"није почео."
+        )
 
     # Check if today is within days 1-7 of the next month
     if month == 12:

@@ -32,9 +32,13 @@ logger = logging.getLogger(__name__)
 
 KLJUC_IZVESTAJI = "odobravanje_izvestaja"
 KLJUC_DOKUMENTI = "odobravanje_dokumenata"
+# Рок предаје (тек месец извештаја + 1–10. наредног). Иста породица
+# прекидача, али ОДВОЈЕН: одобравање и рок су две различите одлуке.
+KLJUC_ROK = "rok_predaje_izvestaja"
 
 ENV_IZVESTAJI = "MIS_ODOBRAVANJE_IZVESTAJA"
 ENV_DOKUMENTI = "MIS_ODOBRAVANJE_DOKUMENATA"
+ENV_ROK = "MIS_ROK_PREDAJE"
 
 # Статуси које уводи угашен прекидач.
 STATUS_IZVESTAJ_BEZ = "BEZ_ODOBRENJA"
@@ -117,13 +121,24 @@ def odobravanje_dokumenata_ukljuceno() -> bool:
     return _ukljuceno(KLJUC_DOKUMENTI, ENV_DOKUMENTI)
 
 
+def rok_predaje_ukljucen() -> bool:
+    """Важи ли рок: месец извештаја + 1–10. у наредном месецу.
+
+    Угашен рок НЕ отвара будућност. Извештај за месец који још није почео
+    остаје немогућ и без рока — то није ограничење него бесмислица.
+    """
+    return _ukljuceno(KLJUC_ROK, ENV_ROK)
+
+
 def stanje() -> dict:
     """Обе вредности одједном — за приказ у админ панелу и дијагностику."""
     return {
         KLJUC_IZVESTAJI: odobravanje_izvestaja_ukljuceno(),
         KLJUC_DOKUMENTI: odobravanje_dokumenata_ukljuceno(),
+        KLJUC_ROK: rok_predaje_ukljucen(),
         "env_preklop": {
             ENV_IZVESTAJI: _iz_okruzenja(ENV_IZVESTAJI),
             ENV_DOKUMENTI: _iz_okruzenja(ENV_DOKUMENTI),
+            ENV_ROK: _iz_okruzenja(ENV_ROK),
         },
     }
