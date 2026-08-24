@@ -9549,13 +9549,24 @@
         return getComputedStyle(_ogkSonda).color;
     }
 
+    // Полупречник маркера прати ниво зума: на прегледу целе Србије тачке не
+    // смеју да се сливају у мрљу, а на нивоу листа морају да се погоде мишем.
+    // Остали тематски слојеви на овој карти користе иконе 20–28 px, па фиксни
+    // полупречник 4 (8 px пречника) испада упадљиво ситнији од свега осталог.
+    function ogkPolupecnik() {
+        var z = (map && typeof map.getZoom === 'function') ? map.getZoom() : 8;
+        if (z <= 7) return 6;
+        if (z >= 12) return 11;
+        return z - 1;               // 8→7, 9→8, 10→9, 11→10
+    }
+
     function ogkStil(token) {
         return {
             renderer: ogkRenderer,
-            radius: 4,
+            radius: ogkPolupecnik(),
             // Обод у боји панела раздваја маркер од подлоге у свакој теми.
             color: ogkBoja('--bg-card'),
-            weight: 1,
+            weight: 1.5,
             opacity: 1,
             fillColor: ogkBoja(token),
             fillOpacity: 0.9
@@ -9688,6 +9699,18 @@
             }
         });
     });
+
+    function ogkOsveziVelicinu() {
+        var r = ogkPolupecnik();
+        OGK_GRUPE.forEach(function(def) {
+            var sloj = ogkSlojevi[def.kljuc];
+            if (!sloj || !map.hasLayer(sloj)) return;
+            sloj.eachLayer(function(marker) {
+                if (typeof marker.setRadius === 'function') marker.setRadius(r);
+            });
+        });
+    }
+    map.on('zoomend', ogkOsveziVelicinu);
 
     ogkOsveziBoje();
     // Промена теме мења токене на <html> (палета, тамни режим, сопствена тема)

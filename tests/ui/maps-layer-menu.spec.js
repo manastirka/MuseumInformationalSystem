@@ -114,14 +114,27 @@ const STUBOVI = `
         options: Object.assign({}, stil),
         bindPopup: function (html) { this.__popup = html; return this; },
         setStyle: function (s) { Object.assign(this.options, s); return this; },
+        setRadius: function (r) { this.options.radius = r; return this; },
       };
     },
   };
   window.map = {
     __dodati: [],
+    __zum: 8,
+    __osluskivaci: {},
     removeLayer: function (sloj) {
       var i = this.__dodati.indexOf(sloj);
       if (i >= 0) this.__dodati.splice(i, 1);
+    },
+    hasLayer: function (sloj) { return this.__dodati.indexOf(sloj) >= 0; },
+    getZoom: function () { return this.__zum; },
+    on: function (dogadjaj, fn) {
+      (this.__osluskivaci[dogadjaj] = this.__osluskivaci[dogadjaj] || []).push(fn);
+    },
+    // Прави зум: помери ниво па опали zoomend, исто како Leaflet ради.
+    __zumiraj: function (z) {
+      this.__zum = z;
+      (this.__osluskivaci.zoomend || []).forEach(function (fn) { fn(); });
     },
   };
   window.bringThematicLayersToFront = function () {};
@@ -285,6 +298,42 @@ test('OGK слој се учитава лењо и кешира — други �
   await page.locator('#toggle-ogk-busotine').check();
   await page.waitForTimeout(100);
   expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+});
+
+test('маркер расте са зумом, и то само на слојевима који су на карти', async ({ page }) => {
+  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine').slice(0, 20);
+  const izvori = OGK_JSON.tacke.filter((t) => t.grupa === 'izvori').slice(0, 20);
+  await ucitajMeni(page, { tacke: busotine.concat(izvori) });
+
+  await page.locator('#toggle-ogk-busotine').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+
+  // Харнес креће са зумом 8 → полупречник 7 (не затечених 4).
+  const poluprecnik = () => page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].options.radius,
+  );
+  expect(await poluprecnik()).toBe(7);
+  expect(await page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].options.weight,
+  )).toBe(1.5);
+
+  // Приказ целе Србије — најмањи, али и даље већи од затечена 4.
+  await page.evaluate(() => window.map.__zumiraj(7));
+  expect(await poluprecnik()).toBe(6);
+
+  // Ниво листа 1:100 000 и ближе — таван на 11.
+  await page.evaluate(() => window.map.__zumiraj(11));
+  expect(await poluprecnik()).toBe(10);
+  await page.evaluate(() => window.map.__zumiraj(14));
+  expect(await poluprecnik()).toBe(11);
+
+  // Угашен слој се не дира: упали га на зуму 14 и он одмах носи 11,
+  // а не вредност затечену пре зумирања.
+  await page.locator('#toggle-ogk-izvori').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(2);
+  expect(await page.evaluate(
+    () => window.map.__dodati[1].__slojevi[0].options.radius,
+  )).toBe(11);
 });
 
 test('пад fetch-а даје видљив црвен текст поред прекидача', async ({ page }) => {
