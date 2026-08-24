@@ -148,6 +148,10 @@ TOKEN_PAIRS = [
     ('--on-accent', '--primary'),
     ('--on-accent', '--primary-dark'),
     ('--success-text', '--success-soft'),
+    # Порука о неуспелом учитавању слоја карте (.map-layer-error) — исти
+    # разлог као --success-text: --danger као ТЕКСТ пада AA у тамној теми
+    # (3.04:1 на --bg-card), па се греша исписује на овом пару.
+    ('--status-busy-text', '--status-busy-bg'),
 ]
 
 

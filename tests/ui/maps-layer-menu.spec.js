@@ -1,0 +1,365 @@
+// Tests for the geological map layer menu (templates/admin_maps.html).
+//
+// The menu markup and its JavaScript live inline in the Jinja template, so the
+// fixture is built from the SHIPPED template: the .map-controls block, the
+// page <style> block and the OGK + menu script section are extracted verbatim,
+// the handful of Jinja tags are resolved, and the result runs in a real
+// Chromium. Leaflet, Bootstrap collapse and fetch are stubbed — everything
+// under test (lazy loading, theme tokens, badges, localStorage, the "turn all
+// layers off" button) is the real shipped code.
+//
+// A unit test cannot see any of this: badge counting, the collapse state that
+// survives a reload, or a marker colour that follows the theme tokens.
+
+const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
+
+const KOREN = path.resolve(__dirname, '../..');
+const SABLON = fs.readFileSync(path.join(KOREN, 'templates/admin_maps.html'), 'utf8');
+const OGK_JSON = JSON.parse(
+  fs.readFileSync(path.join(KOREN, 'data/ogk_points.json'), 'utf8'),
+);
+
+function izmedju(tekst, pocetak, kraj, ukljuciKraj) {
+  const i = tekst.indexOf(pocetak);
+  const j = tekst.indexOf(kraj, i);
+  if (i < 0 || j < 0) throw new Error(`nije nadjeno: ${pocetak} … ${kraj}`);
+  return tekst.slice(i, ukljuciKraj ? j + kraj.length : j);
+}
+
+function razresiJinju(html) {
+  return html
+    .replace(/\{\{\s*\(ogk_grupe or \{\}\)\.get\('(\w+)',\s*0\)\s*\}\}/g,
+      (_, kljuc) => String(OGK_JSON.grupe[kljuc] ?? 0))
+    .replace(/\{%[^%]*%\}/g, '')
+    .replace(/\{\{[^}]*\}\}/g, '#');
+}
+
+const STIL = izmedju(SABLON, '<style>', '</style>').replace('<style>', '');
+const MENI = razresiJinju(
+  izmedju(SABLON, '<div class="map-controls">', '</div><!-- end map-controls -->', true),
+);
+const SKRIPTA = izmedju(
+  SABLON,
+  '    // ==================== OGK ТАЧКЕ 1:100 000 (Део 3) ====================',
+  '    // ---- Initial load:',
+);
+
+// Токени: светла и тамна варијанта, да се промена теме стварно види на маркеру.
+// `box-sizing: border-box` је оно што Bootstrap reboot ради на правој страни —
+// без њега харнес лаже о ширинама.
+const TOKENI = `
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --danger: rgb(220, 38, 38);
+    --warning: rgb(217, 119, 6);
+    --success: rgb(5, 150, 105);
+    --info: rgb(37, 99, 235);
+    --accent: rgb(45, 106, 79);
+    --text-primary: rgb(31, 41, 55);
+    --text-secondary: rgb(107, 114, 128);
+    --text-muted: rgb(102, 112, 133);
+    --bg-card: rgb(255, 255, 255);
+    --bg-elevated: rgb(249, 250, 251);
+    --border-color: rgb(229, 231, 235);
+    --status-busy-bg: rgb(253, 231, 231);
+    --status-busy-border: rgb(243, 194, 194);
+    --status-busy-text: rgb(138, 24, 24);
+    --radius-sm: 4px;
+    --space-2: 0.5rem;
+  }
+  :root[data-theme="dark"] {
+    --info: rgb(125, 176, 255);
+    --bg-card: rgb(31, 41, 55);
+    --text-primary: rgb(249, 250, 251);
+  }
+  body { margin: 0; color: var(--text-primary); background: var(--bg-card); }
+`;
+
+const STUBOVI = `
+  window.__fetchPozivi = [];
+  window.__fetchPada = false;
+  window.fetch = function (url) {
+    window.__fetchPozivi.push(url);
+    if (window.__fetchPada) return Promise.reject(new Error('мрежа пала'));
+    var grupa = (url.split('grupe=')[1] || '').split('&')[0];
+    var tacke = window.__TACKE.filter(function (t) { return t.grupa === grupa; });
+    return Promise.resolve({
+      ok: true,
+      json: function () {
+        return Promise.resolve({
+          success: true,
+          data: { ukupno: tacke.length, grupe: {}, tacke: tacke },
+        });
+      },
+    });
+  };
+
+  window.L = {
+    canvas: function (opcije) { return { __canvas: true, opcije: opcije }; },
+    layerGroup: function () {
+      var slojevi = [];
+      return {
+        __slojevi: slojevi,
+        addLayer: function (m) { slojevi.push(m); return this; },
+        clearLayers: function () { slojevi.length = 0; return this; },
+        eachLayer: function (fn) { slojevi.slice().forEach(fn); return this; },
+        addTo: function (m) { if (m.__dodati.indexOf(this) < 0) m.__dodati.push(this); return this; },
+      };
+    },
+    circleMarker: function (latlng, stil) {
+      return {
+        __latlng: latlng,
+        options: Object.assign({}, stil),
+        bindPopup: function (html) { this.__popup = html; return this; },
+        setStyle: function (s) { Object.assign(this.options, s); return this; },
+      };
+    },
+  };
+  window.map = {
+    __dodati: [],
+    removeLayer: function (sloj) {
+      var i = this.__dodati.indexOf(sloj);
+      if (i >= 0) this.__dodati.splice(i, 1);
+    },
+  };
+  window.bringThematicLayersToFront = function () {};
+  window.toFiniteNumber = function (v) {
+    var n = typeof v === 'number' ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  window.formatCoord = function (v, d) {
+    var n = window.toFiniteNumber(v);
+    return n === null ? '—' : n.toFixed(d);
+  };
+  window.escHtml = function (s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  };
+  window.safeRenderItems = function (items, ime, render) {
+    items.forEach(function (item, i) {
+      try { render(item, i); } catch (e) { console.error(ime, i, e); }
+    });
+  };
+
+  // Минимални Bootstrap collapse: класа .show + прави shown/hidden догађаји.
+  document.addEventListener('click', function (e) {
+    var okidac = e.target.closest('[data-bs-toggle="collapse"]');
+    if (!okidac) return;
+    e.preventDefault();
+    var cilj = document.querySelector(okidac.getAttribute('href'));
+    if (!cilj) return;
+    var otvara = !cilj.classList.contains('show');
+    cilj.classList.toggle('show', otvara);
+    okidac.setAttribute('aria-expanded', otvara ? 'true' : 'false');
+    cilj.dispatchEvent(new Event(otvara ? 'shown.bs.collapse' : 'hidden.bs.collapse'));
+  });
+`;
+
+// setContent даје about:blank, а на opaque origin-у localStorage не ради —
+// зато се харнес служи са правог (пресретнутог) origin-а.
+const HARNES_URL = 'http://mis.harness.test/maps-menu';
+
+async function ucitajMeni(page, { tacke = null, localStorageStanje = null } = {}) {
+  await page.route(HARNES_URL, (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html; charset=utf-8',
+    body:
+      `<!doctype html><html><head><meta charset="utf-8"><style>${TOKENI}${STIL}</style></head>` +
+      `<body><div id="map-right-col">${MENI}</div></body></html>`,
+  }));
+  await page.goto(HARNES_URL);
+  await page.evaluate(([izabrane, stanje]) => {
+    window.__TACKE = izabrane;
+    if (stanje) localStorage.setItem('mis.maps.grupe', stanje);
+  }, [tacke || OGK_JSON.tacke.slice(0, 400), localStorageStanje]);
+  await page.addScriptTag({ content: STUBOVI });
+  await page.addScriptTag({ content: SKRIPTA });
+}
+
+test('бројач у заглављу групе прати упаљене слојеве', async ({ page }) => {
+  await ucitajMeni(page);
+
+  // Подлога креће са OSM + геолошки прекривач упаљеним.
+  await expect(page.locator('[data-map-group-badge="podloga"]')).toHaveText('2');
+  await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('0');
+
+  await page.locator('#toggle-ogk-busotine').check();
+  await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('1');
+
+  await page.locator('#toggle-ogk-rasedi').check();
+  await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('2');
+  // Друге групе се не мешају.
+  await expect(page.locator('[data-map-group-badge="podloga"]')).toHaveText('2');
+
+  await page.locator('#toggle-ogk-busotine').uncheck();
+  await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('1');
+});
+
+test('бејџ прекидача носи број тачака групе још пре учитавања слоја', async ({ page }) => {
+  await ucitajMeni(page);
+  await expect(page.locator('[data-ogk-broj="busotine"]'))
+    .toHaveText(String(OGK_JSON.grupe.busotine));
+  await expect(page.locator('[data-ogk-broj="rudnici"]'))
+    .toHaveText(String(OGK_JSON.grupe.rudnici));
+});
+
+test('стање групе преживљава поновно учитавање (mis.maps.grupe)', async ({ page }) => {
+  await ucitajMeni(page);
+
+  const geologija = page.locator('#mapGroupGeologija');
+  await expect(geologija).not.toHaveClass(/show/);
+  await page.locator('[href="#mapGroupGeologija"]').click();
+  await expect(geologija).toHaveClass(/show/);
+
+  const upisano = await page.evaluate(() => localStorage.getItem('mis.maps.grupe'));
+  expect(JSON.parse(upisano).geologija).toBe(true);
+
+  // Ново учитавање стране са затеченим стањем: група је и даље отворена,
+  // а Подлога (подразумевано отворена) затворена.
+  await ucitajMeni(page, {
+    localStorageStanje: JSON.stringify({ geologija: true, podloga: false }),
+  });
+  await expect(page.locator('#mapGroupGeologija')).toHaveClass(/show/);
+  await expect(page.locator('[href="#mapGroupGeologija"]'))
+    .toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#mapGroupPodloga')).not.toHaveClass(/show/);
+});
+
+test('„Угаси све слојеве“ шаље прави change догађај и штеди OSM подлогу', async ({ page }) => {
+  await ucitajMeni(page);
+
+  // Затечени слушалац какав постојећи JS већ качи по id-у.
+  await page.evaluate(() => {
+    window.__pogodjeni = [];
+    ['toggle-ore-deposits', 'toggle-overlay', 'toggle-basemap', 'toggle-ogk-rudnici']
+      .forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function () {
+          window.__pogodjeni.push(id + ':' + this.checked);
+        });
+      });
+  });
+
+  await page.locator('#toggle-ore-deposits').check();
+  await page.locator('#toggle-ogk-rudnici').check();
+  await expect(page.locator('[data-map-group-badge="rudarstvo"]')).toHaveText('1');
+
+  await page.locator('#btn-ugasi-sve-slojeve').click();
+
+  await expect(page.locator('#toggle-ore-deposits')).not.toBeChecked();
+  await expect(page.locator('#toggle-ogk-rudnici')).not.toBeChecked();
+  await expect(page.locator('#toggle-overlay')).not.toBeChecked();
+  // OSM подлога остаје — она није тематски слој.
+  await expect(page.locator('#toggle-basemap')).toBeChecked();
+
+  const pogodjeni = await page.evaluate(() => window.__pogodjeni);
+  expect(pogodjeni).toContain('toggle-ore-deposits:false');
+  expect(pogodjeni).toContain('toggle-overlay:false');
+  expect(pogodjeni).toContain('toggle-ogk-rudnici:false');
+  expect(pogodjeni).not.toContain('toggle-basemap:false');
+
+  await expect(page.locator('[data-map-group-badge="rudarstvo"]')).toHaveText('0');
+  await expect(page.locator('[data-map-group-badge="podloga"]')).toHaveText('1');
+});
+
+test('OGK слој се учитава лењо и кешира — други пут нема захтева', async ({ page }) => {
+  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine');
+  await ucitajMeni(page, { tacke: busotine });
+
+  expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(0);
+
+  await page.locator('#toggle-ogk-busotine').check();
+  await expect.poll(() => page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+  expect(await page.evaluate(() => window.__fetchPozivi[0]))
+    .toBe('/api/map/ogk-points?grupe=busotine');
+
+  // Слој је додат на карту са свим тачкама групе.
+  expect(await page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  expect(await page.evaluate(() => window.map.__dodati[0].__slojevi.length))
+    .toBe(busotine.length);
+
+  await page.locator('#toggle-ogk-busotine').uncheck();
+  await page.locator('#toggle-ogk-busotine').check();
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+});
+
+test('пад fetch-а даје видљив црвен текст поред прекидача', async ({ page }) => {
+  await ucitajMeni(page);
+  await page.evaluate(() => { window.__fetchPada = true; });
+
+  const greska = page.locator('[data-ogk-greska="izvori"]');
+  await expect(greska).toBeHidden();
+
+  await page.locator('#toggle-ogk-izvori').check();
+
+  await expect(greska).toBeVisible();
+  await expect(greska).toContainText('Слој није учитан');
+  const boja = await greska.evaluate((el) => getComputedStyle(el).color);
+  expect(boja).toBe('rgb(138, 24, 24)');  // --status-busy-text (AA и у тамној теми)
+
+  // Гашење прекидача склања поруку.
+  await page.locator('#toggle-ogk-izvori').uncheck();
+  await expect(greska).toBeHidden();
+});
+
+test('боја маркера долази из токена теме и прати промену теме', async ({ page }) => {
+  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine').slice(0, 20);
+  await ucitajMeni(page, { tacke: busotine });
+
+  // Узорак боје у менију већ носи токен.
+  const uzorak = page.locator('[data-ogk-swatch="busotine"]');
+  await expect(uzorak).toHaveCSS('background-color', 'rgb(37, 99, 235)');
+
+  await page.locator('#toggle-ogk-busotine').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+
+  const svetla = await page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].options.fillColor,
+  );
+  expect(svetla).toBe('rgb(37, 99, 235)');   // --info, светла тема
+
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+
+  await expect.poll(() => page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].options.fillColor,
+  )).toBe('rgb(125, 176, 255)');             // --info, тамна тема
+  await expect.poll(() => page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].options.color,
+  )).toBe('rgb(31, 41, 55)');                // --bg-card обод, тамна тема
+  await expect(uzorak).toHaveCSS('background-color', 'rgb(125, 176, 255)');
+});
+
+test('мени ради и на уском екрану, без хоризонталног прелива', async ({ page }) => {
+  await page.setViewportSize({ width: 380, height: 720 });
+  await ucitajMeni(page);
+
+  const kontrole = page.locator('.map-controls');
+  const prelivi = await kontrole.evaluate(
+    (el) => el.scrollWidth - el.clientWidth,
+  );
+  expect(prelivi).toBeLessThanOrEqual(1);
+
+  // Заглавље групе се и даље отвара и прекидач унутра ради.
+  await page.locator('[href="#mapGroupGeologija"]').click();
+  await expect(page.locator('#mapGroupGeologija')).toHaveClass(/show/);
+  await page.locator('#toggle-ogk-fosili').check();
+  await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('1');
+});
+
+test('ниједан затечени прекидач слоја није нестао из менија', async ({ page }) => {
+  await ucitajMeni(page);
+  const postojeci = [
+    'toggle-overlay', 'toggle-basemap', 'toggle-field-markers',
+    'toggle-ore-deposits', 'toggle-stratigraphy', 'toggle-paleontology',
+    'toggle-sanja-mammals', 'toggle-mining-operations',
+    'toggle-exploration-licenses', 'toggle-map-sheets', 'toggle-geo-hover',
+    'toggle-calibration',
+  ];
+  for (const id of postojeci) {
+    await expect(page.locator(`#${id}`)).toHaveCount(1);
+  }
+});
