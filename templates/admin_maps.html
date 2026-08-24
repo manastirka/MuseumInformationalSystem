@@ -34,7 +34,8 @@
         flex: 1 1 auto;
     }
     .map-controls {
-        background: white;
+        background: var(--bg-card);
+        color: var(--text-primary);
         border-radius: 8px;
         padding: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -51,6 +52,98 @@
     }
     .map-controls .form-range {
         width: 100%;
+    }
+    /* Бочни мени слојева — пет склопивих група (Део 4).
+       Подлога и текст иду кроз токене теме: панел је до сада био фиксно бео,
+       па је у тамној палети текст (--text-primary) испадао бело на белом. */
+    .map-group + .map-group {
+        margin-top: var(--space-2);
+    }
+    .map-group-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .map-group-head:hover,
+    .map-group-head:focus {
+        color: var(--text-primary);
+        background: var(--bg-card);
+        text-decoration: none;
+    }
+    .map-group-title {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .map-group-badge,
+    .map-count-badge {
+        flex: 0 0 auto;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 5px;
+    }
+    .map-group-chevron {
+        flex: 0 0 auto;
+        font-size: 0.65rem;
+        transition: transform 0.2s;
+    }
+    .map-group-head[aria-expanded="true"] .map-group-chevron {
+        transform: rotate(180deg);
+    }
+    .map-group-body {
+        padding: 6px 2px 2px 6px;
+    }
+    .map-group-body .form-check-label {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .map-subheading {
+        margin-top: 8px;
+        padding-top: 6px;
+        border-top: 1px solid var(--border-color);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .map-layer-error {
+        /* Црвен текст поред прекидача. НЕ --danger: као текст пада AA у
+           тамној теми (3.04:1 на --bg-card). Пар --status-busy-text/-bg је
+           за то и направљен и мери се у test_kontrast_hardkod.py. */
+        display: none;
+        margin-left: 2.4em;
+        padding: 2px 6px;
+        border: 1px solid var(--status-busy-border);
+        border-radius: var(--radius-sm);
+        background: var(--status-busy-bg);
+        color: var(--status-busy-text);
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .map-layer-error.vidljiva {
+        display: block;
+    }
+    .ogk-swatch {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        margin-right: 3px;
+        border: 1px solid var(--border-color);
+        border-radius: 50%;
+        background: var(--text-muted);
     }
     .map-info {
         position: absolute;
@@ -1137,130 +1230,250 @@
         <div class="col-auto map-right-col" id="map-right-col" style="width:240px;">
             <div class="sidebar-resize-handle" id="sidebar-resize-handle" title="Превуци за промену величине"></div>
             <div class="map-controls">
-                    <label for="opacity-slider">
-                        <i class="bi bi-layers me-1"></i>Прозирност прекривача
-                    </label>
-                    <input type="range" class="form-range" id="opacity-slider"
-                           min="0" max="100" value="80" step="5">
-                    <div class="d-flex justify-content-between" style="font-size:0.75rem;color:#666;">
-                        <span>0%</span><span id="opacity-value">80%</span><span>100%</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2" id="btn-ugasi-sve-slojeve">
+                        <i class="bi bi-eye-slash me-1"></i>Угаси све слојеве
+                    </button>
+
+                    <!-- 1. Подлога -->
+                    <div class="map-group" data-map-group="podloga">
+                        <a class="map-group-head" data-bs-toggle="collapse" href="#mapGroupPodloga" role="button" aria-expanded="true" aria-controls="mapGroupPodloga">
+                            <i class="bi bi-map"></i>
+                            <span class="map-group-title">Подлога</span>
+                            <span class="badge map-group-badge" data-map-group-badge="podloga">0</span>
+                            <i class="bi bi-chevron-down map-group-chevron"></i>
+                        </a>
+                        <div class="collapse show" id="mapGroupPodloga">
+                            <div class="map-group-body">
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-basemap" data-map-layer="1" data-map-keep="1" checked>
+                                    <label class="form-check-label" for="toggle-basemap" style="font-size:0.85rem;">
+                                        Основна карта (OSM)
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-overlay" data-map-layer="1" checked>
+                                    <label class="form-check-label" for="toggle-overlay" style="font-size:0.85rem;">
+                                        Геолошки прекривач
+                                    </label>
+                                </div>
+                                <label for="opacity-slider">
+                                    <i class="bi bi-layers me-1"></i>Прозирност прекривача
+                                </label>
+                                <input type="range" class="form-range" id="opacity-slider"
+                                       min="0" max="100" value="80" step="5">
+                                <div class="d-flex justify-content-between" style="font-size:0.75rem;color:var(--text-muted);">
+                                    <span>0%</span><span id="opacity-value">80%</span><span>100%</span>
+                                </div>
+                                <div class="form-check form-switch mb-1 mt-2">
+                                    <input class="form-check-input" type="checkbox" id="toggle-map-sheets" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-map-sheets" style="font-size:0.85rem;">
+                                        Листови карте <span class="badge map-count-badge" id="sheets-count-badge">0</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-geo-hover">
+                                    <label class="form-check-label" for="toggle-geo-hover" style="font-size:0.85rem;">
+                                        Геолошка идентификација
+                                    </label>
+                                </div>
+                                {% if is_admin() %}
+                                <div class="form-check form-switch mb-1" id="calibration-mode-wrap" style="display:none;">
+                                    <input class="form-check-input" type="checkbox" id="toggle-calibration">
+                                    <label class="form-check-label" for="toggle-calibration" style="font-size:0.85rem;">
+                                        Калибрација карте
+                                    </label>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
 
-                    <hr class="my-2">
+                    <!-- 2. Геологија (OGK) -->
+                    <div class="map-group" data-map-group="geologija">
+                        <a class="map-group-head" data-bs-toggle="collapse" href="#mapGroupGeologija" role="button" aria-expanded="false" aria-controls="mapGroupGeologija">
+                            <i class="bi bi-gem"></i>
+                            <span class="map-group-title">Геологија (OGK)</span>
+                            <span class="badge map-group-badge" data-map-group-badge="geologija">0</span>
+                            <i class="bi bi-chevron-down map-group-chevron"></i>
+                        </a>
+                        <div class="collapse" id="mapGroupGeologija">
+                            <div class="map-group-body">
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-rudnici" data-map-layer="1" data-ogk-grupa="rudnici">
+                                    <label class="form-check-label" for="toggle-ogk-rudnici" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="rudnici"></span>Рудници и појаве
+                                        <span class="badge map-count-badge" data-ogk-broj="rudnici">{{ (ogk_grupe or {}).get('rudnici', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="rudnici" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-kamenolomi" data-map-layer="1" data-ogk-grupa="kamenolomi">
+                                    <label class="form-check-label" for="toggle-ogk-kamenolomi" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="kamenolomi"></span>Каменоломи и копови
+                                        <span class="badge map-count-badge" data-ogk-broj="kamenolomi">{{ (ogk_grupe or {}).get('kamenolomi', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="kamenolomi" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-busotine" data-map-layer="1" data-ogk-grupa="busotine">
+                                    <label class="form-check-label" for="toggle-ogk-busotine" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="busotine"></span>Бушотине
+                                        <span class="badge map-count-badge" data-ogk-broj="busotine">{{ (ogk_grupe or {}).get('busotine', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="busotine" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-izvori" data-map-layer="1" data-ogk-grupa="izvori">
+                                    <label class="form-check-label" for="toggle-ogk-izvori" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="izvori"></span>Извори и бање
+                                        <span class="badge map-count-badge" data-ogk-broj="izvori">{{ (ogk_grupe or {}).get('izvori', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="izvori" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-fosili" data-map-layer="1" data-ogk-grupa="fosili">
+                                    <label class="form-check-label" for="toggle-ogk-fosili" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="fosili"></span>Фосилни локалитети
+                                        <span class="badge map-count-badge" data-ogk-broj="fosili">{{ (ogk_grupe or {}).get('fosili', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="fosili" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-rasedi" data-map-layer="1" data-ogk-grupa="rasedi">
+                                    <label class="form-check-label" for="toggle-ogk-rasedi" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="rasedi"></span>Раседи
+                                        <span class="badge map-count-badge" data-ogk-broj="rasedi">{{ (ogk_grupe or {}).get('rasedi', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="rasedi" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-jedinice" data-map-layer="1" data-ogk-grupa="jedinice">
+                                    <label class="form-check-label" for="toggle-ogk-jedinice" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="jedinice"></span>Геолошке јединице
+                                        <span class="badge map-count-badge" data-ogk-broj="jedinice">{{ (ogk_grupe or {}).get('jedinice', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="jedinice" role="alert"></div>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-ostalo" data-map-layer="1" data-ogk-grupa="ostalo">
+                                    <label class="form-check-label" for="toggle-ogk-ostalo" style="font-size:0.85rem;">
+                                        <span class="ogk-swatch" data-ogk-swatch="ostalo"></span>Остало
+                                        <span class="badge map-count-badge" data-ogk-broj="ostalo">{{ (ogk_grupe or {}).get('ostalo', 0) }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="ostalo" role="alert"></div>
+                                </div>
+                                <div class="map-subheading">Локалитети музеја</div>
+                                <div class="form-check form-switch mb-1 mt-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-stratigraphy" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-stratigraphy" style="font-size:0.85rem;">
+                                        Стратиграфија <span class="badge map-count-badge" id="strat-count-badge">0</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-paleontology" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-paleontology" style="font-size:0.85rem;">
+                                        Палеонтологија <span class="badge map-count-badge" id="paleo-count-badge">0</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                    <div class="form-check form-switch mb-1">
-                        <input class="form-check-input" type="checkbox" id="toggle-overlay" checked>
-                        <label class="form-check-label" for="toggle-overlay" style="font-size:0.85rem;">
-                            Геолошки прекривач
-                        </label>
+                    <!-- 3. Рударство и лиценце -->
+                    <div class="map-group" data-map-group="rudarstvo">
+                        <a class="map-group-head" data-bs-toggle="collapse" href="#mapGroupRudarstvo" role="button" aria-expanded="false" aria-controls="mapGroupRudarstvo">
+                            <i class="bi bi-minecart-loaded"></i>
+                            <span class="map-group-title">Рударство и лиценце</span>
+                            <span class="badge map-group-badge" data-map-group-badge="rudarstvo">0</span>
+                            <i class="bi bi-chevron-down map-group-chevron"></i>
+                        </a>
+                        <div class="collapse" id="mapGroupRudarstvo">
+                            <div class="map-group-body">
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ore-deposits" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-ore-deposits" style="font-size:0.85rem;">
+                                        Рудна лежишта <span class="badge map-count-badge" id="ore-count-badge">0</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-mining-operations" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-mining-operations" style="font-size:0.85rem;">
+                                        Рударске компаније <span class="badge map-count-badge" id="mining-count-badge">0</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-exploration-licenses" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-exploration-licenses" style="font-size:0.85rem;">
+                                        Истражне лиценце <span class="badge map-count-badge" id="licenses-count-badge">0</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-check form-switch mb-1">
-                        <input class="form-check-input" type="checkbox" id="toggle-basemap" checked>
-                        <label class="form-check-label" for="toggle-basemap" style="font-size:0.85rem;">
-                            Основна карта (OSM)
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-1">
-                        <input class="form-check-input" type="checkbox" id="toggle-field-markers">
-                        <label class="form-check-label" for="toggle-field-markers" style="font-size:0.85rem;">
-                            Теренске тачке
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-1">
-                        <input class="form-check-input" type="checkbox" id="toggle-ore-deposits">
-                        <label class="form-check-label" for="toggle-ore-deposits" style="font-size:0.85rem;">
-                            Рудна лежишта <span class="badge bg-secondary" id="ore-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-1">
-                        <input class="form-check-input" type="checkbox" id="toggle-stratigraphy">
-                        <label class="form-check-label" for="toggle-stratigraphy" style="font-size:0.85rem;">
-                            Стратиграфија <span class="badge bg-info" id="strat-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="toggle-paleontology">
-                        <label class="form-check-label" for="toggle-paleontology" style="font-size:0.85rem;">
-                            Палеонтологија <span class="badge bg-warning text-dark" id="paleo-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <!-- Збирке submenu — expandable for future collections -->
-                    <div class="mb-2 mt-1">
-                        <a class="d-flex align-items-center text-decoration-none text-dark" data-bs-toggle="collapse" href="#collectionsLayerSubmenu" role="button" aria-expanded="false" aria-controls="collectionsLayerSubmenu" style="font-size:0.85rem;">
-                            <i class="bi bi-collection me-1"></i><strong>Збирке</strong>
-                            <i class="bi bi-chevron-down ms-auto" style="font-size:0.65rem;transition:transform 0.2s;"></i>
+
+                    <!-- 4. Збирке -->
+                    <div class="map-group" data-map-group="zbirke">
+                        <a class="map-group-head" data-bs-toggle="collapse" href="#collectionsLayerSubmenu" role="button" aria-expanded="false" aria-controls="collectionsLayerSubmenu">
+                            <i class="bi bi-collection"></i>
+                            <span class="map-group-title">Збирке</span>
+                            <span class="badge map-group-badge" data-map-group-badge="zbirke">0</span>
+                            <i class="bi bi-chevron-down map-group-chevron"></i>
                         </a>
                         <div class="collapse" id="collectionsLayerSubmenu">
-                            <div class="ps-3 pt-1">
+                            <div class="map-group-body">
                                 <div class="form-check form-switch mb-1">
-                                    <input class="form-check-input" type="checkbox" id="toggle-sanja-mammals">
+                                    <input class="form-check-input" type="checkbox" id="toggle-sanja-mammals" data-map-layer="1">
                                     <label class="form-check-label" for="toggle-sanja-mammals" style="font-size:0.8rem;">
-                                        Крупни сисари палеоген/неоген <span class="badge bg-danger" id="sanja-mammals-count-badge" style="font-size:0.6rem;">0</span>
+                                        Крупни сисари палеоген/неоген <span class="badge map-count-badge" id="sanja-mammals-count-badge">0</span>
                                     </label>
                                 </div>
                                 <!-- Future collection layers go here -->
                             </div>
                         </div>
                     </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="toggle-mining-operations">
-                        <label class="form-check-label" for="toggle-mining-operations" style="font-size:0.85rem;">
-                            Рударске компаније <span class="badge bg-dark" id="mining-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="toggle-exploration-licenses">
-                        <label class="form-check-label" for="toggle-exploration-licenses" style="font-size:0.85rem;">
-                            Истражне лиценце <span class="badge bg-danger" id="licenses-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="toggle-map-sheets">
-                        <label class="form-check-label" for="toggle-map-sheets" style="font-size:0.85rem;">
-                            Листови карте <span class="badge bg-primary" id="sheets-count-badge" style="font-size:0.65rem;">0</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="toggle-geo-hover">
-                        <label class="form-check-label" for="toggle-geo-hover" style="font-size:0.85rem;">
-                            Геолошка идентификација
-                        </label>
-                    </div>
-                    {% if is_admin() %}
-                    <div class="form-check form-switch mb-2" id="calibration-mode-wrap" style="display:none;">
-                        <input class="form-check-input" type="checkbox" id="toggle-calibration">
-                        <label class="form-check-label" for="toggle-calibration" style="font-size:0.85rem;">
-                            Калибрација карте
-                        </label>
-                    </div>
-                    {% endif %}
 
-                    <hr style="margin:6px 0;">
-                    <button class="btn btn-sm btn-success w-100 mb-1" id="btn-3d-terrain">
-                        <i class="bi bi-globe-europe-africa me-1"></i>3D приказ
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger w-100 mb-1" id="btn-cancel-3d" style="display:none;">
-                        <i class="bi bi-x-circle me-1"></i>Откажи избор
-                    </button>
-                    <select class="form-select form-select-sm mb-2" id="preset-3d-areas" style="font-size:0.8rem;">
-                        <option value="">Брзи 3D приказ...</option>
-                        <option value="43.85,44.15,19.45,19.65">Тара</option>
-                        <option value="43.20,43.40,20.70,20.95">Копаоник</option>
-                        <option value="45.10,45.22,19.60,19.95">Фрушка Гора</option>
-                        <option value="43.60,43.80,22.50,22.80">Стара Планина</option>
-                        <option value="43.30,43.55,20.15,20.55">Златибор</option>
-                        <option value="43.32,43.52,22.05,22.35">Ртањ</option>
-                        <option value="44.05,44.35,21.80,22.10">Хомоље</option>
-                        <option value="42.70,42.95,20.10,20.40">Шар-планина</option>
-                    </select>
-                    <hr style="margin:6px 0;">
-
-                    <button class="btn btn-sm btn-outline-secondary w-100 mb-1" id="btn-fullscreen">
-                        <i class="bi bi-arrows-fullscreen me-1"></i>Цео екран
-                    </button>
-                    <a href="{{ url_for('maps.admin_geological_timeline') }}" class="btn btn-sm w-100 mt-1" style="background:linear-gradient(135deg,#0d47a1,#1565c0,#0097a7,#00838f);color:#fff;border:none;font-weight:600;letter-spacing:0.3px;padding:8px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(13,71,161,0.35);transition:all .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(13,71,161,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(13,71,161,0.35)';this.style.transform='none'">
-                        <i class="bi bi-globe-americas me-1"></i>Геотектонска историја Балкана
-                    </a>
+                    <!-- 5. Моји подаци и алати -->
+                    <div class="map-group" data-map-group="alati">
+                        <a class="map-group-head" data-bs-toggle="collapse" href="#mapGroupAlati" role="button" aria-expanded="true" aria-controls="mapGroupAlati">
+                            <i class="bi bi-tools"></i>
+                            <span class="map-group-title">Моји подаци и алати</span>
+                            <span class="badge map-group-badge" data-map-group-badge="alati">0</span>
+                            <i class="bi bi-chevron-down map-group-chevron"></i>
+                        </a>
+                        <div class="collapse show" id="mapGroupAlati">
+                            <div class="map-group-body">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="toggle-field-markers" data-map-layer="1">
+                                    <label class="form-check-label" for="toggle-field-markers" style="font-size:0.85rem;">
+                                        Теренске тачке
+                                    </label>
+                                </div>
+                                <button class="btn btn-sm btn-success w-100 mb-1" id="btn-3d-terrain">
+                                    <i class="bi bi-globe-europe-africa me-1"></i>3D приказ
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger w-100 mb-1" id="btn-cancel-3d" style="display:none;">
+                                    <i class="bi bi-x-circle me-1"></i>Откажи избор
+                                </button>
+                                <select class="form-select form-select-sm mb-2" id="preset-3d-areas" style="font-size:0.8rem;">
+                                    <option value="">Брзи 3D приказ...</option>
+                                    <option value="43.85,44.15,19.45,19.65">Тара</option>
+                                    <option value="43.20,43.40,20.70,20.95">Копаоник</option>
+                                    <option value="45.10,45.22,19.60,19.95">Фрушка Гора</option>
+                                    <option value="43.60,43.80,22.50,22.80">Стара Планина</option>
+                                    <option value="43.30,43.55,20.15,20.55">Златибор</option>
+                                    <option value="43.32,43.52,22.05,22.35">Ртањ</option>
+                                    <option value="44.05,44.35,21.80,22.10">Хомоље</option>
+                                    <option value="42.70,42.95,20.10,20.40">Шар-планина</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-secondary w-100 mb-1" id="btn-fullscreen">
+                                    <i class="bi bi-arrows-fullscreen me-1"></i>Цео екран
+                                </button>
+                                <a href="{{ url_for('maps.admin_geological_timeline') }}" class="btn btn-sm w-100 mt-1" style="background:linear-gradient(135deg,#0d47a1,#1565c0,#0097a7,#00838f);color:#fff;border:none;font-weight:600;letter-spacing:0.3px;padding:8px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(13,71,161,0.35);transition:all .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(13,71,161,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(13,71,161,0.35)';this.style.transform='none'">
+                                    <i class="bi bi-globe-americas me-1"></i>Геотектонска историја Балкана
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div><!-- end map-controls -->
             </div><!-- end right col -->
         </div><!-- end map-row -->
@@ -9272,6 +9485,312 @@
             if (_elevAbort) _elevAbort.abort();
             _lastElevKey = null;
         });
+    })();
+
+    // ==================== OGK ТАЧКЕ 1:100 000 (Део 3) ====================
+    // Без markercluster (CSP + нова зависност): један L.layerGroup по групи,
+    // маркери су L.circleMarker на заједничком canvas рендереру. Боје долазе
+    // искључиво из токена теме и освежавају се кад се тема промени.
+    var OGK_GRUPE = [
+        { kljuc: 'rudnici',    token: '--danger' },
+        { kljuc: 'kamenolomi', token: '--warning' },
+        { kljuc: 'busotine',   token: '--info' },
+        { kljuc: 'izvori',     token: '--success' },
+        { kljuc: 'fosili',     token: '--accent' },
+        { kljuc: 'rasedi',     token: '--text-primary' },
+        { kljuc: 'jedinice',   token: '--text-secondary' },
+        { kljuc: 'ostalo',     token: '--text-muted' }
+    ];
+
+    var OGK_KATEGORIJA_SR = {
+        rudnik: 'Рудник',
+        pojava_minerala: 'Појава минерала',
+        kamenolom: 'Каменолом',
+        peskara: 'Пескара / шљункара',
+        gliniste: 'Глиниште / циглана',
+        busotina: 'Бушотина',
+        izvor: 'Извор / бања',
+        fosilni_lokalitet: 'Фосилни локалитет',
+        rased: 'Расед',
+        geoloska_jedinica: 'Геолошка јединица',
+        ostalo: 'Остало'
+    };
+
+    var ogkRenderer = L.canvas({ pane: 'thematic-vector-pane', padding: 0.3 });
+    var ogkSlojevi = {};        // grupa -> L.layerGroup
+    var ogkKes = {};            // grupa -> niz tačaka (učitano se ne traži ponovo)
+    var ogkUcitavanje = {};     // grupa -> bool (u letu)
+    var _ogkSonda = null;
+
+    function ogkDefinicija(kljuc) {
+        for (var i = 0; i < OGK_GRUPE.length; i++) {
+            if (OGK_GRUPE[i].kljuc === kljuc) return OGK_GRUPE[i];
+        }
+        return null;
+    }
+
+    function ogkBoja(token) {
+        // Токен се чита са корена документа; сонда га потом разрешава до
+        // стварне rgb() вредности (токени умеју да показују на друге токене).
+        var sirov = (getComputedStyle(document.documentElement)
+            .getPropertyValue(token) || '').trim();
+        if (!sirov) {
+            console.warn('OGK: активна тема нема токен ' + token +
+                ' — маркер узима боју текста стране.');
+            return getComputedStyle(document.body).color;
+        }
+        if (!_ogkSonda) {
+            _ogkSonda = document.createElement('span');
+            _ogkSonda.setAttribute('aria-hidden', 'true');
+            _ogkSonda.style.display = 'none';
+            document.body.appendChild(_ogkSonda);
+        }
+        _ogkSonda.style.color = 'var(' + token + ')';
+        return getComputedStyle(_ogkSonda).color;
+    }
+
+    function ogkStil(token) {
+        return {
+            renderer: ogkRenderer,
+            radius: 4,
+            // Обод у боји панела раздваја маркер од подлоге у свакој теми.
+            color: ogkBoja('--bg-card'),
+            weight: 1,
+            opacity: 1,
+            fillColor: ogkBoja(token),
+            fillOpacity: 0.9
+        };
+    }
+
+    function ogkSloj(kljuc) {
+        if (!ogkSlojevi[kljuc]) ogkSlojevi[kljuc] = L.layerGroup();
+        return ogkSlojevi[kljuc];
+    }
+
+    function ogkGreska(kljuc, poruka) {
+        var el = document.querySelector('[data-ogk-greska="' + kljuc + '"]');
+        if (!el) return;
+        el.textContent = poruka || '';
+        el.classList.toggle('vidljiva', !!poruka);
+    }
+
+    function ogkPostaviBroj(kljuc, broj) {
+        var el = document.querySelector('[data-ogk-broj="' + kljuc + '"]');
+        if (el) el.textContent = broj;
+    }
+
+    function ogkPopup(tacka) {
+        var kategorija = OGK_KATEGORIJA_SR[tacka.kategorija] || tacka.kategorija || '—';
+        var delovi = '';
+        if (tacka.list_naziv || tacka.list_id) {
+            delovi += '<br><small>Лист: ' + escHtml(tacka.list_naziv || '—') +
+                (tacka.list_id ? ' (' + escHtml(tacka.list_id) + ')' : '') + '</small>';
+        }
+        if (tacka.jedinica || tacka.simbol_karte) {
+            delovi += '<br><small>Јединица / симбол: ' +
+                escHtml(tacka.jedinica || '—') + ' / ' +
+                escHtml(tacka.simbol_karte || '—') + '</small>';
+        }
+        if (tacka.sirovina) {
+            delovi += '<br><small>Сировина: ' + escHtml(tacka.sirovina) + '</small>';
+        }
+        if (tacka.opis) {
+            delovi += '<br><small><em>' + escHtml(tacka.opis) + '</em></small>';
+        }
+        return '<div style="min-width:200px;max-width:320px;">' +
+            '<strong style="font-size:0.95rem;">' + escHtml(tacka.naziv || '—') + '</strong>' +
+            '<br><small>' + escHtml(kategorija) + '</small>' +
+            delovi +
+            '<br><small>Поузданост GPS: ' + escHtml(tacka.pouzdanost_gps || '—') + '</small>' +
+            '<br><small>' + formatCoord(tacka.lat, 4) + ', ' + formatCoord(tacka.lon, 4) + '</small>' +
+            '</div>';
+    }
+
+    function ogkPrikazi(kljuc, tacke) {
+        var def = ogkDefinicija(kljuc);
+        if (!def) {
+            console.error('OGK: непозната група слоја ' + kljuc);
+            return;
+        }
+        var sloj = ogkSloj(kljuc);
+        var stil = ogkStil(def.token);
+        sloj.clearLayers();
+        safeRenderItems(tacke, 'ogk-' + kljuc, function(tacka) {
+            var lat = toFiniteNumber(tacka.lat);
+            var lon = toFiniteNumber(tacka.lon);
+            if (lat === null || lon === null) return;
+            var marker = L.circleMarker([lat, lon], stil);
+            marker.bindPopup(ogkPopup(tacka), { maxWidth: 350 });
+            sloj.addLayer(marker);
+        });
+    }
+
+    function ogkUcitaj(kljuc) {
+        if (ogkKes[kljuc] || ogkUcitavanje[kljuc]) return;
+        ogkUcitavanje[kljuc] = true;
+        ogkGreska(kljuc, '');
+        fetch('/api/map/ogk-points?grupe=' + encodeURIComponent(kljuc))
+            .then(function(odgovor) {
+                if (!odgovor.ok) throw new Error('HTTP ' + odgovor.status);
+                return odgovor.json();
+            })
+            .then(function(rezultat) {
+                if (!rezultat || !rezultat.success) {
+                    throw new Error((rezultat && rezultat.message) || 'неисправан одговор сервера');
+                }
+                var tacke = (rezultat.data && rezultat.data.tacke) || [];
+                ogkKes[kljuc] = tacke;
+                ogkPrikazi(kljuc, tacke);
+                ogkPostaviBroj(kljuc, tacke.length);
+                bringThematicLayersToFront();
+            })
+            .catch(function(greska) {
+                // Никад тихо: и конзола и црвен текст поред самог прекидача.
+                console.error('OGK слој „' + kljuc + '“ није учитан:', greska);
+                ogkGreska(kljuc, 'Слој није учитан: ' + (greska.message || 'грешка мреже'));
+            })
+            .finally(function() {
+                ogkUcitavanje[kljuc] = false;
+            });
+    }
+
+    function ogkOsveziBoje() {
+        OGK_GRUPE.forEach(function(def) {
+            var boja = ogkBoja(def.token);
+            var uzorak = document.querySelector('[data-ogk-swatch="' + def.kljuc + '"]');
+            if (uzorak) uzorak.style.background = boja;
+            var sloj = ogkSlojevi[def.kljuc];
+            if (!sloj) return;
+            var obod = ogkBoja('--bg-card');
+            sloj.eachLayer(function(marker) {
+                if (typeof marker.setStyle === 'function') {
+                    marker.setStyle({ fillColor: boja, color: obod });
+                }
+            });
+        });
+    }
+
+    OGK_GRUPE.forEach(function(def) {
+        var prekidac = document.getElementById('toggle-ogk-' + def.kljuc);
+        if (!prekidac) {
+            console.error('OGK: недостаје прекидач за групу ' + def.kljuc);
+            return;
+        }
+        prekidac.addEventListener('change', function() {
+            var sloj = ogkSloj(def.kljuc);
+            if (this.checked) {
+                sloj.addTo(map);
+                ogkUcitaj(def.kljuc);   // лењо: тек при првом паљењу
+                bringThematicLayersToFront();
+            } else {
+                map.removeLayer(sloj);
+                ogkGreska(def.kljuc, '');
+            }
+        });
+    });
+
+    ogkOsveziBoje();
+    // Промена теме мења токене на <html> (палета, тамни режим, сопствена тема)
+    // — исти извор истине који base.html већ мења кроз MuseumTheme.applyResolved.
+    (function() {
+        var posmatrac = new MutationObserver(function() { ogkOsveziBoje(); });
+        posmatrac.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme', 'data-palette', 'data-accent', 'data-style', 'style']
+        });
+    })();
+
+    // ==================== БОЧНИ МЕНИ: СКЛОПИВЕ ГРУПЕ (Део 4) ====================
+    (function() {
+        var KLJUC_GRUPA = 'mis.maps.grupe';
+        var kontrole = document.querySelector('.map-controls');
+        if (!kontrole) {
+            console.error('Мени слојева карте није пронађен — групе нису укључене.');
+            return;
+        }
+        var grupe = Array.prototype.slice.call(kontrole.querySelectorAll('.map-group'));
+
+        function procitajStanje() {
+            try {
+                var sirovo = localStorage.getItem(KLJUC_GRUPA);
+                var stanje = sirovo ? JSON.parse(sirovo) : {};
+                return (stanje && typeof stanje === 'object') ? stanje : {};
+            } catch (greska) {
+                console.warn('Стање група менија се не да прочитати:', greska);
+                return {};
+            }
+        }
+
+        function upisiStanje(stanje) {
+            try {
+                localStorage.setItem(KLJUC_GRUPA, JSON.stringify(stanje));
+            } catch (greska) {
+                console.warn('Стање група менија се не да сачувати:', greska);
+            }
+        }
+
+        function osveziBadge(grupa) {
+            var badge = grupa.querySelector('[data-map-group-badge]');
+            if (!badge) return;
+            badge.textContent = grupa.querySelectorAll('input[data-map-layer]:checked').length;
+        }
+
+        function osveziSveBadge() {
+            grupe.forEach(osveziBadge);
+        }
+
+        var stanje = procitajStanje();
+        grupe.forEach(function(grupa) {
+            var ime = grupa.getAttribute('data-map-group');
+            var glava = grupa.querySelector('.map-group-head');
+            var telo = grupa.querySelector('.collapse');
+            if (!ime || !glava || !telo) {
+                console.error('Група менија карте је непотпуна:', grupa);
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(stanje, ime)) {
+                var otvorena = !!stanje[ime];
+                telo.classList.toggle('show', otvorena);
+                glava.setAttribute('aria-expanded', otvorena ? 'true' : 'false');
+            }
+
+            telo.addEventListener('shown.bs.collapse', function() {
+                var s = procitajStanje();
+                s[ime] = true;
+                upisiStanje(s);
+            });
+            telo.addEventListener('hidden.bs.collapse', function() {
+                var s = procitajStanje();
+                s[ime] = false;
+                upisiStanje(s);
+            });
+
+            grupa.addEventListener('change', function(dogadjaj) {
+                var meta = dogadjaj.target;
+                if (meta && meta.matches && meta.matches('input[data-map-layer]')) {
+                    osveziBadge(grupa);
+                }
+            });
+        });
+        osveziSveBadge();
+
+        var dugmeGasi = document.getElementById('btn-ugasi-sve-slojeve');
+        if (dugmeGasi) {
+            dugmeGasi.addEventListener('click', function() {
+                // Прави `change` догађај — сваки затечени слушалац мора да
+                // одреагује исто као да је корисник сам кликнуо прекидач.
+                var upaljeni = kontrole.querySelectorAll('input[data-map-layer]:checked');
+                Array.prototype.forEach.call(upaljeni, function(prekidac) {
+                    if (prekidac.hasAttribute('data-map-keep')) return;
+                    prekidac.checked = false;
+                    prekidac.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                osveziSveBadge();
+            });
+        } else {
+            console.error('Дугме „Угаси све слојеве“ није пронађено.');
+        }
     })();
 
     // ---- Initial load: only geological overlay + OSM are shown by default ----

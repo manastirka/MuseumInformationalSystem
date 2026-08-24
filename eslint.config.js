@@ -44,9 +44,11 @@ module.exports = [
     }
   },
   {
-    files: ['playwright/**/*.js'],
+    // `tests/ui/**` su isti obrazac kao playwright/**: Playwright spec-ovi koji
+    // vrte pravi pregledac, samo se pokrecu kroz playwright-ui.config.js.
+    files: ['playwright/**/*.js', 'tests/ui/**/*.js'],
     languageOptions: {
-      sourceType: 'module',
+      sourceType: 'commonjs',
       globals: {
         ...globals.node,
         // Telo `page.evaluate(() => ...)` se izvrsava U PREGLEDACU, ne u
