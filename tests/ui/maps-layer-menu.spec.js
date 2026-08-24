@@ -308,24 +308,24 @@ test('маркер расте са зумом, и то само на слоје�
   await page.locator('#toggle-ogk-busotine').check();
   await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
 
-  // Харнес креће са зумом 8 → полупречник 7 (не затечених 4).
+  // Харнес креће са зумом 8 → полупречник 6 (не затечених 4).
   const poluprecnik = () => page.evaluate(
     () => window.map.__dodati[0].__slojevi[0].options.radius,
   );
-  expect(await poluprecnik()).toBe(7);
+  expect(await poluprecnik()).toBe(6);
   expect(await page.evaluate(
     () => window.map.__dodati[0].__slojevi[0].options.weight,
-  )).toBe(1.5);
+  )).toBe(1.25);
 
   // Приказ целе Србије — најмањи, али и даље већи од затечена 4.
   await page.evaluate(() => window.map.__zumiraj(7));
-  expect(await poluprecnik()).toBe(6);
+  expect(await poluprecnik()).toBe(5);
 
   // Ниво листа 1:100 000 и ближе — таван на 11.
   await page.evaluate(() => window.map.__zumiraj(11));
-  expect(await poluprecnik()).toBe(10);
+  expect(await poluprecnik()).toBe(9);
   await page.evaluate(() => window.map.__zumiraj(14));
-  expect(await poluprecnik()).toBe(11);
+  expect(await poluprecnik()).toBe(10);
 
   // Угашен слој се не дира: упали га на зуму 14 и он одмах носи 11,
   // а не вредност затечену пре зумирања.
@@ -333,7 +333,7 @@ test('маркер расте са зумом, и то само на слоје�
   await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(2);
   expect(await page.evaluate(
     () => window.map.__dodati[1].__slojevi[0].options.radius,
-  )).toBe(11);
+  )).toBe(10);
 });
 
 test('пад fetch-а даје видљив црвен текст поред прекидача', async ({ page }) => {
