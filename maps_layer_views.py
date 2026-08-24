@@ -4,11 +4,12 @@ import json
 import logging
 import os
 
-from flask import jsonify, render_template, send_file
+from flask import current_app, jsonify, render_template, request, send_file
 
 logger = logging.getLogger(__name__)
 
 _ore_deposits_cache = None
+_ogk_points_cache = None
 _stratigraphy_cache = None
 _paleo_localities_cache = None
 _mining_operations_cache = None
@@ -17,9 +18,27 @@ _geo_sheets_cache = None
 _sanja_mammals_localities_cache = None
 
 
+def _ogk_group_counts():
+    """Return {grupa: N} for the OGK layer switches, or {} if the file is absent.
+
+    The menu badges need the totals before any layer is loaded lazily, so they
+    are rendered with the page instead of costing an extra request.
+    """
+    try:
+        data = _load_json_cached(
+            '_ogk_points_cache',
+            os.path.join(current_app.root_path, 'data', 'ogk_points.json'),
+        )
+        if isinstance(data, dict):
+            return data.get('grupe', {}) or {}
+    except Exception as exc:
+        logger.error("Error loading OGK group counts: %s", exc)
+    return {}
+
+
 def render_admin_maps():
     """Render the interactive geological map page."""
-    return render_template('admin_maps.html')
+    return render_template('admin_maps.html', ogk_grupe=_ogk_group_counts())
 
 
 def render_admin_geological_timeline():
@@ -35,6 +54,7 @@ def _load_json_cached(cache_name, file_path):
     but must not need write permission to create hidden .*.lock files.
     """
     global _ore_deposits_cache
+    global _ogk_points_cache
     global _stratigraphy_cache
     global _paleo_localities_cache
     global _mining_operations_cache
@@ -64,6 +84,53 @@ def api_ore_deposits(app_root):
     except Exception as exc:
         logger.error("Error loading ore deposits: %s", exc)
         return jsonify({'success': False, 'message': 'Грешка при учитавању рудних лежишта'}), 500
+
+
+def api_ogk_points(app_root):
+    """Serve OGK 1:100 000 point data from JSON for the map layers.
+
+    Optional ``?grupe=rudnici,busotine`` filters server-side; without it the
+    whole set is returned. An unknown group name is not silently dropped — it
+    comes back as a 400 so a typo in the layer menu cannot look like an empty
+    layer.
+    """
+    try:
+        data = _load_json_cached(
+            '_ogk_points_cache',
+            os.path.join(app_root, 'data', 'ogk_points.json'),
+        )
+        if not isinstance(data, dict):
+            data = {'ukupno': 0, 'grupe': {}, 'tacke': []}
+
+        tacke = data.get('tacke', [])
+        grupe = data.get('grupe', {})
+
+        trazene_raw = (request.args.get('grupe') or '').strip()
+        if trazene_raw:
+            trazene = [naziv.strip() for naziv in trazene_raw.split(',') if naziv.strip()]
+            nepoznate = [naziv for naziv in trazene if naziv not in grupe]
+            if nepoznate:
+                return jsonify({
+                    'success': False,
+                    'message': 'Непозната група слоја: ' + ', '.join(nepoznate),
+                }), 400
+            izabrane = set(trazene)
+            tacke = [tacka for tacka in tacke if tacka.get('grupa') in izabrane]
+            grupe = {naziv: broj for naziv, broj in grupe.items() if naziv in izabrane}
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'generisano': data.get('generisano', ''),
+                'izvor': data.get('izvor', ''),
+                'ukupno': len(tacke),
+                'grupe': grupe,
+                'tacke': tacke,
+            },
+        })
+    except Exception as exc:
+        logger.error("Error loading OGK points: %s", exc)
+        return jsonify({'success': False, 'message': 'Грешка при учитавању OGK тачака'}), 500
 
 
 def api_stratigraphy_localities(app_root):

@@ -150,6 +150,13 @@ def api_ore_deposits():
     return maps_layer_views.api_ore_deposits(_app_root())
 
 
+@maps_bp.route('/api/map/ogk-points')
+@login_required
+def api_ogk_points():
+    """Serve OGK 1:100 000 point data from JSON for the map layers."""
+    return maps_layer_views.api_ogk_points(_app_root())
+
+
 @maps_bp.route('/api/map/stratigraphy')
 @login_required
 def api_stratigraphy_localities():
