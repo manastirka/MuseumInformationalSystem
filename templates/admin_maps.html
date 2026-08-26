@@ -163,10 +163,35 @@
         color: var(--text-muted);
         margin-bottom: 4px;
     }
+    /* Одељак „Вероватно исти простор“ је видљив, али подређен потврђенима:
+       без верзала и лакши, да се два суда не мешају на први поглед. Боја
+       остаје иста (--text-muted), јер је тај пар већ измерен на AA. */
+    .ogk-radovi-naslov--slabiji {
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        margin-top: 6px;
+    }
+    /* Тачка са осам туђих радова не сме да изгледа исто као тачка без радова. */
+    .ogk-radovi-prazno {
+        font-size: 0.75rem;
+        line-height: 1.3;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+    }
     .ogk-rad {
         margin-bottom: 6px;
         font-size: 0.8rem;
         line-height: 1.3;
+    }
+    /* Зашто рад стоји баш ту где стоји — кустосу је то главна корист поповера.
+       Засебан селектор (не .ogk-rad small), да га специфичност не пребоји. */
+    .ogk-rad-razlog {
+        margin-top: 2px;
+        font-size: 0.7rem;
+        line-height: 1.25;
+        color: var(--text-muted);
     }
     .ogk-rad small {
         color: var(--text-secondary);
@@ -1416,7 +1441,7 @@
                                 <div class="form-check form-switch mb-1 mt-1">
                                     <input class="form-check-input" type="checkbox" id="toggle-ogk-samo-radovi">
                                     <label class="form-check-label" for="toggle-ogk-samo-radovi" style="font-size:0.85rem;">
-                                        <i class="bi bi-journal-text"></i> Само тачке са радовима
+                                        <i class="bi bi-journal-text"></i> Само са потврђеним радовима
                                         <span class="badge map-count-badge" data-ogk-broj="samo-radovi">{{ ogk_sa_radovima or 0 }}</span>
                                     </label>
                                     <div class="map-layer-error" data-ogk-greska="samo-radovi" role="alert"></div>
@@ -9575,9 +9600,6 @@
         ostalo: 'Остало'
     };
 
-    // Колико релевантних радова стаје у поповер пре него што и они оду у
-    // склопиву секцију — поповер не сме да буде дужи од екрана.
-    var OGK_RADOVA_ODMAH = 15;
     var OGK_KLJUC_SAMO_RADOVI = 'mis.maps.ogk-samo-radovi';
 
     var ogkRenderer = L.canvas({ pane: 'thematic-vector-pane', padding: 0.3 });
@@ -9718,6 +9740,9 @@
             red += ' <a class="ogk-rad-pdf" href="' + escHtml(pdf) +
                 '" target="_blank" rel="noopener noreferrer">PDF</a>';
         }
+        if (rad.razlog) {
+            red += '<div class="ogk-rad-razlog">' + escHtml(rad.razlog) + '</div>';
+        }
         return red + '</div>';
     }
 
@@ -9727,18 +9752,42 @@
             ')</summary>' + spisak.map(ogkRedRada).join('') + '</details>';
     }
 
+    function ogkOdeljak(naslov, spisak, klasa) {
+        return '<div class="' + klasa + '">' + escHtml(naslov) +
+            ' (' + spisak.length + ')</div>' + spisak.map(ogkRedRada).join('');
+    }
+
     function ogkSpisakRadova(radovi) {
-        // Жетва је рађена по имену локалитета и пуна је промашаја: релевантни
-        // (geo) иду одмах, остали у склопиву секцију. Ништа се не крије трајно.
-        var vazni = radovi.filter(function(rad) { return !!rad.geo; });
-        var ostali = radovi.filter(function(rad) { return !rad.geo; });
-        var html = vazni.slice(0, OGK_RADOVA_ODMAH).map(ogkRedRada).join('');
-        var prekobrojni = vazni.slice(OGK_RADOVA_ODMAH);
-        if (prekobrojni.length) {
-            html += ogkSklopivo('Још релевантних', prekobrojni);
+        // Жетва је рађена по имену локалитета и пуна је промашаја, па сваки рад
+        // носи суд из data/ogk_radovi.json: потврђени иду одмах, вероватни
+        // одмах али подређено, све остало у склопиву секцију. Ништа се не
+        // крије трајно — и одбачен рад сме да се провери.
+        var potvrdjeni = radovi.filter(function(rad) {
+            return rad.ocena === 'potvrdjen';
+        });
+        var verovatni = radovi.filter(function(rad) {
+            return rad.ocena === 'verovatan';
+        });
+        var ostali = radovi.filter(function(rad) {
+            return rad.ocena !== 'potvrdjen' && rad.ocena !== 'verovatan';
+        });
+        var html = '';
+        if (potvrdjeni.length) {
+            html += ogkOdeljak('Радови о овом локалитету', potvrdjeni,
+                'ogk-radovi-naslov');
+        }
+        if (verovatni.length) {
+            html += ogkOdeljak('Вероватно исти простор', verovatni,
+                'ogk-radovi-naslov ogk-radovi-naslov--slabiji');
+        }
+        if (!potvrdjeni.length && !verovatni.length) {
+            // Изричито, не прећутано: тачка са радовима који нису њени не сме
+            // да изгледа исто као тачка о којој нико није писао.
+            html += '<div class="ogk-radovi-prazno">' +
+                'Ниједан прикупљени рад није потврђен за овај локалитет.</div>';
         }
         if (ostali.length) {
-            html += ogkSklopivo('Остали помени назива', ostali);
+            html += ogkSklopivo('Несигурно и неповезано', ostali);
         }
         return html;
     }
@@ -9773,8 +9822,7 @@
         ogkDohvatiRadove(id).then(function(radovi) {
             kutija.setAttribute('data-ogk-stanje', 'gotovo');
             kutija.innerHTML = radovi.length
-                ? '<div class="ogk-radovi-naslov">Радови (' + radovi.length + ')</div>' +
-                  ogkSpisakRadova(radovi)
+                ? ogkSpisakRadova(radovi)
                 : '<small>Нема радова.</small>';
         }).catch(function(greska) {
             // Никад празно: и конзола и црвена порука у самом поповеру.
@@ -9793,7 +9841,12 @@
 
     function ogkVidljive(tacke) {
         if (!ogkSamoRadovi) return tacke;
-        return tacke.filter(function(tacka) { return (tacka.n_radova || 0) > 0; });
+        // „Има рад“ ништа не значи — жетва је ишла по имену локалитета. Пролази
+        // само тачка са бар једним потврђеним или вероватним радом.
+        return tacke.filter(function(tacka) {
+            return (tacka.n_radova_potvrdjenih || 0) > 0 ||
+                (tacka.n_radova_verovatnih || 0) > 0;
+        });
     }
 
     function ogkPrikazi(kljuc, tacke) {
@@ -9900,7 +9953,7 @@
     (function() {
         var prekidac = document.getElementById('toggle-ogk-samo-radovi');
         if (!prekidac) {
-            console.error('OGK: недостаје прекидач „Само тачке са радовима“.');
+            console.error('OGK: недостаје прекидач „Само са потврђеним радовима“.');
             return;
         }
         // Засебан кључ: затечено стање отворених група (mis.maps.grupe) остаје

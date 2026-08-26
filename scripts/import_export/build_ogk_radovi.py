@@ -6,12 +6,18 @@ Source (read-only CIFS mount, never written to):
 
 The harvest was run by locality NAME, so it is full of misses: a paper about
 the Senj town choir hangs on „Сењ јурски кречњак“. Nothing is dropped, but each
-paper is marked ``geo`` — whether its title, journal or abstract carries at
-least one geological term. The map popup shows the geological ones first and
-folds the rest away, so the popup does not turn into a dump.
+paper carries the judgement passed on it in ``data/ogk_radovi_ocene.json``
+(``potvrdjen`` / ``verovatan`` / ``nesigurno`` / ``nije``, with the reason), so
+the map popup can show the ones that really belong to the locality first and
+fold the rest away.
+
+That judgement is the ONLY measure of relevance here. The keyword regex this
+script used to carry was a second, parallel source of truth for the same
+question — it disagreed with the model on 527 of 2203 papers — and it is gone;
+the paper without a judgement gets ``neoceneno``, never ``nije``.
 
 The abstract itself is NOT written to the output (it would multiply the file
-size several times over); it is only read while judging ``geo``.
+size several times over).
 
 The script is idempotent: the same inputs always produce the same JSON, and
 --dry-run only prints the counts without touching the disk.
@@ -20,7 +26,6 @@ import argparse
 import datetime
 import json
 import os
-import re
 import sys
 import unicodedata
 
@@ -30,51 +35,15 @@ LOKALITETI_DIR = os.path.join(RADOVI_DIR, 'lokaliteti')
 
 OUTPUT_PATH = os.path.join('data', 'ogk_radovi.json')
 TACKE_PATH = os.path.join('data', 'ogk_points.json')
+OCENE_PATH = os.path.join('data', 'ogk_radovi_ocene.json')
 IZVOR = 'OGK harvest online 04_harvest_online/radovi'
 
-# Колико знакова апстракта улази у оцену — почетак носи тему рада, а реп
-# уме да склизне у захвалнице и референце (тамо „geological“ значи ништа).
-APSTRAKT_ZNAKOVA = 500
-
-# Геолошки појмови, српски и енглески, у ASCII облику без дијакритике (текст
-# се нормализује пре поређења). Свака реч се мери на стварним подацима: тражи
-# се ПОЧЕТАК речи (\b + појам), не било где у речи — иначе „ore“ покупи
-# „before“ и „more“ и оцена престане да значи ишта (мерено: 398 → 144 погодака).
-# Појмови без иједног поготка се задржавају као документован речник — не
-# сметају, а описују шта се тражи.
-GEO_POJMOVI = (
-    # опште геолошко
-    'geolo', 'geomorf', 'litolog', 'litho', 'facies', 'tekton', 'stratigraf',
-    'sediment', 'massif', 'nappe', 'navlak', 'fault', 'rased', 'rasjed',
-    # магматско / метаморфно
-    'magmat', 'volcan', 'vulkan', 'petrol', 'granit', 'andesite', 'andezit',
-    'basalt', 'bazalt', 'tuff', 'serpentin', 'ofiolit', 'ophiolit', 'metamorf',
-    'skrilj', 'schist', 'gneiss', 'gnajs',
-    # седиментно / карбонатно
-    'krecnjak', 'limestone', 'dolomit', 'travertin', 'loess',
-    # минерали и сировине
-    'mineral', 'kvarc', 'quartz', 'opal', 'zeolit', 'barit', 'boksit',
-    'coal', 'ugalj', 'lignit',
-    # рударство и лежишта
-    'ruda', 'rudn', 'rudarsk', 'ore', 'deposit', 'mining', 'quarry',
-    'kamenolom', 'skarn', 'porphyr', 'porfir', 'epitherm', 'hydrothermal',
-    'hidroterm', 'flotation', 'flotac',
-    # палеонтологија
-    'fosil', 'fossil', 'paleo', 'conodont', 'ammonit', 'amonit', 'trilobit',
-    'foraminifer', 'radiolarij', 'mamut', 'mammoth', 'dinosaur',
-    # хидрогеологија и карст
-    'karst', 'hidrogeo', 'aquifer', 'speleo', 'geothermal', 'geoterm',
-    'borehole', 'busotin',
-    # геохемија и датовање
-    'geochem', 'geohem', 'isotope', 'geochronolog', 'geohronolog',
-    # хроностратиграфија
-    'triass', 'jura', 'kred', 'cretaceous', 'terti', 'eocen', 'oligocen',
-    'neogen', 'miocen', 'pliocen', 'quaternary', 'kvartar', 'pleistoc',
-    'holocen',
-)
-
-_GEO_IZRAZI = tuple(re.compile(r'\b' + re.escape(pojam)) for pojam in GEO_POJMOVI)
-
+NEOCENJEN = 'neoceneno'
+# Редослед у поповеру и у самом фајлу: потврђено горе, неповезано на дно.
+# `neoceneno` стоји ИЗНАД `nije` — рад који нико није судио није исто што и
+# рад који је осуђен, и не сме да склизне у исту корпу.
+REDOSLED_OCENA = ('potvrdjen', 'verovatan', 'nesigurno', NEOCENJEN, 'nije')
+_RANG_OCENE = {ocena: i for i, ocena in enumerate(REDOSLED_OCENA)}
 
 # Ћирилица се пресликава у латиницу пре поређења (исти образац као
 # uskladi_knjiga_depo_cli._name_key), да „Рудник“ и „Rudnik“ буду иста реч.
@@ -95,14 +64,8 @@ def _normalizuj(tekst):
     return ''.join(znak for znak in tekst if not unicodedata.combining(znak))
 
 
-def je_geoloski(rad):
-    """Return True ako naslov + časopis + početak apstrakta nose geološki pojam."""
-    blob = _normalizuj(' '.join([
-        rad.get('title') or '',
-        rad.get('journal') or '',
-        (rad.get('abstract') or '')[:APSTRAKT_ZNAKOVA],
-    ]))
-    return any(izraz.search(blob) for izraz in _GEO_IZRAZI)
+class NeslaganjeNaslova(Exception):
+    """Оцена и жетва се разилазе — спајање по редном броју више не важи."""
 
 
 def _godina(vrednost):
@@ -114,11 +77,11 @@ def _godina(vrednost):
 
 
 def _kljuc_sortiranja(rad):
-    # Прво geo, па новије горе, па по наслову. Рад без године иде на крај
+    # Прво по оцени, па новије горе, па по наслову. Рад без године иде на крај
     # своје групе — зато засебна застава испред саме године.
     godina = rad['godina']
     return (
-        0 if rad['geo'] else 1,
+        _RANG_OCENE.get(rad['ocena'], len(REDOSLED_OCENA)),
         1 if godina is None else 0,
         -(godina or 0),
         _normalizuj(rad['naslov']),
@@ -130,11 +93,60 @@ def _procitaj_dosije(putanja):
         return json.load(handle)
 
 
-def izgradi_radove():
-    """Return (radovi_po_lokalitetu, ukupno_radova, geo, ne_geo)."""
+def ucitaj_ocene(putanja):
+    """Return (ocene_po_lokalitetu, meta) iz data/ogk_radovi_ocene.json.
+
+    Фајл који недостаје није тиха нула: без њега би сваки рад испао
+    ``neoceneno``, па се посао прекида.
+    """
+    if not os.path.exists(putanja):
+        raise NeslaganjeNaslova(
+            'нема {} — покрени scripts/tekst/oceni_radove_ogk.py --saberi'
+            .format(putanja))
+    with open(putanja, encoding='utf-8') as handle:
+        podaci = json.load(handle)
+    ocene = podaci.get('ocene')
+    if not isinstance(ocene, dict) or not ocene:
+        raise NeslaganjeNaslova('{} нема мапу „ocene“'.format(putanja))
+    return ocene, podaci
+
+
+def _po_rednom_broju(spisak_ocena):
+    """Return {br: stavka} — дупли редни број је грешка, не последњи побеђује."""
+    mapa = {}
+    for stavka in spisak_ocena or []:
+        br = stavka.get('br')
+        if br in mapa:
+            raise NeslaganjeNaslova('двапут оцењен редни број {}'.format(br))
+        mapa[br] = stavka
+    return mapa
+
+
+def _uskladi_ocenu(ogk_id, redni_broj, rad, stavka):
+    """Return (ocena, razlog) za jedan rad; neslaganje naslova je glasna greška.
+
+    Спајање иде по редном броју у низу ``radovi`` из dosije.json. Ако се
+    жетва у међувремену померила, редни број показује на туђи рад — то се
+    хвата поређењем наслова и прекида посао, никад тихо не прескаче.
+    """
+    if stavka is None:
+        return NEOCENJEN, ''
+    ocenjen = _normalizuj(stavka.get('naslov'))
+    stvarni = _normalizuj(rad.get('title'))
+    if ocenjen != stvarni:
+        raise NeslaganjeNaslova(
+            '{} рад {}: оцена носи наслов „{}“, а жетва „{}“ — '
+            'редни бројеви се више не поклапају'
+            .format(ogk_id, redni_broj, (stavka.get('naslov') or '').strip(),
+                    (rad.get('title') or '').strip()))
+    return stavka.get('ocena') or NEOCENJEN, (stavka.get('razlog') or '').strip()
+
+
+def izgradi_radove(ocene_po_lokalitetu):
+    """Return (radovi_po_lokalitetu, ukupno_radova, brojac_ocena)."""
     radovi = {}
     ukupno = 0
-    geo = 0
+    brojac = dict.fromkeys(REDOSLED_OCENA, 0)
 
     for ime in sorted(os.listdir(LOKALITETI_DIR)):
         putanja = os.path.join(LOKALITETI_DIR, ime, 'dosije.json')
@@ -147,10 +159,12 @@ def izgradi_radove():
             # Локалитет без иједног рада се не уписује — нема празних низова.
             continue
 
+        po_broju = _po_rednom_broju(ocene_po_lokalitetu.get(ogk_id))
         spisak = []
-        for rad in sirovi:
-            je_geo = je_geoloski(rad)
-            geo += 1 if je_geo else 0
+        for redni_broj, rad in enumerate(sirovi, 1):
+            ocena, razlog = _uskladi_ocenu(ogk_id, redni_broj, rad,
+                                           po_broju.get(redni_broj))
+            brojac[ocena] = brojac.get(ocena, 0) + 1
             ukupno += 1
             spisak.append({
                 'naslov': (rad.get('title') or '').strip(),
@@ -160,13 +174,14 @@ def izgradi_radove():
                 'doi': (rad.get('doi') or '').strip(),
                 'url': (rad.get('url') or '').strip(),
                 'pdf_url': (rad.get('pdf_url') or '').strip(),
-                'geo': je_geo,
+                'ocena': ocena,
+                'razlog': razlog,
             })
 
         spisak.sort(key=_kljuc_sortiranja)
         radovi[ogk_id] = spisak
 
-    return radovi, ukupno, geo, ukupno - geo
+    return radovi, ukupno, brojac
 
 
 def sirocici(radovi, tacke_putanja):
@@ -193,6 +208,38 @@ def _procitaj_zatecen(putanja):
         return None
 
 
+def promena_strane(zatecen, radovi):
+    """Return (laznih, promasenih) u odnosu na stari regeks `geo`, ili None.
+
+    Стари фајл је једини преостали запис регекса — сам регекс је избачен из
+    скрипте да не буде други извор истине. Кад се једном препише, поређење
+    више нема са чим да се ради и извештај се тихо гаси; зато мора да буде
+    испричан гласно на пролазу који мења страну.
+    """
+    if not isinstance(zatecen, dict):
+        return None
+    stari = zatecen.get('radovi')
+    if not isinstance(stari, dict):
+        return None
+    lazni = promaseni = 0
+    imao_geo = False
+    for ogk_id, spisak in radovi.items():
+        po_naslovu = {}
+        for rad in stari.get(ogk_id) or []:
+            if 'geo' in rad:
+                imao_geo = True
+                po_naslovu[_normalizuj(rad.get('naslov'))] = bool(rad['geo'])
+        for rad in spisak:
+            bio_geo = po_naslovu.get(_normalizuj(rad['naslov']))
+            if bio_geo is None:
+                continue
+            if bio_geo and rad['ocena'] == 'nije':
+                lazni += 1
+            elif not bio_geo and rad['ocena'] in ('potvrdjen', 'verovatan'):
+                promaseni += 1
+    return (lazni, promaseni) if imao_geo else None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dry-run', action='store_true',
@@ -201,6 +248,8 @@ def main(argv=None):
                         help='путања излазног JSON-а (подразумевано %(default)s)')
     parser.add_argument('--tacke', default=TACKE_PATH,
                         help='путања до ogk_points.json ради провере сирочића')
+    parser.add_argument('--ocene', default=OCENE_PATH,
+                        help='путања до оцена радова (подразумевано %(default)s)')
     args = parser.parse_args(argv)
 
     # Извор је CIFS са прода: ако није монтиран, боље ненулти излаз него
@@ -211,16 +260,27 @@ def main(argv=None):
               .format(LOKALITETI_DIR), file=sys.stderr)
         return 2
 
-    radovi, ukupno, geo, ne_geo = izgradi_radove()
+    try:
+        ocene_po_lokalitetu, meta_ocena = ucitaj_ocene(args.ocene)
+        radovi, ukupno, brojac = izgradi_radove(ocene_po_lokalitetu)
+    except NeslaganjeNaslova as greska:
+        print('ГРЕШКА: {}'.format(greska), file=sys.stderr)
+        return 4
     if not radovi:
         print('ГРЕШКА: извор је доступан али нема ниједног рада — '
               'ништа није уписано.', file=sys.stderr)
         return 3
 
-    print('  {:<22} {:>5}'.format('локалитета са радом', len(radovi)))
-    print('  {:<22} {:>5}'.format('радова укупно', ukupno))
-    print('  {:<22} {:>5}'.format('геолошких (geo)', geo))
-    print('  {:<22} {:>5}'.format('осталих помена', ne_geo))
+    potvrdjenih = brojac.get('potvrdjen', 0)
+    sa_potvrdom = sum(
+        1 for spisak in radovi.values()
+        if any(rad['ocena'] in ('potvrdjen', 'verovatan') for rad in spisak))
+
+    print('  {:<24} {:>5}'.format('локалитета са радом', len(radovi)))
+    print('  {:<24} {:>5}'.format('радова укупно', ukupno))
+    for ocena in REDOSLED_OCENA:
+        print('  {:<24} {:>5}'.format(ocena, brojac.get(ocena, 0)))
+    print('  {:<24} {:>5}'.format('локалитета са потврдом', sa_potvrdom))
 
     nepoznati = sirocici(radovi, args.tacke)
     if nepoznati is None:
@@ -230,7 +290,15 @@ def main(argv=None):
         print('УПОЗОРЕЊЕ: {} ogk_id-ева из жетве нема у {} (првих 10): {}'
               .format(len(nepoznati), args.tacke, ', '.join(nepoznati[:10])))
     else:
-        print('  {:<22} {:>5}'.format('сирочића', 0))
+        print('  {:<24} {:>5}'.format('сирочића', 0))
+
+    zatecen = _procitaj_zatecen(args.output)
+    razlika = promena_strane(zatecen, radovi)
+    if razlika is not None:
+        lazni, promaseni = razlika
+        print('Промена стране у односу на стари регекс „geo“: '
+              '{} лажних поготака (geo → nije), {} промашених '
+              '(не-geo → potvrdjen/verovatan).'.format(lazni, promaseni))
 
     if args.dry_run:
         print('--dry-run: ниједан фајл није измењен.')
@@ -239,13 +307,15 @@ def main(argv=None):
     podaci = {
         'generisano': datetime.date.today().isoformat(),
         'izvor': IZVOR,
+        'ocene_iz': os.path.basename(args.ocene),
         'ukupno_lokaliteta': len(radovi),
         'ukupno_radova': ukupno,
+        'raspodela': {ocena: brojac.get(ocena, 0) for ocena in REDOSLED_OCENA},
+        'ukupno_potvrdjenih': potvrdjenih,
         'radovi': radovi,
     }
     # Идемпотентно: ако се подаци нису променили, задржи затечени датум
     # генерисања да поновљено покретање остави фајл бајт-идентичним.
-    zatecen = _procitaj_zatecen(args.output)
     if zatecen is not None:
         uporedi = dict(podaci)
         uporedi['generisano'] = zatecen.get('generisano')
@@ -254,8 +324,8 @@ def main(argv=None):
     with open(args.output, 'w', encoding='utf-8') as handle:
         json.dump(podaci, handle, ensure_ascii=False, indent=2)
         handle.write('\n')
-    print('Уписано: {} ({} локалитета, {} радова)'
-          .format(args.output, len(radovi), ukupno))
+    print('Уписано: {} ({} локалитета, {} радова, {} потврђених)'
+          .format(args.output, len(radovi), ukupno, potvrdjenih))
     return 0
 
 

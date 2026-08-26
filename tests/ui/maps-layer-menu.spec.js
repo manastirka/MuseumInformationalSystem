@@ -24,16 +24,26 @@ const OGK_RADOVI = JSON.parse(
   fs.readFileSync(path.join(KOREN, 'data/ogk_radovi.json'), 'utf8'),
 ).radovi;
 
-// Сервер лепи n_radova/n_radova_geo на сваку тачку — харнес ради исто, из
-// истих података, да мени добије тачно оно што добија и у апликацији.
+// Сервер лепи n_radova/n_radova_potvrdjenih/n_radova_verovatnih на сваку тачку
+// — харнес ради исто, из истих података, да мени добије тачно оно што добија и
+// у апликацији.
+function prebroj(spisak, ocena) {
+  return spisak.filter((rad) => rad.ocena === ocena).length;
+}
+
 const TACKE = OGK_JSON.tacke.map((tacka) => {
   const spisak = OGK_RADOVI[tacka.id] || [];
   return Object.assign({}, tacka, {
     n_radova: spisak.length,
-    n_radova_geo: spisak.filter((rad) => rad.geo).length,
+    n_radova_potvrdjenih: prebroj(spisak, 'potvrdjen'),
+    n_radova_verovatnih: prebroj(spisak, 'verovatan'),
   });
 });
-const SA_RADOVIMA = TACKE.filter((tacka) => tacka.n_radova > 0).length;
+// Бројач филтера: тачке са бар једним потврђеним ИЛИ вероватним радом, не
+// све тачке које носе било какав помен назива.
+const SA_POTVRDOM = TACKE.filter(
+  (tacka) => tacka.n_radova_potvrdjenih > 0 || tacka.n_radova_verovatnih > 0,
+).length;
 
 function izmedju(tekst, pocetak, kraj, ukljuciKraj) {
   const i = tekst.indexOf(pocetak);
@@ -46,7 +56,7 @@ function razresiJinju(html) {
   return html
     .replace(/\{\{\s*\(ogk_grupe or \{\}\)\.get\('(\w+)',\s*0\)\s*\}\}/g,
       (_, kljuc) => String(OGK_JSON.grupe[kljuc] ?? 0))
-    .replace(/\{\{\s*ogk_sa_radovima or 0\s*\}\}/g, String(SA_RADOVIMA))
+    .replace(/\{\{\s*ogk_sa_radovima or 0\s*\}\}/g, String(SA_POTVRDOM))
     .replace(/\{%[^%]*%\}/g, '')
     .replace(/\{\{[^}]*\}\}/g, '#');
 }
@@ -104,6 +114,9 @@ const STUBOVI = `
       return Promise.resolve({
         ok: true,
         json: function () {
+          var po = function (o) {
+            return spisak.filter(function (r) { return r.ocena === o; }).length;
+          };
           return Promise.resolve({
             success: true,
             data: {
@@ -111,7 +124,15 @@ const STUBOVI = `
               naziv: '',
               radovi: spisak,
               n_radova: spisak.length,
-              n_radova_geo: spisak.filter(function (r) { return r.geo; }).length,
+              n_radova_potvrdjenih: po('potvrdjen'),
+              n_radova_verovatnih: po('verovatan'),
+              po_oceni: {
+                potvrdjen: po('potvrdjen'),
+                verovatan: po('verovatan'),
+                nesigurno: po('nesigurno'),
+                neoceneno: po('neoceneno'),
+                nije: po('nije'),
+              },
             },
           });
         },
@@ -467,7 +488,12 @@ test('мени ради и на уском екрану, без хоризонт
 
 // --- Радови по OGK тачки -----------------------------------------------------
 
-const MESOVITA = 'K34-03-0035';   // 1 релевантан рад + 2 пука помена назива
+// Банска (каменолом): 1 потврђен, 2 вероватна, 1 несигуран, 4 „није“ —
+// једина тачка у испоруци која носи све четири оцене одједном.
+const MESOVITA = 'K34-42-0043';
+// Сењ (каменолом): 8 радова о ГРАДУ Сењу, ниједан о кречњаку. Тачка која
+// мора да каже да ниједан прикупљени рад није њен.
+const BEZ_POTVRDE = 'K34-07-0055';
 
 function samoJednaTacka(id) {
   return {
@@ -502,9 +528,13 @@ test('поповер OGK тачке приказује рад са https лин�
     .toHaveAttribute('rel', 'noopener noreferrer');
 });
 
-test('„Остали помени назива“ су склопиви и подразумевано затворени', async ({ page }) => {
+test('поповер има три одељка: потврђени, вероватни, склопљено остало', async ({ page }) => {
   const spisak = OGK_RADOVI[MESOVITA];
-  const ostalih = spisak.filter((rad) => !rad.geo).length;
+  const potvrdjenih = prebroj(spisak, 'potvrdjen');
+  const verovatnih = prebroj(spisak, 'verovatan');
+  const ostalih = spisak.length - potvrdjenih - verovatnih;
+  expect(potvrdjenih).toBeGreaterThan(0);
+  expect(verovatnih).toBeGreaterThan(0);
   expect(ostalih).toBeGreaterThan(0);
   await ucitajMeni(page, samoJednaTacka(MESOVITA));
 
@@ -512,22 +542,82 @@ test('„Остали помени назива“ су склопиви и по
   await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
   await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
 
-  const detalji = page.locator('.leaflet-popup details');
+  const popover = page.locator('.leaflet-popup');
+  const naslovi = popover.locator('.ogk-radovi-naslov');
+  await expect(naslovi).toHaveCount(2);
+  await expect(naslovi.nth(0))
+    .toHaveText('Радови о овом локалитету (' + potvrdjenih + ')');
+  await expect(naslovi.nth(1))
+    .toHaveText('Вероватно исти простор (' + verovatnih + ')');
+  // Оба одељка су одмах видљива, али је други визуелно подређен.
+  await expect(naslovi.nth(0)).toBeVisible();
+  await expect(naslovi.nth(1)).toBeVisible();
+  await expect(naslovi.nth(1)).toHaveClass(/ogk-radovi-naslov--slabiji/);
+  const [jaci, slabiji] = await naslovi.evaluateAll(
+    (els) => els.map((el) => getComputedStyle(el).textTransform),
+  );
+  expect(jaci).toBe('uppercase');
+  expect(slabiji).toBe('none');
+
+  // Трећи одељак: несигурно + неповезано, склопљено и затворено.
+  const detalji = popover.locator('details');
   await expect(detalji).toHaveCount(1);
   await expect(detalji.locator('summary'))
-    .toHaveText('Остали помени назива (' + ostalih + ')');
+    .toHaveText('Несигурно и неповезано (' + ostalih + ')');
   expect(await detalji.evaluate((el) => el.open)).toBe(false);
   // Ништа се не брише — само је склопљено.
   await expect(detalji.locator('.ogk-rad')).toHaveCount(ostalih);
   await expect(detalji.locator('.ogk-rad').first()).toBeHidden();
-
   await detalji.locator('summary').click();
   await expect(detalji.locator('.ogk-rad').first()).toBeVisible();
+
+  // Ниједан рад није испао: 3 видљива + остатак у склопивом одељку.
+  await expect(popover.locator('.ogk-rad')).toHaveCount(spisak.length);
+});
+
+test('испод сваког рада стоји разлог његове оцене', async ({ page }) => {
+  const spisak = OGK_RADOVI[MESOVITA];
+  await ucitajMeni(page, samoJednaTacka(MESOVITA));
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+
+  const popover = page.locator('.leaflet-popup');
+  await expect(popover.locator('.ogk-rad-razlog')).toHaveCount(spisak.length);
+  // Разлог првог (потврђеног) рада стоји уз њега, реч по реч из података.
+  await expect(popover.locator('.ogk-rad').first().locator('.ogk-rad-razlog'))
+    .toHaveText(spisak[0].razlog);
+  // Пригушен, али кроз токен теме — не хардкодована боја.
+  expect(await popover.locator('.ogk-rad-razlog').first()
+    .evaluate((el) => getComputedStyle(el).color)).toBe('rgb(102, 112, 133)');
+});
+
+test('тачка без иједног потврђеног рада то каже отворено', async ({ page }) => {
+  const spisak = OGK_RADOVI[BEZ_POTVRDE];
+  expect(spisak.length).toBeGreaterThan(0);
+  expect(prebroj(spisak, 'potvrdjen') + prebroj(spisak, 'verovatan')).toBe(0);
+  await ucitajMeni(page, samoJednaTacka(BEZ_POTVRDE));
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+
+  const popover = page.locator('.leaflet-popup');
+  const poruka = popover.locator('.ogk-radovi-prazno');
+  await expect(poruka).toBeVisible();
+  await expect(poruka).toHaveText('Ниједан прикупљени рад није потврђен за овај локалитет.');
+  // Порука долази ПРЕ склопљеног одељка, и нема лажног одељка потврђених.
+  await expect(popover.locator('.ogk-radovi-naslov')).toHaveCount(0);
+  const detalji = popover.locator('details');
+  await expect(detalji).toHaveCount(1);
+  expect(await detalji.evaluate((el) => el.open)).toBe(false);
+  await expect(detalji.locator('.ogk-rad')).toHaveCount(spisak.length);
 });
 
 test('url који није http(s) се исписује као текст, не као href', async ({ page }) => {
   const tacka = Object.assign({}, TACKE.find((t) => t.id === MESOVITA), {
-    n_radova: 1, n_radova_geo: 1,
+    n_radova: 1, n_radova_potvrdjenih: 1, n_radova_verovatnih: 0,
   });
   await ucitajMeni(page, {
     tacke: [tacka],
@@ -535,7 +625,7 @@ test('url који није http(s) се исписује као текст, н�
       [MESOVITA]: [{
         naslov: 'Сумњив рад', godina: 2020, autori: 'Аутор', casopis: 'Часопис',
         doi: '', url: 'javascript:alert(1)', pdf_url: 'javascript:alert(2)',
-        geo: true,
+        ocena: 'potvrdjen', razlog: 'разлог',
       }],
     },
   });
@@ -564,25 +654,42 @@ test('пад захтева за радовима даје црвену пору
     .toBe('rgb(138, 24, 24)');   // --status-busy-text (AA и у тамној теми)
 });
 
-test('„Само тачке са радовима“ смањује број маркера и враћа их', async ({ page }) => {
+test('„Само са потврђеним радовима“ смањује број маркера и враћа их', async ({ page }) => {
   const busotine = TACKE.filter((t) => t.grupa === 'busotine');
-  const saRadovima = busotine.filter((t) => t.n_radova > 0).length;
-  expect(saRadovima).toBeGreaterThan(0);
-  expect(saRadovima).toBeLessThan(busotine.length);
+  const saPotvrdom = busotine.filter(
+    (t) => t.n_radova_potvrdjenih > 0 || t.n_radova_verovatnih > 0,
+  ).length;
+  const saBiloKakvimRadom = busotine.filter((t) => t.n_radova > 0).length;
+  expect(saPotvrdom).toBeGreaterThan(0);
+  expect(saPotvrdom).toBeLessThan(busotine.length);
+  // Филтер више не значи „има било какав рад“ — иначе тест ништа не доказује.
+  expect(saPotvrdom).toBeLessThan(saBiloKakvimRadom);
   await ucitajMeni(page, { tacke: busotine });
 
+  await expect(page.locator('#toggle-ogk-samo-radovi + label'))
+    .toContainText('Само са потврђеним радовима');
   await expect(page.locator('[data-ogk-broj="samo-radovi"]'))
-    .toHaveText(String(SA_RADOVIMA));
+    .toHaveText(String(SA_POTVRDOM));
 
   await page.locator('#toggle-ogk-busotine').check();
   const iscrtano = () => page.evaluate(() => window.map.__dodati[0].__slojevi.length);
   await expect.poll(iscrtano).toBe(busotine.length);
 
   await page.locator('#toggle-ogk-samo-radovi').check();
-  await expect.poll(iscrtano).toBe(saRadovima);
+  await expect.poll(iscrtano).toBe(saPotvrdom);
   // Бејџ прати оно што је исцртано, а сервер се не пита поново.
-  await expect(page.locator('[data-ogk-broj="busotine"]')).toHaveText(String(saRadovima));
+  await expect(page.locator('[data-ogk-broj="busotine"]')).toHaveText(String(saPotvrdom));
   expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+
+  // Тачка са радовима од којих ниједан није њен НЕ пролази филтер.
+  const preziveli = await page.evaluate(
+    () => window.map.__dodati[0].__slojevi.map((m) => m.__popup),
+  );
+  const tudji = busotine.find((t) => t.n_radova > 0 && !t.n_radova_potvrdjenih
+    && !t.n_radova_verovatnih);
+  expect(tudji).toBeTruthy();
+  expect(preziveli.some((html) => html.includes('data-ogk-radovi="' + tudji.id + '"')))
+    .toBe(false);
 
   await page.locator('#toggle-ogk-samo-radovi').uncheck();
   await expect.poll(iscrtano).toBe(busotine.length);
