@@ -145,6 +145,54 @@
         border-radius: 50%;
         background: var(--text-muted);
     }
+    /* Списак радова у поповеру OGK тачке. Поповер не сме да буде дужи од
+       екрана, а боје иду искључиво кроз токене теме (парови --text-muted /
+       --text-secondary на --bg-card се већ мере у test_kontrast_hardkod.py). */
+    .ogk-radovi {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--border-color);
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+    .ogk-radovi-naslov {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+    .ogk-rad {
+        margin-bottom: 6px;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+    .ogk-rad small {
+        color: var(--text-secondary);
+    }
+    .ogk-rad-pdf {
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+    .ogk-radovi summary {
+        cursor: pointer;
+        margin: 4px 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+    .ogk-radovi-greska {
+        /* Исти пар као .map-layer-error (--danger као текст пада AA у
+           тамној теми), али без увлачења — овде нема прекидача лево. */
+        padding: 2px 6px;
+        border: 1px solid var(--status-busy-border);
+        border-radius: var(--radius-sm);
+        background: var(--status-busy-bg);
+        color: var(--status-busy-text);
+        font-size: 0.72rem;
+        font-weight: 600;
+    }
     .map-info {
         position: absolute;
         bottom: 10px;
@@ -1361,6 +1409,17 @@
                                         <span class="badge map-count-badge" data-ogk-broj="ostalo">{{ (ogk_grupe or {}).get('ostalo', 0) }}</span>
                                     </label>
                                     <div class="map-layer-error" data-ogk-greska="ostalo" role="alert"></div>
+                                </div>
+                                <!-- Филтер, НЕ слој: намерно без data-map-layer,
+                                     да не упадне у бројач групе, у „Угаси све
+                                     слојеве“ ни у OGK_GRUPE петљу. -->
+                                <div class="form-check form-switch mb-1 mt-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-ogk-samo-radovi">
+                                    <label class="form-check-label" for="toggle-ogk-samo-radovi" style="font-size:0.85rem;">
+                                        <i class="bi bi-journal-text"></i> Само тачке са радовима
+                                        <span class="badge map-count-badge" data-ogk-broj="samo-radovi">{{ ogk_sa_radovima or 0 }}</span>
+                                    </label>
+                                    <div class="map-layer-error" data-ogk-greska="samo-radovi" role="alert"></div>
                                 </div>
                                 <div class="map-subheading">Локалитети музеја</div>
                                 <div class="form-check form-switch mb-1 mt-1">
@@ -9516,10 +9575,17 @@
         ostalo: 'Остало'
     };
 
+    // Колико релевантних радова стаје у поповер пре него што и они оду у
+    // склопиву секцију — поповер не сме да буде дужи од екрана.
+    var OGK_RADOVA_ODMAH = 15;
+    var OGK_KLJUC_SAMO_RADOVI = 'mis.maps.ogk-samo-radovi';
+
     var ogkRenderer = L.canvas({ pane: 'thematic-vector-pane', padding: 0.3 });
     var ogkSlojevi = {};        // grupa -> L.layerGroup
     var ogkKes = {};            // grupa -> niz tačaka (učitano se ne traži ponovo)
     var ogkUcitavanje = {};     // grupa -> bool (u letu)
+    var ogkRadoviKes = {};      // ogk_id -> obećanje sa radovima (jednom po tački)
+    var ogkSamoRadovi = false;  // filter „само тачке са радовима“
     var _ogkSonda = null;
 
     function ogkDefinicija(kljuc) {
@@ -9608,13 +9674,126 @@
         if (tacka.opis) {
             delovi += '<br><small><em>' + escHtml(tacka.opis) + '</em></small>';
         }
+        // Списак радова стиже лењо, тек кад се поповер отвори. Тачка без
+        // радова не добија ништа — не пише се „нема радова“.
+        var radovi = '';
+        if ((tacka.n_radova || 0) > 0) {
+            radovi = '<div class="ogk-radovi" data-ogk-radovi="' +
+                escHtml(tacka.id || '') + '">' +
+                '<small>Радови (' + escHtml(String(tacka.n_radova)) +
+                ') — учитавам…</small></div>';
+        }
         return '<div style="min-width:200px;max-width:320px;">' +
             '<strong style="font-size:0.95rem;">' + escHtml(tacka.naziv || '—') + '</strong>' +
             '<br><small>' + escHtml(kategorija) + '</small>' +
             delovi +
             '<br><small>Поузданост GPS: ' + escHtml(tacka.pouzdanost_gps || '—') + '</small>' +
             '<br><small>' + formatCoord(tacka.lat, 4) + ', ' + formatCoord(tacka.lon, 4) + '</small>' +
+            radovi +
             '</div>';
+    }
+
+    // Само http(s) сме да постане href — „javascript:“ и све остало се
+    // приказује као обичан текст.
+    function ogkBezbedanUrl(url) {
+        var ociscen = (url || '').trim();
+        return /^https?:\/\//i.test(ociscen) ? ociscen : '';
+    }
+
+    function ogkRedRada(rad) {
+        var naslov = escHtml(rad.naslov || 'Без наслова');
+        var url = ogkBezbedanUrl(rad.url);
+        var red = '<div class="ogk-rad">';
+        red += url
+            ? '<a href="' + escHtml(url) + '" target="_blank" rel="noopener noreferrer">' +
+              naslov + '</a>'
+            : naslov;
+        var meta = [];
+        if (rad.autori) meta.push(escHtml(rad.autori));
+        if (rad.casopis) meta.push(escHtml(rad.casopis));
+        if (rad.godina) meta.push(escHtml(String(rad.godina)));
+        if (meta.length) red += '<br><small>' + meta.join(' · ') + '</small>';
+        var pdf = ogkBezbedanUrl(rad.pdf_url);
+        if (pdf) {
+            red += ' <a class="ogk-rad-pdf" href="' + escHtml(pdf) +
+                '" target="_blank" rel="noopener noreferrer">PDF</a>';
+        }
+        return red + '</div>';
+    }
+
+    function ogkSklopivo(naslov, spisak) {
+        // <details> ради без JS и без инлајн onclick (CSP).
+        return '<details><summary>' + escHtml(naslov) + ' (' + spisak.length +
+            ')</summary>' + spisak.map(ogkRedRada).join('') + '</details>';
+    }
+
+    function ogkSpisakRadova(radovi) {
+        // Жетва је рађена по имену локалитета и пуна је промашаја: релевантни
+        // (geo) иду одмах, остали у склопиву секцију. Ништа се не крије трајно.
+        var vazni = radovi.filter(function(rad) { return !!rad.geo; });
+        var ostali = radovi.filter(function(rad) { return !rad.geo; });
+        var html = vazni.slice(0, OGK_RADOVA_ODMAH).map(ogkRedRada).join('');
+        var prekobrojni = vazni.slice(OGK_RADOVA_ODMAH);
+        if (prekobrojni.length) {
+            html += ogkSklopivo('Још релевантних', prekobrojni);
+        }
+        if (ostali.length) {
+            html += ogkSklopivo('Остали помени назива', ostali);
+        }
+        return html;
+    }
+
+    function ogkDohvatiRadove(id) {
+        if (ogkRadoviKes[id]) return ogkRadoviKes[id];
+        var obecanje = fetch('/api/map/ogk-points/' + encodeURIComponent(id) + '/radovi')
+            .then(function(odgovor) {
+                if (!odgovor.ok) throw new Error('HTTP ' + odgovor.status);
+                return odgovor.json();
+            })
+            .then(function(rezultat) {
+                if (!rezultat || !rezultat.success) {
+                    throw new Error((rezultat && rezultat.message) || 'неисправан одговор сервера');
+                }
+                return (rezultat.data && rezultat.data.radovi) || [];
+            })
+            .catch(function(greska) {
+                // Пад се не кешира — следеће отварање поповера сме да покуша поново.
+                delete ogkRadoviKes[id];
+                throw greska;
+            });
+        ogkRadoviKes[id] = obecanje;
+        return obecanje;
+    }
+
+    function ogkPopuniRadove(koren) {
+        if (!koren) return;
+        var kutija = koren.querySelector('[data-ogk-radovi]');
+        if (!kutija || kutija.getAttribute('data-ogk-stanje') === 'gotovo') return;
+        var id = kutija.getAttribute('data-ogk-radovi');
+        ogkDohvatiRadove(id).then(function(radovi) {
+            kutija.setAttribute('data-ogk-stanje', 'gotovo');
+            kutija.innerHTML = radovi.length
+                ? '<div class="ogk-radovi-naslov">Радови (' + radovi.length + ')</div>' +
+                  ogkSpisakRadova(radovi)
+                : '<small>Нема радова.</small>';
+        }).catch(function(greska) {
+            // Никад празно: и конзола и црвена порука у самом поповеру.
+            console.error('OGK радови тачке „' + id + '“ нису учитани:', greska);
+            kutija.innerHTML = '<div class="ogk-radovi-greska" role="alert">' +
+                'Радови нису учитани: ' + escHtml(greska.message || 'грешка мреже') +
+                '</div>';
+        });
+    }
+
+    function ogkNaOtvaranjePopovera(dogadjaj) {
+        var popover = dogadjaj && dogadjaj.popup;
+        ogkPopuniRadove(popover && typeof popover.getElement === 'function'
+            ? popover.getElement() : null);
+    }
+
+    function ogkVidljive(tacke) {
+        if (!ogkSamoRadovi) return tacke;
+        return tacke.filter(function(tacka) { return (tacka.n_radova || 0) > 0; });
     }
 
     function ogkPrikazi(kljuc, tacke) {
@@ -9625,15 +9804,21 @@
         }
         var sloj = ogkSloj(kljuc);
         var stil = ogkStil(def.token);
+        var vidljive = ogkVidljive(tacke);
         sloj.clearLayers();
-        safeRenderItems(tacke, 'ogk-' + kljuc, function(tacka) {
+        safeRenderItems(vidljive, 'ogk-' + kljuc, function(tacka) {
             var lat = toFiniteNumber(tacka.lat);
             var lon = toFiniteNumber(tacka.lon);
             if (lat === null || lon === null) return;
             var marker = L.circleMarker([lat, lon], stil);
             marker.bindPopup(ogkPopup(tacka), { maxWidth: 350 });
+            if ((tacka.n_radova || 0) > 0) {
+                marker.on('popupopen', ogkNaOtvaranjePopovera);
+            }
             sloj.addLayer(marker);
         });
+        // Бејџ прати оно што је стварно исцртано, да филтер не лаже бројем.
+        ogkPostaviBroj(kljuc, vidljive.length);
     }
 
     function ogkUcitaj(kljuc) {
@@ -9651,8 +9836,8 @@
                 }
                 var tacke = (rezultat.data && rezultat.data.tacke) || [];
                 ogkKes[kljuc] = tacke;
+                ogkIzvorRadova((rezultat.data && rezultat.data.radovi_izvor) || 'nedostaje');
                 ogkPrikazi(kljuc, tacke);
-                ogkPostaviBroj(kljuc, tacke.length);
                 bringThematicLayersToFront();
             })
             .catch(function(greska) {
@@ -9699,6 +9884,48 @@
             }
         });
     });
+
+    function ogkIzvorRadova(stanje) {
+        // Сервер каже да ли је data/ogk_radovi.json прочитан. „nedostaje“ не
+        // гаси слој тачака, али се мора видети поред прекидача филтера.
+        if (stanje === 'ok') {
+            ogkGreska('samo-radovi', '');
+            return;
+        }
+        console.error('OGK: сервер нема исправан data/ogk_radovi.json — ' +
+            'тачке су без радова.');
+        ogkGreska('samo-radovi', 'Радови нису доступни на серверу.');
+    }
+
+    (function() {
+        var prekidac = document.getElementById('toggle-ogk-samo-radovi');
+        if (!prekidac) {
+            console.error('OGK: недостаје прекидач „Само тачке са радовима“.');
+            return;
+        }
+        // Засебан кључ: затечено стање отворених група (mis.maps.grupe) остаје
+        // нетакнуто корисницима који већ имају упаљене слојеве.
+        try {
+            ogkSamoRadovi = localStorage.getItem(OGK_KLJUC_SAMO_RADOVI) === '1';
+        } catch (greska) {
+            console.warn('Стање филтера радова се не да прочитати:', greska);
+        }
+        prekidac.checked = ogkSamoRadovi;
+
+        prekidac.addEventListener('change', function() {
+            ogkSamoRadovi = this.checked;
+            try {
+                localStorage.setItem(OGK_KLJUC_SAMO_RADOVI, ogkSamoRadovi ? '1' : '0');
+            } catch (greska) {
+                console.warn('Стање филтера радова се не да сачувати:', greska);
+            }
+            // Филтрира се из већ учитаног кеша — сервер се не пита поново.
+            OGK_GRUPE.forEach(function(def) {
+                if (ogkKes[def.kljuc]) ogkPrikazi(def.kljuc, ogkKes[def.kljuc]);
+            });
+            bringThematicLayersToFront();
+        });
+    })();
 
     function ogkOsveziVelicinu() {
         var r = ogkPolupecnik();
