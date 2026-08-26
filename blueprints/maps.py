@@ -157,6 +157,13 @@ def api_ogk_points():
     return maps_layer_views.api_ogk_points(_app_root())
 
 
+@maps_bp.route('/api/map/ogk-points/<ogk_id>/radovi')
+@login_required
+def api_ogk_point_radovi(ogk_id):
+    """Serve the harvested papers of a single OGK point (lazy popup content)."""
+    return maps_layer_views.api_ogk_point_radovi(_app_root(), ogk_id)
+
+
 @maps_bp.route('/api/map/stratigraphy')
 @login_required
 def api_stratigraphy_localities():
