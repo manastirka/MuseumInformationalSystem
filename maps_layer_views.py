@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 
 from flask import current_app, jsonify, render_template, request, send_file
 
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 _ore_deposits_cache = None
 _ogk_points_cache = None
+_ogk_radovi_cache = None
 _stratigraphy_cache = None
 _paleo_localities_cache = None
 _mining_operations_cache = None
@@ -36,9 +38,32 @@ def _ogk_group_counts():
     return {}
 
 
+def _ogk_broj_sa_radovima():
+    """Return koliko OGK tačaka ima bar jedan požnjeven rad (badge filtera).
+
+    Broji se presek sa tačkama — id iz žetve koji ne postoji u ogk_points.json
+    ne sme da naduva brojač na prekidaču koji filtrira baš te tačke.
+    """
+    try:
+        tacke = _load_json_cached(
+            '_ogk_points_cache',
+            os.path.join(current_app.root_path, 'data', 'ogk_points.json'),
+        )
+        poznati = {tacka.get('id') for tacka in (tacke.get('tacke', [])
+                                                 if isinstance(tacke, dict) else [])}
+        radovi = _ogk_radovi(current_app.root_path)['radovi']
+        return sum(1 for ogk_id, spisak in radovi.items()
+                   if spisak and ogk_id in poznati)
+    except Exception as exc:
+        logger.error("Error counting OGK points with papers: %s", exc)
+    return 0
+
+
 def render_admin_maps():
     """Render the interactive geological map page."""
-    return render_template('admin_maps.html', ogk_grupe=_ogk_group_counts())
+    return render_template('admin_maps.html',
+                           ogk_grupe=_ogk_group_counts(),
+                           ogk_sa_radovima=_ogk_broj_sa_radovima())
 
 
 def render_admin_geological_timeline():
@@ -55,6 +80,7 @@ def _load_json_cached(cache_name, file_path):
     """
     global _ore_deposits_cache
     global _ogk_points_cache
+    global _ogk_radovi_cache
     global _stratigraphy_cache
     global _paleo_localities_cache
     global _mining_operations_cache
@@ -86,13 +112,60 @@ def api_ore_deposits(app_root):
         return jsonify({'success': False, 'message': 'Грешка при учитавању рудних лежишта'}), 500
 
 
+# Облик OGK ознаке (нпр. K34-03-0035). Кључ мапе радова се никад не тражи
+# сировим стрингом из путање — непознат облик је 404, не претрага речника.
+OGK_ID_OBLIK = re.compile(r'^[A-Za-z0-9\-]{1,32}$')
+
+
+def _ogk_radovi(app_root):
+    """Return {ogk_id: [rad, ...]} for the harvested papers, cached per process.
+
+    Missing or malformed ``data/ogk_radovi.json`` is never swallowed: the point
+    layer keeps working, but the caller learns it through ``"nedostaje"`` and
+    the reason is logged as a warning.
+    """
+    global _ogk_radovi_cache
+
+    if _ogk_radovi_cache is None:
+        putanja = os.path.join(app_root, 'data', 'ogk_radovi.json')
+        ucitano = {'radovi': {}, 'izvor': 'nedostaje'}
+        if not os.path.exists(putanja):
+            logger.warning("OGK radovi: %s ne postoji — тачке остају без радова",
+                           putanja)
+        else:
+            try:
+                with open(putanja, 'r', encoding='utf-8') as handle:
+                    podaci = json.load(handle)
+                radovi = podaci.get('radovi') if isinstance(podaci, dict) else None
+                if not isinstance(radovi, dict):
+                    logger.warning("OGK radovi: %s нема исправну мапу 'radovi'",
+                                   putanja)
+                else:
+                    ucitano = {'radovi': radovi, 'izvor': 'ok'}
+            except (OSError, ValueError) as exc:
+                logger.warning("OGK radovi: %s се не да прочитати (%s)",
+                               putanja, exc)
+        _ogk_radovi_cache = ucitano
+    return _ogk_radovi_cache
+
+
+def _prebroj_radove(spisak):
+    """Return (ukupno, geo) za spisak radova jednog lokaliteta."""
+    if not isinstance(spisak, list):
+        return 0, 0
+    geo = sum(1 for rad in spisak if isinstance(rad, dict) and rad.get('geo'))
+    return len(spisak), geo
+
+
 def api_ogk_points(app_root):
     """Serve OGK 1:100 000 point data from JSON for the map layers.
 
     Optional ``?grupe=rudnici,busotine`` filters server-side; without it the
     whole set is returned. An unknown group name is not silently dropped — it
     comes back as a 400 so a typo in the layer menu cannot look like an empty
-    layer.
+    layer. Every point carries how many harvested papers it has (``n_radova``)
+    and how many of those are geological (``n_radova_geo``), so the menu can
+    filter without a second request.
     """
     try:
         data = _load_json_cached(
@@ -118,19 +191,78 @@ def api_ogk_points(app_root):
             tacke = [tacka for tacka in tacke if tacka.get('grupa') in izabrane]
             grupe = {naziv: broj for naziv, broj in grupe.items() if naziv in izabrane}
 
+        radovi = _ogk_radovi(app_root)
+        # Копија по тачки: кеш тачака остаје онакав какав је на диску.
+        obogacene = []
+        for tacka in tacke:
+            ukupno_radova, geo_radova = _prebroj_radove(
+                radovi['radovi'].get(tacka.get('id')))
+            obogacena = dict(tacka)
+            obogacena['n_radova'] = ukupno_radova
+            obogacena['n_radova_geo'] = geo_radova
+            obogacene.append(obogacena)
+
         return jsonify({
             'success': True,
             'data': {
                 'generisano': data.get('generisano', ''),
                 'izvor': data.get('izvor', ''),
-                'ukupno': len(tacke),
+                'ukupno': len(obogacene),
                 'grupe': grupe,
-                'tacke': tacke,
+                'radovi_izvor': radovi['izvor'],
+                'tacke': obogacene,
             },
         })
     except Exception as exc:
         logger.error("Error loading OGK points: %s", exc)
         return jsonify({'success': False, 'message': 'Грешка при учитавању OGK тачака'}), 500
+
+
+def api_ogk_point_radovi(app_root, ogk_id):
+    """Serve the harvested papers of a single OGK point.
+
+    A point that exists but has no papers is a 200 with an empty list — that is
+    not an error. An unknown (or malformed) id is a 404, so a typo cannot look
+    like a locality that nobody ever wrote about.
+    """
+    try:
+        ogk_id = (ogk_id or '').strip()
+        if not OGK_ID_OBLIK.match(ogk_id):
+            return jsonify({
+                'success': False,
+                'message': 'Неисправна ознака OGK тачке.',
+            }), 404
+
+        data = _load_json_cached(
+            '_ogk_points_cache',
+            os.path.join(app_root, 'data', 'ogk_points.json'),
+        )
+        tacke = data.get('tacke', []) if isinstance(data, dict) else []
+        tacka = next((t for t in tacke if t.get('id') == ogk_id), None)
+        if tacka is None:
+            return jsonify({
+                'success': False,
+                'message': 'Непозната OGK тачка: ' + ogk_id,
+            }), 404
+
+        spisak = _ogk_radovi(app_root)['radovi'].get(ogk_id) or []
+        if not isinstance(spisak, list):
+            spisak = []
+        ukupno_radova, geo_radova = _prebroj_radove(spisak)
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': ogk_id,
+                'naziv': tacka.get('naziv', ''),
+                'radovi': spisak,
+                'n_radova': ukupno_radova,
+                'n_radova_geo': geo_radova,
+            },
+        })
+    except Exception as exc:
+        logger.error("Error loading OGK point papers for %s: %s", ogk_id, exc)
+        return jsonify({'success': False, 'message': 'Грешка при учитавању радова'}), 500
 
 
 def api_stratigraphy_localities(app_root):

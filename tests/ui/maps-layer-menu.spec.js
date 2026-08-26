@@ -20,6 +20,20 @@ const SABLON = fs.readFileSync(path.join(KOREN, 'templates/admin_maps.html'), 'u
 const OGK_JSON = JSON.parse(
   fs.readFileSync(path.join(KOREN, 'data/ogk_points.json'), 'utf8'),
 );
+const OGK_RADOVI = JSON.parse(
+  fs.readFileSync(path.join(KOREN, 'data/ogk_radovi.json'), 'utf8'),
+).radovi;
+
+// Сервер лепи n_radova/n_radova_geo на сваку тачку — харнес ради исто, из
+// истих података, да мени добије тачно оно што добија и у апликацији.
+const TACKE = OGK_JSON.tacke.map((tacka) => {
+  const spisak = OGK_RADOVI[tacka.id] || [];
+  return Object.assign({}, tacka, {
+    n_radova: spisak.length,
+    n_radova_geo: spisak.filter((rad) => rad.geo).length,
+  });
+});
+const SA_RADOVIMA = TACKE.filter((tacka) => tacka.n_radova > 0).length;
 
 function izmedju(tekst, pocetak, kraj, ukljuciKraj) {
   const i = tekst.indexOf(pocetak);
@@ -32,6 +46,7 @@ function razresiJinju(html) {
   return html
     .replace(/\{\{\s*\(ogk_grupe or \{\}\)\.get\('(\w+)',\s*0\)\s*\}\}/g,
       (_, kljuc) => String(OGK_JSON.grupe[kljuc] ?? 0))
+    .replace(/\{\{\s*ogk_sa_radovima or 0\s*\}\}/g, String(SA_RADOVIMA))
     .replace(/\{%[^%]*%\}/g, '')
     .replace(/\{\{[^}]*\}\}/g, '#');
 }
@@ -83,6 +98,25 @@ const STUBOVI = `
   window.fetch = function (url) {
     window.__fetchPozivi.push(url);
     if (window.__fetchPada) return Promise.reject(new Error('мрежа пала'));
+    var radoviId = (url.match(/ogk-points\\/([^/]+)\\/radovi/) || [])[1];
+    if (radoviId) {
+      var spisak = window.__RADOVI[decodeURIComponent(radoviId)] || [];
+      return Promise.resolve({
+        ok: true,
+        json: function () {
+          return Promise.resolve({
+            success: true,
+            data: {
+              id: radoviId,
+              naziv: '',
+              radovi: spisak,
+              n_radova: spisak.length,
+              n_radova_geo: spisak.filter(function (r) { return r.geo; }).length,
+            },
+          });
+        },
+      });
+    }
     var grupa = (url.split('grupe=')[1] || '').split('&')[0];
     var tacke = window.__TACKE.filter(function (t) { return t.grupa === grupa; });
     return Promise.resolve({
@@ -90,7 +124,12 @@ const STUBOVI = `
       json: function () {
         return Promise.resolve({
           success: true,
-          data: { ukupno: tacke.length, grupe: {}, tacke: tacke },
+          data: {
+            ukupno: tacke.length,
+            grupe: {},
+            radovi_izvor: window.__RADOVI_IZVOR,
+            tacke: tacke,
+          },
         });
       },
     });
@@ -111,8 +150,26 @@ const STUBOVI = `
     circleMarker: function (latlng, stil) {
       return {
         __latlng: latlng,
+        __osluskivaci: {},
         options: Object.assign({}, stil),
         bindPopup: function (html) { this.__popup = html; return this; },
+        on: function (dogadjaj, fn) {
+          (this.__osluskivaci[dogadjaj] = this.__osluskivaci[dogadjaj] || []).push(fn);
+          return this;
+        },
+        // Прави popupopen: Leaflet прво убаци садржај у DOM, па опали
+        // догађај на маркеру са {popup} који зна свој елемент.
+        __otvoriPopup: function () {
+          var el = document.createElement('div');
+          el.className = 'leaflet-popup';
+          el.innerHTML = this.__popup;
+          document.body.appendChild(el);
+          var popover = { getElement: function () { return el; } };
+          (this.__osluskivaci.popupopen || []).forEach(function (fn) {
+            fn({ popup: popover });
+          });
+          return el;
+        },
         setStyle: function (s) { Object.assign(this.options, s); return this; },
         setRadius: function (r) { this.options.radius = r; return this; },
       };
@@ -176,7 +233,9 @@ const STUBOVI = `
 // зато се харнес служи са правог (пресретнутог) origin-а.
 const HARNES_URL = 'http://mis.harness.test/maps-menu';
 
-async function ucitajMeni(page, { tacke = null, localStorageStanje = null } = {}) {
+async function ucitajMeni(page, {
+  tacke = null, localStorageStanje = null, radoviIzvor = 'ok', radovi = null,
+} = {}) {
   await page.route(HARNES_URL, (route) => route.fulfill({
     status: 200,
     contentType: 'text/html; charset=utf-8',
@@ -185,10 +244,17 @@ async function ucitajMeni(page, { tacke = null, localStorageStanje = null } = {}
       `<body><div id="map-right-col">${MENI}</div></body></html>`,
   }));
   await page.goto(HARNES_URL);
-  await page.evaluate(([izabrane, stanje]) => {
+  await page.evaluate(([izabrane, stanje, izvor, spisak]) => {
     window.__TACKE = izabrane;
+    window.__RADOVI_IZVOR = izvor;
+    window.__RADOVI = spisak;
     if (stanje) localStorage.setItem('mis.maps.grupe', stanje);
-  }, [tacke || OGK_JSON.tacke.slice(0, 400), localStorageStanje]);
+  }, [
+    tacke || TACKE.slice(0, 400),
+    localStorageStanje,
+    radoviIzvor,
+    radovi || {},
+  ]);
   await page.addScriptTag({ content: STUBOVI });
   await page.addScriptTag({ content: SKRIPTA });
 }
@@ -279,7 +345,7 @@ test('„Угаси све слојеве“ шаље прави change дога
 });
 
 test('OGK слој се учитава лењо и кешира — други пут нема захтева', async ({ page }) => {
-  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine');
+  const busotine = TACKE.filter((t) => t.grupa === 'busotine');
   await ucitajMeni(page, { tacke: busotine });
 
   expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(0);
@@ -301,8 +367,8 @@ test('OGK слој се учитава лењо и кешира — други �
 });
 
 test('маркер расте са зумом, и то само на слојевима који су на карти', async ({ page }) => {
-  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine').slice(0, 20);
-  const izvori = OGK_JSON.tacke.filter((t) => t.grupa === 'izvori').slice(0, 20);
+  const busotine = TACKE.filter((t) => t.grupa === 'busotine').slice(0, 20);
+  const izvori = TACKE.filter((t) => t.grupa === 'izvori').slice(0, 20);
   await ucitajMeni(page, { tacke: busotine.concat(izvori) });
 
   await page.locator('#toggle-ogk-busotine').check();
@@ -356,7 +422,7 @@ test('пад fetch-а даје видљив црвен текст поред п�
 });
 
 test('боја маркера долази из токена теме и прати промену теме', async ({ page }) => {
-  const busotine = OGK_JSON.tacke.filter((t) => t.grupa === 'busotine').slice(0, 20);
+  const busotine = TACKE.filter((t) => t.grupa === 'busotine').slice(0, 20);
   await ucitajMeni(page, { tacke: busotine });
 
   // Узорак боје у менију већ носи токен.
@@ -397,6 +463,156 @@ test('мени ради и на уском екрану, без хоризонт
   await expect(page.locator('#mapGroupGeologija')).toHaveClass(/show/);
   await page.locator('#toggle-ogk-fosili').check();
   await expect(page.locator('[data-map-group-badge="geologija"]')).toHaveText('1');
+});
+
+// --- Радови по OGK тачки -----------------------------------------------------
+
+const MESOVITA = 'K34-03-0035';   // 1 релевантан рад + 2 пука помена назива
+
+function samoJednaTacka(id) {
+  return {
+    tacke: [TACKE.find((tacka) => tacka.id === id)],
+    radovi: { [id]: OGK_RADOVI[id] },
+  };
+}
+
+test('поповер OGK тачке приказује рад са https линком, лењо', async ({ page }) => {
+  await ucitajMeni(page, samoJednaTacka(MESOVITA));
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+
+  // Поповер креће празан: списак се тражи тек кад се поповер отвори.
+  const pocetni = await page.evaluate(
+    () => window.map.__dodati[0].__slojevi[0].__popup,
+  );
+  expect(pocetni).toContain('data-ogk-radovi="' + MESOVITA + '"');
+  expect(pocetni).toContain('учитавам');
+  expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+  const popover = page.locator('.leaflet-popup');
+  await expect(popover.locator('.ogk-rad').first()).toBeVisible();
+  expect(await page.evaluate(() => window.__fetchPozivi[1]))
+    .toBe('/api/map/ogk-points/' + MESOVITA + '/radovi');
+
+  const href = await popover.locator('.ogk-rad a').first().getAttribute('href');
+  expect(href).toMatch(/^https:\/\//);
+  await expect(popover.locator('.ogk-rad a').first())
+    .toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+test('„Остали помени назива“ су склопиви и подразумевано затворени', async ({ page }) => {
+  const spisak = OGK_RADOVI[MESOVITA];
+  const ostalih = spisak.filter((rad) => !rad.geo).length;
+  expect(ostalih).toBeGreaterThan(0);
+  await ucitajMeni(page, samoJednaTacka(MESOVITA));
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+
+  const detalji = page.locator('.leaflet-popup details');
+  await expect(detalji).toHaveCount(1);
+  await expect(detalji.locator('summary'))
+    .toHaveText('Остали помени назива (' + ostalih + ')');
+  expect(await detalji.evaluate((el) => el.open)).toBe(false);
+  // Ништа се не брише — само је склопљено.
+  await expect(detalji.locator('.ogk-rad')).toHaveCount(ostalih);
+  await expect(detalji.locator('.ogk-rad').first()).toBeHidden();
+
+  await detalji.locator('summary').click();
+  await expect(detalji.locator('.ogk-rad').first()).toBeVisible();
+});
+
+test('url који није http(s) се исписује као текст, не као href', async ({ page }) => {
+  const tacka = Object.assign({}, TACKE.find((t) => t.id === MESOVITA), {
+    n_radova: 1, n_radova_geo: 1,
+  });
+  await ucitajMeni(page, {
+    tacke: [tacka],
+    radovi: {
+      [MESOVITA]: [{
+        naslov: 'Сумњив рад', godina: 2020, autori: 'Аутор', casopis: 'Часопис',
+        doi: '', url: 'javascript:alert(1)', pdf_url: 'javascript:alert(2)',
+        geo: true,
+      }],
+    },
+  });
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+
+  const popover = page.locator('.leaflet-popup');
+  await expect(popover.locator('.ogk-rad')).toContainText('Сумњив рад');
+  await expect(popover.locator('.ogk-rad a')).toHaveCount(0);
+});
+
+test('пад захтева за радовима даје црвену поруку у самом поповеру', async ({ page }) => {
+  await ucitajMeni(page, samoJednaTacka(MESOVITA));
+
+  await page.locator('#toggle-ogk-kamenolomi').check();
+  await expect.poll(() => page.evaluate(() => window.map.__dodati.length)).toBe(1);
+  await page.evaluate(() => { window.__fetchPada = true; });
+  await page.evaluate(() => window.map.__dodati[0].__slojevi[0].__otvoriPopup());
+
+  const greska = page.locator('.leaflet-popup .ogk-radovi-greska');
+  await expect(greska).toBeVisible();
+  await expect(greska).toContainText('Радови нису учитани');
+  expect(await greska.evaluate((el) => getComputedStyle(el).color))
+    .toBe('rgb(138, 24, 24)');   // --status-busy-text (AA и у тамној теми)
+});
+
+test('„Само тачке са радовима“ смањује број маркера и враћа их', async ({ page }) => {
+  const busotine = TACKE.filter((t) => t.grupa === 'busotine');
+  const saRadovima = busotine.filter((t) => t.n_radova > 0).length;
+  expect(saRadovima).toBeGreaterThan(0);
+  expect(saRadovima).toBeLessThan(busotine.length);
+  await ucitajMeni(page, { tacke: busotine });
+
+  await expect(page.locator('[data-ogk-broj="samo-radovi"]'))
+    .toHaveText(String(SA_RADOVIMA));
+
+  await page.locator('#toggle-ogk-busotine').check();
+  const iscrtano = () => page.evaluate(() => window.map.__dodati[0].__slojevi.length);
+  await expect.poll(iscrtano).toBe(busotine.length);
+
+  await page.locator('#toggle-ogk-samo-radovi').check();
+  await expect.poll(iscrtano).toBe(saRadovima);
+  // Бејџ прати оно што је исцртано, а сервер се не пита поново.
+  await expect(page.locator('[data-ogk-broj="busotine"]')).toHaveText(String(saRadovima));
+  expect(await page.evaluate(() => window.__fetchPozivi.length)).toBe(1);
+
+  await page.locator('#toggle-ogk-samo-radovi').uncheck();
+  await expect.poll(iscrtano).toBe(busotine.length);
+  await expect(page.locator('[data-ogk-broj="busotine"]')).toHaveText(String(busotine.length));
+});
+
+test('филтер радова памти стање, а не дира mis.maps.grupe', async ({ page }) => {
+  await ucitajMeni(page, { localStorageStanje: JSON.stringify({ geologija: true }) });
+
+  await page.locator('#toggle-ogk-samo-radovi').check();
+  expect(await page.evaluate(() => localStorage.getItem('mis.maps.ogk-samo-radovi')))
+    .toBe('1');
+  expect(await page.evaluate(() => localStorage.getItem('mis.maps.grupe')))
+    .toBe(JSON.stringify({ geologija: true }));
+
+  // Ново учитавање стране: прекидач је и даље упаљен.
+  await ucitajMeni(page);
+  await expect(page.locator('#toggle-ogk-samo-radovi')).toBeChecked();
+  await expect(page.locator('#mapGroupGeologija')).toHaveClass(/show/);
+});
+
+test('сервер без ogk_radovi.json се види поред прекидача филтера', async ({ page }) => {
+  await ucitajMeni(page, { radoviIzvor: 'nedostaje' });
+
+  const greska = page.locator('[data-ogk-greska="samo-radovi"]');
+  await expect(greska).toBeHidden();
+
+  await page.locator('#toggle-ogk-izvori').check();
+  await expect(greska).toBeVisible();
+  await expect(greska).toContainText('Радови нису доступни');
 });
 
 test('ниједан затечени прекидач слоја није нестао из менија', async ({ page }) => {
