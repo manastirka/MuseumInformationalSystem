@@ -39,10 +39,12 @@ def _ogk_group_counts():
 
 
 def _ogk_broj_sa_radovima():
-    """Return koliko OGK tačaka ima bar jedan požnjeven rad (badge filtera).
+    """Return koliko OGK tačaka ima bar jedan potvrđen ili verovatan rad.
 
     Broji se presek sa tačkama — id iz žetve koji ne postoji u ogk_points.json
-    ne sme da naduva brojač na prekidaču koji filtrira baš te tačke.
+    ne sme da naduva brojač na prekidaču koji filtrira baš te tačke. Sam „ima
+    rad“ ništa ne znači: žetva je išla po imenu lokaliteta, pa tačka ume da
+    nosi osam radova od kojih nijedan nije njen.
     """
     try:
         tacke = _load_json_cached(
@@ -52,8 +54,14 @@ def _ogk_broj_sa_radovima():
         poznati = {tacka.get('id') for tacka in (tacke.get('tacke', [])
                                                  if isinstance(tacke, dict) else [])}
         radovi = _ogk_radovi(current_app.root_path)['radovi']
-        return sum(1 for ogk_id, spisak in radovi.items()
-                   if spisak and ogk_id in poznati)
+        broj = 0
+        for ogk_id, spisak in radovi.items():
+            if ogk_id not in poznati:
+                continue
+            _, potvrdjenih, verovatnih = _prebroj_radove(spisak)
+            if potvrdjenih or verovatnih:
+                broj += 1
+        return broj
     except Exception as exc:
         logger.error("Error counting OGK points with papers: %s", exc)
     return 0
@@ -149,12 +157,33 @@ def _ogk_radovi(app_root):
     return _ogk_radovi_cache
 
 
+# Оцене које рад може да носи, редом од најјаче ка најслабијој. „neoceneno“ је
+# рад који суд још није стигао — не сме да се сабере са „nije“.
+OCENE_RADA = ('potvrdjen', 'verovatan', 'nesigurno', 'neoceneno', 'nije')
+
+
 def _prebroj_radove(spisak):
-    """Return (ukupno, geo) za spisak radova jednog lokaliteta."""
+    """Return (ukupno, potvrdjenih, verovatnih) za spisak radova lokaliteta."""
     if not isinstance(spisak, list):
-        return 0, 0
-    geo = sum(1 for rad in spisak if isinstance(rad, dict) and rad.get('geo'))
-    return len(spisak), geo
+        return 0, 0, 0
+    potvrdjenih = verovatnih = 0
+    for rad in spisak:
+        if not isinstance(rad, dict):
+            continue
+        if rad.get('ocena') == 'potvrdjen':
+            potvrdjenih += 1
+        elif rad.get('ocena') == 'verovatan':
+            verovatnih += 1
+    return len(spisak), potvrdjenih, verovatnih
+
+
+def _raspodela_ocena(spisak):
+    """Return {ocena: N} po svim ocenama — nepoznata oznaka pada u „neoceneno“."""
+    raspodela = dict.fromkeys(OCENE_RADA, 0)
+    for rad in spisak if isinstance(spisak, list) else []:
+        ocena = rad.get('ocena') if isinstance(rad, dict) else None
+        raspodela['neoceneno' if ocena not in raspodela else ocena] += 1
+    return raspodela
 
 
 def api_ogk_points(app_root):
@@ -164,8 +193,9 @@ def api_ogk_points(app_root):
     whole set is returned. An unknown group name is not silently dropped — it
     comes back as a 400 so a typo in the layer menu cannot look like an empty
     layer. Every point carries how many harvested papers it has (``n_radova``)
-    and how many of those are geological (``n_radova_geo``), so the menu can
-    filter without a second request.
+    and how many of those were judged to be about this very locality
+    (``n_radova_potvrdjenih`` / ``n_radova_verovatnih``), so the menu can filter
+    without a second request.
     """
     try:
         data = _load_json_cached(
@@ -195,11 +225,12 @@ def api_ogk_points(app_root):
         # Копија по тачки: кеш тачака остаје онакав какав је на диску.
         obogacene = []
         for tacka in tacke:
-            ukupno_radova, geo_radova = _prebroj_radove(
+            ukupno_radova, potvrdjenih, verovatnih = _prebroj_radove(
                 radovi['radovi'].get(tacka.get('id')))
             obogacena = dict(tacka)
             obogacena['n_radova'] = ukupno_radova
-            obogacena['n_radova_geo'] = geo_radova
+            obogacena['n_radova_potvrdjenih'] = potvrdjenih
+            obogacena['n_radova_verovatnih'] = verovatnih
             obogacene.append(obogacena)
 
         return jsonify({
@@ -248,16 +279,20 @@ def api_ogk_point_radovi(app_root, ogk_id):
         spisak = _ogk_radovi(app_root)['radovi'].get(ogk_id) or []
         if not isinstance(spisak, list):
             spisak = []
-        ukupno_radova, geo_radova = _prebroj_radove(spisak)
+        ukupno_radova, potvrdjenih, verovatnih = _prebroj_radove(spisak)
 
         return jsonify({
             'success': True,
             'data': {
                 'id': ogk_id,
                 'naziv': tacka.get('naziv', ''),
+                # Сваки рад носи и ``ocena`` и ``razlog`` из data/ogk_radovi.json
+                # — поповер тиме кустосу каже зашто рад стоји ту где стоји.
                 'radovi': spisak,
                 'n_radova': ukupno_radova,
-                'n_radova_geo': geo_radova,
+                'n_radova_potvrdjenih': potvrdjenih,
+                'n_radova_verovatnih': verovatnih,
+                'po_oceni': _raspodela_ocena(spisak),
             },
         })
     except Exception as exc:
