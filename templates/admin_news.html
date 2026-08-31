@@ -1,717 +1,636 @@
 {% extends "base.html" %}
 
-{% block title %}Музејске вести - Социјалне мреже{% endblock %}
+{% block title %}Музејске вести{% endblock %}
 
 {% block content %}
-<div class="container-main">
-    <!-- Header with Social Media Links -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card text-white page-hero" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-newspaper me-2"></i>
-                                Музејске вести
-                            </h1>
-                            <p class="mb-0 opacity-90">
-                                Вести и објаве о активностима Природњачког музеја
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-end align-items-center gap-3">
-                                <!-- Social Media Links -->
-                                <a href="https://www.facebook.com/prirodnjacki" target="_blank"
-                                   class="btn btn-light btn-lg" title="Facebook страница музеја">
-                                    <i class="bi bi-facebook text-primary"></i>
-                                </a>
-                                <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank"
-                                   class="btn btn-light btn-lg" title="Instagram профил музеја">
-                                    <i class="bi bi-instagram text-danger"></i>
-                                </a>
-                                <a href="https://nhmbeo.rs/" target="_blank"
-                                   class="btn btn-light btn-lg" title="Веб сајт музеја">
-                                    <i class="bi bi-globe text-success"></i>
-                                </a>
-                                <div class="vr bg-white opacity-50 mx-2"></div>
-                                <div class="bg-white bg-opacity-25 rounded p-3 text-center">
-                                    <h2 class="mb-0">{{ total_articles }}</h2>
-                                    <small>Укупно вести</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<style>
+/* Музејске вести — новински приказ.
+   Све боје иду кроз токене тема (static/css/main.css); ниједна вредност
+   није хардкодована да би тамна тема и контраст остали исправни. */
+.vesti { max-width: 1180px; margin: 0 auto; }
+
+.vesti-zaglavlje {
+    border-bottom: 3px solid var(--text-primary);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+.vesti-naslov {
+    font-family: var(--font-display, var(--font-family));
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0;
+    color: var(--text-primary);
+}
+.vesti-podnaslov {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin: var(--space-2) 0 0;
+}
+.vesti-traka-stanja {
+    display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+    align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--space-4); padding-top: var(--space-3);
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+}
+.vesti-stanje-uvoza { display: inline-flex; align-items: center; gap: var(--space-2); }
+.vesti-tacka { width: .55rem; height: .55rem; border-radius: 50%; flex: 0 0 auto; }
+.vesti-tacka--uspeh { background: var(--success, #198754); }
+.vesti-tacka--delimicno { background: var(--warning, #ffc107); }
+.vesti-tacka--greska { background: var(--danger); }
+.vesti-tacka--nikad { background: var(--text-muted); }
+
+/* Филтери */
+.vesti-filteri {
+    display: flex; flex-wrap: wrap; gap: var(--space-3);
+    align-items: flex-end;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+.vesti-filteri .polje { display: flex; flex-direction: column; gap: var(--space-1); }
+.vesti-filteri .polje > label {
+    font-size: var(--font-size-xs); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-secondary);
+}
+.vesti-filteri .polje--rastegljivo { flex: 1 1 16rem; min-width: 12rem; }
+
+/* Насловна вест */
+.vesti-naslovna {
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    padding-bottom: var(--space-6);
+    margin-bottom: var(--space-6);
+    border-bottom: 1px solid var(--border-color);
+}
+.vesti-naslovna__slika {
+    position: relative; overflow: hidden;
+    border-radius: var(--radius-card);
+    background: var(--bg-hover); aspect-ratio: 16 / 10;
+}
+.vesti-naslovna__slika img,
+.vest-kartica__slika img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .35s ease;
+}
+.vesti-naslovna:hover .vesti-naslovna__slika img,
+.vest-kartica:hover .vest-kartica__slika img { transform: scale(1.03); }
+.vesti-naslovna__tekst { display: flex; flex-direction: column; justify-content: center; }
+.vesti-naslovna__naslov {
+    font-family: var(--font-display, var(--font-family));
+    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+    font-weight: 800; line-height: 1.15; letter-spacing: -0.015em;
+    margin: var(--space-3) 0;
+}
+.vesti-naslovna__izvod {
+    color: var(--text-secondary); font-size: var(--font-size-lg);
+    line-height: 1.6; margin-bottom: var(--space-4);
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Мрежа картица */
+.vesti-mreza {
+    display: grid; gap: var(--space-6);
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+}
+.vest-kartica {
+    display: flex; flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.vest-kartica:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong, var(--border-color));
+    transform: translateY(-2px);
+}
+.vest-kartica:focus-within { outline: 2px solid var(--focus-ring, var(--accent)); outline-offset: 2px; }
+.vest-kartica__slika { aspect-ratio: 16 / 9; background: var(--bg-hover); overflow: hidden; }
+.vest-kartica__telo { display: flex; flex-direction: column; flex: 1 1 auto; padding: var(--space-4); }
+.vest-kartica__naslov {
+    font-family: var(--font-display, var(--font-family));
+    font-size: var(--font-size-lg); font-weight: 700; line-height: 1.3;
+    margin: var(--space-2) 0;
+}
+.vest-kartica__izvod {
+    color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; margin-bottom: var(--space-3);
+}
+.vest-kartica__podnozje {
+    margin-top: auto; padding-top: var(--space-3);
+    border-top: 1px solid var(--border-color);
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    align-items: center; justify-content: space-between;
+    font-size: var(--font-size-xs); color: var(--text-muted);
+}
+
+/* Наднаслов: тип · датум · извор */
+.vest-kicker {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+    font-size: var(--font-size-xs); text-transform: uppercase;
+    letter-spacing: .07em; font-weight: 700; color: var(--text-muted);
+}
+.vest-kicker__tip { color: var(--accent); }
+.vest-kicker__razmak { color: var(--border-strong, var(--border-color)); }
+.vest-oznaka {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .1rem .45rem; border-radius: var(--radius-badge);
+    border: 1px solid var(--border-color); color: var(--text-secondary);
+    text-transform: none; letter-spacing: 0; font-weight: 600;
+}
+
+.vest-veza { color: inherit; text-decoration: none; }
+.vest-veza:hover .vest-kartica__naslov,
+.vest-veza:hover .vesti-naslovna__naslov { text-decoration: underline; text-underline-offset: .18em; }
+.vest-veza:focus-visible { outline: 2px solid var(--focus-ring, var(--accent)); outline-offset: 3px; border-radius: var(--radius-sm); }
+
+.vesti-bez-rezultata {
+    text-align: center; padding: var(--space-12) var(--space-4);
+    border: 1px dashed var(--border-color); border-radius: var(--radius-card);
+    color: var(--text-secondary);
+}
+
+.vesti-stranicenje {
+    display: flex; justify-content: center; align-items: center;
+    gap: var(--space-3); margin: var(--space-8) 0 var(--space-4);
+    flex-wrap: wrap;
+}
+
+.vesti-drustvene {
+    display: flex; flex-wrap: wrap; gap: var(--space-3);
+    align-items: center; justify-content: center;
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--space-8); padding-top: var(--space-5);
+}
+
+@media (max-width: 860px) {
+    .vesti-naslovna { grid-template-columns: 1fr; gap: var(--space-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .vesti-naslovna__slika img, .vest-kartica__slika img, .vest-kartica {
+        transition: none;
+    }
+    .vesti-naslovna:hover .vesti-naslovna__slika img,
+    .vest-kartica:hover .vest-kartica__slika img { transform: none; }
+}
+</style>
+
+{% macro kicker(vest) -%}
+<div class="vest-kicker">
+    {%- if vest.type %}<span class="vest-kicker__tip">{{ vest.type }}</span>
+    <span class="vest-kicker__razmak" aria-hidden="true">·</span>{% endif %}
+    {%- if vest.start_date %}<time datetime="{{ vest.start_date }}">{{ vest.start_date.strftime('%d.%m.%Y.') }}</time>{% else %}<span>без датума</span>{% endif %}
+    {%- if vest.izvor == 'nhmbeo' %}
+    <span class="vest-oznaka" title="Преузето са nhmbeo.rs"><i class="bi bi-globe2" aria-hidden="true"></i>сајт</span>
+    {%- else %}
+    <span class="vest-oznaka" title="Унето кроз систем"><i class="bi bi-pencil" aria-hidden="true"></i>ручно</span>
+    {%- endif %}
+</div>
+{%- endmacro %}
+
+<div class="vesti">
+
+    <header class="vesti-zaglavlje">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h1 class="vesti-naslov">Музејске вести</h1>
+                <p class="vesti-podnaslov">
+                    Објаве Природњачког музеја — из система и са сајта
+                    <a href="https://nhmbeo.rs/" target="_blank" rel="noopener noreferrer">nhmbeo.rs</a>
+                </p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-secondary" id="dugmeOsvezi">
+                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Освежи са сајта
+                </button>
+                <button type="button" class="btn btn-primary" id="dugmeNovaVest">
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Нова вест
+                </button>
             </div>
         </div>
-    </div>
 
-    <!-- Social Media Quick Actions -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-4">
-                            <h5 class="mb-0">
-                                <i class="bi bi-share me-2"></i>
-                                Брзе акције
-                            </h5>
-                        </div>
-                        <div class="col-md-8">
-                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-                                {% if session.get('user_role') == 'admin' %}
-                                <button class="btn btn-success" onclick="showAddNewsModal()">
-                                    <i class="bi bi-plus-lg me-1"></i>
-                                    Нова вест
-                                </button>
-                                {% endif %}
-                                <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="btn btn-outline-primary">
-                                    <i class="bi bi-facebook me-1"></i>
-                                    Отвори Facebook
-                                </a>
-                                <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-outline-danger">
-                                    <i class="bi bi-instagram me-1"></i>
-                                    Отвори Instagram
-                                </a>
-                                <a href="https://nhmbeo.rs/" target="_blank" class="btn btn-outline-success">
-                                    <i class="bi bi-globe me-1"></i>
-                                    Отвори веб сајт
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="vesti-traka-stanja">
+            <div class="d-flex flex-wrap gap-3">
+                <span><strong>{{ pregled.brojevi.ukupno }}</strong> вести укупно</span>
+                <span><strong>{{ pregled.brojevi.sa_sajta }}</strong> са сајта</span>
+                <span><strong>{{ pregled.brojevi.rucnih }}</strong> ручно унетих</span>
+                {% if pregled.brojevi.najnovija %}
+                <span>најновија: <strong>{{ pregled.brojevi.najnovija.strftime('%d.%m.%Y.') }}</strong></span>
+                {% endif %}
             </div>
-        </div>
-    </div>
 
-    <!-- Search and Filter -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="input-group">
-                <span class="input-group-text bg-light">
-                    <i class="bi bi-search"></i>
+            {% set u = pregled.poslednji_uvoz %}
+            <div class="vesti-stanje-uvoza" id="stanjeUvoza">
+                {% if u %}
+                <span class="vesti-tacka vesti-tacka--{{ 'uspeh' if u.status == 'uspeh' else ('delimicno' if u.status == 'delimicno' else 'greska') }}" aria-hidden="true"></span>
+                <span>
+                    {% if u.status == 'uspeh' %}Последњи увоз успео
+                    {% elif u.status == 'delimicno' %}Последњи увоз делимичан
+                    {% elif u.status == 'u_toku' %}Увоз у току
+                    {% else %}Последњи увоз није успео{% endif %}
+                    · {{ (u.zavrseno_at or u.pokrenuto_at).strftime('%d.%m.%Y. у %H:%M') }}
                 </span>
-                <input type="text" class="form-control" id="newsSearch" placeholder="Претражите вести по наслову или садржају...">
+                {% else %}
+                <span class="vesti-tacka vesti-tacka--nikad" aria-hidden="true"></span>
+                <span>Увоз са сајта још није покретан</span>
+                {% endif %}
             </div>
         </div>
-        <div class="col-md-4">
-            <select class="form-select" id="typeFilter">
+    </header>
+
+    <form class="vesti-filteri" method="get" action="{{ url_for('content.museum_news') }}" role="search">
+        <div class="polje polje--rastegljivo">
+            <label for="filterUpit">Претрага</label>
+            <input type="search" class="form-control" id="filterUpit" name="q"
+                   value="{{ upit }}" placeholder="наслов, текст или кључне речи…">
+        </div>
+        <div class="polje">
+            <label for="filterTip">Тип</label>
+            <select class="form-select" id="filterTip" name="tip">
                 <option value="">Сви типови</option>
-                <option value="Изложба">Изложбе</option>
-                <option value="Догађај">Догађаји</option>
-                <option value="Објава">Објаве</option>
-                <option value="Предавање">Предавања</option>
-                <option value="Радионица">Радионице</option>
+                {% for t in pregled.tipovi %}
+                <option value="{{ t.type }}" {% if tip == t.type %}selected{% endif %}>{{ t.type }} ({{ t.broj }})</option>
+                {% endfor %}
             </select>
         </div>
-    </div>
-
-    <!-- News Articles List -->
-    <div class="row" id="newsContainer">
-        {% if articles %}
-            {% for article in articles %}
-            <div class="col-12 mb-4 news-item"
-                 data-title="{{ article.title.lower() }}"
-                 data-description="{{ article.description|lower if article.description else '' }}"
-                 data-type="{{ article.type|default('', true) }}">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-2 text-center">
-                                <div class="bg-light rounded p-3 mb-3 mb-md-0">
-                                    {% if article.type == 'Изложба' %}
-                                    <i class="bi bi-easel" style="font-size: 2.5rem; color: #6f42c1;"></i>
-                                    {% elif article.type == 'Догађај' %}
-                                    <i class="bi bi-calendar-event" style="font-size: 2.5rem; color: #fd7e14;"></i>
-                                    {% elif article.type == 'Предавање' %}
-                                    <i class="bi bi-mic" style="font-size: 2.5rem; color: #20c997;"></i>
-                                    {% elif article.type == 'Радионица' %}
-                                    <i class="bi bi-tools" style="font-size: 2.5rem; color: #0dcaf0;"></i>
-                                    {% else %}
-                                    <i class="bi bi-newspaper" style="font-size: 2.5rem; color: var(--museum-primary);"></i>
-                                    {% endif %}
-                                    <div class="mt-2">
-                                        <small class="text-muted d-block">
-                                            {% if article.start_date %}
-                                                {{ article.start_date }}
-                                            {% else %}
-                                                Без датума
-                                            {% endif %}
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-7">
-                                <h5 class="card-title mb-2">
-                                    <i class="bi bi-arrow-right-circle text-primary me-2"></i>
-                                    {{ article.title }}
-                                </h5>
-
-                                {% if article.type %}
-                                <span class="badge bg-info mb-2">{{ article.type }}</span>
-                                {% endif %}
-
-                                {% if article.status %}
-                                <span class="badge bg-secondary mb-2">{{ article.status }}</span>
-                                {% endif %}
-
-                                <p class="card-text text-muted mb-3">
-                                    {{ article.description[:300] if article.description else 'Нема описа' }}{% if article.description and article.description|length > 300 %}...{% endif %}
-                                </p>
-
-                                <div class="row g-2 small text-muted">
-                                    {% if article.curator %}
-                                    <div class="col-md-6">
-                                        <i class="bi bi-person me-1"></i>
-                                        <strong>Кустос:</strong> {{ article.curator }}
-                                    </div>
-                                    {% endif %}
-
-                                    {% if article.location %}
-                                    <div class="col-md-6">
-                                        <i class="bi bi-geo-alt me-1"></i>
-                                        <strong>Локација:</strong> {{ article.location }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-
-                                {% if article.keywords %}
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        <i class="bi bi-tags me-1"></i>
-                                        {{ article.keywords }}
-                                    </small>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Share and Actions Column -->
-                            <div class="col-md-3">
-                                <div class="d-flex flex-column gap-2">
-                                    <h6 class="text-muted mb-2">
-                                        <i class="bi bi-share me-1"></i>
-                                        Подели на:
-                                    </h6>
-
-                                    <!-- Share to Facebook -->
-                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ 'https://nhmbeo.rs/' | urlencode }}&quote={{ article.title | urlencode }}"
-                                       target="_blank"
-                                       class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-facebook me-1"></i>
-                                        Facebook
-                                    </a>
-
-                                    <!-- Copy for Instagram -->
-                                    <button class="btn btn-outline-danger btn-sm"
-                                            onclick="copyForInstagram('{{ article.title }}', '{{ article.description[:200] if article.description else '' }}')">
-                                        <i class="bi bi-instagram me-1"></i>
-                                        Копирај за Instagram
-                                    </button>
-
-                                    <!-- Open Website -->
-                                    {% if article.source_link %}
-                                    <a href="{{ article.source_link }}" target="_blank" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-globe me-1"></i>
-                                        Веб сајт
-                                    </a>
-                                    {% else %}
-                                    <a href="https://nhmbeo.rs/" target="_blank" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-globe me-1"></i>
-                                        Веб сајт
-                                    </a>
-                                    {% endif %}
-
-                                    {% if session.get('user_role') == 'admin' %}
-                                    <hr class="my-2">
-                                    <button class="btn btn-outline-secondary btn-sm"
-                                            onclick="editNews({{ article.id if article.id else loop.index }})">
-                                        <i class="bi bi-pencil me-1"></i>
-                                        Измени
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-12">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Тренутно нема доступних вести.
-                </div>
-            </div>
+        <div class="polje">
+            <label for="filterIzvor">Извор</label>
+            <select class="form-select" id="filterIzvor" name="izvor">
+                <option value="">Сви извори</option>
+                <option value="nhmbeo" {% if izvor == 'nhmbeo' %}selected{% endif %}>Са сајта музеја</option>
+                <option value="rucni" {% if izvor == 'rucni' %}selected{% endif %}>Ручно унето</option>
+            </select>
+        </div>
+        <div class="polje">
+            <label for="filterGodina">Година</label>
+            <select class="form-select" id="filterGodina" name="godina">
+                <option value="">Све године</option>
+                {% for g in pregled.godine %}
+                <option value="{{ g }}" {% if godina == g|string %}selected{% endif %}>{{ g }}.</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="polje">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search me-1" aria-hidden="true"></i>Прикажи
+            </button>
+        </div>
+        {% if ima_filtera %}
+        <div class="polje">
+            <a class="btn btn-outline-secondary" href="{{ url_for('content.museum_news') }}">
+                <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Поништи
+            </a>
+        </div>
         {% endif %}
-    </div>
+    </form>
 
-    <div id="noResults" class="alert alert-warning d-none">
-        <i class="bi bi-search me-2"></i>
-        Није пронађена ниједна вест која одговара претрази.
-    </div>
+    {% if ima_filtera %}
+    <p class="text-secondary mb-4" role="status">
+        {{ ukupno }}
+        {%- if ukupno == 1 %} вест одговара{% else %} вести одговара{% endif %} филтеру.
+    </p>
+    {% endif %}
 
-    <!-- Social Media Feeds Section -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <h3 class="mb-4">
-                <i class="bi bi-broadcast me-2"></i>
-                Друштвене мреже музеја
-            </h3>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <!-- Facebook Feed Embed -->
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <span>
-                        <i class="bi bi-facebook me-2"></i>
-                        Facebook - Природњачки музеј
-                    </span>
-                    <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="btn btn-sm btn-light">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="d-flex flex-column justify-content-center align-items-center text-center p-4" style="min-height: 500px;">
-                        <i class="bi bi-facebook text-primary mb-3" style="font-size: 3rem;"></i>
-                        <h5 class="mb-2">Facebook widget је искључен</h5>
-                        <p class="text-muted mb-4" style="max-width: 26rem;">
-                            Уграђени Facebook timeline производи browser console грешке и нестабилно понашање.
-                            Користите директне линкове испод.
-                        </p>
-                        <a href="https://www.facebook.com/prirodnjacki" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                            <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Facebook страницу
-                        </a>
-                    </div>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="row g-2">
-                        <div class="col-4">
-                            <a href="https://www.facebook.com/prirodnjacki/events" target="_blank" class="btn btn-outline-primary btn-sm w-100">
-                                <i class="bi bi-calendar-event me-1"></i>
-                                Догађаји
-                            </a>
-                        </div>
-                        <div class="col-4">
-                            <a href="https://www.facebook.com/prirodnjacki/photos" target="_blank" class="btn btn-outline-primary btn-sm w-100">
-                                <i class="bi bi-image me-1"></i>
-                                Слике
-                            </a>
-                        </div>
-                        <div class="col-4">
-                            <a href="https://www.facebook.com/prirodnjacki/videos" target="_blank" class="btn btn-outline-primary btn-sm w-100">
-                                <i class="bi bi-play-circle me-1"></i>
-                                Видео
-                            </a>
-                        </div>
-                    </div>
-                </div>
+    {% if naslovna %}
+    <article class="vesti-naslovna">
+        <a class="vest-veza vesti-naslovna__slika" href="{{ url_for('content.news_article', vest_id=naslovna.id) }}"
+           aria-hidden="true" tabindex="-1">
+            {% if naslovna.slika_url %}
+            <img src="{{ naslovna.slika_url }}" alt="" loading="eager" referrerpolicy="no-referrer">
+            {% endif %}
+        </a>
+        <div class="vesti-naslovna__tekst">
+            {{ kicker(naslovna) }}
+            <h2 class="vesti-naslovna__naslov">
+                <a class="vest-veza" href="{{ url_for('content.news_article', vest_id=naslovna.id) }}">{{ naslovna.title }}</a>
+            </h2>
+            {% if naslovna.description %}
+            <p class="vesti-naslovna__izvod">{{ naslovna.description }}</p>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="{{ url_for('content.news_article', vest_id=naslovna.id) }}">
+                    Прочитај <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                </a>
+                {% if naslovna.source_link %}
+                <a class="btn btn-outline-secondary" href="{{ naslovna.source_link }}" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>На сајту
+                </a>
+                {% endif %}
             </div>
         </div>
+    </article>
+    {% endif %}
 
-        <!-- Instagram Feed -->
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);">
+    {% if vesti %}
+    <div class="vesti-mreza">
+        {% for vest in vesti %}
+        <article class="vest-kartica">
+            {% if vest.slika_url %}
+            <a class="vest-kartica__slika vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}"
+               aria-hidden="true" tabindex="-1">
+                <img src="{{ vest.slika_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            </a>
+            {% endif %}
+            <div class="vest-kartica__telo">
+                {{ kicker(vest) }}
+                <h3 class="vest-kartica__naslov">
+                    <a class="vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}">{{ vest.title }}</a>
+                </h3>
+                {% if vest.description %}
+                <p class="vest-kartica__izvod">{{ vest.description }}</p>
+                {% endif %}
+                <div class="vest-kartica__podnozje">
                     <span>
-                        <i class="bi bi-instagram me-2"></i>
-                        Instagram - @prirodnjacki_muzej
+                        {%- if vest.location %}<i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ vest.location }}
+                        {%- elif vest.curator %}<i class="bi bi-person me-1" aria-hidden="true"></i>{{ vest.curator }}{% endif -%}
                     </span>
-                    <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-sm btn-light">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <div class="card-body p-0" style="min-height: 500px;">
-                    <div id="instagram-feed-container" class="h-100">
-                        <div class="d-flex flex-column justify-content-center align-items-center text-center p-4" style="min-height: 500px;">
-                            <i class="bi bi-instagram mb-3" style="font-size: 3rem; color: #E1306C;"></i>
-                            <h5 class="mb-2">Instagram widget је искључен</h5>
-                            <p class="text-muted mb-4" style="max-width: 26rem;">
-                                SnapWidget embed враћа 401 и додатне JavaScript грешке у конзоли.
-                                Отворите Instagram профил директно.
-                            </p>
-                            <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" rel="noopener noreferrer" class="btn btn-danger">
-                                <i class="bi bi-box-arrow-up-right me-2"></i>Отвори Instagram профил
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="row g-2">
-                        <div class="col-4">
-                            <a href="https://www.instagram.com/prirodnjacki_muzej/reels/" target="_blank" class="btn btn-outline-danger btn-sm w-100">
-                                <i class="bi bi-play-circle me-1"></i>
-                                Reels
-                            </a>
-                        </div>
-                        <div class="col-4">
-                            <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="btn btn-outline-danger btn-sm w-100">
-                                <i class="bi bi-grid-3x3 me-1"></i>
-                                Галерија
-                            </a>
-                        </div>
-                        <div class="col-4">
-                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="copyInstagramHandle()">
-                                <i class="bi bi-clipboard me-1"></i>
-                                Копирај @
-                            </button>
-                        </div>
-                    </div>
+                    <span class="d-flex gap-2">
+                        {% if vest.izvor == 'rucni' %}
+                        <button type="button" class="btn btn-sm btn-link p-0 vest-izmeni"
+                                data-vest="{{ vest.id }}" title="Измени вест">
+                            <i class="bi bi-pencil" aria-hidden="true"></i><span class="visually-hidden">Измени</span>
+                        </button>
+                        {% endif %}
+                        <button type="button" class="btn btn-sm btn-link p-0 vest-kopiraj"
+                                data-naslov="{{ vest.title }}" data-opis="{{ vest.description or '' }}"
+                                title="Копирај за Instagram">
+                            <i class="bi bi-clipboard" aria-hidden="true"></i><span class="visually-hidden">Копирај</span>
+                        </button>
+                    </span>
                 </div>
             </div>
-        </div>
+        </article>
+        {% endfor %}
     </div>
+    {% elif not naslovna %}
+    <div class="vesti-bez-rezultata">
+        <i class="bi bi-newspaper d-block mb-3" style="font-size: 2.5rem;" aria-hidden="true"></i>
+        <h2 class="h5">Нема вести за задате услове</h2>
+        <p class="mb-3">Промените филтере или повуците најновије објаве са сајта музеја.</p>
+        <a class="btn btn-outline-secondary" href="{{ url_for('content.museum_news') }}">Прикажи све вести</a>
+    </div>
+    {% endif %}
 
-    <!-- Quick Links Row -->
-    <div class="row mt-4 g-3">
-        <div class="col-md-4">
-            <a href="https://www.facebook.com/prirodnjacki" target="_blank" class="card text-decoration-none h-100 border-primary">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-facebook text-primary" style="font-size: 2rem;"></i>
-                    <h6 class="mt-2 mb-0 text-primary">Facebook</h6>
-                    <small class="text-muted">@prirodnjacki</small>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" class="card text-decoration-none h-100 border-danger">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-instagram text-danger" style="font-size: 2rem;"></i>
-                    <h6 class="mt-2 mb-0 text-danger">Instagram</h6>
-                    <small class="text-muted">@prirodnjacki_muzej</small>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <a href="https://nhmbeo.rs/" target="_blank" class="card text-decoration-none h-100 border-success">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-globe text-success" style="font-size: 2rem;"></i>
-                    <h6 class="mt-2 mb-0 text-success">Веб сајт</h6>
-                    <small class="text-muted">nhmbeo.rs</small>
-                </div>
-            </a>
-        </div>
+    {% if ukupno_strana > 1 %}
+    <nav class="vesti-stranicenje" aria-label="Странице вести">
+        {% set osnova = {'q': upit, 'tip': tip or '', 'izvor': izvor or '', 'godina': godina or '', 'po_strani': po_strani} %}
+        {% if strana > 1 %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('content.museum_news', strana=strana-1, **osnova) }}">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Новије
+        </a>
+        {% endif %}
+        <span class="text-secondary">Страна {{ strana }} од {{ ukupno_strana }}</span>
+        {% if strana < ukupno_strana %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('content.museum_news', strana=strana+1, **osnova) }}">
+            Старије <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
+    <div class="vesti-drustvene">
+        <span class="text-secondary">Музеј на мрежи:</span>
+        <a class="btn btn-outline-primary btn-sm" href="https://www.facebook.com/prirodnjacki" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-facebook me-1" aria-hidden="true"></i>Facebook
+        </a>
+        <a class="btn btn-outline-danger btn-sm" href="https://www.instagram.com/prirodnjacki_muzej/" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-instagram me-1" aria-hidden="true"></i>Instagram
+        </a>
+        <a class="btn btn-outline-success btn-sm" href="https://nhmbeo.rs/" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-globe me-1" aria-hidden="true"></i>nhmbeo.rs
+        </a>
     </div>
 </div>
 
-<!-- Add/Edit News Modal -->
-<div class="modal fade" id="newsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Унос и измена ручне вести -->
+<div class="modal fade" id="newsModal" tabindex="-1" aria-labelledby="newsModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="newsModalTitle">
-                    <i class="bi bi-plus-lg me-2"></i>
-                    Нова вест
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="newsModalTitle">Нова вест</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
             </div>
             <div class="modal-body">
                 <form id="newsForm">
                     <input type="hidden" id="newsId" name="id">
-
                     <div class="mb-3">
-                        <label class="form-label">Наслов *</label>
-                        <input type="text" class="form-control" id="newsTitle" name="title" required>
+                        <label class="form-label" for="newsTitle">Наслов <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="newsTitle" name="title" required maxlength="500">
                     </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Тип</label>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="newsType">Тип</label>
                             <select class="form-select" id="newsType" name="type">
-                                <option value="Објава">Објава</option>
-                                <option value="Изложба">Изложба</option>
-                                <option value="Догађај">Догађај</option>
-                                <option value="Предавање">Предавање</option>
-                                <option value="Радионица">Радионица</option>
+                                <option>Вест</option>
+                                <option>Изложба</option>
+                                <option>Објава</option>
+                                <option>Најава</option>
+                                <option>Конкурс</option>
+                                <option>Виртуелни музеј</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Датум</label>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="newsDate">Датум</label>
                             <input type="date" class="form-control" id="newsDate" name="start_date">
                         </div>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label">Опис *</label>
-                        <textarea class="form-control" id="newsDescription" name="description" rows="5" required></textarea>
+                        <label class="form-label" for="newsDescription">Текст <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="newsDescription" name="description" rows="6" required></textarea>
                     </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Кустос/Аутор</label>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="newsCurator">Кустос / аутор</label>
                             <input type="text" class="form-control" id="newsCurator" name="curator">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Локација</label>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="newsLocation">Место</label>
                             <input type="text" class="form-control" id="newsLocation" name="location">
                         </div>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label">Линк (опционо)</label>
-                        <input type="url" class="form-control" id="newsLink" name="source_link" placeholder="https://...">
+                        <label class="form-label" for="newsLink">Линк ка извору</label>
+                        <input type="url" class="form-control" id="newsLink" name="source_link" placeholder="https://…">
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label">Кључне речи</label>
-                        <input type="text" class="form-control" id="newsKeywords" name="keywords" placeholder="Одвојене зарезом">
+                        <label class="form-label" for="newsKeywords">Кључне речи</label>
+                        <input type="text" class="form-control" id="newsKeywords" name="keywords" placeholder="одвојене зарезом">
                     </div>
-
-                    <hr>
-
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class="bi bi-share me-1"></i>
-                            Објави на социјалним мрежама
-                        </label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="postFacebook" name="post_facebook">
-                                <label class="form-check-label" for="postFacebook">
-                                    <i class="bi bi-facebook text-primary me-1"></i>
-                                    Facebook
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="postInstagram" name="post_instagram">
-                                <label class="form-check-label" for="postInstagram">
-                                    <i class="bi bi-instagram text-danger me-1"></i>
-                                    Instagram
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="postWebsite" name="post_website">
-                                <label class="form-check-label" for="postWebsite">
-                                    <i class="bi bi-globe text-success me-1"></i>
-                                    Веб сајт
-                                </label>
-                            </div>
+                    <fieldset class="border rounded p-3">
+                        <legend class="float-none w-auto px-2 fs-6 text-secondary">Након чувања</legend>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="postFacebook" name="post_facebook">
+                            <label class="form-check-label" for="postFacebook">Отвори дељење на Facebook-у</label>
                         </div>
-                    </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="postInstagram" name="post_instagram">
+                            <label class="form-check-label" for="postInstagram">Копирај текст за Instagram</label>
+                        </div>
+                    </fieldset>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Откажи</button>
-                <button type="button" class="btn btn-success" onclick="saveNews()">
-                    <i class="bi bi-check-lg me-1"></i>
-                    Сачувај
+                <button type="button" class="btn btn-primary" id="dugmeSacuvaj">
+                    <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Сачувај
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Copy Success Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="copyToast" class="toast" role="alert">
-        <div class="toast-header bg-success text-white">
-            <i class="bi bi-check-circle me-2"></i>
-            <strong class="me-auto">Успешно копирано</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-            Текст је копиран у клипборд. Можете га налепити на Instagram.
-        </div>
+    <div id="vestiToast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+        <div class="toast-body" id="vestiToastTelo"></div>
     </div>
 </div>
+{% endblock %}
 
-<style>
-    .card {
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
-    }
-
-    .btn-lg i {
-        font-size: 1.5rem;
-    }
-
-    .social-link:hover {
-        transform: scale(1.1);
-    }
-
-    /* Instagram gradient icon */
-    .instagram-gradient-icon {
-        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    /* Social card styling */
-    .social-card-facebook .social-icon-wrapper,
-    .social-card-instagram .social-icon-wrapper {
-        display: inline-block;
-        padding: 1.5rem;
-        border-radius: 50%;
-        background: var(--bg-elevated);
-    }
-
-    .social-card-facebook:hover .social-icon-wrapper {
-        background: #e7f3ff;
-    }
-
-    .social-card-instagram:hover .social-icon-wrapper {
-        background: #fff0f5;
-    }
-</style>
-
+{% block scripts %}
 <script>
-    // Search functionality
-    document.getElementById('newsSearch').addEventListener('input', filterNews);
-    document.getElementById('typeFilter').addEventListener('change', filterNews);
+(function () {
+    'use strict';
 
-    function filterNews() {
-        const searchTerm = document.getElementById('newsSearch').value.toLowerCase();
-        const typeFilter = document.getElementById('typeFilter').value;
-        const newsItems = document.querySelectorAll('.news-item');
-        const noResults = document.getElementById('noResults');
-        let visibleCount = 0;
+    const toastEl = document.getElementById('vestiToast');
+    const toastTelo = document.getElementById('vestiToastTelo');
 
-        newsItems.forEach(item => {
-            const title = item.getAttribute('data-title');
-            const description = item.getAttribute('data-description');
-            const type = item.getAttribute('data-type');
+    function poruka(tekst) {
+        toastTelo.textContent = tekst;          // textContent, никад innerHTML
+        bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 5000 }).show();
+    }
 
-            const matchesSearch = title.includes(searchTerm) || description.includes(searchTerm);
-            const matchesType = !typeFilter || type === typeFilter;
+    // ---- Освежавање са сајта музеја -------------------------------------
+    const dugmeOsvezi = document.getElementById('dugmeOsvezi');
+    dugmeOsvezi.addEventListener('click', function () {
+        const staro = dugmeOsvezi.innerHTML;
+        dugmeOsvezi.disabled = true;
+        dugmeOsvezi.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Повлачим…';
 
-            if (matchesSearch && matchesType) {
-                item.style.display = '';
-                visibleCount++;
-            } else {
-                item.style.display = 'none';
+        secureFetch('/api/news/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
+        })
+        .then(function (odgovor) {
+            return odgovor.json().then(function (telo) {
+                return { ok: odgovor.ok, telo: telo };
+            });
+        })
+        .then(function (ishod) {
+            poruka(ishod.telo.message || 'Увоз завршен');
+            // Освежи страну само кад је нешто стварно стигло.
+            if (ishod.ok && (ishod.telo.novih > 0 || ishod.telo.azuriranih > 0)) {
+                setTimeout(function () { location.reload(); }, 900);
             }
+        })
+        .catch(function (greska) {
+            poruka('Освежавање није успело: ' + greska.message);
+        })
+        .finally(function () {
+            dugmeOsvezi.disabled = false;
+            dugmeOsvezi.innerHTML = staro;
         });
+    });
 
-        if (visibleCount === 0) {
-            noResults.classList.remove('d-none');
-        } else {
-            noResults.classList.add('d-none');
-        }
+    // ---- Модал за ручну вест --------------------------------------------
+    const modalEl = document.getElementById('newsModal');
+    const forma = document.getElementById('newsForm');
+
+    function otvoriModal(naslovModala) {
+        document.getElementById('newsModalTitle').textContent = naslovModala;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 
-    // Copy text for Instagram
-    // Copy Instagram handle
-    function copyInstagramHandle() {
-        copyToClipboard('@prirodnjacki_muzej');
-    }
-
-    // Copy Facebook handle
-    function copyFacebookHandle() {
-        copyToClipboard('@prirodnjacki');
-    }
-
-    // Generic copy to clipboard function
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
-            toast.show();
-        }).catch(err => {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
-            toast.show();
-        });
-    }
-
-    function copyForInstagram(title, description) {
-        const text = `${title}\n\n${description}\n\n#ПриродњачкиМузеј #NaturalHistoryMuseum #Београд #Belgrade #музеј #museum #nhmbeo`;
-
-        navigator.clipboard.writeText(text).then(() => {
-            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
-            toast.show();
-        }).catch(err => {
-            // Fallback for older browsers
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-
-            const toast = new bootstrap.Toast(document.getElementById('copyToast'));
-            toast.show();
-        });
-    }
-
-    // Show add news modal
-    function showAddNewsModal() {
-        document.getElementById('newsModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Нова вест';
-        document.getElementById('newsForm').reset();
+    document.getElementById('dugmeNovaVest').addEventListener('click', function () {
+        forma.reset();
         document.getElementById('newsId').value = '';
-        document.getElementById('newsDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('newsDate').value = new Date().toISOString().slice(0, 10);
+        otvoriModal('Нова вест');
+    });
 
-        const modal = new bootstrap.Modal(document.getElementById('newsModal'));
-        modal.show();
-    }
+    // Измена: подаци се повлаче са сервера, не убацују се у HTML атрибуте.
+    document.addEventListener('click', function (dogadjaj) {
+        const dugme = dogadjaj.target.closest('.vest-izmeni');
+        if (!dugme) { return; }
+        const id = dugme.dataset.vest;
+        fetch('/api/news/' + encodeURIComponent(id), { credentials: 'same-origin' })
+            .then(function (o) { return o.ok ? o.json() : Promise.reject(new Error('HTTP ' + o.status)); })
+            .then(function (vest) {
+                forma.reset();
+                document.getElementById('newsId').value = vest.id;
+                document.getElementById('newsTitle').value = vest.title || '';
+                document.getElementById('newsType').value = vest.type || 'Вест';
+                document.getElementById('newsDate').value = vest.start_date || '';
+                document.getElementById('newsDescription').value = vest.description || '';
+                document.getElementById('newsCurator').value = vest.curator || '';
+                document.getElementById('newsLocation').value = vest.location || '';
+                document.getElementById('newsLink').value = vest.source_link || '';
+                document.getElementById('newsKeywords').value = vest.keywords || '';
+                otvoriModal('Измена вести');
+            })
+            .catch(function (greska) { poruka('Вест се не може учитати: ' + greska.message); });
+    });
 
-    // Edit news
-    function editNews(id) {
-        document.getElementById('newsModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Измени вест';
-        document.getElementById('newsId').value = id;
+    document.getElementById('dugmeSacuvaj').addEventListener('click', function () {
+        if (!forma.reportValidity()) { return; }
 
-        // TODO: Load existing news data via API
-        // For now, just show the modal
-        const modal = new bootstrap.Modal(document.getElementById('newsModal'));
-        modal.show();
-    }
-
-    // Save news
-    function saveNews() {
-        const form = document.getElementById('newsForm');
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        // Add checkbox values
-        data.post_facebook = document.getElementById('postFacebook').checked;
-        data.post_instagram = document.getElementById('postInstagram').checked;
-        data.post_website = document.getElementById('postWebsite').checked;
+        const podaci = Object.fromEntries(new FormData(forma).entries());
+        const naFacebook = document.getElementById('postFacebook').checked;
+        const naInstagram = document.getElementById('postInstagram').checked;
 
         secureFetch('/api/news/save', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify(data)
+            body: JSON.stringify(podaci)
         })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                // Close modal and refresh
-                bootstrap.Modal.getInstance(document.getElementById('newsModal')).hide();
-
-                // Show success and handle social media posting
-                if (data.post_facebook) {
-                    window.open(`https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(data.title + '\n\n' + data.description)}`, '_blank');
-                }
-                if (data.post_instagram) {
-                    copyForInstagram(data.title, data.description);
-                }
-
-                // Reload page to show new article
-                location.reload();
-            } else {
-                alert('Грешка: ' + (result.message || 'Непозната грешка'));
+        .then(function (o) { return o.json(); })
+        .then(function (ishod) {
+            if (!ishod.success) {
+                poruka(ishod.message || 'Чување није успело');
+                return;
             }
+            bootstrap.Modal.getInstance(modalEl).hide();
+            if (naFacebook) {
+                window.open('https://www.facebook.com/sharer/sharer.php?quote='
+                    + encodeURIComponent(podaci.title + '\n\n' + podaci.description),
+                    '_blank', 'noopener');
+            }
+            if (naInstagram) { kopirajZaInstagram(podaci.title, podaci.description); }
+            setTimeout(function () { location.reload(); }, 600);
         })
-        .catch(error => {
-            alert('Грешка при чувању: ' + error.message);
-        });
+        .catch(function (greska) { poruka('Чување није успело: ' + greska.message); });
+    });
+
+    // ---- Копирање за Instagram ------------------------------------------
+    const HESTAGOVI = '#ПриродњачкиМузеј #NaturalHistoryMuseum #Београд #музеј #nhmbeo';
+
+    function kopirajZaInstagram(naslov, opis) {
+        const tekst = naslov + '\n\n' + (opis || '') + '\n\n' + HESTAGOVI;
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(tekst)
+                .then(function () { poruka('Текст је копиран за Instagram'); })
+                .catch(function () { poruka('Копирање није успело — означите текст ручно'); });
+            return;
+        }
+        poruka('Копирање захтева безбедну везу (HTTPS)');
     }
+
+    document.addEventListener('click', function (dogadjaj) {
+        const dugme = dogadjaj.target.closest('.vest-kopiraj');
+        if (!dugme) { return; }
+        kopirajZaInstagram(dugme.dataset.naslov, dugme.dataset.opis);
+    });
+}());
 </script>
 {% endblock %}

@@ -7,6 +7,8 @@ import collection_management_views
 import dashboard_integration_views
 import exhibition_planner_views
 import museum_content_views
+import museum_news_importer
+import museum_news_store
 import nhm_portal_views
 from security_utils import admin_required, login_required, module_access_required
 
@@ -59,11 +61,19 @@ def exhibitions_database():
 @content_bp.route('/admin/news')
 @module_access_required('news')
 def museum_news():
-    """Museum news and announcements."""
-    import app as museum_app
-
+    """Muzejske vesti — citaju se iz baze, ne iz kesa u procesu."""
     return museum_content_views.render_museum_news(
-        news_database=museum_app.NEWS_DATABASE,
+        news_store=museum_news_store,
+    )
+
+
+@content_bp.route('/admin/news/<int:vest_id>')
+@module_access_required('news')
+def news_article(vest_id):
+    """Strana za citanje jedne vesti."""
+    return museum_content_views.render_news_article(
+        news_store=museum_news_store,
+        vest_id=vest_id,
     )
 
 
@@ -71,10 +81,39 @@ def museum_news():
 @admin_required
 def api_save_news():
     """Save a news article to the database."""
-    import app as museum_app
+    return museum_content_views.api_save_news()
 
-    return museum_content_views.api_save_news(
-        news_database=museum_app.NEWS_DATABASE,
+
+@content_bp.route('/api/news/refresh', methods=['POST'])
+@module_access_required('news')
+def api_refresh_news():
+    """Rucno povlacenje najnovijih objava sa nhmbeo.rs."""
+    from flask import session
+
+    return museum_content_views.api_refresh_news(
+        news_importer=museum_news_importer,
+        news_store=museum_news_store,
+        pokrenuo=session.get('user_email') or 'ручно',
+    )
+
+
+@content_bp.route('/api/news/<int:vest_id>')
+@module_access_required('news')
+def api_get_news(vest_id):
+    """Jedna rucna vest kao JSON (modal za izmenu)."""
+    return museum_content_views.api_get_news(
+        news_store=museum_news_store,
+        vest_id=vest_id,
+    )
+
+
+@content_bp.route('/api/news/<int:vest_id>/delete', methods=['POST'])
+@admin_required
+def api_delete_news(vest_id):
+    """Brisanje rucne vesti."""
+    return museum_content_views.api_delete_news(
+        news_store=museum_news_store,
+        vest_id=vest_id,
     )
 
 

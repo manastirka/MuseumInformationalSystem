@@ -1033,8 +1033,11 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/news', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
+        # Прикази читају базу кроз museum_news_store, не кеш у процесу.
+        import museum_news_store
+
         mocked_handler.assert_called_once_with(
-            news_database=museum_app.NEWS_DATABASE,
+            news_store=museum_news_store,
         )
 
     def test_save_news_api_delegates_to_museum_content_module(self):
@@ -1052,9 +1055,7 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.post('/api/news/save', json={}, base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            news_database=museum_app.NEWS_DATABASE,
-        )
+        mocked_handler.assert_called_once_with()
 
     def test_add_book_route_delegates_to_museum_content_module(self):
         self._login(role='admin')

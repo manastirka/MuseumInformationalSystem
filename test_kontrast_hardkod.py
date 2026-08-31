@@ -94,7 +94,6 @@ FIXED_SELECTORS = [
     ('templates/admin_projekti.html', '.doc-item'),
     ('templates/admin_projekti.html', '.key-info-card'),
     ('templates/admin_projekti.html', '.key-info-card h6'),
-    ('templates/admin_news.html', '.social-card-facebook .social-icon-wrapper'),
 ]
 
 
