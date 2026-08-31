@@ -126,9 +126,13 @@
         {% endif %}
     </div>
 
-    {% if vest.slika_url %}
+    {% if vest.slika_fajl or vest.slika_url %}
     <figure class="vest-slika">
+        {% if vest.slika_fajl %}
+        <img src="{{ url_for('static', filename='vesti_slike/' ~ vest.slika_fajl) }}" alt="Фотографија уз вест: {{ vest.title }}">
+        {% else %}
         <img src="{{ vest.slika_url }}" alt="Фотографија уз вест: {{ vest.title }}" referrerpolicy="no-referrer">
+        {% endif %}
     </figure>
     {% endif %}
 

@@ -118,12 +118,18 @@
     .pregled-zaglavlje__radnje > * { flex: 1 1 9rem; }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 860px) {
+    /* Сличица од 8.5rem стаје и на ужем екрану; раније се крила испод
+       980px, па је на пола прозора изгледало као да слике нема. */
+    .kandidat { grid-template-columns: 4.5rem 6rem minmax(0, 1fr) auto; }
+}
+
+@media (max-width: 700px) {
     .kandidat { grid-template-columns: 4.5rem minmax(0, 1fr) auto; }
     .kandidat-slika { display: none; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 560px) {
     .kandidat { grid-template-columns: 1fr; }
     .kandidat-slika { display: none; }
     .kandidat-ocena { border-right: 0; border-bottom: 1px solid var(--border-color);
@@ -174,8 +180,8 @@
         </div>
 
         <div class="kandidat-slika">
-            {% if k.slika_url %}
-            <img src="{{ k.slika_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            {% if k.slika_fajl %}
+            <img src="{{ url_for('static', filename='vesti_slike/' ~ k.slika_fajl) }}" alt="" loading="lazy">
             {% else %}
             <span class="kandidat-slika__medij">{{ k.izvor_naziv or 'без слике' }}</span>
             {% endif %}

@@ -372,7 +372,11 @@
     <article class="vesti-naslovna">
         <a class="vest-veza vesti-naslovna__slika" href="{{ url_for('content.news_article', vest_id=naslovna.id) }}"
            aria-hidden="true" tabindex="-1">
-            {% if naslovna.slika_url %}
+            {# Слика иде са НАШЕГ порекла. CSP img-src не дозвољава домене
+               медија, па туђа адреса не би приказала ништа. #}
+            {% if naslovna.slika_fajl %}
+            <img src="{{ url_for('static', filename='vesti_slike/' ~ naslovna.slika_fajl) }}" alt="" loading="eager">
+            {% elif naslovna.slika_url %}
             <img src="{{ naslovna.slika_url }}" alt="" loading="eager" referrerpolicy="no-referrer">
             {% endif %}
         </a>
@@ -402,10 +406,14 @@
     <div class="vesti-mreza">
         {% for vest in vesti %}
         <article class="vest-kartica">
-            {% if vest.slika_url %}
+            {% if vest.slika_fajl or vest.slika_url %}
             <a class="vest-kartica__slika vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}"
                aria-hidden="true" tabindex="-1">
+                {% if vest.slika_fajl %}
+                <img src="{{ url_for('static', filename='vesti_slike/' ~ vest.slika_fajl) }}" alt="" loading="lazy">
+                {% else %}
                 <img src="{{ vest.slika_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                {% endif %}
             </a>
             {% elif vest.izvor == 'veb' %}
             <a class="vest-isecak vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}"

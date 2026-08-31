@@ -7,6 +7,7 @@
 
 import os
 import unittest
+from pathlib import Path
 from datetime import datetime, timezone
 
 os.environ.setdefault('FLASK_ENV', 'testing')
@@ -17,6 +18,7 @@ os.environ.setdefault('SESSION_FILE_DIR', 'logs/qa_flask_session')
 
 import app as museum_app  # noqa: E402
 import museum_news_store as skladiste  # noqa: E402
+import museum_news_slike as slike  # noqa: E402
 import museum_news_web_search as pretraga  # noqa: E402
 from postgres_service import get_postgres_connection  # noqa: E402
 from psycopg.rows import dict_row  # noqa: E402
@@ -196,23 +198,41 @@ class DopunaSlikaTest(unittest.TestCase):
         kandidat_id = _ubaci_kandidata('Вест о музеју без слике',
                                        url='https://primer.invalid/clanak')
 
-        class LaznaStrana:
-            url = 'https://primer.invalid/clanak'
-            content = (b'<html><head><meta property="og:image" '
-                       b'content="https://primer.invalid/og.jpg"></head></html>')
-
-            def raise_for_status(self):
-                return None
+        # 1×1 PNG — довољно да pyvips направи стварну локалну копију.
+        import base64
+        PIKSEL = base64.b64decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8'
+            'z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
 
         class LaznaVeza:
             def get(self, url, **_kw):
-                return LaznaStrana()
+                jeste_slika = url.endswith('.png')
+
+                class O:
+                    headers = {'Content-Type':
+                               'image/png' if jeste_slika else 'text/html'}
+                    content = (PIKSEL if jeste_slika else
+                               b'<html><head><meta property="og:image" '
+                               b'content="https://primer.invalid/og.png">'
+                               b'</head></html>')
+
+                    def raise_for_status(self):
+                        return None
+
+                    def iter_content(self, _n):
+                        return iter([PIKSEL])
+
+                o = O()
+                o.url = url
+                return o
 
         dopunjeno, pokusano = pretraga.dopuni_slike(session=LaznaVeza())
 
         self.assertEqual((dopunjeno, pokusano), (1, 1))
         self.assertEqual(_kandidat(kandidat_id)['slika_url'],
-                         'https://primer.invalid/og.jpg')
+                         'https://primer.invalid/og.png')
+        self.assertIsNotNone(_kandidat(kandidat_id)['slika_fajl'],
+                             'без локалне копије CSP не приказује слику')
 
     def test_dopuna_preskace_google_omot(self):
         _ubaci_kandidata('Вест о музеју преко Google-а',
@@ -236,6 +256,66 @@ class DopunaSlikaTest(unittest.TestCase):
 
         self.assertEqual((dopunjeno, pokusano), (0, 1))
         self.assertIsNone(_kandidat(kandidat_id)['slika_url'])
+
+
+class CspSlikeTest(unittest.TestCase):
+    """Слика мора да се сервира са НАШЕГ порекла — CSP блокира туђе домене."""
+
+    def test_csp_ne_dozvoljava_domene_medija(self):
+        # Ово је разлог зашто уопште чувамо локалну копију. Ако неко једног
+        # дана дода домене медија у img-src, овај тест пада и натера га да
+        # прочита зашто то није било решење.
+        dozvoljeni = museum_app.app.config.get('SECURITY_HEADERS', {})
+        import app as _a
+        izvor = Path(_a.__file__).read_text(encoding='utf-8')
+        pocetak = izvor.index("'img-src'")
+        odeljak = izvor[pocetak:pocetak + 800]
+        for domen in ('politika.rs', 'b92.net', 'ocdn.eu', 'rts.rs'):
+            self.assertNotIn(domen, odeljak,
+                             'домен медија у img-src — уместо тога се чува '
+                             'локална копија, види museum_news_slike.py')
+        del dozvoljeni
+
+    def test_sablon_koristi_lokalnu_kopiju(self):
+        strana = Path('templates/admin_news.html').read_text(encoding='utf-8')
+        self.assertIn("vesti_slike/' ~ vest.slika_fajl", strana)
+        pregled = Path('templates/news_review.html').read_text(encoding='utf-8')
+        self.assertIn("vesti_slike/' ~ k.slika_fajl", pregled)
+
+    def test_ime_fajla_stabilno_po_adresi(self):
+        a = slike.ime_fajla('https://primer.invalid/x.jpg')
+        self.assertEqual(a, slike.ime_fajla('https://primer.invalid/x.jpg'))
+        self.assertNotEqual(a, slike.ime_fajla('https://primer.invalid/y.jpg'))
+        self.assertTrue(a.endswith('.jpg'))
+
+    def test_nije_slika_se_odbija(self):
+        class LaznaVeza:
+            def get(self, *_a, **_kw):
+                class O:
+                    headers = {'Content-Type': 'text/html'}
+                    def raise_for_status(self): return None
+                    def iter_content(self, _n): return iter([b'<html>'])
+                return O()
+
+        self.assertIsNone(slike.preuzmi('https://primer.invalid/strana.html',
+                                        session=LaznaVeza()))
+
+    def test_odobrena_vest_nosi_lokalnu_kopiju(self):
+        kandidat_id = _ubaci_kandidata('Вест о музеју, локална копија')
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute('UPDATE news_web_kandidati SET slika_url = %s, '
+                            'slika_fajl = %s WHERE id = %s',
+                            ('https://primer.invalid/a.jpg', 'abc123.jpg',
+                             kandidat_id))
+            conn.commit()
+        self.addCleanup(_ocisti)
+
+        _, _, vest_id = skladiste.odluci_o_kandidatu(
+            kandidat_id, 'odobreno', ko=OZNAKA)
+
+        self.assertEqual(skladiste.dohvati_vest(vest_id)['slika_fajl'],
+                         'abc123.jpg')
 
 
 class RedZaPregledTest(unittest.TestCase):

@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 POLJA = """
     id, izvor, spoljni_id, title, description, sadrzaj_tekst, type, status,
     category, start_date, end_date, location, curator, autor, keywords,
-    source_link, slika_url, spoljni_izmenjen, uvezeno_at, created_at, updated_at
+    source_link, slika_url, slika_fajl, spoljni_izmenjen, uvezeno_at,
+    created_at, updated_at
 """
 
 
@@ -196,8 +197,8 @@ def obrisi_vest(vest_id):
 
 KANDIDAT_POLJA = """
     id, kljuc, url, naslov, izvod, izvor_naziv, objavljeno, slika_url,
-    upit, pretrazivac, ocena, razlog, status, odluku_doneo, odluceno_at,
-    vest_id, nadjeno_at
+    slika_fajl, upit, pretrazivac, ocena, razlog, status, odluku_doneo,
+    odluceno_at, vest_id, nadjeno_at
 """
 
 TIP_VESTI_SA_VEBA = 'Медији о нама'
@@ -258,9 +259,11 @@ def odluci_o_kandidatu(kandidat_id, odluka, *, ko=''):
                         """
                         INSERT INTO news_articles (
                             izvor, title, description, type, start_date,
-                            source_link, autor, slika_url, created_at, updated_at
+                            source_link, autor, slika_url, slika_fajl,
+                            created_at, updated_at
                         )
-                        VALUES ('veb', %s, %s, %s, %s, %s, %s, %s, now(), now())
+                        VALUES ('veb', %s, %s, %s, %s, %s, %s, %s, %s,
+                                now(), now())
                         RETURNING id
                         """,
                         (kandidat['naslov'], kandidat['izvod'] or '',
@@ -268,7 +271,7 @@ def odluci_o_kandidatu(kandidat_id, odluka, *, ko=''):
                          kandidat['objavljeno'].date()
                          if kandidat['objavljeno'] else None,
                          kandidat['url'], kandidat['izvor_naziv'] or '',
-                         kandidat['slika_url']))
+                         kandidat['slika_url'], kandidat['slika_fajl']))
                     vest_id = cur.fetchone()['id']
 
                 cur.execute(

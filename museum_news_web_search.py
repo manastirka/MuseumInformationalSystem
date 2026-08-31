@@ -28,6 +28,8 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
+import museum_news_slike
 from psycopg.rows import dict_row
 
 logger = logging.getLogger(__name__)
@@ -342,7 +344,16 @@ def _je_sopstveni_sajt(url):
     return any(domen == d or domen.endswith('.' + d) for d in SOPSTVENI_DOMENI)
 
 
-def _upisi_kandidata(cur, nalaz, ocena, razlog):
+def _upisi_kandidata(cur, nalaz, ocena, razlog, *, session=None):
+    # Локална копија мора да настане ПРЕ уписа: CSP не дозвољава туђе
+    # домене у img-src, па адреса без сачуване копије не приказује ништа.
+    if nalaz.get('slika_url') and not nalaz.get('slika_fajl'):
+        nalaz['slika_fajl'] = museum_news_slike.preuzmi(
+            nalaz['slika_url'], session=session)
+    return _upisi_kandidata_red(cur, nalaz, ocena, razlog)
+
+
+def _upisi_kandidata_red(cur, nalaz, ocena, razlog):
     """Upsert po kljucu naslova. Vraca True samo za stvarno NOV red.
 
     Postojeci red se NE dira: ako ga je kustos vec odbacio, ponovni nalaz ne
@@ -352,16 +363,16 @@ def _upisi_kandidata(cur, nalaz, ocena, razlog):
         """
         INSERT INTO news_web_kandidati (
             kljuc, url, naslov, izvod, izvor_naziv, objavljeno, slika_url,
-            upit, pretrazivac, ocena, razlog
+            slika_fajl, upit, pretrazivac, ocena, razlog
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (kljuc) DO NOTHING
         RETURNING id
         """,
         (nalaz['kljuc'], nalaz['url'], nalaz['naslov'], nalaz['izvod'] or None,
          nalaz['izvor_naziv'] or None, nalaz['objavljeno'],
-         nalaz.get('slika_url') or None, nalaz['upit'],
-         nalaz['pretrazivac'], ocena, razlog),
+         nalaz.get('slika_url') or None, nalaz.get('slika_fajl') or None,
+         nalaz['upit'], nalaz['pretrazivac'], ocena, razlog),
     )
     return cur.fetchone() is not None
 
@@ -408,8 +419,8 @@ def dopuni_slike(*, najvise=OG_NAJVISE_PO_POKRETANJU, session=None):
     with _get_postgres_connection(row_factory=dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, url FROM news_web_kandidati "
-                "WHERE status = 'na_cekanju' AND slika_url IS NULL "
+                "SELECT id, url, slika_url FROM news_web_kandidati "
+                "WHERE status = 'na_cekanju' AND slika_fajl IS NULL "
                 "  AND url NOT LIKE %s "
                 "ORDER BY objavljeno DESC NULLS LAST, id DESC LIMIT %s",
                 ('%news.google.com%', int(najvise)))
@@ -417,24 +428,56 @@ def dopuni_slike(*, najvise=OG_NAJVISE_PO_POKRETANJU, session=None):
 
         for red in redovi:
             pokusano += 1
-            try:
-                slika = preuzmi_og_sliku(red['url'], session=session)
-            except Exception as exc:
-                logger.info('og:image за %s није скинут: %s',
-                            red['url'][:70], exc)
-                continue
+            slika = red.get('slika_url')
             if not slika:
+                try:
+                    slika = preuzmi_og_sliku(red['url'], session=session)
+                except Exception as exc:
+                    logger.info('og:image за %s није скинут: %s',
+                                red['url'][:70], exc)
+                    continue
+            if not slika:
+                continue
+
+            fajl = museum_news_slike.preuzmi(slika, session=session)
+            if not fajl:
+                continue        # адреса без сачуване копије не приказује ништа
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    'UPDATE news_web_kandidati SET slika_url = %s, '
+                    'slika_fajl = %s WHERE id = %s AND slika_fajl IS NULL',
+                    (slika, fajl, red['id']))
+                dopunjeno += cur.rowcount
+            conn.commit()
+
+    # Већ одобрене вести са веба такође могу да буду без локалне копије —
+    # или су одобрене пре него што је ово уведено, или им је страна тад
+    # била недоступна. Без копије их CSP не приказује.
+    with _get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, slika_url FROM news_articles "
+                "WHERE izvor = 'veb' AND slika_fajl IS NULL "
+                "  AND slika_url IS NOT NULL "
+                "ORDER BY id DESC LIMIT %s", (int(najvise),))
+            vesti = cur.fetchall()
+
+        for vest in vesti:
+            pokusano += 1
+            fajl = museum_news_slike.preuzmi(vest['slika_url'], session=session)
+            if not fajl:
                 continue
             with conn.cursor() as cur:
                 cur.execute(
-                    'UPDATE news_web_kandidati SET slika_url = %s '
-                    'WHERE id = %s AND slika_url IS NULL',
-                    (slika, red['id']))
+                    'UPDATE news_articles SET slika_fajl = %s '
+                    'WHERE id = %s AND slika_fajl IS NULL', (fajl, vest['id']))
                 dopunjeno += cur.rowcount
             conn.commit()
 
     if pokusano:
-        logger.info('og:image: допуњено %d од %d', dopunjeno, pokusano)
+        logger.info('Локалне копије слика: допуњено %d од %d',
+                    dopunjeno, pokusano)
     return dopunjeno, pokusano
 
 
@@ -505,7 +548,8 @@ def pretrazi_veb(*, upiti=UPITI, izvori_medija=IZVORI_MEDIJA, prag=PRAG,
                         if ocena < prag:
                             odbijeno += 1
                             continue
-                        if _upisi_kandidata(cur, nalaz, ocena, razlog):
+                        if _upisi_kandidata(cur, nalaz, ocena, razlog,
+                                            session=session):
                             novih += 1
                 conn.commit()
         except Exception as exc:
