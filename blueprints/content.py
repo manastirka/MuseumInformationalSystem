@@ -7,11 +7,29 @@ import collection_management_views
 import dashboard_integration_views
 import exhibition_planner_views
 import museum_content_views
+import museum_news_importer
+import museum_news_store
+import museum_news_web_search
 import nhm_portal_views
 from security_utils import admin_required, login_required, module_access_required
 
 
 content_bp = Blueprint('content', __name__)
+
+
+def _sme_da_uredjuje():
+    """Da li tekuci korisnik sme da unosi i menja vesti.
+
+    Ista provera koju radi @module_access_required('news_edit'); strana je
+    koristi da ne prikazuje dugmad koja bi ionako vratila 403.
+    """
+    from flask import current_app, session
+
+    proveri = getattr(current_app, 'user_has_module_access', None)
+    if proveri is None or 'user_id' not in session:
+        return False
+    return bool(proveri(session.get('user_email', ''),
+                        session.get('user_role', ''), 'news_edit'))
 
 
 @content_bp.route('/admin/reports')
@@ -59,22 +77,95 @@ def exhibitions_database():
 @content_bp.route('/admin/news')
 @module_access_required('news')
 def museum_news():
-    """Museum news and announcements."""
-    import app as museum_app
-
+    """Muzejske vesti — citaju se iz baze, ne iz kesa u procesu."""
     return museum_content_views.render_museum_news(
-        news_database=museum_app.NEWS_DATABASE,
+        news_store=museum_news_store,
+        moze_uredjivanje=_sme_da_uredjuje(),
+    )
+
+
+@content_bp.route('/admin/news/<int:vest_id>')
+@module_access_required('news')
+def news_article(vest_id):
+    """Strana za citanje jedne vesti."""
+    return museum_content_views.render_news_article(
+        news_store=museum_news_store,
+        vest_id=vest_id,
     )
 
 
 @content_bp.route('/api/news/save', methods=['POST'])
-@admin_required
+@module_access_required('news_edit')
 def api_save_news():
     """Save a news article to the database."""
-    import app as museum_app
+    return museum_content_views.api_save_news()
 
-    return museum_content_views.api_save_news(
-        news_database=museum_app.NEWS_DATABASE,
+
+@content_bp.route('/api/news/refresh', methods=['POST'])
+@module_access_required('news_edit')
+def api_refresh_news():
+    """Rucno povlacenje najnovijih objava sa nhmbeo.rs."""
+    from flask import session
+
+    return museum_content_views.api_refresh_news(
+        news_importer=museum_news_importer,
+        news_store=museum_news_store,
+        pokrenuo=session.get('user_email') or 'ручно',
+    )
+
+
+@content_bp.route('/admin/news/sa-veba')
+@module_access_required('news_edit')
+def news_review():
+    """Red za pregled vesti nadjenih automatskom pretragom veba."""
+    return museum_content_views.render_news_review(
+        news_store=museum_news_store,
+    )
+
+
+@content_bp.route('/api/news/web/search', methods=['POST'])
+@module_access_required('news_edit')
+def api_search_web_news():
+    """Rucno pokretanje pretrage veba."""
+    from flask import session
+
+    return museum_content_views.api_search_web_news(
+        web_search=museum_news_web_search,
+        news_store=museum_news_store,
+        pokrenuo=session.get('user_email') or 'ручно',
+    )
+
+
+@content_bp.route('/api/news/web/<int:kandidat_id>/odluka', methods=['POST'])
+@module_access_required('news_edit')
+def api_decide_web_news(kandidat_id):
+    """Odobri ili odbaci nadjenu vest."""
+    from flask import session
+
+    return museum_content_views.api_decide_web_news(
+        news_store=museum_news_store,
+        kandidat_id=kandidat_id,
+        odluku_doneo=session.get('user_email') or '',
+    )
+
+
+@content_bp.route('/api/news/<int:vest_id>')
+@module_access_required('news_edit')
+def api_get_news(vest_id):
+    """Jedna rucna vest kao JSON (modal za izmenu)."""
+    return museum_content_views.api_get_news(
+        news_store=museum_news_store,
+        vest_id=vest_id,
+    )
+
+
+@content_bp.route('/api/news/<int:vest_id>/delete', methods=['POST'])
+@module_access_required('news_edit')
+def api_delete_news(vest_id):
+    """Brisanje rucne vesti."""
+    return museum_content_views.api_delete_news(
+        news_store=museum_news_store,
+        vest_id=vest_id,
     )
 
 

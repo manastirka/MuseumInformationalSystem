@@ -176,7 +176,11 @@ def test_run_migrations_bez_execute_sa_pending_vraca_nenulti_exit():
                 "ON CONFLICT DO NOTHING", (removed,))
             conn.commit()
         conn.close()
-    assert _snimak_evidencije() == pre
+    # Poredimo imena, ne vremena: povratni INSERT u finally bloku dobija novi
+    # applied_at, pa bi poredjenje celih redova palo cim evidencija nije
+    # prazna (a jeste cim neko pusti apply --execute nad test bazom).
+    assert [red[0] for red in (_snimak_evidencije() or [])] == \
+           [red[0] for red in (pre or [])]
 
 
 def test_run_migrations_bez_execute_bez_pending_vraca_0():

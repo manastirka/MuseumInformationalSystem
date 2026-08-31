@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vest.title }} — Музејске вести{% endblock %}
+
+{% block content %}
+<style>
+/* Страна за читање вести. Мера реда ~68 знакова, боје кроз токене тема. */
+.vest-strana {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: var(--space-10) var(--space-4) var(--space-12);
+}
+.vest-nazad {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-size: var(--font-size-sm); color: var(--text-secondary);
+    text-decoration: none; margin-bottom: var(--space-5);
+}
+.vest-nazad:hover { color: var(--text-primary); text-decoration: underline; }
+
+.vest-kicker {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+    font-size: var(--font-size-xs); text-transform: uppercase;
+    letter-spacing: .07em; font-weight: 700; color: var(--text-muted);
+    margin-bottom: var(--space-3);
+}
+.vest-kicker__tip { color: var(--accent); }
+.vest-oznaka {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .1rem .45rem; border-radius: var(--radius-badge);
+    border: 1px solid var(--border-color); color: var(--text-secondary);
+    text-transform: none; letter-spacing: 0;
+}
+
+.vest-naslov {
+    font-family: var(--font-display, var(--font-family));
+    font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+    font-weight: 800; line-height: 1.15; letter-spacing: -0.02em;
+    color: var(--text-primary); margin: 0 0 var(--space-4);
+}
+.vest-meta {
+    display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+    color: var(--text-secondary); font-size: var(--font-size-sm);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--space-3) 0; margin-bottom: var(--space-6);
+}
+.vest-slika {
+    margin: 0 0 var(--space-6);
+    border-radius: var(--radius-card); overflow: hidden;
+    background: var(--bg-hover);
+}
+.vest-slika img { width: 100%; height: auto; display: block; }
+.vest-telo p {
+    font-size: 1.075rem; line-height: 1.75; color: var(--text-primary);
+    margin-bottom: var(--space-5);
+}
+.vest-telo p:first-of-type::first-letter {
+    font-family: var(--font-display, var(--font-family));
+    float: left; font-size: 3.1rem; line-height: .84; font-weight: 800;
+    padding: .18rem .6rem .1rem 0; color: var(--accent);
+}
+.vest-podnozje {
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--space-8); padding-top: var(--space-5);
+}
+.vest-podnozje__radnje {
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    align-items: center;
+}
+.vest-susedne {
+    display: grid; gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    margin-top: var(--space-6);
+}
+.vest-susedna {
+    display: block; padding: var(--space-4);
+    border: 1px solid var(--border-color); border-radius: var(--radius-card);
+    background: var(--bg-card); color: inherit; text-decoration: none;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+.vest-susedna:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.vest-susedna:focus-visible { outline: 2px solid var(--focus-ring, var(--accent)); outline-offset: 2px; }
+.vest-susedna__oznaka {
+    display: block; font-size: var(--font-size-xs); text-transform: uppercase;
+    letter-spacing: .07em; font-weight: 700; color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+.vest-susedna__naslov { font-weight: 600; line-height: 1.35; color: var(--text-primary); }
+@media (prefers-reduced-motion: reduce) { .vest-susedna { transition: none; } }
+</style>
+
+<article class="vest-strana">
+    <a class="vest-nazad" href="{{ url_for('content.museum_news') }}">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Све музејске вести
+    </a>
+
+    <div class="vest-kicker">
+        {% if vest.type %}<span class="vest-kicker__tip">{{ vest.type }}</span>{% endif %}
+        {% if vest.izvor == 'nhmbeo' %}
+        <span class="vest-oznaka"><i class="bi bi-globe2" aria-hidden="true"></i> преузето са сајта</span>
+        {% else %}
+        <span class="vest-oznaka"><i class="bi bi-pencil" aria-hidden="true"></i> унето у систему</span>
+        {% endif %}
+    </div>
+
+    <h1 class="vest-naslov">{{ vest.title }}</h1>
+
+    <div class="vest-meta">
+        {% if vest.start_date %}
+        <span><i class="bi bi-calendar-event me-1" aria-hidden="true"></i>
+            <time datetime="{{ vest.start_date }}">{{ vest.start_date.strftime('%d.%m.%Y.') }}</time>
+        </span>
+        {% endif %}
+        {% if vest.curator %}
+        <span><i class="bi bi-person me-1" aria-hidden="true"></i>{{ vest.curator }}</span>
+        {% endif %}
+        {% if vest.izvor == 'nhmbeo' %}
+        <span><i class="bi bi-globe2 me-1" aria-hidden="true"></i>Природњачки музеј у Београду</span>
+        {% endif %}
+        {% if vest.location %}
+        <span><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ vest.location }}</span>
+        {% endif %}
+    </div>
+
+    {% if vest.slika_url %}
+    <figure class="vest-slika">
+        <img src="{{ vest.slika_url }}" alt="Фотографија уз вест: {{ vest.title }}" referrerpolicy="no-referrer">
+    </figure>
+    {% endif %}
+
+    <div class="vest-telo">
+        {# Текст са сајта се чува као чист текст, па Jinja escape-ује сваки пасус.
+           Страни HTML се никад не убацује у страну — за оригинал постоји линк. #}
+        {% if pasusi %}
+            {% for pasus in pasusi %}<p>{{ pasus }}</p>{% endfor %}
+        {% elif vest.description %}
+            <p>{{ vest.description }}</p>
+        {% else %}
+            <p class="text-secondary">Ова вест нема сачуван текст. Отворите оригинал на сајту музеја.</p>
+        {% endif %}
+    </div>
+
+    <footer class="vest-podnozje">
+        <div class="vest-podnozje__radnje">
+            {% if vest.source_link %}
+            <a class="btn btn-outline-secondary" href="{{ vest.source_link }}" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Оригинал на nhmbeo.rs
+            </a>
+            {% endif %}
+            <button type="button" class="btn btn-outline-secondary" id="dugmeKopiraj">
+                <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Копирај за Instagram
+            </button>
+            {% if vest.izvor == 'nhmbeo' and vest.uvezeno_at %}
+            <span class="text-secondary small ms-auto">
+                Преузето {{ vest.uvezeno_at.strftime('%d.%m.%Y. у %H:%M') }}
+            </span>
+            {% endif %}
+        </div>
+
+        {% if vest.keywords %}
+        <p class="text-secondary small mt-3 mb-0">
+            <i class="bi bi-tags me-1" aria-hidden="true"></i>{{ vest.keywords }}
+        </p>
+        {% endif %}
+
+        {% if novija or starija %}
+        <nav class="vest-susedne" aria-label="Суседне вести">
+            {% if novija %}
+            <a class="vest-susedna" href="{{ url_for('content.news_article', vest_id=novija.id) }}">
+                <span class="vest-susedna__oznaka"><i class="bi bi-arrow-left" aria-hidden="true"></i> Новија вест</span>
+                <span class="vest-susedna__naslov">{{ novija.title }}</span>
+            </a>
+            {% endif %}
+            {% if starija %}
+            <a class="vest-susedna" href="{{ url_for('content.news_article', vest_id=starija.id) }}">
+                <span class="vest-susedna__oznaka">Старија вест <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                <span class="vest-susedna__naslov">{{ starija.title }}</span>
+            </a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </footer>
+</article>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="vestToast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+        <div class="toast-body" id="vestToastTelo"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="vestPodaci" type="application/json">{{ {'naslov': vest.title, 'opis': vest.description or ''} | tojson }}</script>
+<script>
+(function () {
+    'use strict';
+    const podaci = JSON.parse(document.getElementById('vestPodaci').textContent);
+    const toastEl = document.getElementById('vestToast');
+    const toastTelo = document.getElementById('vestToastTelo');
+
+    function poruka(tekst) {
+        toastTelo.textContent = tekst;
+        bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 }).show();
+    }
+
+    document.getElementById('dugmeKopiraj').addEventListener('click', function () {
+        const tekst = podaci.naslov + '\n\n' + podaci.opis
+            + '\n\n#ПриродњачкиМузеј #NaturalHistoryMuseum #Београд #музеј #nhmbeo';
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(tekst)
+                .then(function () { poruka('Текст је копиран за Instagram'); })
+                .catch(function () { poruka('Копирање није успело — означите текст ручно'); });
+        } else {
+            poruka('Копирање захтева безбедну везу (HTTPS)');
+        }
+    });
+}());
+</script>
+{% endblock %}

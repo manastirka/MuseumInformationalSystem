@@ -3,7 +3,8 @@
 import logging
 import os
 
-from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import (abort, flash, jsonify, redirect, render_template, request,
+                   send_file, url_for)
 from psycopg.rows import dict_row
 
 from postgres_service import get_postgres_connection
@@ -366,24 +367,237 @@ def render_exhibitions_database(*, exhibitions_database, get_exhibition_statisti
     )
 
 
-def render_museum_news(*, news_database):
-    """Render the museum news view."""
-    articles_all = sorted(
-        news_database['articles'],
-        key=lambda article: article.get('start_date', ''),
-        reverse=True,
+def _stranica_iz_zahteva(podrazumevano=12, najvise=48):
+    """Broj strane i velicina strane iz query stringa, uvek u razumnom opsegu."""
+    try:
+        strana = max(1, int(request.args.get('strana', 1)))
+    except (TypeError, ValueError):
+        strana = 1
+    try:
+        po_strani = int(request.args.get('po_strani', podrazumevano))
+    except (TypeError, ValueError):
+        po_strani = podrazumevano
+    po_strani = min(max(po_strani, 6), najvise)
+    return strana, po_strani
+
+
+def render_museum_news(*, news_store, moze_uredjivanje=False):
+    """Prikaz muzejskih vesti — cita bazu pri svakom zahtevu, ne kes u procesu."""
+    upit = (request.args.get('q') or '').strip()
+    tip = (request.args.get('tip') or '').strip() or None
+    izvor = (request.args.get('izvor') or '').strip() or None
+    godina = (request.args.get('godina') or '').strip() or None
+
+    if izvor not in (None, 'rucni', 'nhmbeo'):
+        izvor = None
+
+    strana, po_strani = _stranica_iz_zahteva()
+
+    vesti, ukupno = news_store.dohvati_vesti(
+        upit=upit or None,
+        tip=tip,
+        izvor=izvor,
+        godina=godina,
+        limit=po_strani,
+        pomak=(strana - 1) * po_strani,
     )
-    recent_articles = articles_all[:20]
+    pregled = news_store.pregled()
+
+    ima_filtera = bool(upit or tip or izvor or godina)
+    # Naslovna vest se izdvaja samo na prvoj strani bez filtera — inace bi
+    # korisnik pomislio da je rezultat pretrage nekako povlascen.
+    naslovna = vesti[0] if (vesti and strana == 1 and not ima_filtera) else None
+    ostale = vesti[1:] if naslovna else vesti
+
+    ukupno_strana = max(1, -(-ukupno // po_strani))
 
     return render_template(
         'admin_news.html',
-        articles=recent_articles,
-        total_articles=len(articles_all),
+        naslovna=naslovna,
+        vesti=ostale,
+        ukupno=ukupno,
+        pregled=pregled,
+        upit=upit,
+        tip=tip,
+        izvor=izvor,
+        godina=godina,
+        ima_filtera=ima_filtera,
+        strana=strana,
+        po_strani=po_strani,
+        ukupno_strana=ukupno_strana,
+        moze_uredjivanje=moze_uredjivanje,
     )
 
 
-def api_save_news(*, news_database):
-    """Save a news article and refresh the cached news dataset."""
+def render_news_article(*, news_store, vest_id):
+    """Strana za citanje jedne vesti."""
+    vest = news_store.dohvati_vest(vest_id)
+    if vest is None:
+        abort(404)
+    novija, starija = news_store.susedne_vesti(vest)
+    pasusi = [red.strip() for red in (vest.get('sadrzaj_tekst') or '').split('\n')
+              if red.strip()]
+    return render_template(
+        'news_article.html',
+        vest=vest,
+        pasusi=pasusi,
+        novija=novija,
+        starija=starija,
+    )
+
+
+def api_refresh_news(*, news_importer, news_store, pokrenuo='ручно',
+                     razmak_sekundi=60):
+    """Rucno pokretanje uvoza sa sajta muzeja.
+
+    Delimican uvoz se NE prijavljuje kao uspeh — korisnik mora da vidi da
+    sajt nije vratio deo objava, inace izgleda kao da vesti prosto nema.
+    Uzastopni klikovi u roku od ``razmak_sekundi`` vracaju posledji ishod
+    umesto da ponovo gadjaju tudji sajt.
+    """
+    from datetime import datetime, timezone
+
+    try:
+        poslednji = news_store.pregled()['poslednji_uvoz']
+    except Exception:
+        logger.exception("Ne mogu da procitam trag poslednjeg uvoza")
+        poslednji = None
+
+    if poslednji and poslednji.get('zavrseno_at'):
+        proteklo = (datetime.now(timezone.utc)
+                    - poslednji['zavrseno_at']).total_seconds()
+        if 0 <= proteklo < razmak_sekundi:
+            return jsonify({
+                'success': poslednji['status'] == 'uspeh',
+                'status': poslednji['status'],
+                'novih': poslednji['novih'],
+                'azuriranih': poslednji['azuriranih'],
+                'pregledano': poslednji['pregledano'],
+                'preskoceno': 0,
+                'ponovljeno': True,
+                'message': 'Освежено пре %d s · %s' % (
+                    int(proteklo), poslednji['poruka'] or ''),
+            })
+
+    try:
+        ishod = news_importer.uvezi_vesti(pokrenuo=pokrenuo)
+    except Exception as exc:
+        logger.exception("Rucni uvoz muzejskih vesti nije uspeo")
+        return jsonify({
+            'success': False,
+            'status': 'greska',
+            'message': 'Увоз са сајта музеја није успео: %s' % exc,
+        }), 502
+
+    return jsonify({
+        'success': ishod['status'] == 'uspeh',
+        'status': ishod['status'],
+        'novih': ishod['novih'],
+        'azuriranih': ishod['azuriranih'],
+        'pregledano': ishod['pregledano'],
+        'preskoceno': ishod.get('preskoceno', 0),
+        'message': ishod['poruka'],
+    })
+
+
+def api_get_news(*, news_store, vest_id):
+    """Jedna rucna vest kao JSON — modal za izmenu je puni odavde.
+
+    Podaci ne idu kroz HTML atribute (data-naslov i slicno) jer bi svaki
+    propust u escape-ovanju odmah bio XSS; ovako naslov nikad ne dodiruje
+    HTML parser.
+    """
+    vest = news_store.dohvati_vest(vest_id)
+    if vest is None:
+        return jsonify({'success': False, 'message': 'Вест не постоји'}), 404
+    if vest['izvor'] == 'nhmbeo':
+        return jsonify({
+            'success': False,
+            'message': 'Вест је преузета са сајта музеја и уређује се тамо.',
+        }), 409
+    return jsonify({
+        'id': vest['id'],
+        'title': vest['title'] or '',
+        'description': vest['description'] or '',
+        'type': vest['type'] or '',
+        'start_date': vest['start_date'].isoformat() if vest['start_date'] else '',
+        'curator': vest['curator'] or '',
+        'location': vest['location'] or '',
+        'source_link': vest['source_link'] or '',
+        'keywords': vest['keywords'] or '',
+    })
+
+
+def render_news_review(*, news_store):
+    """Red za pregled vesti nadjenih na vebu."""
+    status = (request.args.get('status') or 'na_cekanju').strip()
+    if status not in ('na_cekanju', 'odobreno', 'odbaceno'):
+        status = 'na_cekanju'
+
+    kandidati, ukupno = news_store.dohvati_kandidate(status=status)
+    return render_template(
+        'news_review.html',
+        kandidati=kandidati,
+        ukupno=ukupno,
+        status=status,
+        brojevi=news_store.broj_kandidata_po_statusu(),
+    )
+
+
+def api_search_web_news(*, web_search, news_store, pokrenuo='ручно'):
+    """Rucno pokretanje pretrage veba."""
+    try:
+        ishod = web_search.pretrazi_veb(pokrenuo=pokrenuo)
+    except Exception as exc:
+        logger.exception("Rucna pretraga veba nije uspela")
+        return jsonify({
+            'success': False,
+            'status': 'greska',
+            'message': 'Претрага веба није успела: %s' % exc,
+        }), 502
+
+    return jsonify({
+        'success': ishod['status'] == 'uspeh',
+        'status': ishod['status'],
+        'novih': ishod['novih'],
+        'pregledano': ishod['pregledano'],
+        'message': ishod['poruka'],
+    })
+
+
+def api_decide_web_news(*, news_store, kandidat_id, odluku_doneo=''):
+    """Odobri ili odbaci nadjenu vest."""
+    podaci = request.get_json(silent=True) or {}
+    odluka = (podaci.get('odluka') or '').strip()
+
+    try:
+        uspelo, poruka, vest_id = news_store.odluci_o_kandidatu(
+            kandidat_id, odluka, ko=odluku_doneo)
+    except Exception as exc:
+        logger.exception("Odluka o nadjenoj vesti nije upisana")
+        return jsonify({'success': False,
+                        'message': 'Грешка: %s' % exc}), 500
+
+    return jsonify({
+        'success': uspelo,
+        'message': poruka,
+        'vest_id': vest_id,
+    }), (200 if uspelo else 400)
+
+
+def api_delete_news(*, news_store, vest_id):
+    """Brisanje rucne vesti; uvezene se ne brisu odavde."""
+    try:
+        obrisano, poruka = news_store.obrisi_vest(vest_id)
+    except Exception as exc:
+        logger.exception("Brisanje vesti nije uspelo")
+        return jsonify({'success': False, 'message': 'Грешка: %s' % exc}), 500
+    return jsonify({'success': obrisano, 'message': poruka}), (
+        200 if obrisano else 400)
+
+
+def api_save_news():
+    """Sacuvaj rucnu vest. Baza je izvor istine — nema kesa da se osvezava."""
     try:
         data = request.get_json()
         if not data:
@@ -400,6 +614,26 @@ def api_save_news(*, news_database):
                 article_id = data.get('id')
 
                 if article_id:
+                    cur.execute(
+                        'SELECT izvor FROM news_articles WHERE id = %s',
+                        (article_id,),
+                    )
+                    postojeca = cur.fetchone()
+                    if postojeca is None:
+                        return jsonify({
+                            'success': False,
+                            'message': 'Вест не постоји',
+                        }), 404
+                    if postojeca['izvor'] == 'nhmbeo':
+                        # Sledeci uvoz bi izmenu pregazio, pa je odbijamo
+                        # odmah umesto da korisnik izgubi rad.
+                        return jsonify({
+                            'success': False,
+                            'message': ('Вест је преузета са сајта музеја и '
+                                        'уређује се тамо — измена овде би '
+                                        'нестала при следећем увозу.'),
+                        }), 409
+
                     cur.execute(
                         """
                         UPDATE news_articles SET
@@ -460,7 +694,6 @@ def api_save_news(*, news_database):
 
                 conn.commit()
 
-        news_database.refresh()
         return jsonify({'success': True, 'message': message})
     except Exception as exc:
         logger.exception("Error saving news")

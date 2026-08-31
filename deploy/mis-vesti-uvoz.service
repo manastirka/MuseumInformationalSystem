@@ -1,0 +1,32 @@
+# Увоз музејских вести са nhmbeo.rs (WordPress REST API) у news_articles.
+# Продукцијска инсталација:
+#   sudo cp deploy/mis-vesti-uvoz.service deploy/mis-vesti-uvoz.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now mis-vesti-uvoz.timer
+#
+# Услови на проду:
+#   - DATABASE_URL у /opt/mis/app/.env показује на mis_db
+#   - излаз ка https://nhmbeo.rs (порт 443) дозвољен са сервера
+#
+# Увоз је идемпотентан: upsert по (izvor, spoljni_id), па поновно покретање
+# не прави дупликате. Свако покретање упише ред у news_import_log, и страна
+# „Музејске вести" показује време и исход последњег увоза.
+
+[Unit]
+Description=MIS увоз музејских вести са сајта nhmbeo.rs
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=mis
+WorkingDirectory=/opt/mis/app
+ExecStart=/opt/mis/venv/bin/python /opt/mis/app/museum_news_importer.py --strane 3 --pokrenuo timer
+Nice=10
+TimeoutStartSec=300
+
+# Сервис само чита са интернета и пише у базу — нема потребе ни за чим више.
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true

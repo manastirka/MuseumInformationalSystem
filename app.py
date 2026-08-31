@@ -820,6 +820,15 @@ MODULE_ACCESS = {
         'default_access': True,  # Everyone can view news
         'restricted_users': []
     },
+    'news_edit': {
+        'name': 'Уређивање музејских вести',
+        'description': ('Унос и измена вести, освежавање са сајта и преглед '
+                        'вести нађених на вебу. Читање вести је одвојено '
+                        'право („Музејске вести") које сви имају.'),
+        'icon': 'bi-pencil-square',
+        'default_access': False,
+        'authorized_users': ['admin']
+    },
     'cultural_heritage': {
         'name': 'Заштићена културна добра',
         'description': 'Регистар културних добара под заштитом',
