@@ -13,7 +13,7 @@
 .vesti {
     max-width: 1180px;
     margin: 0 auto;
-    padding: var(--space-8) var(--space-4) var(--space-12);
+    padding: var(--space-10) var(--space-4) var(--space-12);
 }
 
 .vesti-zaglavlje {
@@ -21,15 +21,16 @@
     padding-bottom: var(--space-4);
     margin-bottom: var(--space-5);
 }
-/* Наслов и дугмад у истом реду: дугмад поравната уз доњу линију наслова,
-   не уз његов врх — иначе висе уз навигацију. */
-.vesti-zaglavlje__red {
-    display: flex; flex-wrap: wrap; gap: var(--space-4);
-    align-items: flex-end; justify-content: space-between;
-}
+/* Дугмад НЕ иду уз наслов. Тамо лебде горе десно уз саму навигацију и
+   немају за шта да се вежу; кућни образац (в. „База изложби") их држи
+   ниже, уз траку са подацима. Наслов остаје чист, као у новинама. */
 .vesti-zaglavlje__radnje {
     display: flex; flex-wrap: wrap; gap: var(--space-2);
-    padding-bottom: var(--space-1);
+    /* Свој ред, а не „падне у нови ако се не уклопи" — да распоред не
+       зависи од дужине бројева у реду изнад. */
+    flex: 0 0 100%;
+    justify-content: flex-end;
+    margin-top: var(--space-1);
 }
 .vesti-naslov {
     font-family: var(--font-display, var(--font-family));
@@ -54,10 +55,10 @@
     font-size: var(--font-size-xs); font-weight: 700; line-height: 1.4;
 }
 .vesti-traka-stanja {
-    display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
-    align-items: center; justify-content: space-between;
+    display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5);
+    align-items: center;
     border-top: 1px solid var(--border-color);
-    margin-top: var(--space-4); padding-top: var(--space-3);
+    margin-top: var(--space-5); padding-top: var(--space-4);
     font-size: var(--font-size-sm); color: var(--text-secondary);
 }
 .vesti-stanje-uvoza { display: inline-flex; align-items: center; gap: var(--space-2); }
@@ -199,9 +200,8 @@
 
 @media (max-width: 620px) {
     /* Дугмад преко целе ширине уместо да се ломе у неравне редове. */
-    .vesti-zaglavlje__red { align-items: stretch; }
-    .vesti-zaglavlje__radnje { width: 100%; padding-bottom: 0; }
-    .vesti-zaglavlje__radnje > * { flex: 1 1 10rem; }
+    .vesti-zaglavlje__radnje { width: 100%; margin-left: 0; }
+    .vesti-zaglavlje__radnje > * { flex: 1 1 9rem; }
 }
 
 @media (max-width: 860px) {
@@ -232,7 +232,7 @@
 <div class="vesti">
 
     <header class="vesti-zaglavlje">
-        <div class="vesti-zaglavlje__red">
+        <div>
             <div>
                 <h1 class="vesti-naslov">Музејске вести</h1>
                 <p class="vesti-podnaslov">
@@ -240,20 +240,6 @@
                     <a href="https://nhmbeo.rs/" target="_blank" rel="noopener noreferrer">nhmbeo.rs</a>
                 </p>
             </div>
-            {% if moze_uredjivanje %}
-            <div class="vesti-zaglavlje__radnje">
-                <a class="btn btn-outline-secondary" href="{{ url_for('content.news_review') }}">
-                    <i class="bi bi-search me-1" aria-hidden="true"></i>Са веба
-                    {% if pregled.na_cekanju %}<span class="vesti-broj-cekanja">{{ pregled.na_cekanju }}</span>{% endif %}
-                </a>
-                <button type="button" class="btn btn-outline-secondary" id="dugmeOsvezi">
-                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Освежи са сајта
-                </button>
-                <button type="button" class="btn btn-primary" id="dugmeNovaVest">
-                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Нова вест
-                </button>
-            </div>
-            {% endif %}
         </div>
 
         <div class="vesti-traka-stanja">
@@ -282,6 +268,21 @@
                 <span>Увоз са сајта још није покретан</span>
                 {% endif %}
             </div>
+
+            {% if moze_uredjivanje %}
+            <div class="vesti-zaglavlje__radnje">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('content.news_review') }}">
+                    <i class="bi bi-search me-1" aria-hidden="true"></i>Са веба
+                    {% if pregled.na_cekanju %}<span class="vesti-broj-cekanja">{{ pregled.na_cekanju }}</span>{% endif %}
+                </a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="dugmeOsvezi">
+                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Освежи са сајта
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="dugmeNovaVest">
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Нова вест
+                </button>
+            </div>
+            {% endif %}
         </div>
     </header>
 
