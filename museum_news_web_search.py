@@ -27,6 +27,7 @@ from email.utils import parsedate_to_datetime
 from urllib.parse import parse_qs, urlparse
 
 import requests
+from bs4 import BeautifulSoup
 from psycopg.rows import dict_row
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,26 @@ GOOGLE_URL = 'https://news.google.com/rss/search'
 BING_URL = 'https://www.bing.com/news/search'
 
 # Upiti su namerno uski — trazimo vesti o OVOM muzeju, ne o struci uopste.
+# RSS фидови самих медија. Зашто поред Google-а и Bing-а: Google News у
+# `link` даје свој омот (`news.google.com/rss/articles/…`) који се не да
+# разрешити без недокументованих Google интерних позива — са њега се вуче
+# само Google-ов лого, не слика чланка. Фид медија даје ПРАВУ адресу,
+# слику и прави извод. Мана: носи само најновије ставке, па историју и
+# даље покривају Google и Bing.
+#
+# Провера 31.08.2026: сви враћају 200 и <item>.
+IZVORI_MEDIJA = (
+    ('Политика',  'https://www.politika.rs/scc/rss'),
+    ('Данас',     'https://www.danas.rs/feed/'),
+    ('N1',        'https://n1info.rs/feed/'),
+    ('Нова.рс',   'https://nova.rs/feed/'),
+    ('Новости',   'https://www.novosti.rs/rss/vesti'),
+    ('Blic',      'https://www.blic.rs/rss/danasnje-vesti'),
+    ('B92',       'https://www.b92.net/info/rss/vesti.xml'),
+    ('RTS',       'https://www.rts.rs/page/stories/sr/rss/1/'),
+    ('Курир',     'https://www.kurir.rs/rss/'),
+)
+
 UPITI = (
     '"Prirodnjački muzej" Beograd',
     '"Природњачки музеј" Београд',
@@ -202,6 +223,28 @@ def _domen_medija(stavka):
     return ''
 
 
+def _slika_iz_stavke(stavka):
+    """Слика из RSS ставке: media:content, media:thumbnail или enclosure."""
+    for dete in stavka:
+        oznaka = dete.tag.rsplit('}', 1)[-1].lower()
+        if oznaka in ('content', 'thumbnail', 'enclosure'):
+            url = (dete.attrib.get('url') or '').strip()
+            tip = (dete.attrib.get('type') or '').lower()
+            if not url:
+                continue
+            if tip and not tip.startswith('image'):
+                continue        # видео или аудио прилог, не слика
+            if re.search(r'\.(?:mp4|mov|webm|mp3|m4a)(?:\?|$)', url, re.I):
+                continue
+            if 'youtube.com' in url or 'youtu.be' in url:
+                continue        # уграђен видео, не слика чланка
+            return url
+    # Понеки фид слику држи само у HTML-у описа.
+    opis = stavka.findtext('description') or ''
+    nadjena = re.search(r'<img[^>]+src=["\']([^"\']+)', opis, re.I)
+    return nadjena.group(1) if nadjena else None
+
+
 def _ime_medija(naslov, stavka):
     """Google nosi ime medija u <source>, Bing u imenovanom prostoru."""
     izvor = stavka.find('source')
@@ -222,6 +265,8 @@ def _skini_medij_iz_naslova(naslov, medij):
 
 
 def _razbori_odgovor(tekst, pretrazivac, upit):
+    # ET.fromstring на bytes поштује XML декларацију о кодирању; на str
+    # пуца ако фид каже windows-1250 или слично.
     koren = ET.fromstring(tekst)
     nalazi = []
     for stavka in koren.findall('.//item'):
@@ -245,6 +290,7 @@ def _razbori_odgovor(tekst, pretrazivac, upit):
             'izvod': izvod,
             'izvor_naziv': medij,
             'domen_medija': domen_medija,
+            'slika_url': _slika_iz_stavke(stavka),
             'objavljeno': _vreme(stavka.findtext('pubDate')),
             'pretrazivac': pretrazivac,
             'upit': upit,
@@ -261,7 +307,7 @@ def pretrazi_google(upit, *, session=None):
         timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
     )
     odgovor.raise_for_status()
-    return _razbori_odgovor(odgovor.text, 'google', upit)
+    return _razbori_odgovor(odgovor.content, 'google', upit)
 
 
 def pretrazi_bing(upit, *, session=None):
@@ -273,7 +319,22 @@ def pretrazi_bing(upit, *, session=None):
         timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
     )
     odgovor.raise_for_status()
-    return _razbori_odgovor(odgovor.text, 'bing', upit)
+    return _razbori_odgovor(odgovor.content, 'bing', upit)
+
+
+def pretrazi_medij(ime, url_fida, *, session=None):
+    """Најновије ставке из фида једног медија, са правом адресом и сликом."""
+    klijent = session or requests
+    odgovor = klijent.get(
+        url_fida, headers=HEADERS,
+        timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS))
+    odgovor.raise_for_status()
+    nalazi = _razbori_odgovor(odgovor.content, 'medij', ime)
+    for nalaz in nalazi:
+        # Фид не носи име медија у ставци — знамо га из самог фида.
+        nalaz['izvor_naziv'] = ime
+        nalaz['domen_medija'] = url_fida
+    return nalazi
 
 
 def _je_sopstveni_sajt(url):
@@ -290,21 +351,95 @@ def _upisi_kandidata(cur, nalaz, ocena, razlog):
     cur.execute(
         """
         INSERT INTO news_web_kandidati (
-            kljuc, url, naslov, izvod, izvor_naziv, objavljeno,
+            kljuc, url, naslov, izvod, izvor_naziv, objavljeno, slika_url,
             upit, pretrazivac, ocena, razlog
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (kljuc) DO NOTHING
         RETURNING id
         """,
         (nalaz['kljuc'], nalaz['url'], nalaz['naslov'], nalaz['izvod'] or None,
-         nalaz['izvor_naziv'] or None, nalaz['objavljeno'], nalaz['upit'],
+         nalaz['izvor_naziv'] or None, nalaz['objavljeno'],
+         nalaz.get('slika_url') or None, nalaz['upit'],
          nalaz['pretrazivac'], ocena, razlog),
     )
     return cur.fetchone() is not None
 
 
-def pretrazi_veb(*, upiti=UPITI, prag=PRAG, pokrenuo='timer', session=None):
+OG_NAJVISE_PO_POKRETANJU = 40
+
+
+def _je_google_omot(url):
+    return 'news.google.com' in (urlparse(url or '').netloc or '')
+
+
+def preuzmi_og_sliku(url, *, session=None):
+    """Скини og:image са странице чланка. None кад је нема или страна пукне.
+
+    Ради само над ПРАВОМ адресом: Google-ов омот врати Google-ов лого, што
+    је горе од ниједне слике.
+    """
+    if not url or _je_google_omot(url):
+        return None
+    klijent = session or requests
+    odgovor = klijent.get(
+        url, headers=HEADERS,
+        timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
+        allow_redirects=True)
+    odgovor.raise_for_status()
+    if _je_google_omot(odgovor.url):
+        return None
+    supa = BeautifulSoup(odgovor.content, 'lxml')
+    for trazi in ({'property': 'og:image'}, {'name': 'og:image'},
+                  {'property': 'twitter:image'}, {'name': 'twitter:image'}):
+        oznaka = supa.find('meta', attrs=trazi)
+        if oznaka and (oznaka.get('content') or '').strip():
+            return oznaka['content'].strip()
+    return None
+
+
+def dopuni_slike(*, najvise=OG_NAJVISE_PO_POKRETANJU, session=None):
+    """За кандидате на чекању без слике скини og:image са чланка.
+
+    Враћа (допуњено, покушано). Пад једне странице не руши посао — таква
+    вест једноставно остане без слике.
+    """
+    dopunjeno = pokusano = 0
+    with _get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, url FROM news_web_kandidati "
+                "WHERE status = 'na_cekanju' AND slika_url IS NULL "
+                "  AND url NOT LIKE %s "
+                "ORDER BY objavljeno DESC NULLS LAST, id DESC LIMIT %s",
+                ('%news.google.com%', int(najvise)))
+            redovi = cur.fetchall()
+
+        for red in redovi:
+            pokusano += 1
+            try:
+                slika = preuzmi_og_sliku(red['url'], session=session)
+            except Exception as exc:
+                logger.info('og:image за %s није скинут: %s',
+                            red['url'][:70], exc)
+                continue
+            if not slika:
+                continue
+            with conn.cursor() as cur:
+                cur.execute(
+                    'UPDATE news_web_kandidati SET slika_url = %s '
+                    'WHERE id = %s AND slika_url IS NULL',
+                    (slika, red['id']))
+                dopunjeno += cur.rowcount
+            conn.commit()
+
+    if pokusano:
+        logger.info('og:image: допуњено %d од %d', dopunjeno, pokusano)
+    return dopunjeno, pokusano
+
+
+def pretrazi_veb(*, upiti=UPITI, izvori_medija=IZVORI_MEDIJA, prag=PRAG,
+                 pokrenuo='timer', session=None, dopuni_og=True):
     """Pretrazi veb, oceni nalaze i stavi one iznad praga u red za pregled.
 
     Vraca {'status', 'novih', 'pregledano', 'odbijeno_ocenom', 'poruka'}.
@@ -324,39 +459,55 @@ def pretrazi_veb(*, upiti=UPITI, prag=PRAG, pokrenuo='timer', session=None):
             log_id = cur.fetchone()['id']
         conn.commit()
 
+        # Редослед НИЈЕ произвољан. Дедупликација иде по наслову и прва
+        # верзија побеђује, па прво иду извори са најбољим подацима:
+        #   1. фидови медија — права адреса, слика, прави извод
+        #   2. Bing — права адреса (сакривена у apiclick вези), извод
+        #   3. Google — највећи домет, али само наслов и свој омот уместо
+        #      адресе, па са њега нема ни слике
+        poslovi = [('medij:%s' % ime, ime_fida)
+                   for ime, ime_fida in izvori_medija]
+        poslovi += [('bing/%s' % u, u) for u in upiti]
+        poslovi += [('google/%s' % u, u) for u in upiti]
+
+        def _pokreni(oznaka, argument):
+            if oznaka.startswith('medij:'):
+                return pretrazi_medij(oznaka[6:], argument, session=session)
+            if oznaka.startswith('bing/'):
+                return pretrazi_bing(argument, session=session)
+            return pretrazi_google(argument, session=session)
+
         try:
-            for upit in upiti:
-                for ime, pretraga in (('google', pretrazi_google),
-                                      ('bing', pretrazi_bing)):
-                    try:
-                        nalazi = pretraga(upit, session=session)
-                    except Exception as exc:
-                        neuspeli.append('%s/%s' % (ime, upit))
-                        logger.warning('Pretraga %s za „%s" nije uspela: %s',
-                                       ime, upit, exc)
-                        continue
+            for oznaka, argument in poslovi:
+                try:
+                    nalazi = _pokreni(oznaka, argument)
+                except Exception as exc:
+                    neuspeli.append(oznaka)
+                    logger.warning('Извор „%s" није одговорио: %s',
+                                   oznaka, exc)
+                    continue
 
-                    with conn.cursor() as cur:
-                        for nalaz in nalazi:
-                            nalaz['kljuc'] = kljuc_naslova(nalaz['naslov'])
-                            if nalaz['kljuc'] in vidjeni:
-                                continue
-                            vidjeni.add(nalaz['kljuc'])
-                            pregledano += 1
+                with conn.cursor() as cur:
+                    for nalaz in nalazi:
+                        nalaz['kljuc'] = kljuc_naslova(nalaz['naslov'])
+                        if nalaz['kljuc'] in vidjeni:
+                            continue
+                        vidjeni.add(nalaz['kljuc'])
+                        pregledano += 1
 
-                            if (_je_sopstveni_sajt(nalaz['url'])
-                                    or _je_sopstveni_sajt(
-                                        nalaz.get('domen_medija'))):
-                                continue    # stize kroz uvoz sa sajta
+                        if (_je_sopstveni_sajt(nalaz['url'])
+                                or _je_sopstveni_sajt(
+                                    nalaz.get('domen_medija'))):
+                            continue    # stize kroz uvoz sa sajta
 
-                            ocena, razlog = oceni(
-                                nalaz['naslov'], nalaz['izvod'], nalaz['url'])
-                            if ocena < prag:
-                                odbijeno += 1
-                                continue
-                            if _upisi_kandidata(cur, nalaz, ocena, razlog):
-                                novih += 1
-                    conn.commit()
+                        ocena, razlog = oceni(
+                            nalaz['naslov'], nalaz['izvod'], nalaz['url'])
+                        if ocena < prag:
+                            odbijeno += 1
+                            continue
+                        if _upisi_kandidata(cur, nalaz, ocena, razlog):
+                            novih += 1
+                conn.commit()
         except Exception as exc:
             conn.rollback()
             with conn.cursor() as cur:
@@ -379,9 +530,18 @@ def pretrazi_veb(*, upiti=UPITI, prag=PRAG, pokrenuo='timer', session=None):
             conn.commit()
             raise greska
 
+        sa_slikom = 0
+        if dopuni_og and novih:
+            try:
+                sa_slikom, _ = dopuni_slike(session=session)
+            except Exception:
+                logger.exception('Допуна слика није успела — вести остају без њих')
+
         status = 'delimicno' if neuspeli else 'uspeh'
         poruka = 'Нових за преглед: %d · прегледано: %d · испод прага: %d' % (
             novih, pregledano, odbijeno)
+        if sa_slikom:
+            poruka += ' · слика догледано: %d' % sa_slikom
         if neuspeli:
             poruka += ' · није одговорило: %s' % ', '.join(neuspeli)
 

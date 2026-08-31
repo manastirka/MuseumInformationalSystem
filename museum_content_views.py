@@ -388,7 +388,9 @@ def render_museum_news(*, news_store, moze_uredjivanje=False):
     izvor = (request.args.get('izvor') or '').strip() or None
     godina = (request.args.get('godina') or '').strip() or None
 
-    if izvor not in (None, 'rucni', 'nhmbeo'):
+    # Списак мора да прати CHECK ограничење на news_articles.izvor —
+    # без 'veb' је филтер „Медији о нама" тихо падао на „сви извори".
+    if izvor not in (None, 'rucni', 'nhmbeo', 'veb'):
         izvor = None
 
     strana, po_strani = _stranica_iz_zahteva()

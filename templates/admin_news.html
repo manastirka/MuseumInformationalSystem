@@ -140,6 +140,32 @@
 }
 .vest-kartica:focus-within { outline: 2px solid var(--focus-ring, var(--accent)); outline-offset: 2px; }
 .vest-kartica__slika { aspect-ratio: 16 / 9; background: var(--bg-hover); overflow: hidden; }
+
+/* Вест преузета из медија коме се права адреса не да разрешити (Google
+   News даје свој омот) нема слику ниоткуда. Уместо празног оквира иде
+   исечак са именом медија — то је податак који имамо, не лажна фотографија. */
+.vest-isecak {
+    aspect-ratio: 16 / 9;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: var(--space-2);
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center; padding: var(--space-4);
+}
+.vest-isecak__navodnik {
+    font-family: var(--font-display, var(--font-family));
+    font-size: 2.4rem; line-height: .6; color: var(--border-strong, var(--border-color));
+}
+.vest-isecak__medij {
+    font-family: var(--font-display, var(--font-family));
+    font-size: var(--font-size-lg); font-weight: 700;
+    color: var(--text-secondary); letter-spacing: .01em;
+}
+.vest-isecak__oznaka {
+    font-size: var(--font-size-xs); text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-muted);
+}
 .vest-kartica__telo { display: flex; flex-direction: column; flex: 1 1 auto; padding: var(--space-4); }
 .vest-kartica__naslov {
     font-family: var(--font-display, var(--font-family));
@@ -223,6 +249,8 @@
     {%- if vest.start_date %}<time datetime="{{ vest.start_date }}">{{ vest.start_date.strftime('%d.%m.%Y.') }}</time>{% else %}<span>без датума</span>{% endif %}
     {%- if vest.izvor == 'nhmbeo' %}
     <span class="vest-oznaka" title="Преузето са nhmbeo.rs"><i class="bi bi-globe2" aria-hidden="true"></i>сајт</span>
+    {%- elif vest.izvor == 'veb' %}
+    <span class="vest-oznaka" title="Нађено претрагом веба{% if vest.autor %} — {{ vest.autor }}{% endif %}"><i class="bi bi-broadcast" aria-hidden="true"></i>{{ vest.autor or 'медији' }}</span>
     {%- else %}
     <span class="vest-oznaka" title="Унето кроз систем"><i class="bi bi-pencil" aria-hidden="true"></i>ручно</span>
     {%- endif %}
@@ -306,6 +334,7 @@
             <select class="form-select" id="filterIzvor" name="izvor">
                 <option value="">Сви извори</option>
                 <option value="nhmbeo" {% if izvor == 'nhmbeo' %}selected{% endif %}>Са сајта музеја</option>
+                <option value="veb" {% if izvor == 'veb' %}selected{% endif %}>Медији о нама</option>
                 <option value="rucni" {% if izvor == 'rucni' %}selected{% endif %}>Ручно унето</option>
             </select>
         </div>
@@ -377,6 +406,13 @@
             <a class="vest-kartica__slika vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}"
                aria-hidden="true" tabindex="-1">
                 <img src="{{ vest.slika_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            </a>
+            {% elif vest.izvor == 'veb' %}
+            <a class="vest-isecak vest-veza" href="{{ url_for('content.news_article', vest_id=vest.id) }}"
+               aria-hidden="true" tabindex="-1">
+                <span class="vest-isecak__navodnik" aria-hidden="true">„</span>
+                <span class="vest-isecak__medij">{{ vest.autor or 'Медији' }}</span>
+                <span class="vest-isecak__oznaka">о музеју</span>
             </a>
             {% endif %}
             <div class="vest-kartica__telo">

@@ -98,6 +98,8 @@
         {% if vest.type %}<span class="vest-kicker__tip">{{ vest.type }}</span>{% endif %}
         {% if vest.izvor == 'nhmbeo' %}
         <span class="vest-oznaka"><i class="bi bi-globe2" aria-hidden="true"></i> преузето са сајта</span>
+        {% elif vest.izvor == 'veb' %}
+        <span class="vest-oznaka"><i class="bi bi-broadcast" aria-hidden="true"></i> нађено на вебу{% if vest.autor %} · {{ vest.autor }}{% endif %}</span>
         {% else %}
         <span class="vest-oznaka"><i class="bi bi-pencil" aria-hidden="true"></i> унето у систему</span>
         {% endif %}
@@ -116,6 +118,8 @@
         {% endif %}
         {% if vest.izvor == 'nhmbeo' %}
         <span><i class="bi bi-globe2 me-1" aria-hidden="true"></i>Природњачки музеј у Београду</span>
+        {% elif vest.izvor == 'veb' and vest.autor %}
+        <span><i class="bi bi-broadcast me-1" aria-hidden="true"></i>{{ vest.autor }}</span>
         {% endif %}
         {% if vest.location %}
         <span><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ vest.location }}</span>

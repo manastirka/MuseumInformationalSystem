@@ -106,6 +106,83 @@ class OcenaRelevantnostiTest(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class SlikeTest(unittest.TestCase):
+    """Слика мора да стигне из фида или са странице чланка — и да се упише."""
+
+    def setUp(self):
+        _ocisti()
+        self.addCleanup(_ocisti)
+
+    def _stavka(self, dodatno=''):
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><item>'
+            '<title>Природњачки музеј у Београду добија нову зграду</title>'
+            '<link>https://primer.invalid/vest-1</link>'
+            '<description>Опис вести довољно дуг да прође проверу дужине.</description>'
+            '<pubDate>Mon, 04 May 2026 10:00:00 GMT</pubDate>'
+            + dodatno +
+            '</item></channel></rss>').encode('utf-8')
+
+    def test_slika_iz_media_content(self):
+        nalazi = pretraga._razbori_odgovor(
+            self._stavka('<media:content url="https://primer.invalid/s.jpg" '
+                         'type="image/jpeg"/>'), 'medij', 'Тест')
+        self.assertEqual(nalazi[0]['slika_url'], 'https://primer.invalid/s.jpg')
+
+    def test_video_prilog_nije_slika(self):
+        # Данас у media:content шаље YouTube везу — то није слика вести.
+        nalazi = pretraga._razbori_odgovor(
+            self._stavka('<media:content url="https://www.youtube.com/embed/x"/>'),
+            'medij', 'Тест')
+        self.assertIsNone(nalazi[0]['slika_url'])
+
+    def test_slika_iz_html_opisa(self):
+        nalazi = pretraga._razbori_odgovor(
+            (self._stavka().decode('utf-8').replace(
+                '<description>Опис',
+                '<description>&lt;img src="https://primer.invalid/u.jpg"&gt;Опис')
+             ).encode('utf-8'), 'medij', 'Тест')
+        self.assertEqual(nalazi[0]['slika_url'], 'https://primer.invalid/u.jpg')
+
+    def test_slika_se_upisuje_u_bazu(self):
+        nalaz = {
+            'kljuc': pretraga.kljuc_naslova('Вест о музеју са сликом'),
+            'url': 'https://primer.invalid/a', 'naslov': 'Вест о музеју са сликом',
+            'izvod': '', 'izvor_naziv': 'Тест', 'objavljeno': None,
+            'slika_url': 'https://primer.invalid/slika.jpg',
+            'upit': OZNAKA, 'pretrazivac': 'medij',
+        }
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                self.assertTrue(pretraga._upisi_kandidata(cur, nalaz, 9, 'тест'))
+                cur.execute('SELECT slika_url FROM news_web_kandidati '
+                            'WHERE kljuc = %s', (nalaz['kljuc'],))
+                self.assertEqual(cur.fetchone()['slika_url'],
+                                 'https://primer.invalid/slika.jpg')
+            conn.commit()
+
+    def test_google_omot_se_ne_gadja_za_og_sliku(self):
+        # Са Google омота се повуче Google-ов лого — горе од ниједне слике.
+        self.assertIsNone(pretraga.preuzmi_og_sliku(
+            'https://news.google.com/rss/articles/CBMiABC'))
+
+    def test_odobrena_vest_nosi_sliku_dalje(self):
+        kandidat_id = _ubaci_kandidata('Вест о музеју коју одобравам')
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute('UPDATE news_web_kandidati SET slika_url = %s '
+                            'WHERE id = %s',
+                            ('https://primer.invalid/foto.jpg', kandidat_id))
+            conn.commit()
+
+        _, _, vest_id = skladiste.odluci_o_kandidatu(
+            kandidat_id, 'odobreno', ko=OZNAKA)
+
+        self.assertEqual(skladiste.dohvati_vest(vest_id)['slika_url'],
+                         'https://primer.invalid/foto.jpg')
+
+
 class RedZaPregledTest(unittest.TestCase):
     """Одлука кустоса мора да буде трајна и атомична."""
 
@@ -173,6 +250,38 @@ class RedZaPregledTest(unittest.TestCase):
 
         self.assertFalse(uspelo)
         self.assertEqual(_kandidat(kandidat_id)['status'], 'na_cekanju')
+
+
+class FilterIzvoraTest(unittest.TestCase):
+    """Филтер по извору мора да зна за сва три извора, не за два."""
+
+    def setUp(self):
+        _ocisti()
+        self.addCleanup(_ocisti)
+        kandidat_id = _ubaci_kandidata('Вест о музеју из медија')
+        _, _, self.vest_id = skladiste.odluci_o_kandidatu(
+            kandidat_id, 'odobreno', ko=OZNAKA)
+        self.client = museum_app.app.test_client()
+        with self.client.session_transaction() as sess:
+            sess.update({'user_id': 1, 'user_email': 'admin@nhmbeo.rs',
+                         'user_name': 'Тест', 'user_role': 'admin',
+                         'is_admin': True})
+
+    def test_skladiste_filtrira_veb(self):
+        vesti, ukupno = skladiste.dohvati_vesti(izvor='veb', limit=100)
+        self.assertGreaterEqual(ukupno, 1)
+        self.assertTrue(all(v['izvor'] == 'veb' for v in vesti))
+        self.assertIn(self.vest_id, [v['id'] for v in vesti])
+
+    def test_ruta_ne_odbacuje_veb_kao_nepoznat_izvor(self):
+        odgovor = self.client.get('/admin/news?izvor=veb',
+                                  base_url='https://localhost')
+        telo = odgovor.get_data(as_text=True)
+
+        self.assertEqual(odgovor.status_code, 200)
+        # Кад би 'veb' пао на None, страна би приказала и ручне вести.
+        self.assertIn('Вест о музеју из медија', telo)
+        self.assertIn('одговара филтеру', telo)
 
 
 class PravoUredjivanjaTest(unittest.TestCase):
