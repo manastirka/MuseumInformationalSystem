@@ -1,0 +1,12 @@
+[Unit]
+Description=Претражуј веб за вести о музеју једном дневно
+
+[Timer]
+# 08:40 сваког дана — довољно да се дневни помени ухвате, ретко довољно да
+# се туђи претраживачи не оптерећују. Persistent=true надокнађује пропуштено.
+OnCalendar=*-*-* 08:40:00
+Persistent=true
+RandomizedDelaySec=900
+
+[Install]
+WantedBy=timers.target

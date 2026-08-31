@@ -152,11 +152,17 @@ def pregled():
             )
             poslednji_uvoz = cur.fetchone()
 
+            cur.execute(
+                "SELECT count(*) AS broj FROM news_web_kandidati "
+                "WHERE status = 'na_cekanju'")
+            na_cekanju = cur.fetchone()['broj']
+
     return {
         'brojevi': brojevi,
         'tipovi': tipovi,
         'godine': godine,
         'poslednji_uvoz': poslednji_uvoz,
+        'na_cekanju': na_cekanju,
     }
 
 
@@ -173,7 +179,7 @@ def obrisi_vest(vest_id):
             red = cur.fetchone()
             if red is None:
                 return False, 'Вест не постоји'
-            if red['izvor'] != 'rucni':
+            if red['izvor'] == 'nhmbeo':
                 return False, ('Вест је преузета са сајта музеја и не може се '
                                'брисати овде — уклоните је на сајту.')
             cur.execute('DELETE FROM news_articles WHERE id = %s',
@@ -182,3 +188,103 @@ def obrisi_vest(vest_id):
         conn.commit()
     return obrisano, ('Вест је обрисана' if obrisano
                       else 'Вест није обрисана — покушајте поново')
+
+
+# --------------------------------------------------------------------------
+# Vesti nadjene na vebu — red za pregled (tabela news_web_kandidati, mig. 056)
+# --------------------------------------------------------------------------
+
+KANDIDAT_POLJA = """
+    id, kljuc, url, naslov, izvod, izvor_naziv, objavljeno, slika_url,
+    upit, pretrazivac, ocena, razlog, status, odluku_doneo, odluceno_at,
+    vest_id, nadjeno_at
+"""
+
+TIP_VESTI_SA_VEBA = 'Медији о нама'
+
+
+def dohvati_kandidate(*, status='na_cekanju', limit=60, pomak=0):
+    """Kandidati iz reda za pregled + ukupan broj u tom statusu."""
+    with _get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT count(*) AS ukupno FROM news_web_kandidati '
+                'WHERE status = %s', (status,))
+            ukupno = cur.fetchone()['ukupno']
+            cur.execute(
+                'SELECT ' + KANDIDAT_POLJA + ' FROM news_web_kandidati '
+                'WHERE status = %s '
+                'ORDER BY ocena DESC, objavljeno DESC NULLS LAST, id DESC '
+                'LIMIT %s OFFSET %s',
+                (status, int(limit), int(pomak)))
+            return cur.fetchall(), ukupno
+
+
+def broj_kandidata_po_statusu():
+    with _get_postgres_connection(row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT status, count(*) AS broj FROM news_web_kandidati '
+                'GROUP BY status')
+            return {red['status']: red['broj'] for red in cur.fetchall()}
+
+
+def odluci_o_kandidatu(kandidat_id, odluka, *, ko=''):
+    """Odobri ili odbaci kandidata. Vraca (uspelo, poruka, vest_id).
+
+    Odobravanje pravi red u news_articles (izvor='veb') i vezuje ga za
+    kandidata. Sve u JEDNOJ transakciji: ako upis vesti padne, kandidat NE
+    ostaje obelezen kao odobren — inace bi vest nestala a red za pregled je
+    vise ne bi nudio.
+    """
+    if odluka not in ('odobreno', 'odbaceno'):
+        return False, 'Непозната одлука', None
+
+    with _get_postgres_connection(row_factory=dict_row) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT ' + KANDIDAT_POLJA + ' FROM news_web_kandidati '
+                    'WHERE id = %s FOR UPDATE', (int(kandidat_id),))
+                kandidat = cur.fetchone()
+                if kandidat is None:
+                    return False, 'Вест не постоји у реду за преглед', None
+                if kandidat['status'] != 'na_cekanju':
+                    return False, 'О овој вести је већ одлучено', None
+
+                vest_id = None
+                if odluka == 'odobreno':
+                    cur.execute(
+                        """
+                        INSERT INTO news_articles (
+                            izvor, title, description, type, start_date,
+                            source_link, autor, slika_url, created_at, updated_at
+                        )
+                        VALUES ('veb', %s, %s, %s, %s, %s, %s, %s, now(), now())
+                        RETURNING id
+                        """,
+                        (kandidat['naslov'], kandidat['izvod'] or '',
+                         TIP_VESTI_SA_VEBA,
+                         kandidat['objavljeno'].date()
+                         if kandidat['objavljeno'] else None,
+                         kandidat['url'], kandidat['izvor_naziv'] or '',
+                         kandidat['slika_url']))
+                    vest_id = cur.fetchone()['id']
+
+                cur.execute(
+                    'UPDATE news_web_kandidati SET status = %s, '
+                    'odluku_doneo = %s, odluceno_at = now(), vest_id = %s '
+                    'WHERE id = %s AND status = %s',
+                    (odluka, str(ko)[:200], vest_id, int(kandidat_id),
+                     'na_cekanju'))
+                if cur.rowcount != 1:
+                    raise RuntimeError(
+                        'Ред у реду за преглед није измењен — покушајте поново')
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    return True, ('Вест је одобрена и додата међу вести'
+                  if odluka == 'odobreno'
+                  else 'Вест је одбачена и неће се више нудити'), vest_id

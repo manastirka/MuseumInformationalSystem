@@ -1,0 +1,28 @@
+# Аутоматска претрага веба за вести о Природњачком музеју у Београду.
+# Нађене вести иду у ред за преглед (news_web_kandidati), НЕ право међу вести —
+# упит „Природњачки музеј" налази и музеј у Свилајнцу, на Каблару, у Лондону.
+#
+# Продукцијска инсталација:
+#   sudo cp deploy/mis-vesti-veb.service deploy/mis-vesti-veb.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now mis-vesti-veb.timer
+#
+# Услови на проду: излаз ка news.google.com и www.bing.com (порт 443).
+
+[Unit]
+Description=MIS претрага веба за вести о музеју
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=mis
+WorkingDirectory=/opt/mis/app
+ExecStart=/opt/mis/venv/bin/python /opt/mis/app/museum_news_web_search.py --pokrenuo timer
+Nice=15
+TimeoutStartSec=300
+
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true

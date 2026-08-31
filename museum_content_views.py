@@ -381,7 +381,7 @@ def _stranica_iz_zahteva(podrazumevano=12, najvise=48):
     return strana, po_strani
 
 
-def render_museum_news(*, news_store):
+def render_museum_news(*, news_store, moze_uredjivanje=False):
     """Prikaz muzejskih vesti — cita bazu pri svakom zahtevu, ne kes u procesu."""
     upit = (request.args.get('q') or '').strip()
     tip = (request.args.get('tip') or '').strip() or None
@@ -425,6 +425,7 @@ def render_museum_news(*, news_store):
         strana=strana,
         po_strani=po_strani,
         ukupno_strana=ukupno_strana,
+        moze_uredjivanje=moze_uredjivanje,
     )
 
 
@@ -509,7 +510,7 @@ def api_get_news(*, news_store, vest_id):
     vest = news_store.dohvati_vest(vest_id)
     if vest is None:
         return jsonify({'success': False, 'message': 'Вест не постоји'}), 404
-    if vest['izvor'] != 'rucni':
+    if vest['izvor'] == 'nhmbeo':
         return jsonify({
             'success': False,
             'message': 'Вест је преузета са сајта музеја и уређује се тамо.',
@@ -525,6 +526,63 @@ def api_get_news(*, news_store, vest_id):
         'source_link': vest['source_link'] or '',
         'keywords': vest['keywords'] or '',
     })
+
+
+def render_news_review(*, news_store):
+    """Red za pregled vesti nadjenih na vebu."""
+    status = (request.args.get('status') or 'na_cekanju').strip()
+    if status not in ('na_cekanju', 'odobreno', 'odbaceno'):
+        status = 'na_cekanju'
+
+    kandidati, ukupno = news_store.dohvati_kandidate(status=status)
+    return render_template(
+        'news_review.html',
+        kandidati=kandidati,
+        ukupno=ukupno,
+        status=status,
+        brojevi=news_store.broj_kandidata_po_statusu(),
+    )
+
+
+def api_search_web_news(*, web_search, news_store, pokrenuo='ручно'):
+    """Rucno pokretanje pretrage veba."""
+    try:
+        ishod = web_search.pretrazi_veb(pokrenuo=pokrenuo)
+    except Exception as exc:
+        logger.exception("Rucna pretraga veba nije uspela")
+        return jsonify({
+            'success': False,
+            'status': 'greska',
+            'message': 'Претрага веба није успела: %s' % exc,
+        }), 502
+
+    return jsonify({
+        'success': ishod['status'] == 'uspeh',
+        'status': ishod['status'],
+        'novih': ishod['novih'],
+        'pregledano': ishod['pregledano'],
+        'message': ishod['poruka'],
+    })
+
+
+def api_decide_web_news(*, news_store, kandidat_id, odluku_doneo=''):
+    """Odobri ili odbaci nadjenu vest."""
+    podaci = request.get_json(silent=True) or {}
+    odluka = (podaci.get('odluka') or '').strip()
+
+    try:
+        uspelo, poruka, vest_id = news_store.odluci_o_kandidatu(
+            kandidat_id, odluka, ko=odluku_doneo)
+    except Exception as exc:
+        logger.exception("Odluka o nadjenoj vesti nije upisana")
+        return jsonify({'success': False,
+                        'message': 'Грешка: %s' % exc}), 500
+
+    return jsonify({
+        'success': uspelo,
+        'message': poruka,
+        'vest_id': vest_id,
+    }), (200 if uspelo else 400)
 
 
 def api_delete_news(*, news_store, vest_id):
@@ -566,7 +624,7 @@ def api_save_news():
                             'success': False,
                             'message': 'Вест не постоји',
                         }), 404
-                    if postojeca['izvor'] != 'rucni':
+                    if postojeca['izvor'] == 'nhmbeo':
                         # Sledeci uvoz bi izmenu pregazio, pa je odbijamo
                         # odmah umesto da korisnik izgubi rad.
                         return jsonify({

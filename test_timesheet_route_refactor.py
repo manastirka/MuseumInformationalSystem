@@ -1033,11 +1033,14 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             response = self.client.get('/admin/news', base_url=self.base_url)
 
         self.assertEqual(response.status_code, 200)
-        # Прикази читају базу кроз museum_news_store, не кеш у процесу.
+        # Прикази читају базу кроз museum_news_store, не кеш у процесу;
+        # moze_uredjivanje носи право `news_edit` до шаблона, да страна не
+        # нуди дугмад која би ионако вратила 403.
         import museum_news_store
 
         mocked_handler.assert_called_once_with(
             news_store=museum_news_store,
+            moze_uredjivanje=True,
         )
 
     def test_save_news_api_delegates_to_museum_content_module(self):

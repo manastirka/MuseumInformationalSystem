@@ -115,6 +115,7 @@ for unit in backup-nhmb.service backup-nhmb.timer \
             fototeka-import.service fototeka-import.timer \
             fototeka-fixity.service fototeka-fixity.timer \
             mis-vesti-uvoz.service mis-vesti-uvoz.timer \
+            mis-vesti-veb.service mis-vesti-veb.timer \
             mis-fototeka-worker.service; do
     repo_unit="$APP/deploy/$unit"
     live_unit="/etc/systemd/system/$unit"
