@@ -183,6 +183,61 @@ class SlikeTest(unittest.TestCase):
                          'https://primer.invalid/foto.jpg')
 
 
+class DopunaSlikaTest(unittest.TestCase):
+    """Допуна слика мора да покрије и раније нађене кандидате."""
+
+    def setUp(self):
+        _ocisti()
+        self.addCleanup(_ocisti)
+
+    def test_dopuna_hvata_starog_kandidata_bez_nove_pretrage(self):
+        # Кандидат нађен раније, без слике: следећа претрага не мора да
+        # донесе ништа ново, а он свеједно мора да добије слику.
+        kandidat_id = _ubaci_kandidata('Вест о музеју без слике',
+                                       url='https://primer.invalid/clanak')
+
+        class LaznaStrana:
+            url = 'https://primer.invalid/clanak'
+            content = (b'<html><head><meta property="og:image" '
+                       b'content="https://primer.invalid/og.jpg"></head></html>')
+
+            def raise_for_status(self):
+                return None
+
+        class LaznaVeza:
+            def get(self, url, **_kw):
+                return LaznaStrana()
+
+        dopunjeno, pokusano = pretraga.dopuni_slike(session=LaznaVeza())
+
+        self.assertEqual((dopunjeno, pokusano), (1, 1))
+        self.assertEqual(_kandidat(kandidat_id)['slika_url'],
+                         'https://primer.invalid/og.jpg')
+
+    def test_dopuna_preskace_google_omot(self):
+        _ubaci_kandidata('Вест о музеју преко Google-а',
+                         url='https://news.google.com/rss/articles/CBMiXYZ')
+
+        class LaznaVeza:
+            def get(self, *_a, **_kw):
+                raise AssertionError('Google омот се не сме ни гађати')
+
+        self.assertEqual(pretraga.dopuni_slike(session=LaznaVeza()), (0, 0))
+
+    def test_pad_strane_ne_rusi_dopunu(self):
+        kandidat_id = _ubaci_kandidata('Вест о музеју, страна не ради',
+                                       url='https://primer.invalid/pukla')
+
+        class LaznaVeza:
+            def get(self, *_a, **_kw):
+                raise RuntimeError('страна не одговара')
+
+        dopunjeno, pokusano = pretraga.dopuni_slike(session=LaznaVeza())
+
+        self.assertEqual((dopunjeno, pokusano), (0, 1))
+        self.assertIsNone(_kandidat(kandidat_id)['slika_url'])
+
+
 class RedZaPregledTest(unittest.TestCase):
     """Одлука кустоса мора да буде трајна и атомична."""
 

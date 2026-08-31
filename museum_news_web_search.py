@@ -531,7 +531,11 @@ def pretrazi_veb(*, upiti=UPITI, izvori_medija=IZVORI_MEDIJA, prag=PRAG,
             raise greska
 
         sa_slikom = 0
-        if dopuni_og and novih:
+        # НЕ услављавати ово бројем нових. Кандидати нађени пре него што је
+        # допуна слика уведена (или они којима је страна тад била недоступна)
+        # иначе никад не би добили слику — допуна ради над свима на чекању
+        # који су без ње, ограничено на OG_NAJVISE_PO_POKRETANJU по позиву.
+        if dopuni_og:
             try:
                 sa_slikom, _ = dopuni_slike(session=session)
             except Exception:
@@ -575,6 +579,14 @@ if __name__ == '__main__':
         description='Pretraga veba za vesti o Prirodnjackom muzeju u Beogradu')
     parser.add_argument('--prag', type=int, default=PRAG)
     parser.add_argument('--pokrenuo', default='cli')
+    parser.add_argument('--samo-slike', action='store_true',
+                        dest='samo_slike',
+                        help='само допуни слике постојећим кандидатима, '
+                             'без нове претраге')
     a = parser.parse_args()
 
-    print(pretrazi_veb(prag=a.prag, pokrenuo=a.pokrenuo)['poruka'])
+    if a.samo_slike:
+        dopunjeno, pokusano = dopuni_slike()
+        print('Слика допуњено: %d од %d покушаних' % (dopunjeno, pokusano))
+    else:
+        print(pretrazi_veb(prag=a.prag, pokrenuo=a.pokrenuo)['poruka'])
