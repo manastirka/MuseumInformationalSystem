@@ -11,8 +11,9 @@
     padding: var(--space-10) var(--space-4) var(--space-12);
 }
 .pregled-zaglavlje {
-    border-bottom: 3px solid var(--text-primary);
-    padding-bottom: var(--space-4); margin-bottom: var(--space-5);
+    border-bottom: 1px solid var(--border-strong, var(--border-color));
+    box-shadow: 0 3px 0 -2px var(--border-strong, var(--border-color));
+    padding-bottom: var(--space-4); margin-bottom: var(--space-6);
 }
 .pregled-zaglavlje__radnje {
     display: flex; flex-wrap: wrap; gap: var(--space-2);
@@ -58,11 +59,14 @@
 .kandidat[data-obradjen="1"] { opacity: .45; }
 .kandidat-ocena {
     text-align: center; border-right: 1px solid var(--border-color);
-    padding-right: var(--space-3);
+    padding-right: var(--space-3); padding-top: .15rem;
 }
 .kandidat-ocena__broj {
     font-family: var(--font-display, var(--font-family));
-    font-size: 1.6rem; font-weight: 800; line-height: 1; color: var(--accent);
+    /* Оцена је помоћ при одлуци, не главна ствар у реду — наслов јесте.
+       Раније је велика бројка у боји акцента била најгласнија на екрану. */
+    font-size: 1.15rem; font-weight: 700; line-height: 1;
+    color: var(--text-secondary);
 }
 .kandidat-ocena__oznaka {
     display: block; font-size: var(--font-size-xs); text-transform: uppercase;
@@ -94,7 +98,7 @@
 
 .kandidat-slika {
     aspect-ratio: 4 / 3; border-radius: var(--radius-md); overflow: hidden;
-    background: var(--bg-hover); border: 1px solid var(--border-color);
+    background: var(--bg-card); border: 1px solid var(--border-color);
     display: flex; align-items: center; justify-content: center;
 }
 .kandidat-slika img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -103,8 +107,11 @@
 .kandidat-slika__medij {
     font-family: var(--font-display, var(--font-family));
     font-size: var(--font-size-sm); font-weight: 700;
-    color: var(--text-muted); text-align: center; padding: var(--space-2);
+    color: var(--text-secondary); text-align: center; padding: var(--space-2);
     overflow-wrap: anywhere;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin: 0 var(--space-2);
 }
 
 .pregled-prazno {
@@ -121,11 +128,11 @@
 @media (max-width: 860px) {
     /* Сличица од 8.5rem стаје и на ужем екрану; раније се крила испод
        980px, па је на пола прозора изгледало као да слике нема. */
-    .kandidat { grid-template-columns: 4.5rem 6rem minmax(0, 1fr) auto; }
+    .kandidat { grid-template-columns: 3.6rem 6rem minmax(0, 1fr) auto; }
 }
 
 @media (max-width: 700px) {
-    .kandidat { grid-template-columns: 4.5rem minmax(0, 1fr) auto; }
+    .kandidat { grid-template-columns: 3.6rem minmax(0, 1fr) auto; }
     .kandidat-slika { display: none; }
 }
 

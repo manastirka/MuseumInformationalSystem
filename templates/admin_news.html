@@ -17,9 +17,12 @@
 }
 
 .vesti-zaglavlje {
-    border-bottom: 3px solid var(--text-primary);
+    /* Двострука линија уместо једне дебеле — новински потез који и у
+       светлој heritage теми остаје потез, а не црна греда преко пергамента. */
+    border-bottom: 1px solid var(--border-strong, var(--border-color));
+    box-shadow: 0 3px 0 -2px var(--border-strong, var(--border-color));
     padding-bottom: var(--space-4);
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-6);
 }
 /* Дугмад НЕ иду уз наслов. Тамо лебде горе десно уз саму навигацију и
    немају за шта да се вежу; кућни образац (в. „База изложби") их држи
@@ -148,14 +151,25 @@
     aspect-ratio: 16 / 9;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: var(--space-2);
-    background: var(--bg-hover);
+    gap: var(--space-1);
+    /* Боја саме картице, не --bg-hover: у светлој теми је он хладно сив
+       па исечак изгледа као рупа у топлој картици. */
+    background: var(--bg-card);
     border-bottom: 1px solid var(--border-color);
     text-align: center; padding: var(--space-4);
+    position: relative;
 }
+/* Танке линије изнад и испод имена медија — новински исечак у малом. */
+.vest-isecak::before,
+.vest-isecak::after {
+    content: ""; position: absolute; left: 22%; right: 22%;
+    height: 1px; background: var(--border-color);
+}
+.vest-isecak::before { top: 22%; }
+.vest-isecak::after { bottom: 22%; }
 .vest-isecak__navodnik {
     font-family: var(--font-display, var(--font-family));
-    font-size: 2.4rem; line-height: .6; color: var(--border-strong, var(--border-color));
+    font-size: 2rem; line-height: .7; color: var(--accent); opacity: .38;
 }
 .vest-isecak__medij {
     font-family: var(--font-display, var(--font-family));
@@ -183,6 +197,11 @@
     display: flex; flex-wrap: wrap; gap: var(--space-2);
     align-items: center; justify-content: space-between;
     font-size: var(--font-size-xs); color: var(--text-muted);
+}
+/* Кад вест нема ни место ни кустоса, линија изнад празног реда изгледа
+   као грешка — тад подножје носи само радње, без правила. */
+.vest-kartica__podnozje--samo-radnje {
+    border-top: 0; padding-top: var(--space-2); justify-content: flex-end;
 }
 
 /* Наднаслов: тип · датум · извор */
@@ -431,11 +450,14 @@
                 {% if vest.description %}
                 <p class="vest-kartica__izvod">{{ vest.description }}</p>
                 {% endif %}
-                <div class="vest-kartica__podnozje">
+                {% set ima_meta = vest.location or vest.curator %}
+                <div class="vest-kartica__podnozje{% if not ima_meta %} vest-kartica__podnozje--samo-radnje{% endif %}">
+                    {% if ima_meta %}
                     <span>
                         {%- if vest.location %}<i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ vest.location }}
-                        {%- elif vest.curator %}<i class="bi bi-person me-1" aria-hidden="true"></i>{{ vest.curator }}{% endif -%}
+                        {%- else %}<i class="bi bi-person me-1" aria-hidden="true"></i>{{ vest.curator }}{% endif -%}
                     </span>
+                    {% endif %}
                     <span class="d-flex gap-2">
                         {% if moze_uredjivanje and vest.izvor == 'rucni' %}
                         <button type="button" class="btn btn-sm btn-link p-0 vest-izmeni"
