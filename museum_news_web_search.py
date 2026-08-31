@@ -420,8 +420,8 @@ def dopuni_slike(*, najvise=OG_NAJVISE_PO_POKRETANJU, session=None):
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, url, slika_url FROM news_web_kandidati "
-                "WHERE status = 'na_cekanju' AND slika_fajl IS NULL "
-                "  AND url NOT LIKE %s "
+                "WHERE status IN ('na_cekanju', 'odobreno') "
+                "  AND slika_fajl IS NULL AND url NOT LIKE %s "
                 "ORDER BY objavljeno DESC NULLS LAST, id DESC LIMIT %s",
                 ('%news.google.com%', int(najvise)))
             redovi = cur.fetchall()
@@ -456,22 +456,40 @@ def dopuni_slike(*, najvise=OG_NAJVISE_PO_POKRETANJU, session=None):
     # била недоступна. Без копије их CSP не приказује.
     with _get_postgres_connection(row_factory=dict_row) as conn:
         with conn.cursor() as cur:
+            # Вести одобрене ПРЕ него што је рад са сликама уведен немају ни
+            # адресу слике — до ње се долази са извора чланка. Зато услов
+            # није `slika_url IS NOT NULL` него „има одакле да се повуче".
             cur.execute(
-                "SELECT id, slika_url FROM news_articles "
+                "SELECT id, slika_url, source_link FROM news_articles "
                 "WHERE izvor = 'veb' AND slika_fajl IS NULL "
-                "  AND slika_url IS NOT NULL "
+                "  AND (slika_url IS NOT NULL OR source_link IS NOT NULL) "
                 "ORDER BY id DESC LIMIT %s", (int(najvise),))
             vesti = cur.fetchall()
 
         for vest in vesti:
             pokusano += 1
-            fajl = museum_news_slike.preuzmi(vest['slika_url'], session=session)
+            slika = vest.get('slika_url')
+            if not slika:
+                try:
+                    slika = preuzmi_og_sliku(vest.get('source_link'),
+                                             session=session)
+                except Exception as exc:
+                    logger.info('og:image за вест %s није скинут: %s',
+                                vest['id'], exc)
+                    continue
+            if not slika:
+                continue
+
+            fajl = museum_news_slike.preuzmi(slika, session=session)
             if not fajl:
                 continue
+
             with conn.cursor() as cur:
                 cur.execute(
-                    'UPDATE news_articles SET slika_fajl = %s '
-                    'WHERE id = %s AND slika_fajl IS NULL', (fajl, vest['id']))
+                    'UPDATE news_articles SET slika_url = COALESCE(slika_url, %s), '
+                    'slika_fajl = %s, updated_at = now() '
+                    'WHERE id = %s AND slika_fajl IS NULL',
+                    (slika, fajl, vest['id']))
                 dopunjeno += cur.rowcount
             conn.commit()
 

@@ -318,6 +318,79 @@ class CspSlikeTest(unittest.TestCase):
                          'abc123.jpg')
 
 
+class DopunaObjavljenihTest(unittest.TestCase):
+    """Вест одобрена пре овог рада нема ни адресу слике — иде се на извор."""
+
+    def setUp(self):
+        _ocisti()
+        self.addCleanup(_ocisti)
+
+    @staticmethod
+    def _veza(piksel):
+        class LaznaVeza:
+            def get(self, url, **_kw):
+                jeste_slika = url.endswith('.png')
+
+                class O:
+                    headers = {'Content-Type':
+                               'image/png' if jeste_slika else 'text/html'}
+                    content = (piksel if jeste_slika else
+                               b'<html><head><meta property="og:image" '
+                               b'content="https://primer.invalid/og.png">'
+                               b'</head></html>')
+
+                    def raise_for_status(self):
+                        return None
+
+                    def iter_content(self, _n):
+                        return iter([piksel])
+
+                o = O()
+                o.url = url
+                return o
+
+        return LaznaVeza()
+
+    def _objavljena_bez_slike(self, link):
+        kandidat_id = _ubaci_kandidata('Вест о музеју одобрена раније',
+                                       url=link)
+        with get_postgres_connection(row_factory=dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute('UPDATE news_web_kandidati SET slika_url = NULL '
+                            'WHERE id = %s', (kandidat_id,))
+            conn.commit()
+        _, _, vest_id = skladiste.odluci_o_kandidatu(
+            kandidat_id, 'odobreno', ko=OZNAKA)
+        self.assertIsNone(skladiste.dohvati_vest(vest_id)['slika_fajl'])
+        return vest_id
+
+    def test_objavljena_vest_dobija_sliku_sa_izvora(self):
+        import base64
+        piksel = base64.b64decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8'
+            'z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
+        vest_id = self._objavljena_bez_slike('https://primer.invalid/clanak')
+
+        pretraga.dopuni_slike(session=self._veza(piksel))
+
+        vest = skladiste.dohvati_vest(vest_id)
+        self.assertIsNotNone(vest['slika_fajl'],
+                             'објављена вест мора да добије локалну копију')
+        self.assertEqual(vest['slika_url'], 'https://primer.invalid/og.png')
+
+    def test_google_omot_ne_daje_sliku_ni_objavljenoj(self):
+        vest_id = self._objavljena_bez_slike(
+            'https://news.google.com/rss/articles/CBMiABC')
+
+        class Zabrana:
+            def get(self, *_a, **_kw):
+                raise AssertionError('Google омот се не сме гађати')
+
+        pretraga.dopuni_slike(session=Zabrana())
+
+        self.assertIsNone(skladiste.dohvati_vest(vest_id)['slika_fajl'])
+
+
 class RedZaPregledTest(unittest.TestCase):
     """Одлука кустоса мора да буде трајна и атомична."""
 
