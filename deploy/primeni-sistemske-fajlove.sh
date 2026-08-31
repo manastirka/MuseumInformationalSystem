@@ -20,7 +20,13 @@ SNIMAK=/root/pre-uskladjivanja-$(date +%Y%m%d)
 REPO=/opt/mis/app/deploy
 JEDINICE=(backup-nhmb.service backup-nhmb.timer
           restore-proba.service restore-proba.timer
-          mis-alarm@.service mis-fototeka-worker.service)
+          mis-alarm@.service mis-fototeka-worker.service
+          mis-vesti-uvoz.service mis-vesti-uvoz.timer
+          mis-vesti-veb.service mis-vesti-veb.timer)
+
+# Тајмери које треба укључити после инсталације (сервиси су oneshot и
+# покрећу их тајмери, не systemctl enable на сервису).
+TAJMERI_ZA_UKLJUCITI=(mis-vesti-uvoz.timer mis-vesti-veb.timer)
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "ОДБИЈЕНО: покрени као root (sudo bash $0)" >&2
@@ -92,6 +98,17 @@ fi
 
 echo
 echo "=== стање тајмера ==="
-systemctl list-timers backup-nhmb.timer restore-proba.timer --no-pager | head -4
+echo
+echo "=== укључивање тајмера за вести ==="
+for t in "${TAJMERI_ZA_UKLJUCITI[@]}"; do
+    if [ -f "/etc/systemd/system/$t" ]; then
+        systemctl enable --now "$t" 2>&1 | sed 's/^/    /'
+    else
+        echo "    ПРЕСКАЧЕМ $t — није инсталиран" >&2
+    fi
+done
+
+systemctl list-timers backup-nhmb.timer restore-proba.timer \
+    mis-vesti-uvoz.timer mis-vesti-veb.timer --no-pager | head -6
 echo
 echo "Готово. Апликација није рестартована."
