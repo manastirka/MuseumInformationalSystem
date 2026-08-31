@@ -5,7 +5,11 @@
 {% block content %}
 <style>
 /* Страна за читање вести. Мера реда ~68 знакова, боје кроз токене тема. */
-.vest-strana { max-width: 46rem; margin: 0 auto; }
+.vest-strana {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4) var(--space-12);
+}
 .vest-nazad {
     display: inline-flex; align-items: center; gap: var(--space-2);
     font-size: var(--font-size-sm); color: var(--text-secondary);
@@ -58,6 +62,10 @@
 .vest-podnozje {
     border-top: 1px solid var(--border-color);
     margin-top: var(--space-8); padding-top: var(--space-5);
+}
+.vest-podnozje__radnje {
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    align-items: center;
 }
 .vest-susedne {
     display: grid; gap: var(--space-4);
@@ -133,7 +141,7 @@
     </div>
 
     <footer class="vest-podnozje">
-        <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="vest-podnozje__radnje">
             {% if vest.source_link %}
             <a class="btn btn-outline-secondary" href="{{ vest.source_link }}" target="_blank" rel="noopener noreferrer">
                 <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Оригинал на nhmbeo.rs

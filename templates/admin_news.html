@@ -7,12 +7,29 @@
 /* Музејске вести — новински приказ.
    Све боје иду кроз токене тема (static/css/main.css); ниједна вредност
    није хардкодована да би тамна тема и контраст остали исправни. */
-.vesti { max-width: 1180px; margin: 0 auto; }
+/* Размак према навигацији и подножју: стара страна га је добијала преко
+   .container-main (padding: 1.5rem 1rem), а овај омотач мора да га носи сам.
+   Доња мера је већа од горње да последњи ред не лепи за подножје. */
+.vesti {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4) var(--space-12);
+}
 
 .vesti-zaglavlje {
     border-bottom: 3px solid var(--text-primary);
     padding-bottom: var(--space-4);
     margin-bottom: var(--space-5);
+}
+/* Наслов и дугмад у истом реду: дугмад поравната уз доњу линију наслова,
+   не уз његов врх — иначе висе уз навигацију. */
+.vesti-zaglavlje__red {
+    display: flex; flex-wrap: wrap; gap: var(--space-4);
+    align-items: flex-end; justify-content: space-between;
+}
+.vesti-zaglavlje__radnje {
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    padding-bottom: var(--space-1);
 }
 .vesti-naslov {
     font-family: var(--font-display, var(--font-family));
@@ -27,6 +44,14 @@
     color: var(--text-secondary);
     font-size: var(--font-size-sm);
     margin: var(--space-2) 0 0;
+    max-width: 52ch;
+}
+/* Број вести које чекају преглед није грешка — црвено би читало као аларм. */
+.vesti-broj-cekanja {
+    display: inline-block; margin-left: var(--space-2);
+    padding: .08rem .4rem; border-radius: var(--radius-badge);
+    background: var(--accent); color: var(--on-accent, #fff);
+    font-size: var(--font-size-xs); font-weight: 700; line-height: 1.4;
 }
 .vesti-traka-stanja {
     display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
@@ -172,6 +197,13 @@
     margin-top: var(--space-8); padding-top: var(--space-5);
 }
 
+@media (max-width: 620px) {
+    /* Дугмад преко целе ширине уместо да се ломе у неравне редове. */
+    .vesti-zaglavlje__red { align-items: stretch; }
+    .vesti-zaglavlje__radnje { width: 100%; padding-bottom: 0; }
+    .vesti-zaglavlje__radnje > * { flex: 1 1 10rem; }
+}
+
 @media (max-width: 860px) {
     .vesti-naslovna { grid-template-columns: 1fr; gap: var(--space-4); }
 }
@@ -200,19 +232,19 @@
 <div class="vesti">
 
     <header class="vesti-zaglavlje">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div class="vesti-zaglavlje__red">
             <div>
                 <h1 class="vesti-naslov">Музејске вести</h1>
                 <p class="vesti-podnaslov">
-                    Објаве Природњачког музеја — из система и са сајта
+                    Објаве музеја — из система и са сајта
                     <a href="https://nhmbeo.rs/" target="_blank" rel="noopener noreferrer">nhmbeo.rs</a>
                 </p>
             </div>
             {% if moze_uredjivanje %}
-            <div class="d-flex gap-2 flex-wrap">
+            <div class="vesti-zaglavlje__radnje">
                 <a class="btn btn-outline-secondary" href="{{ url_for('content.news_review') }}">
                     <i class="bi bi-search me-1" aria-hidden="true"></i>Са веба
-                    {% if pregled.na_cekanju %}<span class="badge bg-danger ms-1">{{ pregled.na_cekanju }}</span>{% endif %}
+                    {% if pregled.na_cekanju %}<span class="vesti-broj-cekanja">{{ pregled.na_cekanju }}</span>{% endif %}
                 </a>
                 <button type="button" class="btn btn-outline-secondary" id="dugmeOsvezi">
                     <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Освежи са сајта

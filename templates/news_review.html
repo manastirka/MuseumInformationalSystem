@@ -5,17 +5,35 @@
 {% block content %}
 <style>
 /* Ред за преглед вести нађених на вебу. Боје кроз токене тема. */
-.pregled { max-width: 1080px; margin: 0 auto; }
+.pregled {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4) var(--space-12);
+}
 .pregled-zaglavlje {
     border-bottom: 3px solid var(--text-primary);
     padding-bottom: var(--space-4); margin-bottom: var(--space-5);
+}
+.pregled-zaglavlje__red {
+    display: flex; flex-wrap: wrap; gap: var(--space-4);
+    align-items: flex-end; justify-content: space-between;
+}
+.pregled-zaglavlje__radnje {
+    display: flex; flex-wrap: wrap; gap: var(--space-2);
+    padding-bottom: var(--space-1);
 }
 .pregled-naslov {
     font-family: var(--font-display, var(--font-family));
     font-size: clamp(1.6rem, 3.2vw, 2.3rem); font-weight: 800;
     letter-spacing: -0.02em; margin: 0; color: var(--text-primary);
 }
-.pregled-podnaslov { color: var(--text-secondary); font-size: var(--font-size-sm); margin: var(--space-2) 0 0; }
+.pregled-podnaslov {
+    color: var(--text-secondary); font-size: var(--font-size-sm);
+    margin: var(--space-2) 0 0;
+    /* Без ограничења ширине поднаслов гурне дугмад у нови ред, па страна
+       изгледа другачије од листе вести. */
+    max-width: 52ch;
+}
 
 .pregled-tabovi {
     display: flex; flex-wrap: wrap; gap: var(--space-2);
@@ -83,6 +101,12 @@
     color: var(--text-secondary);
 }
 
+@media (max-width: 620px) {
+    .pregled-zaglavlje__red { align-items: stretch; }
+    .pregled-zaglavlje__radnje { width: 100%; padding-bottom: 0; }
+    .pregled-zaglavlje__radnje > * { flex: 1 1 10rem; }
+}
+
 @media (max-width: 760px) {
     .kandidat { grid-template-columns: 1fr; }
     .kandidat-ocena { border-right: 0; border-bottom: 1px solid var(--border-color);
@@ -93,15 +117,15 @@
 
 <div class="pregled">
     <header class="pregled-zaglavlje">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div class="pregled-zaglavlje__red">
             <div>
                 <h1 class="pregled-naslov">Вести са веба</h1>
                 <p class="pregled-podnaslov">
-                    Аутоматска претрага налази и вести о другим музејима истог имена
-                    — зато ништа не улази међу вести док не одобриш.
+                    Претрага налази и вести о другим музејима истог имена —
+                    зато ништа не улази међу вести док не одобриш.
                 </p>
             </div>
-            <div class="d-flex gap-2 flex-wrap">
+            <div class="pregled-zaglavlje__radnje">
                 <a class="btn btn-outline-secondary" href="{{ url_for('content.museum_news') }}">
                     <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Назад на вести
                 </a>
