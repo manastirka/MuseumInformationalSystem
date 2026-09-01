@@ -33,7 +33,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo "=== 1/4 снимак затеченог стања → $SNIMAK ==="
+echo "=== 1/3 снимак затеченог стања → $SNIMAK ==="
 mkdir -p "$SNIMAK"
 for j in "${JEDINICE[@]}"; do
     if [ -f "/etc/systemd/system/$j" ]; then
@@ -43,7 +43,7 @@ done
 echo "    повратак:  cp -a $SNIMAK/. /etc/systemd/system/ && systemctl daemon-reload"
 
 echo
-echo "=== 2/4 инсталација репо верзија ==="
+echo "=== 2/3 инсталација репо верзија ==="
 for j in "${JEDINICE[@]}"; do
     if [ ! -f "$REPO/$j" ]; then
         echo "    ПРЕСКАЧЕМ $j — нема га у репоу" >&2
@@ -65,7 +65,7 @@ for j in backup-nhmb.service restore-proba.service mis-alarm@.service; do
 done
 
 echo
-echo "=== 3/4 ДОКАЗ да аларм оставља траг ==="
+echo "=== 3/3 ДОКАЗ да аларм оставља траг ==="
 rm -f /var/lib/mis/alarm/*proba-alarma* 2>/dev/null
 systemctl start 'mis-alarm@proba-alarma.service' 2>&1 | sed 's/^/    /'
 sleep 2
@@ -78,22 +78,6 @@ if ls /var/lib/mis/alarm/*proba-alarma* >/dev/null 2>&1; then
 else
     echo "    МАРКЕР НИЈЕ НАПРАВЉЕН — аларм не ради како треба." >&2
     systemctl status 'mis-alarm@proba-alarma.service' --no-pager --lines=15 | sed 's/^/      /'
-fi
-
-echo
-echo "=== 4/4 одговор на отворено питање: /data/mis/media и бекап ==="
-echo "Провером 17.08. утврђено да те гране НЕМА у /backup/current/data/mis,"
-echo "док су cif_files, arhiva, share и fototeka_ulaz сви ту. Ево зашто:"
-echo
-if grep -nE "media|exclude|--exclude" /usr/local/bin/backup-nhmb.sh 2>/dev/null; then
-    echo
-    echo "→ Ако изнад стоји изричито искључење — намерно је, ништа не треба мењати."
-    echo "  Ако не стоји ништа, `media` испада неким другим путем и то ваља погледати."
-else
-    echo "    (у скрипти нема ниједног помена 'media' ни 'exclude')"
-    echo
-    echo "→ Значи да изостанак НИЈЕ изричит. Погледај шта скрипта уопште копира:"
-    echo "     grep -nE 'rsync|btrfs|cp |snapshot' /usr/local/bin/backup-nhmb.sh"
 fi
 
 echo
