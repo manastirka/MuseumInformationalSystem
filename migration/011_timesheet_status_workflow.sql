@@ -1,7 +1,8 @@
 -- Migration 006: Timesheet Status Workflow
 -- Adds status workflow columns to timesheet_reports and creates status history table.
 
-BEGIN;
+-- (BEGIN/COMMIT uklonjeni 2026-09-01: transakciju vodi deploy/run_migrations.py,
+--  koji sve pending fajlove primenjuje u jednoj transakciji; sadržaj nepromenjen)
 
 -- 1. Add status workflow columns to timesheet_reports
 ALTER TABLE timesheet_reports
@@ -48,4 +49,3 @@ CREATE INDEX IF NOT EXISTS idx_timesheet_reports_status
 CREATE INDEX IF NOT EXISTS idx_timesheet_status_history_report_id
     ON timesheet_status_history(report_id);
 
-COMMIT;

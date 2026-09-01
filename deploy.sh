@@ -32,9 +32,11 @@ rollback() {
     echo "!! DEPLOY PAO — vraćam kod na ${PREV:0:12} i restartujem servis"
     sudo -u mis git -C "$APP" reset --hard "$PREV"
     sudo -u mis "$VENV/bin/pip" install -q -r "$APP/requirements.lock" || true
-    # Kod je vraćen, ali migracije se commit-uju pojedinačno — šema ostaje
-    # kakva je bila u trenutku pada. Restore baze je Aleksandrova odluka,
-    # deploy ga NIKAD ne radi sam.
+    # Kod je vraćen. Migracije idu u JEDNOJ transakciji (run_migrations.py):
+    # ako je pao sam korak migracija, MIG_LOG je prazan i šema je netaknuta;
+    # ako je pao neki KASNIJI korak (smoke), migracije su već commit-ovane
+    # i šema je ispred koda. Restore baze je Aleksandrova odluka, deploy ga
+    # NIKAD ne radi sam.
     if [[ -n "${MIG_LOG:-}" && -s "$MIG_LOG" ]]; then
         echo "!! ======================================================="
         echo "!! PAŽNJA: ŠEMA BAZE JE ISPRED KODA. U ovom pokušaju su"

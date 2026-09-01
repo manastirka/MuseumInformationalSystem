@@ -224,6 +224,171 @@ def test_run_migrations_execute_bez_database_se_odbija():
     assert 'ODBIJENO' in result.stdout
 
 
+
+# --- 3b. run_migrations.py: sve ili ništa -------------------------------------
+#
+# Nalaz broj 1 u sva tri kruga avgustovske revizije: runner je commit-ovao
+# svaki fajl posebno, pa je pad druge migracije ostavljao prvu u bazi dok se
+# kod vraćao na stari SHA. Ovi testovi rade nad PRAVOM bazom (museum_system_test)
+# sa privremenim MIGRATION_DIR-om, da se vidi šta je stvarno ostalo u šemi.
+
+_ATOM_PRVA = '900_atomicnost_prva.sql'
+_ATOM_DRUGA = '901_atomicnost_druga.sql'
+_ATOM_TABELE = ('zz_atomicnost_prva', 'zz_atomicnost_druga')
+
+
+def _ucitaj_runner():
+    import importlib.util
+    putanja = os.path.join(REPO, 'deploy', 'run_migrations.py')
+    spec = importlib.util.spec_from_file_location('run_migrations_pod_testom', putanja)
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def _tabela_postoji(ime):
+    import postgres_service
+    conn = postgres_service.get_postgres_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT to_regclass(%s) IS NOT NULL", (f'public.{ime}',))
+        return bool(cur.fetchone()[0])
+    finally:
+        conn.close()
+
+
+def _ocisti_atomicnost():
+    import postgres_service
+    conn = postgres_service.get_postgres_connection()
+    try:
+        cur = conn.cursor()
+        for t in _ATOM_TABELE:
+            cur.execute(f"DROP TABLE IF EXISTS {t}")
+        cur.execute("SELECT to_regclass('public.schema_migrations') IS NOT NULL")
+        if cur.fetchone()[0]:
+            cur.execute(
+                "DELETE FROM schema_migrations WHERE filename IN (%s, %s)",
+                (_ATOM_PRVA, _ATOM_DRUGA))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _privremene_migracije(tmp_path, druga_sql):
+    d = tmp_path / 'migration'
+    d.mkdir()
+    (d / _ATOM_PRVA).write_text(
+        "CREATE TABLE zz_atomicnost_prva (id integer PRIMARY KEY);\n",
+        encoding='utf-8')
+    (d / _ATOM_DRUGA).write_text(druga_sql, encoding='utf-8')
+    return d
+
+
+def _evidencija_imena():
+    return {red[0] for red in (_snimak_evidencije() or [])}
+
+
+def test_run_migrations_druga_pada_prva_se_vraca(tmp_path, monkeypatch, capsys):
+    """Pad druge migracije NE SME da ostavi prvu u bazi ni u evidenciji,
+    a --applied-log mora da ostane prazan (deploy.sh po njemu odlučuje da li
+    je šema ispred koda)."""
+    rm = _ucitaj_runner()
+    d = _privremene_migracije(
+        tmp_path,
+        "CREATE TABLE zz_atomicnost_druga (id integer PRIMARY KEY);\n"
+        "SELECT * FROM tabela_koja_ne_postoji_zz_atomicnost;\n")
+    monkeypatch.setattr(rm, 'MIGRATION_DIR', d)
+    dnevnik = tmp_path / 'primenjeno.log'
+    _ocisti_atomicnost()
+    try:
+        kod = rm.cmd_apply(True, _db_name(), applied_log=str(dnevnik))
+        izlaz = capsys.readouterr().out
+        assert kod == 1, izlaz
+        assert not _tabela_postoji('zz_atomicnost_prva'), \
+            'prva migracija je OSTALA u bazi iako je druga pala'
+        assert not _tabela_postoji('zz_atomicnost_druga')
+        assert not (_evidencija_imena() & {_ATOM_PRVA, _ATOM_DRUGA}), \
+            'evidencija tvrdi da je nešto primenjeno, a šema je vraćena'
+        assert not dnevnik.exists() or dnevnik.read_text(encoding='utf-8') == '', \
+            '--applied-log sme da sadrži samo ono što je stvarno commit-ovano'
+        # poruke tek posle stanja baze: stanje je dokaz, poruka je objašnjenje
+        assert f'FAILED on {_ATOM_DRUGA}' in izlaz
+        assert 'NIJE primenjena' in izlaz
+        assert 'ROLLBACK: vraćeno' in izlaz, 'poruka mora da kaže da je i prva vraćena'
+        assert _ATOM_PRVA in izlaz.split('ROLLBACK: vraćeno', 1)[1]
+    finally:
+        _ocisti_atomicnost()
+
+
+def test_run_migrations_obe_prolaze_u_jednoj_transakciji(tmp_path, monkeypatch, capsys):
+    rm = _ucitaj_runner()
+    d = _privremene_migracije(
+        tmp_path, "CREATE TABLE zz_atomicnost_druga (id integer PRIMARY KEY);\n")
+    monkeypatch.setattr(rm, 'MIGRATION_DIR', d)
+    dnevnik = tmp_path / 'primenjeno.log'
+    _ocisti_atomicnost()
+    try:
+        kod = rm.cmd_apply(True, _db_name(), applied_log=str(dnevnik))
+        izlaz = capsys.readouterr().out
+        assert kod == 0, izlaz
+        assert 'in one transaction' in izlaz
+        assert _tabela_postoji('zz_atomicnost_prva')
+        assert _tabela_postoji('zz_atomicnost_druga')
+        assert {_ATOM_PRVA, _ATOM_DRUGA} <= _evidencija_imena()
+        assert dnevnik.read_text(encoding='utf-8').split() == [_ATOM_PRVA, _ATOM_DRUGA]
+    finally:
+        _ocisti_atomicnost()
+
+
+def test_run_migrations_odbija_fajl_sa_sopstvenim_commit_vec_u_dry_runu(
+        tmp_path, monkeypatch, capsys):
+    """COMMIT unutar fajla bi presekao zajedničku transakciju — runner to
+    mora da odbije bez --execute, da svita i probni deploj to uhvate."""
+    rm = _ucitaj_runner()
+    d = _privremene_migracije(
+        tmp_path,
+        "BEGIN;\nCREATE TABLE zz_atomicnost_druga (id integer PRIMARY KEY);\nCOMMIT;\n")
+    monkeypatch.setattr(rm, 'MIGRATION_DIR', d)
+    _ocisti_atomicnost()
+    try:
+        kod = rm.cmd_apply(False, None)
+        izlaz = capsys.readouterr().out
+        assert kod == 1, izlaz
+        assert 'ODBIJENO' in izlaz
+        assert f'{_ATOM_DRUGA}:1: BEGIN;' in izlaz
+        assert f'{_ATOM_DRUGA}:3: COMMIT;' in izlaz
+        assert not _tabela_postoji('zz_atomicnost_prva')
+        assert not _tabela_postoji('zz_atomicnost_druga')
+    finally:
+        _ocisti_atomicnost()
+
+
+def test_problemi_za_transakciju_prepoznaje_samo_stvarne_naredbe():
+    rm = _ucitaj_runner()
+    assert rm.problemi_za_transakciju(
+        "-- BEGIN;\nDO $$\nBEGIN\n  PERFORM 1;\nEND;\n$$;\n"
+        "-- ne sme CREATE INDEX CONCURRENTLY\n") == []
+    assert rm.problemi_za_transakciju("BEGIN;\nSELECT 1;\nCOMMIT;\n") == \
+        [(1, 'BEGIN;'), (3, 'COMMIT;')]
+    assert rm.problemi_za_transakciju(
+        "CREATE INDEX CONCURRENTLY ix ON t (a);\n") == \
+        [(1, 'CREATE INDEX CONCURRENTLY')]
+    assert rm.problemi_za_transakciju("  start transaction ;\n") == \
+        [(1, 'start transaction ;')]
+
+
+def test_sve_migracije_u_repou_mogu_u_jednu_transakciju():
+    """Nijedan fajl u migration/ ne sme da nosi sopstveni BEGIN/COMMIT niti
+    naredbu koju PostgreSQL odbija u transakcionom bloku."""
+    rm = _ucitaj_runner()
+    losi = []
+    for ime in rm.discover_migrations():
+        sql = (rm.MIGRATION_DIR / ime).read_text(encoding='utf-8')
+        for linija, naredba in rm.problemi_za_transakciju(sql):
+            losi.append(f'{ime}:{linija}: {naredba}')
+    assert losi == [], '\n'.join(losi)
+
+
 # --- 4. zavisnosti: pyvips i xlrd u OBA fajla ---------------------------------
 
 def test_requirements_sadrze_pyvips_i_xlrd():

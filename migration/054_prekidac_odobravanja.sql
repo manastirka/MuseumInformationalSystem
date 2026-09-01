@@ -22,7 +22,8 @@
 -- is_verified) остају ПРАЗНА за ове редове. То је цела поента.
 -- ============================================================================
 
-BEGIN;
+-- (BEGIN/COMMIT uklonjeni 2026-09-01: transakciju vodi deploy/run_migrations.py,
+--  koji sve pending fajlove primenjuje u jednoj transakciji; sadržaj nepromenjen)
 
 -- 1. Радне листе: ново стање BEZ_ODOBRENJA
 ALTER TABLE timesheet_reports
@@ -58,4 +59,3 @@ CREATE INDEX IF NOT EXISTS idx_document_versions_status_bez
     ON document_versions (status)
     WHERE status = 'bez_odobrenja';
 
-COMMIT;

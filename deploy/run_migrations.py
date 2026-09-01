@@ -9,7 +9,9 @@ Commands:
     python deploy/run_migrations.py apply          # DRY RUN: print the plan
                                                     #   (host, database, files)
     python deploy/run_migrations.py apply --execute --database mis_db
-                                                    # actually run pending files
+                                                    # actually run pending files —
+                                                    #   SVE u JEDNOJ transakciji:
+                                                    #   ili prođu sve, ili nijedna
                                                     #   (--applied-log <fajl>:
                                                     #   upiši svaki primenjen fajl,
                                                     #   za rollback poruku deploja)
@@ -27,6 +29,16 @@ Commands:
 Svaka komanda koja MENJA bazu je podrazumevano dry-run (ispis plana, nula
 izmena). Izmena traži --execute I --database <ime> — ime mora da se poklopi
 sa current_database(), da apply/baseline nikad ne pogodi pogrešnu bazu.
+
+Atomičnost: 'apply --execute' pokreće sve pending fajlove i njihove upise u
+schema_migrations u JEDNOJ transakciji (PostgreSQL ima transakcioni DDL). Ako
+bilo koji fajl padne, ROLLBACK vraća sve — šema ostaje tačno kakva je bila, a
+deploy.sh vraća stari kod nad starom šemom. Zato migracioni fajl NE SME da
+sadrži sopstveni BEGIN/COMMIT/ROLLBACK na vrhu (COMMIT bi presekao zajedničku
+transakciju) — runner takav fajl odbija još u dry-run-u. Ne sme ni ono što
+PostgreSQL ne dozvoljava u transakcionom bloku (CREATE INDEX CONCURRENTLY,
+VACUUM, CREATE DATABASE, ALTER SYSTEM) — ako ikad zatreba, to ide kao
+zaseban, ručni korak, ne kroz ovaj runner.
 
 New server after restoring a pg_dump (schema already in the dump):
     python deploy/run_migrations.py baseline --execute --database <ime>
@@ -97,6 +109,56 @@ RENAMES = {
 def discover_migrations():
     """Return migration filenames in deterministic (filename) order."""
     return sorted(p.name for p in MIGRATION_DIR.glob('*.sql'))
+
+
+# Naredbe koje bi presekle zajedničku transakciju runnera. Samo na početku reda
+# (komentar '-- BEGIN;' ne smeta); golo 'END;' se ne gleda jer zatvara i
+# plpgsql blokove. Zabranjene su i naredbe koje PostgreSQL odbija unutar
+# transakcionog bloka — bolje da runner to kaže u dry-run-u nego da prod
+# sazna na deploju.
+_SOPSTVENA_TRANSAKCIJA_RE = re.compile(
+    r'^\s*(BEGIN|START\s+TRANSACTION|COMMIT|ROLLBACK|END\s+TRANSACTION)'
+    r'(\s+(WORK|TRANSACTION))?\s*;', re.I | re.M)
+_VAN_TRANSAKCIJE_RE = re.compile(
+    r'\b(CREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY|DROP\s+INDEX\s+CONCURRENTLY|'
+    r'REINDEX\s+.*CONCURRENTLY|VACUUM\b|CREATE\s+DATABASE|DROP\s+DATABASE|'
+    r'ALTER\s+SYSTEM|CREATE\s+TABLESPACE|DROP\s+TABLESPACE)', re.I)
+
+
+def _linija(sql, pos):
+    return sql.count('\n', 0, pos) + 1
+
+
+def problemi_za_transakciju(sql):
+    """Vrati listu (linija, naredba) koje ne smeju u zajedničku transakciju."""
+    nadjeno = []
+    for m in _SOPSTVENA_TRANSAKCIJA_RE.finditer(sql):
+        nadjeno.append((_linija(sql, m.start()), m.group(0).strip()))
+    for m in _VAN_TRANSAKCIJE_RE.finditer(sql):
+        # unutar SQL komentara ne smeta
+        pocetak_reda = sql.rfind('\n', 0, m.start()) + 1
+        if '--' in sql[pocetak_reda:m.start()]:
+            continue
+        nadjeno.append((_linija(sql, m.start()), m.group(0).strip()))
+    return sorted(nadjeno)
+
+
+def _odbij_netransakcione(pending):
+    """Ispiši i vrati True ako bilo koji pending fajl ne sme u jednu transakciju."""
+    losi = []
+    for f in pending:
+        sql = (MIGRATION_DIR / f).read_text(encoding='utf-8')
+        for linija, naredba in problemi_za_transakciju(sql):
+            losi.append((f, linija, naredba))
+    if not losi:
+        return False
+    print("ODBIJENO: sledeće migracije ne mogu u zajedničku transakciju "
+          "(runner primenjuje SVE pending fajlove u jednoj transakciji):")
+    for f, linija, naredba in losi:
+        print(f"  ! {f}:{linija}: {naredba}")
+    print("  Ukloni BEGIN/COMMIT iz fajla (transakciju vodi runner); naredbe "
+          "koje ne mogu u transakcioni blok idu kao zaseban ručni korak.")
+    return True
 
 
 def _connect():
@@ -244,6 +306,11 @@ def cmd_apply(execute, database, applied_log=None):
         if not pending and not renames:
             return 0
 
+        # Provera važi i za dry-run: fajl koji bi presekao transakciju treba
+        # da padne u svitu i na probnom deploju, ne na produkciji.
+        if _odbij_netransakcione(pending):
+            return 1
+
         if not execute:
             print("\nDRY RUN: ništa NIJE primenjeno. Deploy NIJE završen — "
                   "pokreni ponovo sa --execute --database <ime baze> da bi se "
@@ -252,6 +319,8 @@ def cmd_apply(execute, database, applied_log=None):
         if not _require_database_match(cur, database):
             return 1
 
+        # Evidencija i remap starih imena su idempotentni i idu odvojeno —
+        # nisu deo šeme koju migracije menjaju.
         _ensure_table(cur)
         conn.commit()
         renamed = _apply_renames(cur)
@@ -260,20 +329,45 @@ def cmd_apply(execute, database, applied_log=None):
             print(f"Remapped {renamed} renamed migration filename(s) in schema_migrations.")
             applied = _applied(cur)
             pending = [f for f in discover_migrations() if f not in applied]
+            if _odbij_netransakcione(pending):
+                return 1
+        if not pending:
+            print("Applied 0 migration(s).")
+            return 0
+
+        # JEDNA transakcija za sve pending fajlove: DDL u PostgreSQL-u je
+        # transakcioni, pa pad bilo kog fajla vraća i sve prethodne. Upis u
+        # schema_migrations ide u istoj transakciji — evidencija ne može da
+        # kaže „primenjeno" za nešto što je vraćeno.
+        primenjeno = []
         for f in pending:
             sql = (MIGRATION_DIR / f).read_text(encoding='utf-8')
             print(f"Applying {f} ...")
             try:
                 cur.execute(sql)
                 cur.execute("INSERT INTO schema_migrations(filename) VALUES (%s)", (f,))
-                conn.commit()
-                _log_applied(applied_log, f)
             except Exception as exc:
                 conn.rollback()
                 print(f"  FAILED on {f}: {exc}")
+                if primenjeno:
+                    print(f"  ROLLBACK: vraćeno i {len(primenjeno)} pre toga "
+                          f"izvršenih ({', '.join(primenjeno)}).")
+                print(f"  Nijedna od {len(pending)} migracija NIJE primenjena — "
+                      "šema je kakva je bila pre pokretanja.")
                 print("  Stopped. Fix the migration, or 'mark' it if it was already applied.")
                 return 1
-        print(f"Applied {len(pending)} migration(s).")
+            primenjeno.append(f)
+        try:
+            conn.commit()
+        except Exception as exc:
+            # COMMIT je pao — ništa nije upisano, ali to mora da se vidi.
+            print(f"  FAILED on COMMIT: {exc}")
+            print(f"  Nijedna od {len(pending)} migracija NIJE primenjena.")
+            return 1
+        # Tek posle COMMIT-a: log znači „stvarno u bazi", ne „pokušano".
+        for f in primenjeno:
+            _log_applied(applied_log, f)
+        print(f"Applied {len(pending)} migration(s) in one transaction.")
         return 0
     finally:
         conn.close()
