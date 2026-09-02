@@ -79,7 +79,7 @@
 <main class="qr-kartica">
     <div class="qr-kartica__vrsta">{{ zbirka }} · {% if vrsta == 'kutija' %}кутија{% else %}примерак{% endif %}</div>
     <h1 class="qr-kartica__naslov">{{ naslov }}</h1>
-    {% if katalog and katalog != naslov %}
+    {% if vrsta != 'kutija' and katalog and katalog != naslov %}
     <div class="qr-kartica__katalog">{{ katalog }}</div>
     {% endif %}
 
