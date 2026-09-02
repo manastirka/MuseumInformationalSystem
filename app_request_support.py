@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 
 from flask import current_app, render_template, request, session
+
+import museum_baze_stanje
 from core_app_views import current_custom_theme_render, current_theme_accent, current_theme_density, current_theme_mode, current_theme_palette, current_theme_style, current_ui_language
 
 
@@ -103,6 +105,16 @@ def register_template_context(
                 return False
             return user_has_module_access(user_email, user_role, module_key)
 
+        # Мени „Базе података": база без стварних података иде у „У развоју".
+        def u_razvoju(kljuc):
+            return museum_baze_stanje.u_razvoju(kljuc)
+
+        def baze_u_razvoju():
+            return [
+                s for s in museum_baze_stanje.stavke_u_razvoju()
+                if has_module_access(s['modul'])
+            ]
+
         # Phase 3: when the active palette is 'custom', resolve the user's theme
         # to inline --pal-* tokens for the <html> tag. Empty when not custom or
         # unresolvable — base.html then falls back to a system palette.
@@ -118,6 +130,8 @@ def register_template_context(
             is_department_head=is_department_head,
             endpoint_exists=endpoint_exists,
             has_module_access=has_module_access,
+            u_razvoju=u_razvoju,
+            baze_u_razvoju=baze_u_razvoju,
             weather_condition=weather_data.get('condition', default_weather_condition),
             weather_temperature=weather_data.get('temperature'),
             weather_windspeed=weather_data.get('windspeed'),

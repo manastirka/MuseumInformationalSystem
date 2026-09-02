@@ -1004,12 +1004,12 @@
                                         <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
                                     </a>
                                     <ul class="dropdown-submenu-items" id="biologySubmenu">
-                                        {% if has_module_access('botany_collection') %}
+                                        {% if has_module_access('botany_collection') and not u_razvoju('botany_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('botany_collection') if endpoint_exists('botany_collection') else '#' }}">
                                             <i class="bi bi-flower1 me-2"></i>Ботаничка збирка
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('ornithology_collection') %}
+                                        {% if has_module_access('ornithology_collection') and not u_razvoju('ornithology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('ornithology_collection') if endpoint_exists('ornithology_collection') else '#' }}">
                                             <i class="museum-icon-bird me-2"></i>Орнитолошка збирка
                                         </a></li>
@@ -1019,22 +1019,22 @@
                                             <i class="bi bi-circle me-2"></i>База прстеновања птица
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('ichthyology_collection') %}
+                                        {% if has_module_access('ichthyology_collection') and not u_razvoju('ichthyology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('ichthyology_collection') if endpoint_exists('ichthyology_collection') else '#' }}">
                                             <i class="museum-icon-fish me-2"></i>Ихтиолошка збирка
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('herpetology_collection') %}
+                                        {% if has_module_access('herpetology_collection') and not u_razvoju('herpetology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('herpetology_collection') if endpoint_exists('herpetology_collection') else '#' }}">
                                             <i class="museum-icon-snake me-2"></i>Херпетолошка збирка
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('entomology_collection') %}
+                                        {% if has_module_access('entomology_collection') and not u_razvoju('entomology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('entomology_collection') if endpoint_exists('entomology_collection') else '#' }}">
                                             <i class="bi bi-bug-fill me-2"></i>Ентомолошка збирка
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('mycology_collection') %}
+                                        {% if has_module_access('mycology_collection') and not u_razvoju('mycology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('mycology_collection') if endpoint_exists('mycology_collection') else '#' }}">
                                             <i class="museum-icon-mushroom me-2"></i>Миколошка збирка
                                         </a></li>
@@ -1097,12 +1097,12 @@
                                             <i class="bi bi-gem me-2"></i>Збирка минерала
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('petrology_collection') %}
+                                        {% if has_module_access('petrology_collection') and not u_razvoju('petrology_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('petrology_collection') if endpoint_exists('petrology_collection') else '#' }}">
                                             <i class="bi bi-bricks me-2"></i>Петролошка збирка
                                         </a></li>
                                         {% endif %}
-                                        {% if has_module_access('meteorite_collection') %}
+                                        {% if has_module_access('meteorite_collection') and not u_razvoju('meteorite_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('meteorite_collection') if endpoint_exists('meteorite_collection') else '#' }}">
                                             <i class="museum-icon-shooting-star me-2"></i>Збирка метеорита
                                         </a></li>
@@ -1114,12 +1114,12 @@
                                                 <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
                                             </a>
                                             <ul class="dropdown-submenu-items" id="paleozoologySubmenu">
-                                                {% if has_module_access('paleozoology_collection') %}
+                                                {% if has_module_access('paleozoology_collection') and not u_razvoju('paleozoology_collection') %}
                                                 <li><a class="dropdown-item" href="{{ url_for('paleozoology_collection') if endpoint_exists('paleozoology_collection') else '#' }}">
                                                     <i class="museum-icon-dinosaur me-2"></i>Палеозоолошка збирка
                                                 </a></li>
                                                 {% endif %}
-                                                {% if has_module_access('sanja_paleogene_neogene_mammals') %}
+                                                {% if has_module_access('sanja_paleogene_neogene_mammals') and not u_razvoju('sanja_paleogene_neogene_mammals') %}
                                                 <li><a class="dropdown-item" href="{{ url_for('sanja_paleogene_neogene_mammals') if endpoint_exists('sanja_paleogene_neogene_mammals') else '#' }}">
                                                     <i class="museum-icon-mammoth me-2"></i>Крупни сисари палеоген/неоген
                                                 </a></li>
@@ -1132,7 +1132,7 @@
                                             </ul>
                                         </li>
                                         {% endif %}
-                                        {% if has_module_access('paleobotany_collection') %}
+                                        {% if has_module_access('paleobotany_collection') and not u_razvoju('paleobotany_collection') %}
                                         <li><a class="dropdown-item" href="{{ url_for('paleobotany_collection') if endpoint_exists('paleobotany_collection') else '#' }}">
                                             <i class="bi bi-leaf me-2"></i>Палеоботаничка збирка
                                         </a></li>
@@ -1177,10 +1177,12 @@
                                     <i class="bi bi-person-badge me-2"></i>Профили запослених
                                 </a></li>
                                 {% endif %}
-                                {% if has_module_access('employees_database') %}
+                                {% if has_module_access('employees_database') and not u_razvoju('visitors_database') %}
                                 <li><a class="dropdown-item" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
                                     <i class="bi bi-person-walking me-2"></i>База посетилаца
                                 </a></li>
+                                {% endif %}
+                                {% if has_module_access('employees_database') and not u_razvoju('research_database') %}
                                 <li><a class="dropdown-item" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
                                     <i class="bi bi-mortarboard me-2"></i>Истраживачки пројекти
                                 </a></li>
@@ -1190,18 +1192,37 @@
                                     <i class="bi bi-easel me-2"></i>База изложби
                                 </a></li>
                                 {% endif %}
-                                {% if has_module_access('exhibits_database') %}
+                                {% if has_module_access('exhibits_database') and not u_razvoju('exhibits_database') %}
                                 <li><a class="dropdown-item" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
                                     <i class="bi bi-box me-2"></i>База експоната
                                 </a></li>
                                 {% endif %}
-                                {% if has_module_access('cultural_heritage') %}
+                                {% if has_module_access('cultural_heritage') and not u_razvoju('cultural_heritage') %}
                                 <li><a class="dropdown-item" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
                                     <i class="bi bi-bank me-2"></i>Културно наслеђе
                                 </a></li>
                                 {% endif %}
 
-                                <!-- External Databases Section -->
+                                                                <!-- У развоју: базе без стварних музејских података (museum_baze_stanje) -->
+                                {% set _u_razvoju = baze_u_razvoju() %}
+                                {% if _u_razvoju %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="dropdown-submenu">
+                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="uRazvojuSubmenu">
+                                        <i class="bi bi-cone-striped me-2"></i>У развоју
+                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
+                                    </a>
+                                    <ul class="dropdown-submenu-items" id="uRazvojuSubmenu">
+                                        {% for s in _u_razvoju %}
+                                        <li><a class="dropdown-item" href="{{ url_for(s.endpoint) if endpoint_exists(s.endpoint) else '#' }}" title="Још нема стварних података — {{ s.odeljak }}">
+                                            <i class="{{ s.ikona }} me-2"></i>{{ s.naziv }}
+                                        </a></li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                                {% endif %}
+
+<!-- External Databases Section -->
                                 {% if has_module_access('nhm_data_portal') %}
                                 <li class="dropdown-submenu">
                                     <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="externalSubmenu">
