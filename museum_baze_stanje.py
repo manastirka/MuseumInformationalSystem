@@ -7,7 +7,7 @@
 
 „Прави подаци" = бар један ред који није из демо семена. Демо семе су редови
 које су миграције/скрипте уписале 25–26.12.2025 да стране не буду празне
-(каталошки бројеви BOT-2024-001, MET-001, КД-ПМ-001/2015 …). Ти редови се
+(каталошки бројеви BOT-2024-001, КД-ПМ-001/2015 …). Ти редови се
 препознају по броју, не по датуму, па ни ручно унет запис истог дана не би
 био погрешно скривен.
 
@@ -44,7 +44,7 @@ _SEME_ZBIRKI = {
     'petrology': ('PETRO-IGN-001', 'PETRO-IGN-002', 'PETRO-MET-001', 'PETRO-SED-001',
                   'PETR-2024-001', 'PETR-2024-002'),
 }
-_SEME_METEORITI = tuple(f'MET-{i:03d}' for i in range(1, 19))
+# Збирка метеорита (MET-001…018) је СТВАРНА — Александар, 02.09.2026; нема семена.
 _SEME_NASLEDJE = ('КД-ПМ-001/2015', 'КД-ПМ-002/2018', 'КД-ПМ-003/2020',
                   'КД-ПМ-004/2019', 'КД-ПМ-005/2021', 'КД-ПМ-006/2017')
 
@@ -103,9 +103,7 @@ def _upiti():
             "WHERE collection_type = %s AND COALESCE(catalog_number, '') <> ALL(%s)",
             (zbirka, list(_SEME_ZBIRKI[zbirka])),
         ))
-    upiti.append(('meteorite_collection',
-                  "SELECT count(*) FROM meteorite_specimens WHERE COALESCE(catalog_number, '') <> ALL(%s)",
-                  (list(_SEME_METEORITI),)))
+    upiti.append(('meteorite_collection', "SELECT count(*) FROM meteorite_specimens", ()))
     upiti.append(('cultural_heritage',
                   "SELECT count(*) FROM heritage_items WHERE COALESCE(registry_number, '') <> ALL(%s)",
                   (list(_SEME_NASLEDJE),)))

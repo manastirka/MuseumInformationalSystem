@@ -68,7 +68,7 @@ class LogikaTest(unittest.TestCase):
     def test_seme_nije_stvaran_podatak(self):
         # Демо каталошки бројеви из децембра 2025. не смеју да „оживе" базу.
         self.assertIn('BOT-2024-001', stanje._SEME_ZBIRKI['botany'])
-        self.assertIn('MET-018', stanje._SEME_METEORITI)
+        self.assertFalse(hasattr(stanje, '_SEME_METEORITI'), 'метеорити су стварна збирка — без семена')
         for s in stanje.NAV_BAZE:
             self.assertIn(s['modul'], museum_app.MODULE_ACCESS, s['kljuc'])
 
