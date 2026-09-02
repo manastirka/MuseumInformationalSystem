@@ -10,7 +10,7 @@
             <div class="card bg-warning text-dark db-hero">
                 <div class="card-body p-4">
                     <div class="row align-items-center">
-                        <div class="col-md-8">
+                        <div class="col-12">
                             <h1 class="h3 mb-1">
                                 <i class="bi bi-award me-2"></i>
                                 База заштићених културних добара
@@ -18,12 +18,6 @@
                             <p class="mb-0 opacity-75">
                                 Регистар покретних културних добара под заштитом Републике Србије
                             </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-50 rounded p-3">
-                                <h2 class="mb-0">{{ statistics.total_heritage_items }}</h2>
-                                <small>Заштићених добара</small>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -43,45 +37,6 @@
     </div>
     {% endif %}
 
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-gem" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.exceptional_significance }}</h5>
-                    <p class="text-muted mb-0 small">Изузетног значаја</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-star-fill" style="font-size: 2rem; color: var(--museum-accent); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.great_significance }}</h5>
-                    <p class="text-muted mb-0 small">Великог значаја</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-eye" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.displayed_items }}</h5>
-                    <p class="text-muted mb-0 small">Изложено</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-tree" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.natural_heritage }}</h5>
-                    <p class="text-muted mb-0 small">Природњачко наслеђе</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Search and Actions -->
     <div class="row mb-4">

@@ -38,11 +38,12 @@ class MineralSubnavTests(unittest.TestCase):
         self.assertNotIn('quick-actions-row', self.mineral_template)
         self.assertNotIn('quick-action-card', self.mineral_template)
 
-    def test_header_does_not_show_decorative_rruff_stat(self):
+    def test_header_has_no_statistics_counters(self):
+        # Бројачи (примерака, локалитета, RRUFF) су уклоњени из заглавља збирке.
         header = self.mineral_template.split('<!-- Mineralogical Database Sub Navigation -->', 1)[0]
-        self.assertNotIn('<span class="stat-label">RRUFF база</span>', header)
-        self.assertIn('<span class="stat-label">Примерака</span>', header)
-        self.assertIn('<span class="stat-label">Локалитета</span>', header)
+        self.assertNotIn('header-stat', header)
+        self.assertNotIn('stat-label', header)
+        self.assertNotIn('stats.total_minerals', header)
 
     def test_rruff_is_not_in_global_external_database_menu(self):
         self.assertNotIn('RRUFF минерали', self.base_template)

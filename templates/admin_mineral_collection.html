@@ -81,43 +81,6 @@ table th.action-cell {
 }
 
 /* Quick stats in header */
-.header-stats {
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    position: relative;
-    z-index: 1;
-}
-
-.header-stat {
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px);
-    padding: 0.75rem 1.25rem;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.2);
-    transition: all 0.3s ease;
-}
-
-.header-stat:hover {
-    background: rgba(255,255,255,0.25);
-    transform: translateY(-2px);
-}
-
-.header-stat .stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    display: block;
-    line-height: 1.2;
-}
-
-.header-stat .stat-label {
-    font-size: 0.75rem;
-    opacity: 0.85;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Statistics row - enhanced */
 .stat-card {
     border-radius: 14px;
     border: none;
@@ -818,16 +781,6 @@ table th.action-cell {
                 <p class="subtitle mb-0">
                     Природњачки музеј у Београду • Геолошко одељење
                 </p>
-                <div class="header-stats mt-3 flex-wrap">
-                    <div class="header-stat">
-                        <span class="stat-value">{{ stats.total_minerals or total_minerals }}</span>
-                        <span class="stat-label">Примерака</span>
-                    </div>
-                    <div class="header-stat">
-                        <span class="stat-value">{{ stats.top_localities|length if stats.top_localities else '—' }}</span>
-                        <span class="stat-label">Локалитета</span>
-                    </div>
-                </div>
             </div>
             <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
                 <div class="d-flex flex-column gap-2 align-items-lg-end">

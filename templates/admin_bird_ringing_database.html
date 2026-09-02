@@ -42,10 +42,6 @@
                                 <i class="bi bi-plus-circle me-1"></i>
                                 Додај нови запис
                             </a>
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">{{ "{:,}".format(total_count).replace(',', '.') }}</h2>
-                                <small>Записа</small>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -53,105 +49,6 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-files" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ "{:,}".format(stats.total_records).replace(',', '.') }}</h5>
-                    <p class="text-muted mb-0 small">Укупно записа</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-egg" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ stats.unique_species }}</h5>
-                    <p class="text-muted mb-0 small">Врста птица</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-geo-alt" style="font-size: 2rem; color: var(--museum-info); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ stats.unique_locations }}</h5>
-                    <p class="text-muted mb-0 small">Локација</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-people" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ stats.unique_ringers }}</h5>
-                    <p class="text-muted mb-0 small">Прстеновача</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Statistics -->
-    <div class="row g-4 mb-4">
-        <!-- Top Species -->
-        <div class="col-lg-4">
-            <div class="card h-100">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Топ 10 врста</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        {% for item in stats.top_species[:10] %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <small class="text-truncate">{{ item.species }}</small>
-                            <span class="badge bg-success rounded-pill">{{ item.count }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Top Locations -->
-        <div class="col-lg-4">
-            <div class="card h-100">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Топ 10 локација</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        {% for item in stats.top_locations[:10] %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <small class="text-truncate">{{ item.location }}</small>
-                            <span class="badge bg-info rounded-pill">{{ item.count }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Top Ringers -->
-        <div class="col-lg-4">
-            <div class="card h-100">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-person-badge me-2"></i>Топ 10 прстеновача</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        {% for item in stats.top_ringers[:10] %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <small class="text-truncate">{{ item.ringer }}</small>
-                            <span class="badge bg-warning text-dark rounded-pill">{{ item.count }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Filters and Search -->
     <div class="row mb-4">

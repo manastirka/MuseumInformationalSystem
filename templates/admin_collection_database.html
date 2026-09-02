@@ -31,38 +31,6 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    {% set stat_labels = {
-        'total_specimens': 'Укупно примерака',
-        'serbian_meteorites': 'Српски метеорити',
-        'foreign_meteorites': 'Страни метеорити',
-        'total_classes': 'Број класа',
-        'total_mass_grams': 'Укупна маса (g)',
-        'witnessed_falls': 'Посматрани падови',
-        'finds': 'Налази',
-        'total_books': 'Укупно књига',
-        'available_books': 'Доступне књиге',
-        'borrowed_books': 'Позајмљене књиге',
-        'total_categories': 'Број категорија',
-        'total_heritage_items': 'Укупно предмета',
-        'exceptional_significance': 'Изузетан значај',
-        'great_significance': 'Велики значај',
-        'total_taxa': 'Број таксона',
-        'total_localities': 'Број локалитета',
-        'identified_by_count': 'Број идентификатора'
-    } %}
-    <div class="row mb-4">
-        {% for key, value in statistics.items() %}
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center">
-                    <h3 class="text-primary mb-2">{{ value if key != 'total_mass_grams' else '%.2f'|format(value) }}</h3>
-                    <p class="text-muted mb-0 small">{{ stat_labels.get(key, key|replace('_', ' ')|title) }}</p>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
 
     <!-- Specimens Table -->
     <div class="row">
