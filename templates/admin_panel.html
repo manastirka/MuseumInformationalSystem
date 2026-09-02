@@ -437,13 +437,6 @@
                         </span>
                         <i class="bi bi-chevron-right module-arrow"></i>
                     </a>
-                    <a href="{{ url_for('museum_databases') }}" class="admin-module-item" data-module-search="qr у збиркама кодови етикете">
-                        <span class="module-icon"><i class="bi bi-qr-code"></i></span>
-                        <span class="module-text">
-                            <span class="module-name">QR у збиркама</span>
-                            <span class="module-desc">QR етикете и кодови збирки</span>
-                        </span>
-                        <i class="bi bi-chevron-right module-arrow"></i>
                     </a>
                     {% if endpoint_exists('exhibits_database') %}
                     <a href="{{ url_for('exhibits_database') }}" class="admin-module-item" data-module-search="база експоната">

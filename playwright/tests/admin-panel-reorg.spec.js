@@ -47,7 +47,6 @@ test('admin panel: vertical sections, all modules, working navigation', async ({
     'Ревизиони траг',
     'Статистика збирки',
     'Преглед свих база',
-    'QR у збиркама',
     'База запослених',
     'Профили запослених',
     'Системска подешавања',
