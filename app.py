@@ -132,8 +132,6 @@ import vehicle_depot_views
 import collection_media_views
 import dashboard_data_support
 from postgres_service import get_postgres_connection
-import qr_label_views
-import qr_management_views
 import project_views
 import scientific_paper_views
 import timesheet_admin_views
@@ -1470,7 +1468,6 @@ app_collection_support.bind_collection_helpers_to_app(
     get_image_upload_module_key=get_image_upload_module_key,
     user_has_module_access=user_has_module_access,
     normalize_qr_collection_type=normalize_qr_collection_type,
-    ensure_qr_collection_access=ensure_qr_collection_access,
     get_qr_collection_name=get_qr_collection_name,
     get_qr_collection_url=get_qr_collection_url,
     get_qr_collection_records=get_qr_collection_records,
@@ -1479,7 +1476,6 @@ app_collection_support.bind_collection_helpers_to_app(
     get_qr_record_name=get_qr_record_name,
     get_qr_record_summary=get_qr_record_summary,
     get_qr_record_location=get_qr_record_location,
-    build_collection_highlight_qr_url=build_collection_highlight_qr_url,
     get_meteorite_collection_database=get_meteorite_collection_database,
     get_mineral_database=get_mineral_database,
     botany_collection_database=BOTANY_COLLECTION_DATABASE,

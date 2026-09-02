@@ -707,12 +707,11 @@ def render_standard_collection_database(
     records,
     statistics,
     prepare_collection_records_for_display,
-    get_qr_collection_action_url,
     collection_actions_enabled=True,
     collection_add_enabled=None,
     collection_export_enabled=None,
 ):
-    """Render a standard collection database page with QR highlight support."""
+    """Render a standard collection database page (with ?highlight= support)."""
     specimens, highlight = prepare_collection_records_for_display(collection_type, records)
     specimens = normalize_collection_curators_for_display(collection_type, specimens)
     return render_template(
@@ -723,7 +722,6 @@ def render_standard_collection_database(
         statistics=statistics,
         collection_type=collection_type,
         highlight=highlight,
-        qr_action_url=get_qr_collection_action_url(collection_type),
         collection_actions_enabled=collection_actions_enabled,
         collection_add_enabled=collection_actions_enabled if collection_add_enabled is None else collection_add_enabled,
         collection_export_enabled=collection_actions_enabled if collection_export_enabled is None else collection_export_enabled,
@@ -734,7 +732,6 @@ def render_cultural_heritage_database(
     *,
     get_cultural_heritage_database,
     prepare_collection_records_for_display,
-    get_qr_collection_action_url,
 ):
     """Render cultural heritage database view."""
     heritage_db = get_cultural_heritage_database()
@@ -772,7 +769,6 @@ def render_cultural_heritage_database(
         statistics=statistics,
         total_heritage_items=len(all_heritage_items),
         highlight=highlight,
-        qr_action_url=get_qr_collection_action_url('heritage'),
     )
 
 
@@ -780,7 +776,6 @@ def render_meteorite_collection(
     *,
     get_meteorite_collection_database,
     prepare_collection_records_for_display,
-    get_qr_collection_action_url,
 ):
     """Render meteorite collection database."""
     meteorite_db = get_meteorite_collection_database()
@@ -794,7 +789,6 @@ def render_meteorite_collection(
         statistics=meteorite_db['statistics'],
         collection_type='meteorite',
         highlight=highlight,
-        qr_action_url=get_qr_collection_action_url('meteorite'),
     )
 
 
@@ -928,7 +922,17 @@ def render_mineral_detail(mineral_id, *, get_mineral_database):
     # lookup kao u tabeli (poštuje vidljivost).
     _priloži_foto_id([mineral])
 
-    return render_template('admin_mineral_detail.html', mineral=mineral, rruff_data=rruff_data)
+    # QR ознака (ако је већ додељена) за дугме „QR налепница”; пад базе ознака
+    # не сме да обори страну детаља — дугме онда нуди доделу.
+    try:
+        import museum_qr
+        qr_oznaka = museum_qr.oznaka_za_objekat(museum_qr.VRSTA_PRIMERAK, museum_qr.ZBIRKA_MINERALI, mineral_id)
+    except Exception as exc:
+        logger.warning("QR ознака за минерал %s није прочитана: %s", mineral_id, exc)
+        qr_oznaka = None
+
+    return render_template('admin_mineral_detail.html', mineral=mineral, rruff_data=rruff_data,
+                           qr_oznaka=qr_oznaka)
 
 
 def redirect_rruff_minerals():

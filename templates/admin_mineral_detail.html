@@ -22,6 +22,9 @@
                 <i class="bi bi-box-seam me-1"></i>Кутија {{ mineral.gde_se_nalazi }}
             </button>
             {% endif %}
+            {% with qr_zbirka='minerals', qr_objekat_id=mineral.id %}
+                {% include '_qr_dugme.html' %}
+            {% endwith %}
             <a href="{{ url_for('edit_mineral', mineral_id=mineral.id) }}" class="btn btn-warning btn-sm">
                 <i class="bi bi-pencil-square me-1"></i>Измени
             </a>

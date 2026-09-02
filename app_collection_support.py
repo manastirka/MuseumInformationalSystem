@@ -47,16 +47,13 @@ def build_collection_access_bindings(
         'get_qr_collection_name': support.get_qr_collection_name,
         'get_qr_collection_module_key': support.get_qr_collection_module_key,
         'get_qr_collection_url': support.get_qr_collection_url,
-        'get_qr_collection_action_url': support.get_qr_collection_action_url,
         'get_qr_collection_records': support.get_qr_collection_records,
         'get_qr_record_identifier': support.get_qr_record_identifier,
         'get_qr_record_catalog_label': support.get_qr_record_catalog_label,
         'get_qr_record_name': support.get_qr_record_name,
         'get_qr_record_summary': support.get_qr_record_summary,
         'get_qr_record_location': support.get_qr_record_location,
-        'build_collection_highlight_qr_url': support.build_collection_highlight_qr_url,
         'apply_qr_highlight_filter': support.apply_qr_highlight_filter,
-        'ensure_qr_collection_access': support.ensure_qr_collection_access,
         'normalize_image_upload_database': support.normalize_image_upload_database,
         'get_image_upload_config': support.get_image_upload_config,
         'get_image_upload_module_key': support.get_image_upload_module_key,
@@ -69,7 +66,6 @@ def bind_collection_helpers_to_app(
     get_image_upload_module_key,
     user_has_module_access,
     normalize_qr_collection_type,
-    ensure_qr_collection_access,
     get_qr_collection_name,
     get_qr_collection_url,
     get_qr_collection_records,
@@ -78,7 +74,6 @@ def bind_collection_helpers_to_app(
     get_qr_record_name,
     get_qr_record_summary,
     get_qr_record_location,
-    build_collection_highlight_qr_url,
     get_meteorite_collection_database,
     get_mineral_database,
     botany_collection_database,
@@ -89,7 +84,6 @@ def bind_collection_helpers_to_app(
     app.get_image_upload_module_key = get_image_upload_module_key
     app.user_has_module_access = user_has_module_access
     app.normalize_qr_collection_type = normalize_qr_collection_type
-    app.ensure_qr_collection_access = ensure_qr_collection_access
     app.get_qr_collection_name = get_qr_collection_name
     app.get_qr_collection_url = get_qr_collection_url
     app.get_qr_collection_records = get_qr_collection_records
@@ -98,7 +92,6 @@ def bind_collection_helpers_to_app(
     app.get_qr_record_name = get_qr_record_name
     app.get_qr_record_summary = get_qr_record_summary
     app.get_qr_record_location = get_qr_record_location
-    app.build_collection_highlight_qr_url = build_collection_highlight_qr_url
     app.get_meteorite_collection_database = get_meteorite_collection_database
     app.get_mineral_database = get_mineral_database
     app.botany_collection_database = botany_collection_database

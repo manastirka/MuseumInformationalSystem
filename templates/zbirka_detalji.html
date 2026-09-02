@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ opis.naslov }} — {{ naziv_zbirke }}{% endblock %}
+
+{% block content %}
+<style>
+.detalji { max-width: 960px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+.detalji__zaglavlje { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-5); }
+.detalji__zbirka { font-size: var(--font-size-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: var(--space-1); }
+.detalji__naslov { margin: 0; line-height: 1.2; }
+.detalji__katalog { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.detalji__radnje { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.detalji__tabela { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-card); overflow: hidden; }
+.detalji__red { display: grid; grid-template-columns: minmax(10rem, 1fr) 3fr; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-color); }
+.detalji__red:first-child { border-top: 0; }
+.detalji__labela { color: var(--text-secondary); font-size: var(--font-size-sm); }
+.detalji__vrednost { overflow-wrap: anywhere; white-space: pre-line; }
+@media (max-width: 560px) { .detalji__red { grid-template-columns: 1fr; gap: var(--space-1); } }
+</style>
+
+<div class="detalji">
+    <div class="detalji__zaglavlje">
+        <div>
+            <div class="detalji__zbirka"><a href="{{ url_zbirke }}">{{ naziv_zbirke }}</a></div>
+            <h1 class="detalji__naslov">{{ opis.naslov }}</h1>
+            {% if opis.katalog and opis.katalog != opis.naslov %}<div class="detalji__katalog">{{ opis.katalog }}</div>{% endif %}
+        </div>
+        <div class="detalji__radnje">
+            {% with qr_zbirka=zbirka, qr_objekat_id=objekat_id, qr_oznaka=oznaka %}
+                {% include '_qr_dugme.html' %}
+            {% endwith %}
+            <a href="{{ url_zbirke }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Назад</a>
+        </div>
+    </div>
+
+    <div class="detalji__tabela">
+        {% for labela, vrednost in polja %}
+        <div class="detalji__red">
+            <div class="detalji__labela">{{ labela }}</div>
+            <div class="detalji__vrednost">{{ vrednost }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

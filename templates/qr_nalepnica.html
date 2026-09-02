@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR налепница — {{ nalepnice[0].naslov if nalepnice else 'МИС' }}</title>
+    <style>
+        /* Налепница се штампа — боје су намерно само црно/бело, локални токени
+           да test_kontrast_hardkod мери AA над њима као и на осталим QR странама. */
+        :root {
+            --qr-surface: #ffffff;
+            --qr-text: #000000;
+            --qr-muted: #555555;
+            --qr-border: #bbbbbb;
+            --qr-header-1: #1f2d3a;
+            --qr-header-2: #1f2d3a;
+            --qr-on-header: #ffffff;
+            --qr-accent: #1f2d3a;
+            --qr-elevated: #f2f2f2;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--qr-elevated);
+            color: var(--qr-text);
+            font-family: "DejaVu Sans", "Segoe UI", Arial, sans-serif;
+        }
+        .traka {
+            background: var(--qr-header-1);
+            color: var(--qr-on-header);
+            padding: 10px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            align-items: center;
+            font-size: 14px;
+        }
+        .traka a, .traka button {
+            color: var(--qr-on-header);
+            background: transparent;
+            border: 1px solid var(--qr-on-header);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .traka a.aktivan { background: var(--qr-on-header); color: var(--qr-header-1); }
+        .traka .razmak { flex: 1; }
+        .traka .info { opacity: 0.85; }
+        .list {
+            margin: 12px auto;
+            padding: 8mm;
+            width: 210mm;
+            min-height: 100mm;
+            background: var(--qr-surface);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3mm;
+            align-content: flex-start;
+        }
+        .nalepnica {
+            width: {{ format.sirina }}mm;
+            height: {{ format.visina }}mm;
+            border: 0.2mm dashed var(--qr-border);
+            display: flex;
+            gap: 1.5mm;
+            padding: 1.2mm;
+            overflow: hidden;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .nalepnica svg {
+            width: {{ format.qr }}mm;
+            height: {{ format.qr }}mm;
+            flex: 0 0 auto;
+            display: block;
+        }
+        .nalepnica .tekst {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            line-height: 1.15;
+        }
+        .nalepnica .naslov {
+            font-weight: 700;
+            font-size: {{ '2.6mm' if format.visina < 20 else '3.4mm' }};
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .nalepnica .katalog {
+            font-size: {{ '2.3mm' if format.visina < 20 else '3mm' }};
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nalepnica .sazetak {
+            font-size: {{ '2mm' if format.visina < 20 else '2.6mm' }};
+            color: var(--qr-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nalepnica .oznaka {
+            margin-top: auto;
+            font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+            font-size: {{ '2mm' if format.visina < 20 else '2.6mm' }};
+            letter-spacing: 0.15em;
+            color: var(--qr-muted);
+        }
+        .sadrzaj-koda {
+            width: 210mm;
+            margin: 0 auto 24px;
+            font-size: 12px;
+            color: var(--qr-muted);
+            word-break: break-all;
+        }
+        @media print {
+            body { background: var(--qr-surface); }
+            .traka, .sadrzaj-koda { display: none; }
+            .list { margin: 0; padding: 0; width: auto; min-height: 0; gap: 2mm; }
+            .nalepnica { border-color: transparent; }
+            @page { margin: 8mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="traka">
+        <a href="{{ url_nazad }}">← Назад</a>
+        {% if red %}
+        <span class="info">Формат:</span>
+        {% for kljuc, f in formati.items() %}
+        <a class="{{ 'aktivan' if kljuc == format_kljuc else '' }}"
+           href="{{ url_for('qr.nalepnica', oznaka=red.oznaka, format=kljuc, kopija=(kopija if kljuc == 'list' else None)) }}">{{ f.naziv }}</a>
+        {% endfor %}
+        {% if format_kljuc == 'list' %}
+        <form method="get" action="{{ url_for('qr.nalepnica', oznaka=red.oznaka) }}" style="display:inline-flex;gap:6px;align-items:center">
+            <input type="hidden" name="format" value="list">
+            <label for="kopija">Копија:</label>
+            <input id="kopija" name="kopija" type="number" min="1" max="40" value="{{ kopija }}" style="width:4.5em">
+            <button type="submit">Примени</button>
+        </form>
+        {% endif %}
+        <span class="razmak"></span>
+        <span class="info">Припремљена за штампу {{ red.stampano_puta }} пут(а){% if red.poslednje_stampao %}, последњи пут {{ red.poslednje_stampao }}{% endif %}</span>
+        {% else %}
+        <span class="info">{{ nalepnice|length }} налепница за кутије</span>
+        <span class="razmak"></span>
+        {% endif %}
+        <button type="button" onclick="window.print()">Штампај</button>
+    </div>
+
+    <div class="list">
+        {% for n in nalepnice %}
+        <div class="nalepnica">
+            {{ n.svg|safe }}
+            <div class="tekst">
+                <div class="naslov">{{ n.naslov }}</div>
+                {% if n.katalog and n.katalog != n.naslov %}<div class="katalog">{{ n.katalog }}</div>{% endif %}
+                {% if n.sazetak %}<div class="sazetak">{{ n.sazetak }}</div>{% endif %}
+                <div class="oznaka">{{ n.oznaka }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if nalepnice %}
+    <div class="sadrzaj-koda">Садржај кода: {{ nalepnice[0].sadrzaj }}</div>
+    {% endif %}
+</body>
+</html>

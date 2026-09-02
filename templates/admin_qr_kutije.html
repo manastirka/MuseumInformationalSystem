@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}QR налепнице за кутије — Минералошка збирка{% endblock %}
+
+{% block content %}
+<style>
+.kutije { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+.kutije__zaglavlje { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; justify-content: space-between; margin-bottom: var(--space-5); }
+.kutije__zaglavlje h1 { margin: 0; }
+.kutije__pomoc { color: var(--text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-1); }
+.kutije__traka { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-4); }
+.kutije__traka input[type="search"] { flex: 1 1 16rem; }
+.kutije__mreza { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-2); }
+.kutija {
+    display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: start;
+    padding: var(--space-3); background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: var(--radius-card); cursor: pointer;
+}
+.kutija:hover { background: var(--bg-hover); }
+.kutija.skrivena { display: none; }
+.kutija__broj { font-weight: 600; }
+.kutija__meta { color: var(--text-secondary); font-size: var(--font-size-sm); }
+.kutije__podnozje { position: sticky; bottom: 0; margin-top: var(--space-5); padding: var(--space-3) 0; background: var(--bg-body); border-top: 1px solid var(--border-color); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+</style>
+
+<div class="kutije">
+    <div class="kutije__zaglavlje">
+        <div>
+            <h1>QR налепнице за кутије</h1>
+            <div class="kutije__pomoc">
+                {{ ukupno_kutija }} кутија са минералима{% if bez_kutije %}; {{ bez_kutije }} минерала без уписане кутије{% endif %}.
+                Садржај кода је исти као на већ залепљеним налепницама.
+            </div>
+        </div>
+        <a href="{{ url_for('admin_mineral_collection') }}" class="btn btn-outline-secondary btn-sm">← Минералошка збирка</a>
+    </div>
+
+    <form method="post" action="{{ url_for('qr.nalepnice_kutija') }}" id="kutije-forma">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="kutije__traka">
+            <input type="search" class="form-control" id="kutije-pretraga" placeholder="Тражи кутију…" autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="kutije-sve-vidljive">Означи видљиве</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="kutije-nista">Поништи</button>
+        </div>
+
+        <div class="kutije__mreza" id="kutije-mreza">
+            {% for k in kutije %}
+            <label class="kutija" data-kutija="{{ k.kutija|lower }}">
+                <input type="checkbox" name="kutije" value="{{ k.kutija }}" class="form-check-input mt-1">
+                <span>
+                    <span class="kutija__broj">Кутија {{ k.kutija }}</span>
+                    <span class="kutija__meta d-block">{{ k.broj }} минерал{% if k.broj != 1 %}а{% endif %}{% if k.primer %} · нпр. {{ k.primer }}{% endif %}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="kutije__podnozje">
+            <span id="kutije-izabrano" class="text-secondary">Ништа није изабрано</span>
+            <span class="flex-grow-1"></span>
+            <button type="submit" class="btn btn-primary" id="kutije-stampaj" disabled>Налепнице за изабране (А4)</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const najvise = {{ najvise }};
+    const mreza = document.getElementById('kutije-mreza');
+    const polja = Array.from(mreza.querySelectorAll('input[type="checkbox"]'));
+    const pretraga = document.getElementById('kutije-pretraga');
+    const izabrano = document.getElementById('kutije-izabrano');
+    const stampaj = document.getElementById('kutije-stampaj');
+
+    function osvezi() {
+        const n = polja.filter(p => p.checked).length;
+        izabrano.textContent = n === 0 ? 'Ништа није изабрано'
+            : (n > najvise ? `Изабрано ${n} — највише ${najvise} одједном` : `Изабрано: ${n}`);
+        stampaj.disabled = n === 0 || n > najvise;
+    }
+    mreza.addEventListener('change', osvezi);
+    pretraga.addEventListener('input', () => {
+        const upit = pretraga.value.trim().toLowerCase();
+        mreza.querySelectorAll('.kutija').forEach(el => {
+            el.classList.toggle('skrivena', upit !== '' && !el.dataset.kutija.includes(upit));
+        });
+    });
+    document.getElementById('kutije-sve-vidljive').addEventListener('click', () => {
+        mreza.querySelectorAll('.kutija:not(.skrivena) input').forEach(p => { p.checked = true; });
+        osvezi();
+    });
+    document.getElementById('kutije-nista').addEventListener('click', () => {
+        polja.forEach(p => { p.checked = false; });
+        osvezi();
+    });
+    osvezi();
+})();
+</script>
+{% endblock %}

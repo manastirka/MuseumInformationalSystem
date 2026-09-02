@@ -1,4 +1,4 @@
-"""Collection media and public QR routes extracted from app.py."""
+"""Collection media routes extracted from app.py (QR routes live in blueprints/qr.py)."""
 
 from flask import Blueprint, send_from_directory
 
@@ -8,17 +8,6 @@ from security_utils import login_required
 
 
 media_bp = Blueprint('media', __name__)
-
-
-@media_bp.route('/qr_box/minerals/<box_number>')
-def qr_view_mineral_box(box_number):
-    """Public mobile-optimized view for mineral box contents."""
-    import app as museum_app
-
-    return collection_media_views.render_qr_view_mineral_box(
-        box_number,
-        get_mineral_database=museum_app.get_mineral_database,
-    )
 
 
 @media_bp.route('/static/<path:filename>')
@@ -69,19 +58,4 @@ def get_image_by_id(image_id):
     return collection_media_views.get_image_by_id(
         image_id,
         get_image_storage=museum_app.get_image_storage,
-    )
-
-
-@media_bp.route('/qr_view/<collection_type>/<catalog_number>')
-def qr_view_specimen(collection_type, catalog_number):
-    """Public mobile-optimized view for QR code scanned specimens."""
-    import app as museum_app
-
-    return collection_media_views.render_qr_view_specimen(
-        collection_type,
-        catalog_number,
-        normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-        get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
-        botany_collection_database=museum_app.BOTANY_COLLECTION_DATABASE,
-        paleozoology_collection_database=museum_app.PALEOZOOLOGY_COLLECTION_DATABASE,
     )

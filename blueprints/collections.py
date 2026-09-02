@@ -64,7 +64,6 @@ def _render_collection_list(entry):
         return collection_management_views.render_meteorite_collection(
             get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
     database = _load_collection_database_for_list(museum_app, entry)
@@ -82,7 +81,6 @@ def _render_collection_list(entry):
         'records': records,
         'statistics': database['statistics'],
         'prepare_collection_records_for_display': museum_app.prepare_collection_records_for_display,
-        'get_qr_collection_action_url': museum_app.get_qr_collection_action_url,
     }
     if (
         not entry.collection_actions_enabled
@@ -252,7 +250,6 @@ def museum_databases():
         conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
         visitor_records=museum_content_views.load_visitor_records(),
         research_projects=museum_content_views.load_research_projects(),
-        get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         user_has_module_access=museum_app.user_has_module_access,
     )
 

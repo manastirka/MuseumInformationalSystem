@@ -225,12 +225,6 @@
                                 <i class="bi bi-box-arrow-up-right me-2"></i>
                                 Приступи бази
                             </a>
-                            {% if db_info.qr_url %}
-                            <a href="{{ db_info.qr_url }}" class="btn btn-ripple btn-outline-success">
-                                <i class="bi bi-qr-code me-2"></i>
-                                QR кодови
-                            </a>
-                            {% endif %}
                         {% elif db_info.status == 'development' %}
                             <button class="btn btn-ripple btn-outline-{{ db_info.color }}" @click="showToast('info', 'У развоју', 'Ова база је у развоју и биће доступна ускоро.', 'bi-tools')">
                                 <i class="bi bi-tools me-2"></i>

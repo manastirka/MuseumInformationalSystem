@@ -132,7 +132,6 @@ class TestCollectionListRoutes:
             records=museum_app.BOTANY_COLLECTION_DATABASE['specimens'],
             statistics=museum_app.BOTANY_COLLECTION_DATABASE['statistics'],
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
     def test_meteorite_route_still_uses_specialized_renderer(self):
@@ -150,7 +149,6 @@ class TestCollectionListRoutes:
         mocked_handler.assert_called_once_with(
             get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
 

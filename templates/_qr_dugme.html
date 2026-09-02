@@ -1,0 +1,51 @@
+{# Дугме „QR налепница” за детаље експоната.
+   Користи се са: {% include '_qr_dugme.html' %} уз променљиве
+   qr_zbirka, qr_objekat_id, qr_oznaka (ред из qr_oznake или None). #}
+{% if qr_oznaka %}
+<a href="{{ url_for('qr.nalepnica', oznaka=qr_oznaka.oznaka) }}" class="btn btn-outline-primary btn-sm"
+   title="Ознака {{ qr_oznaka.oznaka }} · припремљена за штампу {{ qr_oznaka.stampano_puta }} пут(а)">
+    <i class="bi bi-qr-code me-1"></i>QR налепница
+    <span class="badge text-bg-light ms-1">{{ qr_oznaka.oznaka }}</span>
+</a>
+{% else %}
+<button type="button" class="btn btn-outline-primary btn-sm" id="qr-dodeli"
+        data-zbirka="{{ qr_zbirka }}" data-objekat-id="{{ qr_objekat_id }}"
+        title="Овај примерак још нема QR ознаку — додељује се при првом штампању">
+    <i class="bi bi-qr-code me-1"></i>QR налепница
+</button>
+<script>
+(function () {
+    const dugme = document.getElementById('qr-dodeli');
+    if (!dugme) return;
+    dugme.addEventListener('click', async function () {
+        dugme.disabled = true;
+        try {
+            const odgovor = await secureFetch('/api/qr/dodeli', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vrsta: 'primerak',
+                    zbirka: dugme.dataset.zbirka,
+                    objekat_id: dugme.dataset.objekatId,
+                }),
+            });
+            const podaci = await odgovor.json().catch(() => ({}));
+            if (!odgovor.ok || !podaci.ok) {
+                throw new Error(podaci.error || ('Грешка ' + odgovor.status));
+            }
+            window.location.href = podaci.url_nalepnice;
+        } catch (greska) {
+            dugme.disabled = false;
+            let poruka = document.getElementById('qr-dodeli-greska');
+            if (!poruka) {
+                poruka = document.createElement('div');
+                poruka.id = 'qr-dodeli-greska';
+                poruka.className = 'text-danger small mt-1';
+                dugme.insertAdjacentElement('afterend', poruka);
+            }
+            poruka.textContent = 'QR ознака није додељена: ' + greska.message;
+        }
+    });
+})();
+</script>
+{% endif %}

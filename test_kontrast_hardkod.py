@@ -171,7 +171,7 @@ def test_token_pairs_meet_aa(fg, bg, mode):
 # 3. Javni QR prikazi: lokalni --qr-* tokeni + AA nad njima
 # ---------------------------------------------------------------------------
 
-QR_FILES = ['templates/specimen_qr_view.html', 'templates/mineral_box_qr_view.html']
+QR_FILES = ['templates/qr_nalepnica.html']
 
 QR_PAIRS = [
     ('--qr-text', '--qr-surface'),

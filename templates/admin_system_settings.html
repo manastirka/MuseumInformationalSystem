@@ -190,6 +190,13 @@
                                    value="{{ settings.contact_email or 'info@nhmbeo.rs' }}">
                         </div>
                         <div class="mb-3">
+                            <label class="form-label" for="qrBaznaAdresa">Адреса у QR кодовима</label>
+                            <input type="url" class="form-control" id="qrBaznaAdresa"
+                                   value="{{ settings.qr_bazna_adresa or 'https://192.168.144.194' }}"
+                                   placeholder="https://192.168.144.194">
+                            <div class="form-text">Уписује се у сваку нову QR налепницу. Мења се само при селидби сервера; старе налепнице раде преко резолвера.</div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Језик система</label>
                             <select class="form-select" id="systemLanguage">
                                 <option value="sr-cyrl" selected>Српски (ћирилица)</option>
@@ -471,6 +478,7 @@ document.getElementById('generalSettingsForm').addEventListener('submit', functi
     const data = {
         institution_name: document.getElementById('institutionName').value,
         contact_email: document.getElementById('contactEmail').value,
+        qr_bazna_adresa: document.getElementById('qrBaznaAdresa').value,
         system_language: document.getElementById('systemLanguage').value,
         timezone: document.getElementById('timezone').value
     };

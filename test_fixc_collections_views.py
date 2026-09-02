@@ -49,7 +49,6 @@ def test_heritage_statistics_resilient_to_missing_keys():
             result = cmv.render_cultural_heritage_database(
                 get_cultural_heritage_database=_heritage_db_missing_keys,
                 prepare_collection_records_for_display=lambda ct, records: (records, None),
-                get_qr_collection_action_url=lambda ct: '/qr',
             )
 
     assert result == 'OK'
@@ -97,7 +96,6 @@ def test_heritage_statistics_still_count_present_keys():
             cmv.render_cultural_heritage_database(
                 get_cultural_heritage_database=lambda: db,
                 prepare_collection_records_for_display=lambda ct, records: (records, None),
-                get_qr_collection_action_url=lambda ct: '/qr',
             )
 
     stats = mock_render.call_args.kwargs['statistics']

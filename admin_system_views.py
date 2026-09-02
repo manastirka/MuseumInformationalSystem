@@ -3,6 +3,7 @@
 import gc
 import json
 import logging
+import re
 import os
 import platform
 import subprocess
@@ -286,11 +287,16 @@ def api_save_general_settings():
     """Save general settings."""
     try:
         data = request.get_json() or {}
+        qr_adresa = str(data.get('qr_bazna_adresa') or '').strip().rstrip('/')
+        if qr_adresa and not re.match(r'^https?://[^\s/]+$', qr_adresa):
+            return jsonify({'success': False,
+                            'error': 'Адреса у QR кодовима мора бити облика https://host (без путање)'})
         settings = load_saved_settings()
         settings.update(
             {
                 'institution_name': data.get('institution_name'),
                 'contact_email': data.get('contact_email'),
+                'qr_bazna_adresa': qr_adresa,
                 'system_language': data.get('system_language'),
                 'timezone': data.get('timezone'),
             }

@@ -85,7 +85,6 @@ def render_museum_databases(
     conservation_biology_database,
     visitor_records,
     research_projects,
-    get_qr_collection_action_url,
     user_has_module_access,
     get_meteorite_collection_database=None,
     botany_collection_database=None,
@@ -495,16 +494,6 @@ def render_museum_databases(
             'curators': [],
         },
     }
-
-    registry_collection_types = get_overview_collection_type_map()
-    qr_database_map = {
-        'minerals': 'minerals',
-        'cultural_heritage': 'heritage',
-        **registry_collection_types,
-    }
-    for db_key, collection_type in qr_database_map.items():
-        if db_key in databases_info:
-            databases_info[db_key]['qr_url'] = get_qr_collection_action_url(collection_type)
 
     if inventory_total is not None:
         databases_info['minerals']['inventory_total'] = inventory_total

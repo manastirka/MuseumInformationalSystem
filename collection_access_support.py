@@ -206,16 +206,6 @@ class CollectionAccessSupport:
             return url_for('museum_databases')
         return url_for(config['route'])
 
-    def get_qr_collection_action_url(self, collection_type):
-        """Get the scoped QR selection URL for a collection, or None if unsupported."""
-        config = self.get_qr_collection_config(collection_type)
-        if not config:
-            return None
-        return url_for(
-            'admin_qr_select_specimens',
-            collection_type=self.normalize_qr_collection_type(collection_type),
-        )
-
     def get_qr_collection_records(self, collection_type):
         """Load raw records for a QR-enabled collection."""
         config = self.get_qr_collection_config(collection_type)
@@ -325,11 +315,6 @@ class CollectionAccessSupport:
         )
         return str(value).strip() if value not in (None, '') else ''
 
-    def build_collection_highlight_qr_url(self, base_url, collection_type, identifier):
-        """Build an authenticated collection-page QR URL with a highlight filter."""
-        collection_url = self.get_qr_collection_url(collection_type)
-        return f"{base_url}{collection_url}?highlight={quote(str(identifier))}"
-
     def apply_qr_highlight_filter(self, records, collection_type, highlight):
         """Filter collection records to a single highlighted record when present."""
         if not highlight:
@@ -345,26 +330,6 @@ class CollectionAccessSupport:
 
         flash(f'Запис са идентификатором {highlight} није пронађен.', 'warning')
         return records
-
-    def ensure_qr_collection_access(self, collection_type):
-        """Return a redirect response when the current user cannot access QR for this collection."""
-        module_key = self.get_qr_collection_module_key(collection_type)
-
-        if not module_key:
-            flash('QR генератор није доступан за ову збирку.', 'warning')
-            return redirect(url_for('museum_databases'))
-
-        user_email = session.get('user_email', '')
-        user_role = session.get('user_role', 'user')
-
-        if self.user_has_module_access(user_email, user_role, module_key):
-            return None
-
-        flash('Немате приступ QR генератору за ову збирку.', 'error')
-
-        if self.user_has_module_access(user_email, user_role, 'museum_databases'):
-            return redirect(url_for('museum_databases'))
-        return redirect(url_for('dashboard'))
 
     def normalize_image_upload_database(self, database):
         """Normalize legacy or UI aliases to canonical image-upload database ids."""

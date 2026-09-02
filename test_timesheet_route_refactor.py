@@ -441,215 +441,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             get_image_storage=museum_app.get_image_storage,
         )
 
-    def test_admin_qr_generator_route_delegates_to_qr_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_management_views,
-            'render_admin_qr_generator',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_generator', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            user_has_module_access=museum_app.user_has_module_access,
-        )
-
-    def test_admin_qr_field_selection_route_delegates_to_qr_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_management_views,
-            'render_admin_qr_field_selection',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_field_selection/botany', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-        )
-
-    def test_admin_qr_labels_with_fields_route_delegates_to_qr_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_management_views,
-            'handle_admin_qr_labels_with_fields',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.post('/admin/qr_labels_with_fields/botany', data={}, base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
-            botany_collection_database=museum_app.BOTANY_COLLECTION_DATABASE,
-            paleozoology_collection_database=museum_app.PALEOZOOLOGY_COLLECTION_DATABASE,
-        )
-
-    def test_admin_qr_mineral_boxes_route_delegates_to_qr_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_management_views,
-            'render_admin_qr_mineral_boxes',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_boxes/minerals', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_mineral_database=museum_app.get_mineral_database,
-        )
-
-    def test_admin_generate_box_qr_codes_route_delegates_to_qr_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_management_views,
-            'handle_admin_generate_box_qr_codes',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.post('/admin/qr_boxes/minerals/generate', data={}, base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-        )
-
-    def test_admin_qr_select_specimens_route_delegates_to_qr_label_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_label_views,
-            'render_admin_qr_select_specimens',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_select/botany', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_qr_collection_name=museum_app.get_qr_collection_name,
-            get_qr_collection_url=museum_app.get_qr_collection_url,
-            get_mineral_database=museum_app.get_mineral_database,
-            get_qr_collection_records=museum_app.get_qr_collection_records,
-            get_qr_record_identifier=museum_app.get_qr_record_identifier,
-            get_qr_record_catalog_label=museum_app.get_qr_record_catalog_label,
-            get_qr_record_name=museum_app.get_qr_record_name,
-            get_qr_record_summary=museum_app.get_qr_record_summary,
-            get_qr_record_location=museum_app.get_qr_record_location,
-        )
-
-    def test_admin_qr_labels_selected_route_delegates_to_qr_label_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_label_views,
-            'handle_admin_qr_labels_selected',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.post('/admin/qr_labels_selected/botany', data={}, base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_mineral_database=museum_app.get_mineral_database,
-            get_qr_collection_records=museum_app.get_qr_collection_records,
-            get_qr_record_identifier=museum_app.get_qr_record_identifier,
-            get_qr_record_catalog_label=museum_app.get_qr_record_catalog_label,
-            get_qr_record_name=museum_app.get_qr_record_name,
-            build_collection_highlight_qr_url=museum_app.build_collection_highlight_qr_url,
-            get_qr_collection_name=museum_app.get_qr_collection_name,
-        )
-
-    def test_admin_qr_label_format_route_delegates_to_qr_label_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_label_views,
-            'render_admin_qr_label_format',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_label_format/botany', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_qr_collection_name=museum_app.get_qr_collection_name,
-            get_qr_collection_url=museum_app.get_qr_collection_url,
-        )
-
-    def test_admin_qr_labels_with_format_route_delegates_to_qr_label_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_label_views,
-            'handle_admin_qr_labels_with_format',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.post('/admin/qr_labels_with_format/botany', data={}, base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_qr_collection_url=museum_app.get_qr_collection_url,
-        )
-
-    def test_admin_qr_labels_route_delegates_to_qr_label_module(self):
-        self._login(role='employee')
-
-        with patch.object(
-            museum_app.qr_label_views,
-            'render_admin_qr_labels',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/admin/qr_labels/botany', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            ensure_qr_collection_access=museum_app.ensure_qr_collection_access,
-            get_mineral_database=museum_app.get_mineral_database,
-            get_qr_collection_records=museum_app.get_qr_collection_records,
-            get_qr_record_identifier=museum_app.get_qr_record_identifier,
-            get_qr_record_catalog_label=museum_app.get_qr_record_catalog_label,
-            get_qr_record_name=museum_app.get_qr_record_name,
-            build_collection_highlight_qr_url=museum_app.build_collection_highlight_qr_url,
-            get_qr_collection_name=museum_app.get_qr_collection_name,
-            get_qr_collection_url=museum_app.get_qr_collection_url,
-        )
-
-    def test_qr_view_mineral_box_route_delegates_to_collection_media_module(self):
-        with patch.object(
-            museum_app.collection_media_views,
-            'render_qr_view_mineral_box',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/qr_box/minerals/12', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            '12',
-            get_mineral_database=museum_app.get_mineral_database,
-        )
-
     def test_specimen_image_route_delegates_to_collection_media_module(self):
         with patch.object(
             museum_app.collection_media_views,
@@ -682,24 +473,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             'test-image',
             get_image_storage=museum_app.get_image_storage,
-        )
-
-    def test_qr_view_specimen_route_delegates_to_collection_media_module(self):
-        with patch.object(
-            museum_app.collection_media_views,
-            'render_qr_view_specimen',
-            return_value=museum_app.app.response_class('ok', status=200),
-        ) as mocked_handler:
-            response = self.client.get('/qr_view/botany/BOT-1', base_url=self.base_url)
-
-        self.assertEqual(response.status_code, 200)
-        mocked_handler.assert_called_once_with(
-            'botany',
-            'BOT-1',
-            normalize_qr_collection_type=museum_app.normalize_qr_collection_type,
-            get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
-            botany_collection_database=museum_app.BOTANY_COLLECTION_DATABASE,
-            paleozoology_collection_database=museum_app.PALEOZOOLOGY_COLLECTION_DATABASE,
         )
 
     def test_manage_access_route_delegates_to_user_management_module(self):
@@ -1286,7 +1059,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             get_cultural_heritage_database=museum_app.get_cultural_heritage_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
     def test_add_heritage_item_route_delegates_to_collection_management_module(self):
@@ -1357,7 +1129,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             records=museum_app.BOTANY_COLLECTION_DATABASE['specimens'],
             statistics=museum_app.BOTANY_COLLECTION_DATABASE['statistics'],
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
     def test_meteorite_collection_route_delegates_to_collection_management_module(self):
@@ -1374,7 +1145,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
         mocked_handler.assert_called_once_with(
             get_meteorite_collection_database=museum_app.get_meteorite_collection_database,
             prepare_collection_records_for_display=museum_app.prepare_collection_records_for_display,
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
         )
 
     def test_mineral_collection_route_delegates_to_collection_management_module(self):
@@ -1495,13 +1265,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
                 '/admin/rruff_minerals',
             )
 
-    def test_admin_generate_box_qr_codes_legacy_endpoint_alias_is_available(self):
-        with museum_app.app.test_request_context(base_url=self.base_url):
-            self.assertEqual(
-                url_for('admin_generate_box_qr_codes'),
-                '/admin/qr_boxes/minerals/generate',
-            )
-
     def test_export_collection_pdf_route_delegates_to_collection_management_module(self):
         self._login(role='admin')
 
@@ -1554,7 +1317,6 @@ class TimesheetRouteRefactorTests(unittest.TestCase):
             conservation_biology_database=museum_app.CONSERVATION_BIOLOGY_DATABASE,
             visitor_records=[],
             research_projects=[],
-            get_qr_collection_action_url=museum_app.get_qr_collection_action_url,
             user_has_module_access=museum_app.user_has_module_access,
         )
 

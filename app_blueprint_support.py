@@ -4,18 +4,9 @@ from typing import Iterable, Sequence
 
 
 BLUEPRINT_ALIAS_ENDPOINTS = {
-    'qr': (
-        'admin_qr_generator',
-        'admin_qr_field_selection',
-        'admin_qr_labels_with_fields',
-        'admin_qr_mineral_boxes',
-        'admin_generate_box_qr_codes',
-        'admin_qr_select_specimens',
-        'admin_qr_labels_selected',
-        'admin_qr_label_format',
-        'admin_qr_labels_with_format',
-        'admin_qr_labels',
-    ),
+    # 'qr' нема наслеђених имена: све руте се зову као qr.<ime>; стари облик
+    # /qr_box/minerals/<kutija> остаје као путања, не као endpoint alias.
+    'qr': (),
     'content': (
         'system_reports',
         'exhibits_database',
@@ -176,13 +167,11 @@ BLUEPRINT_ALIAS_ENDPOINTS = {
         'add_collection_item',
     ),
     'media': (
-        'qr_view_mineral_box',
         'serve_static',
         'get_specimen_image',
         'get_specimen_image_full',
         'get_specimen_thumbnail',
         'get_image_by_id',
-        'qr_view_specimen',
     ),
     'mineral_science': (
         'api_get_rruff_data',
@@ -245,16 +234,12 @@ LIMITED_ENDPOINTS = (
     ('api_password_manager_reset', "5 per minute"),
     ('core.login', "5 per minute"),
     ('login', "5 per minute"),
-    ('media.qr_view_mineral_box', "30 per minute"),
-    ('qr_view_mineral_box', "30 per minute"),
     ('media.get_specimen_image', "600 per minute"),
     ('get_specimen_image', "600 per minute"),
     ('media.get_specimen_image_full', "600 per minute"),
     ('get_specimen_image_full', "600 per minute"),
     ('media.get_specimen_thumbnail', "600 per minute"),
     ('get_specimen_thumbnail', "600 per minute"),
-    ('media.qr_view_specimen', "30 per minute"),
-    ('qr_view_specimen', "30 per minute"),
 )
 
 LIMIT_EXEMPT_ENDPOINTS = (
