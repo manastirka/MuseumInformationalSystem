@@ -229,6 +229,23 @@ class FototekaServiranjeTests(unittest.TestCase):
         self.assertIsNone(collection_media_views._fototeka_entity_response(
             'botany', 'collection_item', '5', 'medium'))
 
+    def test_meteoriti_se_sluze_po_kataloskom_broju(self):
+        """Метеорити: веза иде преко meteorite_specimens.catalog_number."""
+        sha = 'd' * 64
+        self._make_derivative(sha)
+        cursor = _FakeCursor({'FROM fotografije f': {'sha256': sha}})
+        conn = _FakeConnection(cursor)
+        with patch.object(postgres_service, 'get_postgres_connection', lambda **k: conn), \
+             museum_app.app.test_request_context('/'):
+            response = collection_media_views._fototeka_entity_response(
+                'meteorites', 'meteorite', '19', 'medium')
+        self.assertIsNotNone(response)
+        response.close()
+        sql, params = cursor.executed[-1]
+        self.assertIn('JOIN meteorite_specimens m', sql)
+        self.assertIn('catalog_number', sql)
+        self.assertEqual(params, ('meteorite', 19))
+
     def test_upit_sluzi_samo_javne_fotografije(self):
         # A2: ова рута ауторизује на приступ збирци, не на ауторство фотографије
         # — зато сме да изабере само 'javno', никад приватну фотографију.

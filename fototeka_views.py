@@ -2518,6 +2518,9 @@ def glavne_fotografije_predmeta(session_data, database_name, inventarni_brojevi)
 # Za zbirke van ove mape postojanje se NE proverava (status 'neprovereno').
 PREDMET_TABELE = {
     'mineral': ('minerals', 'inventory_number'),
+    # Каталошки број 'MET-001'; нормализација скида 'MET-' и водеће нуле,
+    # па 'MET-001' == 'MET 1' == '1'. nadji_predmet враћа дословни број из базе.
+    'meteorite': ('meteorite_specimens', 'catalog_number'),
 }
 
 _INV_PREFIX_RE = re.compile(r'^[A-ZА-ЯЂЈЉЊЋЖЧШЏ]+[-_\s]*', re.IGNORECASE)

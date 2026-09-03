@@ -56,34 +56,46 @@ def _send_placeholder(*placeholder_candidates):
     return "No image available", 404
 
 
+# Збирке чије предмете Фототека везује (foto_veza_predmet.database_name):
+# назив из URL-а -> (database_name у вези, табела предмета, колона броја).
+_FOTOTEKA_ZBIRKE = {
+    'mineral': ('mineral', 'minerals', 'inventory_number'),
+    'minerals': ('mineral', 'minerals', 'inventory_number'),
+    'meteorite': ('meteorite', 'meteorite_specimens', 'catalog_number'),
+    'meteorites': ('meteorite', 'meteorite_specimens', 'catalog_number'),
+}
+
+
 def _fototeka_entity_response(database, entity_type, entity_id, size):
-    """Serve a Фототека derivative for this entity (mineral collections only —
+    """Serve a Фототека derivative for this entity (minerals and meteorites —
     the linked set). Only 'javno' photos are served here: this route authorizes
     on collection access, not photo authorship, so it must never expose a photo
     the author flipped to 'privatno'. Returns a Flask response, or None when the
     item has no usable Фототека photo — the caller then serves a placeholder."""
-    if str(database).lower() not in ('mineral', 'minerals'):
+    zbirka = _FOTOTEKA_ZBIRKE.get(str(database).lower())
+    if not zbirka:
         return None
+    database_name, tabela, kolona = zbirka
     try:
         import fototeka_jobs
         from postgres_service import get_postgres_connection
 
-        mineral_id = int(str(entity_id).strip())
+        predmet_id = int(str(entity_id).strip())
         with get_postgres_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT f.sha256
                     FROM fotografije f
                     JOIN foto_veza_predmet v ON v.fotografija_id = f.id
-                    JOIN minerals m ON m.inventory_number = v.inventarni_broj
-                    WHERE v.database_name = 'mineral' AND m.id = %s
+                    JOIN {tabela} m ON btrim(m.{kolona}) = btrim(v.inventarni_broj)
+                    WHERE v.database_name = %s AND m.id = %s
                       AND f.obrisana = FALSE AND f.status = 'spremna'
                       AND f.vidljivost = 'javno'
                     ORDER BY f.id
                     LIMIT 1
                     """,
-                    (mineral_id,),
+                    (database_name, predmet_id),
                 )
                 row = cur.fetchone()
         if not row:
