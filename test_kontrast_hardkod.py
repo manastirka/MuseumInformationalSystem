@@ -31,11 +31,18 @@ def _read(rel):
 
 
 def _style_css(rel):
-    """Sav CSS iz fajla: .css sirovo, .html spojeni <style> blokovi."""
+    """Sav CSS jednog ekrana: .css sirovo, .html spojeni <style> blokovi
+    plus CSS fajlovi koje taj šablon povlači preko <link> (izdvojeni stilovi
+    strana žive u static/css/, videti test_stilovi_izdvojeni.py)."""
     text = _read(rel)
     if rel.endswith('.css'):
         return text
-    return '\n'.join(re.findall(r'<style[^>]*>(.*?)</style>', text, re.S))
+    delovi = re.findall(r'<style[^>]*>(.*?)</style>', text, re.S)
+    for ime in re.findall(r"filename='(css/[\w./-]+\.css)'", text):
+        put = ROOT / 'static' / ime
+        if put.exists():
+            delovi.append(put.read_text(encoding='utf-8'))
+    return '\n'.join(delovi)
 
 
 def _rule_bodies(css, selector):

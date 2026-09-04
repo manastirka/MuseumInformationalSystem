@@ -26,7 +26,10 @@ POSTOJECI_PREKIDACI = (
 
 class GeologicalMapLayoutHardeningTests(unittest.TestCase):
     def setUp(self):
-        self.template = Path('templates/admin_maps.html').read_text(encoding='utf-8')
+        # шаблон + његов издвојени CSS (static/css/strane/), да провере важе
+        # и после сеобе стилова из <style> блока у фајл
+        self.template = (Path('templates/admin_maps.html').read_text(encoding='utf-8') + '\n<style>'
+                         + Path('static/css/strane/admin_maps.css').read_text(encoding='utf-8') + '</style>')
         self.routes = Path('blueprints/maps.py').read_text(encoding='utf-8')
         self.base_template = Path('templates/base.html').read_text(encoding='utf-8')
         self.layer_views = Path('maps_layer_views.py').read_text(encoding='utf-8')

@@ -1,0 +1,42 @@
+.avatar-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--museum-primary), var(--museum-secondary));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.profile-description {
+    background: #f8f9fa;
+    border-left: 3px solid var(--museum-primary);
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+}
+
+.profile-card {
+    transition: transform 0.2s;
+}
+
+.profile-card:hover {
+    transform: translateY(-2px);
+}
+
+.card {
+    border-radius: 0.5rem;
+}
+
+@media print {
+    .card-header, .card-footer, .btn, .input-group {
+        display: none !important;
+    }
+    
+    .col-lg-6 {
+        width: 50% !important;
+    }
+}

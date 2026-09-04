@@ -1,0 +1,68 @@
+.qr-kartica {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-12);
+}
+.qr-kartica__vrsta {
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+.qr-kartica__naslov {
+    font-size: var(--font-size-xl, 1.5rem);
+    margin: 0 0 var(--space-1);
+    line-height: 1.25;
+}
+.qr-kartica__katalog {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: var(--space-5);
+}
+.qr-kartica__tabela {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+.qr-kartica__red {
+    display: grid;
+    grid-template-columns: minmax(7rem, 1fr) 2fr;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--border-color);
+}
+.qr-kartica__red:first-child { border-top: 0; }
+.qr-kartica__labela { color: var(--text-secondary); font-size: var(--font-size-sm); }
+.qr-kartica__vrednost { color: var(--text-primary); overflow-wrap: anywhere; }
+.qr-kartica__minerali { list-style: none; margin: 0; padding: 0; }
+.qr-kartica__mineral {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--border-color);
+}
+.qr-kartica__mineral:first-child { border-top: 0; }
+.qr-kartica__mineral-broj { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qr-kartica__napomena {
+    margin-top: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-card);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+.qr-kartica__radnje { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+.qr-kartica__oznaka {
+    margin-top: var(--space-8);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.2em;
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+    .qr-kartica__red { grid-template-columns: 1fr; gap: var(--space-1); }
+}

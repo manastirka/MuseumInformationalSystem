@@ -1,0 +1,212 @@
+.chat-app { height: calc(100vh - 80px); overflow: hidden; }
+.chat-layout { display: grid; grid-template-columns: 250px 1fr 220px; height: 100%; }
+
+/* Conversation list (left) */
+.chat-convos { border-right: 1px solid var(--bs-border-color); display: flex; flex-direction: column; overflow: hidden; background: var(--bs-body-bg); }
+.chat-convos-header { padding: 10px 12px; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid var(--bs-border-color); flex-shrink: 0; }
+.chat-convo-list { flex: 1; overflow-y: auto; }
+.chat-convo-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); transition: background 0.15s; }
+.chat-convo-item:hover { background: var(--bs-tertiary-bg); }
+.chat-convo-item.active { background: var(--bs-primary-bg-subtle); border-left: 3px solid var(--bs-primary); }
+.chat-convo-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.chat-convo-info { flex: 1; min-width: 0; }
+.chat-convo-name { font-size: 0.82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-convo-preview { font-size: 0.7rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-unread-badge { background: #dc3545; color: #fff; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; flex-shrink: 0; animation: pulsate 1.5s ease-in-out infinite; }
+
+/* Main chat area */
+.chat-main { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.chat-header { padding: 10px 16px; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-body-bg); flex-shrink: 0; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 12px 16px; background: var(--bs-tertiary-bg); }
+.chat-input { padding: 10px 16px; border-top: 1px solid var(--bs-border-color); background: var(--bs-body-bg); flex-shrink: 0; }
+
+/* Messages */
+.chat-msg { margin-bottom: 4px; }
+.chat-bubble { max-width: 70%; padding: 6px 12px; border-radius: 12px; font-size: 0.9rem; word-wrap: break-word; }
+.chat-bubble-other { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 12px 12px 12px 2px; }
+.chat-bubble-mine { background: var(--bs-primary); color: #fff; border-radius: 12px 12px 2px 12px; }
+.chat-bubble-mine .chat-time { color: rgba(255,255,255,0.7); }
+.chat-bubble-mine a { color: #cde; }
+.chat-sender { font-size: 0.75rem; margin-bottom: 1px; }
+.chat-sender strong { font-weight: 700; }
+.chat-dept { color: var(--bs-secondary-color); font-size: 0.7rem; margin-left: 4px; }
+.chat-text { line-height: 1.4; }
+.chat-text a { text-decoration: underline; }
+.chat-time { font-size: 0.65rem; color: var(--bs-secondary-color); text-align: right; margin-top: 1px; }
+
+/* Date separator */
+.chat-date-sep { text-align: center; margin: 12px 0 8px; }
+.chat-date-sep span { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-size: 0.72rem; padding: 2px 12px; border-radius: 10px; }
+
+/* Pulsate animation */
+@keyframes pulsate {
+    0%   { transform: scale(1);   opacity: 1; }
+    50%  { transform: scale(1.15); opacity: 0.7; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes pulsate-glow {
+    0%   { box-shadow: 0 0 0 0 currentColor; }
+    50%  { box-shadow: 0 0 6px 2px currentColor; }
+    100% { box-shadow: 0 0 0 0 currentColor; }
+}
+
+/* Status dots */
+.chat-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-online { background: #198754; animation: pulsate 2s ease-in-out infinite; }
+.status-busy { background: #fd7e14; animation: pulsate 3s ease-in-out infinite; }
+.status-offline { background: #adb5bd; }
+
+/* Sidebar (right) */
+.chat-sidebar { border-left: 1px solid var(--bs-border-color); display: flex; flex-direction: column; overflow: hidden; background: var(--bs-body-bg); }
+.chat-sidebar-header { padding: 8px 10px; border-bottom: 1px solid var(--bs-border-color); }
+.chat-sidebar-subheader { padding: 6px 12px; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid var(--bs-border-color); color: var(--bs-secondary-color); }
+.chat-user-list { flex: 1; overflow-y: auto; }
+.chat-user-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 4px; margin: 2px 4px; }
+.chat-user-item:hover { background: var(--bs-tertiary-bg); }
+.chat-user-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; animation: pulsate-glow 3s ease-in-out infinite; }
+.chat-user-info { flex: 1; min-width: 0; }
+.chat-user-name { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-user-dept { font-size: 0.65rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* File attachment display */
+.chat-file-attachment { margin: 4px 0; }
+.chat-file-thumbnail { max-width: 240px; max-height: 200px; border-radius: 8px; display: block; cursor: pointer; }
+.chat-file-image-link { display: inline-block; }
+.chat-bubble-mine .chat-file-thumbnail { border: 2px solid rgba(255,255,255,0.3); }
+.chat-file-card { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; text-decoration: none; color: inherit; min-width: 200px; }
+.chat-bubble-other .chat-file-card { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+.chat-bubble-mine .chat-file-card { background: rgba(255,255,255,0.15); color: #fff; }
+.chat-file-info { flex: 1; min-width: 0; }
+.chat-file-name { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-file-size { font-size: 0.65rem; color: var(--bs-secondary-color); }
+.chat-bubble-mine .chat-file-size { color: rgba(255,255,255,0.7); }
+
+/* File preview bar and progress */
+.chat-file-preview { padding: 4px 16px; background: var(--bs-info-bg-subtle); font-size: 0.8rem; display: flex; align-items: center; border-top: 1px solid var(--bs-border-color); }
+.chat-upload-progress { height: 4px; background: var(--bs-secondary-bg); }
+.chat-upload-bar { height: 100%; background: var(--bs-primary); transition: width 0.2s; }
+
+/* Attach button */
+.chat-attach-btn { border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Hamburger for mobile */
+.chat-hamburger { display: none; }
+
+/* Responsive */
+@media (max-width: 991px) {
+    .chat-layout { grid-template-columns: 250px 1fr; }
+    .chat-sidebar { display: none; }
+    .chat-hamburger { display: inline-flex; }
+}
+
+@media (max-width: 767px) {
+    .chat-layout { grid-template-columns: 1fr; }
+    .chat-convos { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 280px; z-index: 1050; box-shadow: 4px 0 12px rgba(0,0,0,0.15); }
+    .chat-layout.show-convos .chat-convos { display: flex; }
+    .chat-sidebar { display: none; }
+    .chat-bubble { max-width: 85%; }
+    .chat-hamburger { display: inline-flex; }
+}
+
+/* ───── Dark mode adjustments ───── */
+
+/* Chat messages area — deeper shade to contrast with bubbles */
+[data-bs-theme="dark"] .chat-messages {
+    background: #1a1d21;
+}
+
+/* Other person's bubble — visible against dark message area */
+[data-bs-theme="dark"] .chat-bubble-other {
+    background: #2b3035;
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* My bubble — slightly softer primary for dark mode */
+[data-bs-theme="dark"] .chat-bubble-mine {
+    opacity: 0.95;
+}
+
+/* Conversation list hover & active */
+[data-bs-theme="dark"] .chat-convo-item:hover {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+}
+[data-bs-theme="dark"] .chat-convo-item.active {
+    background: rgba(var(--bs-primary-rgb), 0.18);
+}
+
+/* Sidebar user items */
+[data-bs-theme="dark"] .chat-user-item:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+/* File cards in other's bubbles */
+[data-bs-theme="dark"] .chat-bubble-other .chat-file-card {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Image thumbnails — slight dim to reduce glare */
+[data-bs-theme="dark"] .chat-file-thumbnail {
+    opacity: 0.92;
+}
+
+/* File preview bar */
+[data-bs-theme="dark"] .chat-file-preview {
+    background: var(--bs-tertiary-bg);
+}
+
+/* Date separator pill */
+[data-bs-theme="dark"] .chat-date-sep span {
+    background: #2b3035;
+    color: var(--bs-secondary-color);
+}
+
+/* Status dots — brighter for dark backgrounds */
+[data-bs-theme="dark"] .status-online { background: #22c55e; }
+[data-bs-theme="dark"] .status-busy { background: #ff922b; }
+
+/* Avatars & convo icons: softer glow in dark mode */
+[data-bs-theme="dark"] .chat-convo-icon,
+[data-bs-theme="dark"] .chat-user-avatar {
+    animation-name: pulsate-glow-dark;
+}
+@keyframes pulsate-glow-dark {
+    0%   { box-shadow: 0 0 0 0 transparent; }
+    50%  { box-shadow: 0 0 5px 1px rgba(255,255,255,0.15); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Unread badge — slightly brighter red */
+[data-bs-theme="dark"] .chat-unread-badge {
+    background: #ef4444;
+}
+
+/* Header & input areas — ensure border visibility */
+[data-bs-theme="dark"] .chat-header,
+[data-bs-theme="dark"] .chat-input {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Sidebar borders */
+[data-bs-theme="dark"] .chat-sidebar {
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .chat-sidebar-header,
+[data-bs-theme="dark"] .chat-sidebar-subheader {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Conversation list borders */
+[data-bs-theme="dark"] .chat-convos {
+    border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .chat-convos-header {
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* Mobile slide-out panel — deeper shadow in dark */
+@media (max-width: 767px) {
+    [data-bs-theme="dark"] .chat-convos {
+        box-shadow: 4px 0 20px rgba(0,0,0,0.6);
+    }
+}

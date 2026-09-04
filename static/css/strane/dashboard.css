@@ -1,0 +1,967 @@
+/* Dashboard page styles */
+.heritage-dashboard {
+    color: #4b3322;
+}
+
+.heritage-dashboard .container-main {
+    max-width: 1240px;
+    padding: 1.9rem 1.4rem 2.75rem;
+}
+
+.heritage-dashboard .dashboard-header {
+    background:
+        radial-gradient(circle at 24% 18%, rgba(255, 231, 188, 0.14), transparent 24%),
+        linear-gradient(135deg, #5c1719 0%, #6d1f21 34%, #4d1517 100%);
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(230, 192, 118, 0.3);
+    box-shadow: 0 22px 38px rgba(64, 18, 18, 0.22), inset 0 1px 0 rgba(255, 238, 201, 0.14);
+    padding: 1.8rem 2rem !important;
+}
+
+.heritage-dashboard .dashboard-header::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 18px;
+    border: 1px solid rgba(242, 210, 147, 0.16);
+    pointer-events: none;
+}
+
+.heritage-dashboard .dashboard-header::after {
+    content: "";
+    position: absolute;
+    inset: auto 10% 10px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(232, 203, 145, 0.45), transparent);
+    pointer-events: none;
+}
+
+.heritage-dashboard .dashboard-header h1,
+.heritage-dashboard .section-header h3,
+.heritage-dashboard .card h4,
+.heritage-dashboard .card h6,
+.heritage-dashboard .card-header,
+.heritage-dashboard .quick-action span {
+    font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+}
+
+.heritage-dashboard .dashboard-header h1 {
+    font-size: clamp(1.2rem, 1.05rem + 0.4vw, 1.5rem);
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: #f0d19a;
+}
+
+.heritage-dashboard .dashboard-header p {
+    color: rgba(243, 226, 188, 0.84);
+    font-size: 1rem;
+}
+
+.dashboard-header-logo {
+    filter: sepia(1) saturate(0.45) hue-rotate(353deg) brightness(1.3) drop-shadow(0 0 2px rgba(233, 198, 121, 0.42));
+}
+
+.dashboard-header-toolbar {
+    gap: 0.8rem !important;
+}
+
+.dashboard-control-btn {
+    min-width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(117, 68, 44, 0.94), rgba(83, 42, 29, 0.96));
+    color: #ecd6aa;
+    border: 1px solid rgba(234, 204, 147, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 242, 215, 0.1), 0 12px 18px rgba(34, 10, 10, 0.16);
+}
+
+.dashboard-control-btn:hover {
+    color: #f7ead0;
+    filter: brightness(1.05);
+}
+
+.dashboard-control-btn i {
+    color: inherit;
+}
+
+.heritage-dashboard .card {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid rgba(121, 85, 53, 0.38) !important;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(255, 247, 228, 0.72), transparent 24%),
+        linear-gradient(180deg, rgba(255, 251, 242, 0.86), rgba(235, 217, 184, 0.98));
+    box-shadow:
+        0 16px 28px rgba(80, 54, 31, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -6px 12px rgba(154, 114, 74, 0.08);
+    overflow: hidden;
+}
+
+.heritage-dashboard .card::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(150, 112, 76, 0.18);
+    pointer-events: none;
+}
+
+.heritage-dashboard .module-card,
+.heritage-dashboard .social-card,
+.heritage-dashboard .quick-action,
+.heritage-dashboard .news-card {
+    transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.heritage-dashboard .module-card:hover,
+.heritage-dashboard .social-card:hover,
+.heritage-dashboard .quick-action:hover,
+.heritage-dashboard .news-card:hover {
+    transform: translateY(-5px);
+    box-shadow:
+        0 22px 38px rgba(80, 54, 31, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72),
+        inset 0 -6px 12px rgba(154, 114, 74, 0.08);
+}
+
+.heritage-dashboard .card-header {
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.42), rgba(183, 147, 103, 0.2)) !important;
+    border-bottom: 1px solid rgba(139, 97, 60, 0.18);
+    color: #5b3b24 !important;
+}
+
+.heritage-dashboard .module-card .module-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: linear-gradient(180deg, #d6bb8c 0%, #ba9665 100%) !important;
+    border: 1px solid rgba(138, 101, 64, 0.26);
+    box-shadow: inset 0 1px 0 rgba(255, 244, 221, 0.7), 0 8px 14px rgba(94, 64, 35, 0.14);
+}
+
+.heritage-dashboard .module-card .module-icon i {
+    color: #7a562a !important;
+}
+
+/* Minimizable card styles */
+.heritage-dashboard .card-minimizable .card-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.heritage-dashboard .card-minimizable.minimized .card-body {
+    display: none;
+}
+
+.heritage-dashboard .card-minimizable .minimize-icon {
+    transition: transform 0.2s ease;
+}
+
+.heritage-dashboard .card-minimizable.minimized .minimize-icon {
+    transform: rotate(180deg);
+}
+
+.heritage-dashboard .window-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.heritage-dashboard .btn-window {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: #93642f;
+}
+
+/* Notification dropdown */
+.heritage-dashboard .notification-dropdown .notification-item:hover {
+    background-color: rgba(150, 111, 76, 0.08);
+}
+
+/* News cards */
+.heritage-dashboard .news-card .card-img-top {
+    height: 180px;
+    object-fit: cover;
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.28), rgba(154, 114, 74, 0.18));
+}
+
+.heritage-dashboard .news-card .card-body {
+    color: #4b3322;
+}
+
+.heritage-dashboard .news-card .card-title {
+    color: #4b3322 !important;
+    font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+    font-size: 1.35rem;
+    line-height: 1.1;
+}
+
+/* Section headers */
+.heritage-dashboard .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-bottom: 0.85rem;
+}
+
+.heritage-dashboard .section-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(127, 87, 52, 0.24), rgba(127, 87, 52, 0.08));
+}
+
+.heritage-dashboard .section-header h3 {
+    margin: 0;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 1.35rem + 0.35vw, 1.95rem);
+    color: #5f3b24;
+}
+
+/* Alpine.js */
+[x-cloak] {
+    display: none !important;
+}
+
+.heritage-dashboard .btn-primary {
+    background: linear-gradient(180deg, var(--heritage-accent-hi, #285749) 0%, var(--heritage-accent-lo, #1b4439) 100%);
+    border: 1px solid rgba(228, 198, 136, 0.36);
+    color: #e9d1a0;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(245, 229, 191, 0.1), 0 10px 18px rgba(39, 34, 19, 0.18);
+}
+
+.heritage-dashboard .btn-primary:hover,
+.heritage-dashboard .btn-primary:focus {
+    background: linear-gradient(180deg, var(--heritage-accent-hover-hi, #2d6252) 0%, var(--heritage-accent-hover-lo, #1f4b3f) 100%);
+    color: #f2e4c0;
+}
+
+.heritage-dashboard .btn-outline-primary,
+.heritage-dashboard .btn-outline-success,
+.heritage-dashboard .btn-outline-secondary {
+    background: linear-gradient(180deg, rgba(255, 250, 241, 0.72), rgba(233, 217, 186, 0.84));
+    border: 1px solid rgba(141, 101, 63, 0.28);
+    color: #5b3b24;
+    border-radius: 999px;
+}
+
+.heritage-dashboard .btn-outline-primary:hover,
+.heritage-dashboard .btn-outline-success:hover,
+.heritage-dashboard .btn-outline-secondary:hover {
+    color: #3d2517;
+    background: linear-gradient(180deg, rgba(255, 252, 246, 0.9), rgba(236, 221, 193, 0.96));
+}
+
+.heritage-dashboard .quick-action {
+    cursor: pointer;
+}
+
+.heritage-dashboard .quick-action .card-body {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.heritage-dashboard .quick-action span,
+.heritage-dashboard .card h4,
+.heritage-dashboard .card h6 {
+    color: #523620;
+}
+
+.heritage-dashboard .notification-badge {
+    background: radial-gradient(circle at 35% 32%, #cc5341, #8d211d 72%);
+    border: 1px solid rgba(255, 226, 186, 0.35);
+    box-shadow: 0 8px 12px rgba(77, 20, 18, 0.22);
+}
+
+.heritage-dashboard .heritage-notification-card .card-header {
+    background: linear-gradient(180deg, rgba(206, 177, 132, 0.38), rgba(181, 145, 102, 0.18)) !important;
+}
+
+/* Прозирност 0.74 је на кремастој картици давала 4.16–4.29:1 — таман испод AA
+   (25 појава: описи вести и најава). Боја мастила остаје иста, само се мање
+   разблажује подлогом: 0.86 → ≈5.4:1, а текст и даље чита као пригушен. */
+.heritage-dashboard .text-muted {
+    color: rgba(86, 58, 38, 0.86) !important;
+}
+
+.heritage-dashboard .text-dark {
+    color: #4b3322 !important;
+}
+
+.heritage-dashboard .bg-light {
+    background-color: rgba(150, 111, 76, 0.08) !important;
+}
+
+.heritage-dashboard .border-bottom {
+    border-color: rgba(138, 101, 64, 0.12) !important;
+}
+
+.heritage-dashboard .alert {
+    border-radius: 16px;
+    border: 1px solid rgba(138, 101, 64, 0.22);
+    background: linear-gradient(180deg, rgba(255, 251, 244, 0.86), rgba(237, 221, 192, 0.94));
+    color: #5b3b24;
+}
+
+.heritage-dashboard .spinner-border {
+    border-color: rgba(112, 79, 48, 0.14);
+    border-top-color: #765129;
+}
+
+.heritage-feed-header {
+    background: linear-gradient(180deg, rgba(211, 184, 139, 0.5), rgba(175, 139, 96, 0.22)) !important;
+}
+
+.heritage-feed-header .btn-light {
+    background: linear-gradient(180deg, rgba(255, 250, 241, 0.84), rgba(233, 217, 186, 0.92));
+    border: 1px solid rgba(141, 101, 63, 0.2);
+    color: #5b3b24;
+}
+
+/* Animated weather widget */
+.dashboard-weather-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+    border: 1px solid rgba(240, 210, 150, 0.18);
+    border-radius: 16px;
+    padding: 0.55rem 1rem;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    min-width: 170px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.dashboard-weather-widget::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.dashboard-weather-widget:hover {
+    transform: translateY(-1px);
+    border-color: rgba(244, 217, 164, 0.34);
+    box-shadow: 0 16px 24px rgba(41, 13, 13, 0.18);
+}
+
+.dashboard-weather-widget:focus-visible {
+    outline: 2px solid rgba(245, 223, 172, 0.82);
+    outline-offset: 3px;
+}
+
+.weather-icon-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+
+.weather-icon-wrap .weather-icon-main {
+    font-size: 1.75rem;
+    line-height: 1;
+    display: block;
+    text-align: center;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+}
+
+/* Sun rays animation */
+.weather-icon-wrap.weather-clear .weather-icon-main {
+    animation: weatherSunPulse 3s ease-in-out infinite;
+}
+@keyframes weatherSunPulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(255,200,50,0.3)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 14px rgba(255,200,50,0.6)); transform: scale(1.08); }
+}
+
+/* Cloud drift animation */
+.weather-icon-wrap.weather-cloudy .weather-icon-main {
+    animation: weatherCloudDrift 4s ease-in-out infinite;
+}
+@keyframes weatherCloudDrift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(3px); }
+}
+
+/* Rain drop animation */
+.weather-icon-wrap.weather-rain::after,
+.weather-icon-wrap.weather-drizzle::after {
+    content: '💧';
+    position: absolute;
+    font-size: 0.5rem;
+    bottom: 2px;
+    left: 50%;
+    animation: weatherRainDrop 1.2s ease-in infinite;
+    opacity: 0;
+}
+@keyframes weatherRainDrop {
+    0% { transform: translateY(-16px) translateX(-2px); opacity: 0.8; }
+    100% { transform: translateY(4px) translateX(2px); opacity: 0; }
+}
+
+/* Snow float animation */
+.weather-icon-wrap.weather-snow .weather-icon-main {
+    animation: weatherSnowFloat 3s ease-in-out infinite;
+}
+@keyframes weatherSnowFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-2px) rotate(3deg); }
+    75% { transform: translateY(2px) rotate(-3deg); }
+}
+
+/* Fog pulse animation */
+.weather-icon-wrap.weather-fog .weather-icon-main {
+    animation: weatherFogPulse 4s ease-in-out infinite;
+}
+@keyframes weatherFogPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+/* Thunder flash animation */
+.weather-icon-wrap.weather-thunderstorm .weather-icon-main {
+    animation: weatherThunderFlash 2.5s ease-in-out infinite;
+}
+@keyframes weatherThunderFlash {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+    10% { filter: drop-shadow(0 0 18px rgba(255,255,150,0.9)); }
+    12% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+    14% { filter: drop-shadow(0 0 12px rgba(255,255,150,0.7)); }
+    16% { filter: drop-shadow(0 0 4px rgba(255,255,100,0.2)); }
+}
+
+.weather-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+}
+
+.weather-temp {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #f5e2b8;
+    line-height: 1.1;
+    font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+    letter-spacing: -0.02em;
+}
+
+.weather-desc {
+    font-size: 0.72rem;
+    color: rgba(243, 226, 188, 0.72);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Крем на бордо плочи прогнозе је сам по себи читљив (≈5.5:1); обарала га је
+   ПРОЗИРНОСТ — 0.5 и 0.4 разблаже мастило до 3.32:1 односно 2.64:1. Оба су уз
+   то ситан текст (0.6–0.65rem), где AA не даје олакшицу. Боја остаје, диже се
+   само непрозирност — хијерархија се и даље чита кроз величину слова. */
+.weather-wind {
+    font-size: 0.65rem;
+    color: rgba(243, 226, 188, 0.85);
+    line-height: 1.15;
+}
+
+.weather-location {
+    font-size: 0.6rem;
+    color: rgba(243, 226, 188, 0.8);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.weather-temp-placeholder {
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+}
+
+.weather-widget-cta {
+    margin-left: auto;
+    color: rgba(248, 233, 198, 0.64);
+    font-size: 0.95rem;
+}
+
+.weather-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1085;
+    background: rgba(31, 15, 13, 0.54);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.4rem;
+}
+
+.weather-modal-card {
+    width: min(960px, 100%);
+    max-height: min(88vh, 900px);
+    overflow: auto;
+    border-radius: 26px;
+    border: 1px solid rgba(127, 89, 53, 0.28);
+    background:
+        radial-gradient(circle at top right, rgba(255, 244, 217, 0.38), transparent 34%),
+        linear-gradient(180deg, rgba(255, 252, 245, 0.8), rgba(238, 226, 204, 0.75));
+    box-shadow: 0 32px 56px rgba(48, 22, 18, 0.32);
+    color: #4b3322;
+    backdrop-filter: blur(12px) saturate(1.05);
+    -webkit-backdrop-filter: blur(12px) saturate(1.05);
+}
+
+.weather-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.45rem 1.6rem 1rem;
+    border-bottom: 1px solid rgba(137, 98, 65, 0.16);
+}
+
+.weather-modal-header h4 {
+    margin-bottom: 0.25rem;
+    color: #6c221f;
+}
+
+.weather-modal-header p {
+    margin: 0;
+    color: #7a5a43;
+}
+
+.weather-modal-close {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid rgba(135, 96, 62, 0.18);
+    background: linear-gradient(180deg, rgba(255, 248, 235, 0.95), rgba(229, 213, 184, 0.95));
+    color: #633d26;
+}
+
+.weather-modal-body {
+    padding: 1.35rem 1.6rem 1.65rem;
+}
+
+.weather-modal-kicker {
+    display: inline-block;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b613e;
+}
+
+.weather-modal-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.95fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.weather-modal-current-card,
+.weather-modal-meta-card,
+.weather-warning-banner,
+.weather-day-card,
+.weather-empty-state {
+    border-radius: 20px;
+    border: 1px solid rgba(145, 106, 71, 0.16);
+    background: linear-gradient(180deg, rgba(255, 253, 247, 0.74), rgba(245, 235, 216, 0.7));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 14px 22px rgba(87, 59, 34, 0.08);
+}
+
+.weather-modal-current-card {
+    padding: 1.25rem 1.3rem;
+}
+
+.weather-modal-current {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.weather-modal-current-icon {
+    font-size: 2.7rem;
+    line-height: 1;
+}
+
+.weather-modal-current-temp {
+    font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+    font-size: 2.4rem;
+    line-height: 0.95;
+    color: #6b2f1f;
+}
+
+.weather-modal-current-desc {
+    color: #6e4e35;
+}
+
+.weather-modal-meta-card {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    padding: 1.15rem 1.2rem;
+}
+
+.weather-modal-meta-card span {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #916d4d;
+}
+
+.weather-modal-meta-card strong {
+    display: block;
+    margin-top: 0.28rem;
+    color: #563421;
+}
+
+.weather-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.05rem 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.weather-warning-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.weather-warning-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem;
+}
+
+.weather-warning-title-block {
+    min-width: 0;
+}
+
+.weather-warning-banner strong {
+    display: block;
+    color: #5a3822;
+}
+
+.weather-warning-banner p {
+    margin: 0.28rem 0 0;
+    color: #735339;
+}
+
+.weather-warning-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0.34rem 0.72rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.weather-warning-banner.is-warning .weather-warning-status {
+    background: rgba(183, 102, 28, 0.16);
+    color: #8c4216;
+    border-color: rgba(183, 102, 28, 0.24);
+}
+
+.weather-warning-banner.is-watch .weather-warning-status {
+    background: rgba(194, 145, 51, 0.16);
+    color: #7a5a17;
+    border-color: rgba(194, 145, 51, 0.24);
+}
+
+.weather-warning-banner.is-clear .weather-warning-status {
+    background: rgba(76, 135, 83, 0.14);
+    color: #2d6a35;
+    border-color: rgba(76, 135, 83, 0.22);
+}
+
+.weather-warning-banner.is-neutral .weather-warning-status {
+    background: rgba(140, 112, 82, 0.12);
+    color: #6b543d;
+    border-color: rgba(140, 112, 82, 0.2);
+}
+
+.weather-warning-summary {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.weather-warning-detail-box {
+    margin-top: 0.8rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.34);
+    border: 1px solid rgba(131, 94, 62, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+}
+
+.weather-warning-banner.is-warning {
+    background: linear-gradient(180deg, rgba(255, 235, 209, 0.98), rgba(244, 214, 176, 0.98));
+    border-color: rgba(183, 102, 28, 0.34);
+}
+
+.weather-warning-banner.is-watch {
+    background: linear-gradient(180deg, rgba(255, 244, 220, 0.98), rgba(245, 226, 188, 0.98));
+    border-color: rgba(194, 145, 51, 0.28);
+}
+
+.weather-warning-banner.is-clear {
+    background: linear-gradient(180deg, rgba(236, 248, 237, 0.98), rgba(215, 238, 219, 0.98));
+    border-color: rgba(76, 135, 83, 0.24);
+}
+
+.weather-warning-banner.is-neutral {
+    background: linear-gradient(180deg, rgba(244, 239, 232, 0.98), rgba(233, 223, 207, 0.98));
+    border-color: rgba(140, 112, 82, 0.22);
+}
+
+.weather-warning-message {
+    margin-top: 0;
+    color: #6d4d35;
+    line-height: 1.45;
+}
+
+.weather-warning-message p {
+    margin: 0;
+}
+
+.weather-warning-message p + p {
+    margin-top: 0.55rem;
+}
+
+.weather-warning-message strong {
+    color: #553522;
+}
+
+.weather-warning-meta-note {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.78rem;
+    color: #876246;
+}
+
+.weather-forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.weather-day-card {
+    padding: 0.95rem 0.9rem;
+}
+
+.weather-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.45rem;
+}
+
+.weather-day-short {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b613e;
+}
+
+.weather-day-icon {
+    font-size: 1.15rem;
+}
+
+.weather-day-name {
+    display: block;
+    color: #5a3822;
+}
+
+.weather-day-date {
+    display: block;
+    margin-top: 0.12rem;
+    color: #866042;
+    font-size: 0.76rem;
+}
+
+.weather-day-desc {
+    margin: 0.55rem 0 0.8rem;
+    font-size: 0.82rem;
+    min-height: 2.45rem;
+    color: #72533a;
+}
+
+.weather-day-temp-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+}
+
+.weather-day-temp-row span {
+    font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #6b2f1f;
+}
+
+.weather-day-temp-row small {
+    font-size: 0.86rem;
+    color: #8b6445;
+}
+
+.weather-day-meta {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    color: #73533a;
+}
+
+.weather-empty-state {
+    padding: 1rem 1.05rem;
+    color: #735239;
+}
+
+@media (max-width: 991.98px) {
+    .heritage-dashboard .dashboard-header {
+        padding: 1.5rem 1.4rem !important;
+    }
+
+    .heritage-dashboard .dashboard-header-toolbar {
+        justify-content: flex-start !important;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-weather-widget {
+        min-width: auto;
+    }
+
+    .weather-modal-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .weather-forecast-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .heritage-dashboard .container-main {
+        padding: 1.25rem 0.85rem 2rem;
+    }
+
+    .weather-modal-backdrop {
+        padding: 0.85rem;
+    }
+
+    .weather-modal-header,
+    .weather-modal-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .weather-modal-meta-card {
+        grid-template-columns: 1fr;
+    }
+
+    .weather-warning-banner {
+        flex-direction: column;
+    }
+
+    .weather-warning-header {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .weather-forecast-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* --- tamna tema --- */
+[data-theme="dark"] .heritage-dashboard { color: #e6d7b8; }
+[data-theme="dark"] .heritage-dashboard .card {
+    border-color: rgba(214, 177, 115, 0.2) !important;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(214, 177, 115, 0.06), transparent 24%),
+        linear-gradient(180deg, rgba(48, 38, 27, 0.96), rgba(36, 28, 20, 0.98));
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 240, 210, 0.05);
+}
+[data-theme="dark"] .heritage-dashboard .card::before { border-color: rgba(214, 177, 115, 0.1); }
+[data-theme="dark"] .heritage-dashboard .card-header {
+    background: linear-gradient(180deg, rgba(94, 74, 48, 0.45), rgba(64, 50, 33, 0.25)) !important;
+    border-bottom-color: rgba(214, 177, 115, 0.14);
+    color: #e8d5ae !important;
+}
+[data-theme="dark"] .heritage-dashboard .news-card .card-body { color: #d9c9a6; }
+[data-theme="dark"] .heritage-dashboard .news-card .card-title { color: #ece0c9 !important; }
+[data-theme="dark"] .heritage-dashboard .section-header h3 { color: #e0cfa8; }
+[data-theme="dark"] .heritage-dashboard .module-card .module-icon {
+    background: linear-gradient(180deg, rgba(94, 74, 48, 0.9), rgba(66, 52, 34, 0.9)) !important;
+    border-color: rgba(214, 177, 115, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.06);
+}
+[data-theme="dark"] .heritage-dashboard .module-card .module-icon i { color: #e0c795 !important; }
+[data-theme="dark"] .heritage-dashboard .notification-dropdown .notification-item:hover { background-color: rgba(214, 177, 115, 0.08); }
+[data-theme="dark"] .heritage-dashboard .text-muted { color: rgba(214, 194, 152, 0.78) !important; }
+[data-theme="dark"] .heritage-dashboard .text-dark { color: #e6d7b8 !important; }
+[data-theme="contrast"] .heritage-dashboard .card {
+    background: #ffffff;
+    border: 2px solid #000000 !important;
+    box-shadow: none;
+}
+[data-theme="contrast"] .heritage-dashboard .card-header {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-bottom: 2px solid #000000;
+}
+[data-theme="contrast"] .heritage-dashboard,
+[data-theme="contrast"] .heritage-dashboard .news-card .card-body,
+[data-theme="contrast"] .heritage-dashboard .section-header h3,
+[data-theme="contrast"] .heritage-dashboard .quick-action span,
+[data-theme="contrast"] .heritage-dashboard .card h4,
+[data-theme="contrast"] .heritage-dashboard .card h6 { color: #000000; }
+[data-theme="contrast"] .heritage-dashboard .news-card .card-title { color: #000000 !important; }
+[data-theme="contrast"] .heritage-dashboard .text-muted { color: #333333 !important; }
+[data-theme="contrast"] .heritage-dashboard .text-dark { color: #000000 !important; }
+[data-theme="dark"] .heritage-dashboard .quick-action span,
+[data-theme="dark"] .heritage-dashboard .card h4,
+[data-theme="dark"] .heritage-dashboard .card h6 { color: #e8d5ae; }

@@ -1,0 +1,51 @@
+    /* Full-width layout for timesheet reports table */
+    .container-main.timesheet-reports-wide {
+        max-width: 100%;
+        padding: 1.5rem 2rem;
+    }
+    .timesheet-table {
+        width: 100%;
+        font-size: 0.78rem;
+        table-layout: auto;
+    }
+    .timesheet-table th,
+    .timesheet-table td {
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: 0.3rem 0.4rem;
+    }
+    .timesheet-table .col-employee {
+        white-space: normal;
+        min-width: 130px;
+        max-width: 180px;
+    }
+    .timesheet-table .col-org {
+        white-space: normal;
+        min-width: 100px;
+        max-width: 160px;
+    }
+    .timesheet-table .col-status {
+        min-width: 110px;
+    }
+    .timesheet-table .col-status .badge {
+        font-size: 0.7rem;
+    }
+    .timesheet-table .col-actions {
+        min-width: 128px;
+    }
+    .timesheet-table .col-actions .btn {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.75rem;
+    }
+    .timesheet-table .col-number {
+        min-width: 56px;
+    }
+    @media (max-width: 1400px) {
+        .timesheet-table {
+            font-size: 0.72rem;
+        }
+        .timesheet-table th,
+        .timesheet-table td {
+            padding: 0.25rem 0.3rem;
+        }
+    }

@@ -10,7 +10,10 @@ KOREN = Path(__file__).resolve().parent
 
 class MineralSubnavTests(unittest.TestCase):
     def setUp(self):
-        self.mineral_template = Path('templates/admin_mineral_collection.html').read_text(encoding='utf-8')
+        # шаблон + његов издвојени CSS (static/css/strane/), да провере важе
+        # и после сеобе стилова из <style> блока у фајл
+        self.mineral_template = (Path('templates/admin_mineral_collection.html').read_text(encoding='utf-8') + '\n<style>'
+                         + Path('static/css/strane/admin_mineral_collection-1.css').read_text(encoding='utf-8') + '</style>')
         self.base_template = Path('templates/base.html').read_text(encoding='utf-8')
 
     def test_mineral_tools_are_grouped_in_local_subnav(self):

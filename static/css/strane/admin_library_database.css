@@ -1,0 +1,63 @@
+@media print {
+    .btn, .input-group, .card-header {
+        display: none !important;
+    }
+}
+
+.book-row {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.book-row:hover {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    transform: scale(1.01);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.category-filter.active {
+    background-color: var(--museum-info) !important;
+    color: white !important;
+    border-color: var(--museum-info) !important;
+}
+
+/* Book detail modal styling */
+.book-detail-header {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 1rem;
+}
+
+.detailed-info-box {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.detailed-info-box pre {
+    color: #333;
+    background-color: transparent;
+}
+
+/* Modal improvements */
+#bookDetailsModal .modal-lg {
+    max-width: 800px;
+}
+
+#bookDetailsModal .modal-body {
+    padding: 2rem;
+}
+
+/* Add visual indicator that rows are clickable */
+.book-row td:first-child::after {
+    content: "\f138";
+    font-family: "bootstrap-icons";
+    opacity: 0;
+    margin-left: 0.5rem;
+    transition: opacity 0.2s;
+}
+
+.book-row:hover td:first-child::after {
+    opacity: 0.5;
+}

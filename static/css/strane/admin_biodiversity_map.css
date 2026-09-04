@@ -1,0 +1,238 @@
+    #map-container {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 280px);
+        min-height: 500px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #dee2e6;
+    }
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+    .fullscreen #map-container {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        border-radius: 0;
+        border: none;
+        min-height: unset;
+    }
+    .fullscreen .map-sidebar {
+        z-index: 10000;
+    }
+    .fullscreen .map-info-bar {
+        z-index: 10000;
+    }
+    .fullscreen .map-legend {
+        z-index: 10000;
+    }
+
+    /* Collection selector pills */
+    .collection-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 0;
+    }
+    .collection-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 1.5px solid #dee2e6;
+        background: #fff;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .collection-pill:hover {
+        border-color: #2e7d32;
+        color: #2e7d32;
+        background: #f1f8f1;
+    }
+    .collection-pill.active {
+        border-color: #2e7d32;
+        background: #2e7d32;
+        color: #fff;
+    }
+
+    /* Sidebar */
+    .map-sidebar {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        width: 260px;
+        max-height: calc(100% - 60px);
+        overflow-y: auto;
+    }
+    .map-sidebar h6 {
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #2e7d32;
+    }
+    .map-sidebar label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+        display: block;
+    }
+    .map-sidebar select {
+        font-size: 0.78rem;
+        padding: 4px 8px;
+    }
+    .map-sidebar .btn-sm {
+        font-size: 0.78rem;
+        padding: 3px 10px;
+    }
+    .sidebar-stats {
+        font-size: 0.75rem;
+        color: #555;
+    }
+    .sidebar-stats .stat-value {
+        font-weight: 700;
+        color: #2e7d32;
+    }
+
+    /* Bottom info bar */
+    .map-info-bar {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.92);
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 0.78rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .map-info-bar span {
+        margin-right: 14px;
+    }
+    .map-info-bar .info-label {
+        color: #888;
+    }
+    .map-info-bar .info-value {
+        font-weight: 700;
+        color: #333;
+    }
+
+    /* Legend */
+    .map-legend {
+        position: absolute;
+        bottom: 50px;
+        left: 10px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.92);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.72rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .map-legend h6 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+    }
+    .legend-circle {
+        display: inline-block;
+        border-radius: 50%;
+        margin-right: 6px;
+        opacity: 0.8;
+        border: 1px solid rgba(0,0,0,0.3);
+    }
+
+    /* Popup styling */
+    .bio-popup .leaflet-popup-content {
+        min-width: 220px;
+    }
+    .bio-popup h6 {
+        margin: 0 0 6px 0;
+        font-size: 0.9rem;
+        color: #2e7d32;
+    }
+    .popup-badge {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
+    .popup-badge-records {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    .popup-badge-species {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    .popup-badge-family {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    .popup-badge-status {
+        background: #fce4ec;
+        color: #c62828;
+    }
+    .popup-coords {
+        font-size: 0.72rem;
+        color: #888;
+        margin-bottom: 4px;
+    }
+    .popup-years {
+        font-size: 0.75rem;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    .popup-species-list {
+        font-size: 0.75rem;
+        margin: 0;
+        padding-left: 16px;
+    }
+    .popup-species-list li {
+        margin-bottom: 1px;
+    }
+    .popup-species-count {
+        color: #888;
+        font-size: 0.7rem;
+    }
+    .popup-detail {
+        font-size: 0.75rem;
+        color: #555;
+        margin-bottom: 2px;
+    }
+    .popup-detail strong {
+        color: #333;
+    }
+
+    /* Loading overlay */
+    .map-loading {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.8);
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        color: #555;
+    }

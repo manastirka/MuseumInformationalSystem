@@ -49,6 +49,36 @@ class IzdvajanjeTest(unittest.TestCase):
         self.assertGreater(statika.verzija_statike('css/nema-ovoga.css'), 0)
 
 
+class SviSabloniTest(unittest.TestCase):
+    """Правило за убудуће: велики CSS иде у static/css/, не у шаблон."""
+
+    def test_nijedan_sablon_nema_veliki_stil_bez_jinja(self):
+        krivci = []
+        for p in sorted(glob.glob('templates/*.html')):
+            for blok in re.findall(r'<style[^>]*>(.*?)</style>', _tekst(p), re.S):
+                if len(blok.splitlines()) >= 40 and '{{' not in blok and '{%' not in blok:
+                    krivci.append(p)
+        self.assertEqual(krivci, [], 'CSS блок дужи од 40 линија премести у static/css/strane/')
+
+    def test_svaki_link_pokazuje_na_postojeci_fajl(self):
+        veze = 0
+        for p in sorted(glob.glob('templates/*.html')):
+            for ime in re.findall(r"filename='css/strane/([\w.-]+\.css)'", _tekst(p)):
+                veze += 1
+                self.assertTrue(os.path.exists('static/css/strane/' + ime), '%s: нема %s' % (p, ime))
+        self.assertGreater(veze, 40, 'очекујемо десетине издвојених страна')
+
+    def test_link_ne_zavrsava_u_skripti_ili_komentaru(self):
+        for p in sorted(glob.glob('templates/*.html')):
+            t = _tekst(p)
+            opsezi = [(m.start(), m.end()) for m in re.finditer(r'<script\b.*?</script>', t, re.S)]
+            opsezi += [(m.start(), m.end()) for m in re.finditer(r'<!--.*?-->', t, re.S)]
+            opsezi += [(m.start(), m.end()) for m in re.finditer(r'\{#.*?#\}', t, re.S)]
+            for m in re.finditer(r"filename='css/strane/[\w.-]+\.css'", t):
+                self.assertFalse(any(a <= m.start() < b for a, b in opsezi),
+                                 '%s: <link> унутар скрипте или коментара' % p)
+
+
 class FontoviTest(unittest.TestCase):
     def setUp(self):
         self.client = museum_app.app.test_client()

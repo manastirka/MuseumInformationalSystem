@@ -1,0 +1,55 @@
+.request-card {
+    transition: all 0.3s ease;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+.request-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+.request-card.selected {
+    border: 2px solid #10b981;
+}
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+.approval-step {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.approval-step.pending { background: #fef3c7; }
+.approval-step.approved { background: #d1fae5; }
+.approval-step.rejected { background: #fee2e2; }
+.approval-step.current { border: 2px solid #3b82f6; }
+.detail-panel {
+    position: sticky;
+    top: 20px;
+}
+.priority-badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+.comment-item {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+.filter-chip {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.filter-chip:hover, .filter-chip.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}

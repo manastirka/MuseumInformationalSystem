@@ -1,0 +1,324 @@
+/* ==========================================================================
+   Администрациони панел — распоред у духу подешавања оперативног система
+   (лева уска навигација доменских секција + десни садржај изабране секције).
+   Све боје иду кроз токене → прати изабрану палету/акценат у светлом и тамном.
+   ========================================================================== */
+
+/* Header */
+.admin-os-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.admin-os-header .admin-os-title h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-os-header .admin-os-title p {
+    margin: 0.15rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Search — filtrira stavke po nazivu/opisu, kao u OS podešavanjima */
+.admin-os-search {
+    position: relative;
+    flex: 0 1 320px;
+    min-width: 200px;
+}
+
+.admin-os-search .bi-search {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 0.95rem;
+}
+
+.admin-os-search input {
+    width: 100%;
+    padding: 0.55rem 0.9rem 0.55rem 2.4rem;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card, #fff);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-os-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.admin-os-search input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.admin-os-notif {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Бројчани беџ седи у СТАТИЧКОМ заглављу (за разлику од лепљиве навигације,
+   коју пиксел-мерач прескаче), па мора сам да гарантује AA у свим палетама и
+   режимима. Глобални .notification-badge користи var(--danger), који у тамном
+   режиму постаје свело-црвен (бело-на-светлом пада на ~2:1) — овде фиксирамо
+   чврсту тамно-црвену подлогу са белим текстом (7.46:1). */
+.admin-os-notif .notification-badge {
+    background-color: #a51d2d;
+    color: #fff;
+}
+
+/* Layout: two panes */
+.admin-os-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* Left navigation rail */
+.admin-os-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    position: sticky;
+    top: 1rem;
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-card, #fff);
+}
+
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-nav-item .nav-icon {
+    flex: 0 0 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    color: var(--text-muted);
+}
+
+.admin-nav-item .nav-label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item:focus-visible {
+    background: var(--bg-hover);
+    outline: none;
+}
+
+.admin-nav-item.active {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-left-color: var(--primary);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.admin-nav-item.active .nav-icon {
+    color: var(--primary);
+}
+
+/* Right content pane */
+.admin-os-content {
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-card, #fff);
+    overflow: hidden;
+}
+
+.admin-pane-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.25rem;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-elevated);
+}
+
+.admin-pane-title .bi {
+    color: var(--primary);
+}
+
+/* Uniform list rows (не шарене картице) */
+.admin-module-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-module-item {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1.25rem;
+    min-height: 60px;
+    color: var(--text-primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.13s ease;
+}
+
+.admin-module-item:last-child {
+    border-bottom: none;
+}
+
+.admin-module-item:hover,
+.admin-module-item:focus-visible {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.admin-module-item:focus-visible {
+    box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.admin-module-item .module-icon {
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-elevated);
+    color: var(--primary);
+    font-size: 1.05rem;
+}
+
+.admin-module-item .module-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.admin-module-item .module-name {
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.admin-module-item .module-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.admin-module-item .module-arrow {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Empty search state */
+.admin-os-empty {
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.admin-os-empty .bi {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive: на уском екрану лева трака постаје листа секција изнад садржаја
+   (обмотавање, без хоризонталног скрола). */
+@media (max-width: 768px) {
+    .admin-os-layout {
+        grid-template-columns: 1fr;
+    }
+    .admin-os-nav {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .admin-nav-item {
+        width: auto;
+        flex: 1 1 auto;
+        border-left: 1px solid transparent;
+    }
+    .admin-nav-item.active {
+        border-left-color: transparent;
+        border-color: var(--primary);
+    }
+}
+
+@media (max-width: 576px) {
+    .admin-module-item .module-desc {
+        font-size: 0.75rem;
+    }
+    .admin-nav-item {
+        width: 100%;
+        flex-basis: 100%;
+    }
+}
+
+/* Notification dropdown (задржано) */
+.notification-dropdown {
+    width: min(350px, calc(100vw - 1.5rem)) !important;
+    overflow-x: hidden;
+}
+.notification-dropdown .notification-item:hover {
+    background-color: var(--bg-hover);
+}
+.notification-dropdown .notification-icon {
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+}
+.notification-dropdown .notification-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.notification-dropdown .notification-title,
+.notification-dropdown .notification-message,
+.notification-dropdown .notification-time {
+    display: block;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.25;
+}
+
+[x-cloak] { display: none !important; }

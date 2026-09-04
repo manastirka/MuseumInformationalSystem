@@ -1,0 +1,281 @@
+/* 3D Dashboard Styles */
+#dashboard-3d-container {
+    min-height: calc(100vh - 56px);
+    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+    margin: -2rem -1rem;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Glowing orbs background */
+#dashboard-3d-container::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 5%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(255,107,107,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float-glow 8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+#dashboard-3d-container::after {
+    content: '';
+    position: absolute;
+    bottom: 10%;
+    right: 5%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(78,205,196,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float-glow 10s ease-in-out infinite reverse;
+    pointer-events: none;
+}
+
+@keyframes float-glow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -30px) scale(1.1); }
+}
+
+.dashboard-header {
+    text-align: center;
+    padding: 1rem 0 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.dashboard-header h1 {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-header p {
+    color: rgba(255,255,255,0.6);
+    font-size: 1.1rem;
+}
+
+.logo-dashboard-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    position: relative;
+    z-index: 5;
+}
+
+#logo-canvas-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 460 / 580;
+}
+
+#logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 30px rgba(255,107,107,0.4))
+            drop-shadow(0 0 60px rgba(78,205,196,0.3));
+    transition: filter 0.3s ease;
+}
+
+#logo-canvas-container:hover #logo-image {
+    filter: drop-shadow(0 0 40px rgba(255,107,107,0.6))
+            drop-shadow(0 0 80px rgba(78,205,196,0.5));
+}
+
+#interactive-logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+/* SVG segment hover effects */
+#interactive-logo path,
+#interactive-logo circle {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+#interactive-logo .segment:hover {
+    filter: brightness(1.3) drop-shadow(0 0 15px currentColor);
+    transform: scale(1.05);
+}
+
+#interactive-logo .segment.active {
+    filter: brightness(1.5) drop-shadow(0 0 25px currentColor);
+    transform: scale(1.08);
+}
+
+/* Tooltip */
+.segment-tooltip {
+    position: fixed;
+    background: linear-gradient(135deg, rgba(26,26,46,0.95) 0%, rgba(15,15,26,0.95) 100%);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    color: #fff;
+    font-size: 0.95rem;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    max-width: 250px;
+}
+
+.segment-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.segment-tooltip h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.segment-tooltip p {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 0.85rem;
+}
+
+.segment-tooltip .color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Quick stats panel */
+.quick-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.stat-card {
+    background: rgba(30,30,50,0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(78,205,196,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-card .stat-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+/* Three.js canvas */
+#three-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Legend */
+.dashboard-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(30,30,50,0.4);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+    background: rgba(30,30,50,0.8);
+    border-color: rgba(255,255,255,0.15);
+    transform: translateX(5px);
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.legend-text {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #logo-canvas-container {
+        max-width: 90%;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .quick-stats {
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem 1.5rem;
+        min-width: 120px;
+    }
+}

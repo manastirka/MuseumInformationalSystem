@@ -1,0 +1,55 @@
+.sistem-header {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card, 12px);
+}
+.sistem-header .section-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md, 8px);
+    background: var(--primary); color: #fff; font-size: 1.25rem;
+}
+.sistem-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card, 12px);
+    overflow: hidden;
+}
+.sistem-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-color);
+    margin: 0;
+}
+.sistem-tabs .nav-link {
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+}
+.sistem-tabs .nav-link:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.sistem-tabs .nav-link.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.sistem-frame {
+    width: 100%;
+    border: 0;
+    display: block;
+    min-height: 640px;
+    background: var(--bg-body);
+}
+@media (max-width: 576px) {
+    .sistem-tabs .nav-link { padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+}

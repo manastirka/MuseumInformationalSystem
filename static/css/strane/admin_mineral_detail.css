@@ -1,0 +1,492 @@
+.mineral-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+.mineral-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--info);
+}
+.mineral-card.current-mineral {
+    border-color: var(--success);
+    background-color: var(--success-soft);
+}
+.mineral-card-header {
+    padding: 12px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mineral-card-header:hover {
+    background-color: var(--bg-hover);
+}
+.mineral-name-box {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.mineral-locality-box {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.mineral-inv-box {
+    font-family: monospace;
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.mineral-rruff-details {
+    display: none;
+    padding: 15px;
+    background-color: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+}
+.mineral-rruff-details.show {
+    display: block;
+}
+.rruff-grid-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+.rruff-field-box {
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+.rruff-field-box.full-width {
+    grid-column: 1 / -1;
+}
+.rruff-label-box {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+.rruff-value-box {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.expand-icon {
+    transition: transform 0.2s ease;
+}
+.mineral-card.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+.current-badge {
+    background-color: var(--success-soft);
+    color: var(--success-text);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* COD Section Styles */
+#codSection .card-header {
+    background: linear-gradient(135deg, #0dcaf0 0%, #0a9ec2 100%);
+}
+
+#codCrystalViewer {
+    position: relative;
+}
+
+#codCrystalViewer canvas {
+    border-radius: 0.375rem;
+}
+
+#codSection .btn-group .btn.active {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+#codSection .cell-params-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+/* Box modal follows the theme tokens (adapts to dark/contrast) */
+.box-modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.box-modal-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--on-accent);
+}
+.box-modal-body {
+    background: var(--bg-elevated);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.box-modal-footer {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Mineral Item Styling */
+.mineral-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    list-style: none;
+}
+.mineral-item:hover {
+    border-color: var(--info);
+    box-shadow: var(--shadow-md);
+}
+.mineral-item.current-mineral {
+    border-color: var(--success);
+    background: var(--success-soft);
+}
+.mineral-item-header {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mineral-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.mineral-locality {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.mineral-inv {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+.mineral-expand-hint {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+.mineral-item.expanded .mineral-expand-hint {
+    display: none;
+}
+.current-badge-depot {
+    background: var(--success-soft);
+    color: var(--success-text);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+/* RRUFF Loading & Animations */
+.rruff-loading {
+    text-align: center;
+    padding: 25px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+.rruff-loading i {
+    animation: spin 1s linear infinite;
+    font-size: 18px;
+    margin-bottom: 8px;
+    display: block;
+    color: var(--text-secondary);
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* RRUFF Details Section */
+.rruff-details {
+    display: none;
+    padding: 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    animation: slideDown 0.3s ease;
+}
+.rruff-details.visible {
+    display: block;
+}
+@keyframes slideDown {
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 800px; }
+}
+
+/* RRUFF Grid */
+.rruff-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.rruff-field {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+}
+.rruff-field::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, #17a2b8, #138496);
+}
+.rruff-field.full-width {
+    grid-column: span 2;
+}
+.rruff-field.highlight {
+    border-color: #28a745;
+}
+.rruff-field.highlight::before {
+    background: linear-gradient(180deg, #28a745, #218838);
+}
+.rruff-label {
+    font-size: 10px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.rruff-value {
+    font-size: 14px;
+    color: #212529;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    line-height: 1.4;
+    word-break: break-word;
+}
+.rruff-formula {
+    font-size: 20px;
+    color: #0056b3;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 8px 0;
+}
+
+/* Crystal System Badge */
+.crystal-system-badge {
+    display: inline-block;
+    background: #6f42c1;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #ffffff;
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+/* IMA Status */
+.ima-approved { color: #28a745; font-weight: 600; }
+
+/* RRUFF Mineral Entry */
+.rruff-mineral-entry {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.rruff-mineral-entry:last-child { margin-bottom: 0; }
+.rruff-mineral-entry.not-found {
+    background: #fff5f5;
+    border-color: #f5c6cb;
+}
+.rruff-mineral-header-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #17a2b8;
+}
+.rruff-mineral-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+    letter-spacing: 0.5px;
+}
+.rruff-mineral-original {
+    font-size: 11px;
+    color: #6c757d;
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: #e9ecef;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #ced4da;
+}
+.rruff-mineral-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #dee2e6;
+    font-size: 11px;
+    color: #6c757d;
+}
+.rruff-mineral-footer a {
+    color: #17a2b8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.rruff-mineral-footer a:hover { color: #0056b3; }
+
+/* RRUFF Not Found */
+.rruff-not-found {
+    text-align: center;
+    padding: 20px;
+    color: #dc3545;
+    font-size: 13px;
+    background: #fff5f5;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+}
+.rruff-not-found-mini {
+    text-align: center;
+    padding: 12px;
+    color: #dc3545;
+    font-size: 12px;
+    font-style: italic;
+}
+.rruff-summary {
+    text-align: center;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: #e7f5ff;
+    border: 1px solid #17a2b8;
+    border-radius: 8px;
+    color: #0c5460;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Wikipedia Source Styling */
+.rruff-mineral-entry.wikipedia-source {
+    background: #f8f5ff;
+    border-color: #6f42c1;
+}
+.rruff-mineral-entry.wikipedia-source .rruff-mineral-header-box {
+    border-bottom-color: #6f42c1;
+}
+.rruff-mineral-entry.wikipedia-source .rruff-field::before {
+    background: linear-gradient(180deg, #6f42c1, #5a32a3);
+}
+.rruff-mineral-entry.wikipedia-source .rruff-formula {
+    color: #6f42c1;
+}
+
+/* Box Info Alert */
+.box-info-alert {
+    background: #e7f5ff;
+    border: 1px solid #17a2b8;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #0c5460;
+    font-size: 13px;
+}
+.box-info-alert strong { color: #17a2b8; }
+
+/* Mineral list styling */
+.mineral-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+/* Geochemical Data Section Styles */
+#geochemSection .card-header {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+}
+
+#geochemSection .table th {
+    font-weight: 600;
+    background: rgba(25, 135, 84, 0.1);
+}
+
+#geochemSection .badge-sm {
+    font-size: 0.65rem;
+    padding: 0.2em 0.5em;
+}
+
+#geochemSection #traceElementsGrid .card {
+    border-color: #198754;
+    border-width: 1px;
+}
+
+#geochemSection #traceElementsGrid .card:hover {
+    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.2);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+#geochemSection .list-group-item {
+    border-left: 3px solid #198754;
+    background: transparent;
+}
+
+#geochemSection #geochemSourceInfo {
+    background: linear-gradient(135deg, rgba(25, 135, 84, 0.1) 0%, rgba(25, 135, 84, 0.05) 100%);
+    border-color: #198754;
+}
+
+/* Geochem loading animation */
+#geochemLoading .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+/* Local RRUFF Section Styles */
+#localRruffSection {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.02) 0%, rgba(220, 53, 69, 0.05) 100%);
+}
+
+#localRruffSection .card-header {
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%) !important;
+}
+
+#localRruffSection #localRruffSummary {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
+    border-color: #dc3545;
+}
+
+#localRruffSection .table-danger {
+    --bs-table-bg: rgba(220, 53, 69, 0.05);
+}
+
+/* Local RRUFF loading animation */
+#localRruffLoading .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+/* Spectrum chart canvas styling */
+#localPowderChart, #localRamanChart, #localInfraredChart {
+    max-height: 280px !important;
+}

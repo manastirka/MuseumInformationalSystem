@@ -1,0 +1,302 @@
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.badge {
+    font-weight: 500;
+}
+
+/* Detail modal styles */
+.detail-modal-content {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.detail-modal-header {
+    background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    border-bottom: none;
+}
+
+.detail-modal-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.detail-modal-icon-wrap {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.detail-modal-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.detail-modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.detail-image-section {
+    text-align: center;
+    padding: 1rem 0 0.5rem;
+}
+
+.detail-image {
+    max-height: 280px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.detail-section {
+    margin-bottom: 0.75rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.detail-section-header {
+    background: #f0f4f8;
+    color: #1a5276;
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-section-body {
+    padding: 0.75rem 1rem;
+    background: #fff;
+}
+
+.detail-field {
+    padding: 0.4rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.detail-field-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detail-field-value {
+    font-size: 0.92rem;
+    color: #212529;
+    word-break: break-word;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+    padding: 12px 8px !important;
+}
+
+.sortable-header:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.sortable-header i {
+    font-size: 0.85em;
+}
+
+#columnSelector {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collection-table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.collection-table-top-scroll {
+    min-height: 16px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.collection-table-top-scroll-spacer {
+    height: 1px;
+}
+
+.collection-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.collection-table-toolbar-copy {
+    min-width: 0;
+}
+
+.collection-table-toolbar-copy strong,
+.collection-table-toolbar-copy small {
+    display: block;
+}
+
+.collection-table-toolbar-copy small {
+    color: #6c757d;
+}
+
+.collection-data-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.collection-data-table th,
+.collection-data-table td {
+    min-width: 150px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.collection-data-table .collection-image-cell {
+    width: 88px;
+    min-width: 88px;
+}
+
+.collection-data-table .collection-actions-cell {
+    width: 115px;
+    min-width: 115px;
+}
+
+.collection-data-table .collection-column-id,
+.collection-data-table .collection-column-source_row,
+.collection-data-table .collection-column-quantity,
+.collection-data-table .collection-column-utm_x,
+.collection-data-table .collection-column-utm_y,
+.collection-data-table .collection-column-utm_z,
+.collection-data-table .collection-column-length_mm,
+.collection-data-table .collection-column-width_mm {
+    min-width: 110px;
+}
+
+.collection-data-table .collection-column-comment,
+.collection-data-table .collection-column-description,
+.collection-data-table .collection-column-notes,
+.collection-data-table .collection-column-locality_text,
+.collection-data-table .collection-column-biostratigraphic_zone {
+    min-width: 220px;
+}
+
+.collection-table-fit .collection-table-top-scroll {
+    display: none;
+}
+
+.collection-table-fit .collection-data-table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+    font-size: var(--collection-fit-font-size, 0.62rem);
+}
+
+.collection-table-fit .collection-data-table th,
+.collection-table-fit .collection-data-table td,
+.collection-table-fit .collection-data-table .collection-image-cell,
+.collection-table-fit .collection-data-table .collection-actions-cell,
+.collection-table-fit .collection-data-table [class*="collection-column-"] {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 0.3rem 0.22rem !important;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.collection-table-fit .collection-data-table th {
+    font-size: var(--collection-fit-header-font-size, 0.56rem);
+    letter-spacing: 0;
+}
+
+.collection-table-fit .collection-data-table .img-thumbnail {
+    max-width: 30px !important;
+    max-height: 30px !important;
+}
+
+.collection-table-fit .collection-data-table .btn {
+    padding: 0.18rem 0.22rem;
+    font-size: var(--collection-fit-header-font-size, 0.56rem);
+    line-height: 1.1;
+}
+
+/* Responsive table improvements */
+@media (max-width: 768px) {
+    .collection-table-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .collection-table-toolbar .btn {
+        width: 100%;
+    }
+
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+    }
+}

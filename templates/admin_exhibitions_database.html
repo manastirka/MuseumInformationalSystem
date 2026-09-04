@@ -502,48 +502,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-@media print {
-    .btn, .input-group, .card-header, .modal {
-        display: none !important;
-    }
-}
-
-.exhibition-card {
-    transition: transform 0.2s;
-}
-
-.exhibition-card:hover {
-    transform: translateY(-2px);
-}
-
-.status-filter.active,
-.type-filter.active {
-    background-color: #667eea !important;
-    color: white !important;
-    border-color: #667eea !important;
-}
-
-.card-footer {
-    border-top: 1px solid #dee2e6;
-}
-
-.badge {
-    font-size: 0.75em;
-}
-
-.table-sm td {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-.border-success {
-    border-width: 2px !important;
-    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-}
-
-.bg-purple {
-    background-color: #667eea !important;
-}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/strane/admin_exhibitions_database.css') }}?v={{ v_statike('css/strane/admin_exhibitions_database.css') }}">
 {% endblock %}

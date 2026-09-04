@@ -1,0 +1,137 @@
+.vehicle-card {
+    transition: all 0.3s ease;
+}
+
+.vehicle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.legend-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+#calendarTable td {
+    min-width: 120px;
+    height: 60px;
+    vertical-align: middle;
+}
+
+/* `background`, не `background-color`: heritage преко `.table thead th` развуче
+   полупровидан пергаментни градијент, а СЛИКА се црта изнад боје — тако је
+   браон заглавље испадало избледело (155,124,79) и бели текст падао на 3.5:1.
+   Скраћеница брише ту слику, па остаје пуна браон и бело пролази ≈6.3:1. */
+#calendarTable th {
+    background: var(--museum-primary);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem;
+}
+
+.reservation-cell:hover {
+    opacity: 0.8;
+}
+
+.vehicle-header {
+    cursor: help;
+    position: relative;
+}
+
+.vehicle-header:hover {
+    background-color: rgba(255,255,255,0.15) !important;
+}
+
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    /* Позадина/текст: глобални токенизовани `.tooltip-inner` у main.css
+       (прати тему). Овде само садржајна подешавања. */
+}
+
+/* Serbian License Plate */
+.serbian-plate {
+    display: inline-flex;
+    align-items: stretch;
+    border: 2.5px solid #2a2a2a;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.2),
+        inset 0 0 0 0.5px rgba(255,255,255,0.1);
+    height: 32px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.serbian-plate:hover {
+    transform: scale(1.03);
+    box-shadow:
+        0 3px 10px rgba(0,0,0,0.25),
+        inset 0 0 0 0.5px rgba(255,255,255,0.1);
+}
+
+.plate-blue-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #003da5 0%, #00287a 100%);
+    padding: 2px 5px;
+    gap: 1px;
+    min-width: 26px;
+    border-right: 1.5px solid #2a2a2a;
+}
+
+.plate-flag {
+    width: 15px;
+    height: 11px;
+    object-fit: cover;
+    border-radius: 1px;
+    border: 0.5px solid rgba(255,255,255,0.3);
+}
+
+.plate-country {
+    color: #fff;
+    font-size: 0.48rem;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    line-height: 1;
+    text-shadow: 0 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.plate-text {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-family: 'FE-Schrift', 'Arial Black', 'Impact', system-ui, sans-serif;
+    font-weight: 900;
+    font-size: 0.95rem;
+    color: #111;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    background: linear-gradient(180deg, #f8f8f8 0%, #fff 40%, #f0f0f0 100%);
+    text-shadow: 0 0.5px 0 rgba(0,0,0,0.05);
+}
+
+#vehicleSpecInfo {
+    background: rgba(13, 110, 253, 0.08);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+    #calendarTable {
+        font-size: 0.85rem;
+    }
+
+    #calendarTable td {
+        min-width: 80px;
+        height: 50px;
+    }
+}

@@ -1,0 +1,119 @@
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.container-main.bird-ringing-wide {
+    max-width: 100%;
+    padding: 1.5rem 1.25rem;
+}
+
+#birdRingingTable {
+    width: 100%;
+    font-size: 0.82rem;
+}
+
+#birdRingingTable th,
+#birdRingingTable td {
+    padding: 0.4rem 0.5rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+@media (max-width: 1400px) {
+    #birdRingingTable {
+        font-size: 0.76rem;
+    }
+    #birdRingingTable th,
+    #birdRingingTable td {
+        padding: 0.3rem 0.4rem;
+    }
+}
+
+.table-responsive {
+    max-height: 600px;
+}
+
+/* Sticky column headers must stay fully opaque — Bootstrap's .table-light
+   drives th backgrounds via CSS vars that render semi-transparent when
+   rows scroll underneath the sticky header. Force a solid fill + subtle
+   shadow so cells can't bleed through. */
+#birdRingingTable thead th,
+.table thead.table-light th,
+.table th {
+    position: sticky;
+    top: 0;
+    background-color: #e9ecef !important;
+    color: #212529;
+    background-clip: padding-box;
+    z-index: 10;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 1.5rem;
+}
+
+.sortable:hover {
+    background-color: #e9ecef !important;
+}
+
+.sort-icon {
+    font-size: 0.75rem;
+    color: #6c757d;
+    opacity: 0.5;
+    margin-left: 0.25rem;
+}
+
+.sortable:hover .sort-icon {
+    opacity: 0.8;
+}
+
+.sort-icon.active {
+    opacity: 1;
+    color: var(--museum-primary);
+}
+
+.btn-primary {
+    background-color: var(--museum-primary);
+    border-color: var(--museum-primary);
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.coordinates-cell {
+    transition: background-color 0.2s ease;
+}
+
+.coordinates-cell:hover {
+    background-color: #e7f3ff !important;
+}
+
+.coordinates-cell .text-primary {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+#mapContainer {
+    border-radius: 0.5rem;
+    border: 2px solid #dee2e6;
+}
