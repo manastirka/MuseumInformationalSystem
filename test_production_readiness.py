@@ -558,7 +558,9 @@ class OperationalModuleDraftStorageTests(unittest.TestCase):
         self.assertIn('function loadUserScopedDraft(namespace, scope = \'\')', content)
 
     def test_base_template_uses_admin_only_overview_and_approval_sidebar_links(self):
-        content = Path('templates/base.html').read_text(encoding='utf-8')
+        # Навигација живи у templates/_navigacija.html (лева трака + мобилна фиока), base.html је укључује.
+        content = (Path('templates/base.html').read_text(encoding='utf-8')
+                   + Path('templates/_navigacija.html').read_text(encoding='utf-8'))
 
         self.assertIn('url_for(\'archive_signature.admin_archive_dashboard\')', content)
         self.assertIn('url_for(\'approval_center.centar_odobravanje\')', content)

@@ -3,6 +3,9 @@
 
 from pathlib import Path
 import unittest
+from pathlib import Path
+
+KOREN = Path(__file__).resolve().parent
 
 
 class MineralSubnavTests(unittest.TestCase):
@@ -46,9 +49,12 @@ class MineralSubnavTests(unittest.TestCase):
         self.assertNotIn('stats.total_minerals', header)
 
     def test_rruff_is_not_in_global_external_database_menu(self):
-        self.assertNotIn('RRUFF минерали', self.base_template)
-        self.assertNotIn("url_for('rruff_minerals')", self.base_template)
-        self.assertIn('NHM London Data Portal', self.base_template)
+        # Стабло база живи у templates/_navigacija_baze.html (лева трака + мобилна фиока).
+        stablo = (KOREN / 'templates' / '_navigacija_baze.html').read_text(encoding='utf-8')
+        for t in (self.base_template, stablo):
+            self.assertNotIn('RRUFF минерали', t)
+            self.assertNotIn("url_for('rruff_minerals')", t)
+        self.assertIn('NHM London Data Portal', stablo)
 
     def test_mineral_tool_links_use_registered_blueprint_endpoints(self):
         self.assertIn("url_for('vehicles.virtual_depot')", self.mineral_template)

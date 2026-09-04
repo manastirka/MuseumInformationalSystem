@@ -1091,7 +1091,7 @@ body {
     padding: 0.2rem 0;
 }
 
-.sidebar-nav .nav-link {
+.sidebar-nav :is(.nav-link, .drawer-link) {
     position: relative;
     color: rgba(255, 246, 231, 0.98);
     padding: 0.86rem 0.95rem 0.86rem 1rem;
@@ -1110,18 +1110,18 @@ body {
     box-shadow: none !important;
     backdrop-filter: none !important;
 }
-.sidebar-nav .nav-link[data-bs-toggle="collapse"] {
+.sidebar-nav :is(.nav-link, .drawer-link)[data-bs-toggle="collapse"] {
     background: none !important;
     box-shadow: none !important;
     border: 1px solid transparent !important;
 }
 
-.sidebar-nav .nav-link span {
+.sidebar-nav :is(.nav-link, .drawer-link) span {
     min-width: 0;
     line-height: 1.3;
 }
 
-.sidebar-nav .nav-link:hover {
+.sidebar-nav :is(.nav-link, .drawer-link):hover {
     transform: translateX(4px);
     color: #fffdf7;
     background: rgba(255, 248, 236, 0.06) !important;
@@ -1129,20 +1129,20 @@ body {
     box-shadow: none !important;
 }
 
-.sidebar-nav .nav-link.active,
-.sidebar-nav .nav-link.parent-active {
+.sidebar-nav :is(.nav-link, .drawer-link).active,
+.sidebar-nav :is(.nav-link, .drawer-link).parent-active {
     color: #fff8ee;
     background: linear-gradient(180deg, rgba(247, 230, 191, 0.22), rgba(233, 202, 142, 0.14)) !important;
     border-color: rgba(235, 204, 138, 0.26) !important;
     box-shadow: inset 0 1px 0 rgba(255, 246, 226, 0.14) !important;
 }
 
-.sidebar-nav .nav-link.active::after,
-.sidebar-nav .nav-link.parent-active::after {
+.sidebar-nav :is(.nav-link, .drawer-link).active::after,
+.sidebar-nav :is(.nav-link, .drawer-link).parent-active::after {
     content: none;
 }
 
-.sidebar-nav .nav-link > i:not(.bi-chevron-down) {
+.sidebar-nav :is(.nav-link, .drawer-link) > i:not(.bi-chevron-down) {
     margin-right: 0;
     width: 1.68rem;
     height: 1.68rem;
@@ -1161,21 +1161,21 @@ body {
     transition: transform var(--transition-fast), color var(--transition-fast);
 }
 
-.sidebar-nav .nav-link:hover > i:not(.bi-chevron-down) {
+.sidebar-nav :is(.nav-link, .drawer-link):hover > i:not(.bi-chevron-down) {
     transform: translateY(-1px);
     color: #fff1cf;
 }
 
-.sidebar-nav .nav-link.active > i:not(.bi-chevron-down),
-.sidebar-nav .nav-link.parent-active > i:not(.bi-chevron-down),
-.sidebar-nav .nav-link[aria-expanded="true"] > i:not(.bi-chevron-down) {
+.sidebar-nav :is(.nav-link, .drawer-link).active > i:not(.bi-chevron-down),
+.sidebar-nav :is(.nav-link, .drawer-link).parent-active > i:not(.bi-chevron-down),
+.sidebar-nav :is(.nav-link, .drawer-link)[aria-expanded="true"] > i:not(.bi-chevron-down) {
     color: #fff4d9;
     background: transparent;
     border: 0;
     box-shadow: none;
 }
 
-.sidebar-nav .nav-link .bi-chevron-down {
+.sidebar-nav :is(.nav-link, .drawer-link) .bi-chevron-down {
     margin-left: auto;
     width: auto;
     font-size: 0.82rem;
@@ -1183,8 +1183,8 @@ body {
     transition: transform var(--transition-fast), color var(--transition-fast);
 }
 
-.sidebar-nav .nav-link[aria-expanded="true"] .bi-chevron-down,
-.sidebar-nav .nav-link.parent-active .bi-chevron-down {
+.sidebar-nav :is(.nav-link, .drawer-link)[aria-expanded="true"] .bi-chevron-down,
+.sidebar-nav :is(.nav-link, .drawer-link).parent-active .bi-chevron-down {
     transform: rotate(180deg);
     color: #fff6e5;
 }
@@ -1214,7 +1214,8 @@ body {
     background: none !important;
 }
 
-.sidebar-section-title {
+.sidebar-section-title,
+.sidebar .drawer-section-title {
     display: flex;
     align-items: center;
     gap: 0.7rem;
@@ -1327,20 +1328,20 @@ body {
     color: var(--sidebar-ink);
 }
 
-[data-theme="dark"] .sidebar-nav .nav-link {
+[data-theme="dark"] .sidebar-nav :is(.nav-link, .drawer-link) {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
 }
 
-[data-theme="dark"] .sidebar-nav .nav-link.active,
-[data-theme="dark"] .sidebar-nav .nav-link.parent-active {
+[data-theme="dark"] .sidebar-nav :is(.nav-link, .drawer-link).active,
+[data-theme="dark"] .sidebar-nav :is(.nav-link, .drawer-link).parent-active {
     background: linear-gradient(180deg, rgba(243, 213, 153, 0.18), rgba(209, 164, 103, 0.14)) !important;
     border-color: rgba(236, 203, 139, 0.22) !important;
     box-shadow: inset 0 1px 0 rgba(255, 239, 208, 0.08) !important;
 }
 
-[data-theme="dark"] .sidebar-nav .nav-link > i:not(.bi-chevron-down) {
+[data-theme="dark"] .sidebar-nav :is(.nav-link, .drawer-link) > i:not(.bi-chevron-down) {
     background: transparent;
     box-shadow: none;
 }
@@ -4641,7 +4642,7 @@ html[data-density="kompakt"][data-style="terenska"] {
     /* --- 3) Додирне мете ≥44px ------------------------------------- */
     .navbar-nav .nav-link,
     .dropdown-item,
-    .sidebar-nav .nav-link,
+    .sidebar-nav :is(.nav-link, .drawer-link),
     .pagination .page-link {
         min-height: 44px; display: flex; align-items: center;
     }
@@ -5042,3 +5043,52 @@ html[data-density="kompakt"][data-style="terenska"] {
 [data-palette] body.heritage-shell .back-link {
     color: var(--text-secondary);
 }
+
+/* ==========================================================================
+   Навигација, корак 2: лева трака са натписима (подразумевано проширена,
+   скупљена = само иконе) дели стабло са мобилном фиоком
+   (templates/_navigacija.html + _navigacija_baze.html). Групе база су
+   Bootstrap collapse (.nav-podgrupa). Навбар носи само бренд, писмо, тему,
+   обавештења и налог.
+   ========================================================================== */
+:root {
+    --sidebar-shell-width: 272px;
+    --sidebar-collapsed-width: 76px;
+}
+.sidebar .drawer-section { margin-bottom: 0.35rem; }
+.sidebar .drawer-section-title {
+    margin: 0.9rem 0.9rem 0.25rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.72;
+}
+.sidebar .drawer-link {
+    width: 100%;
+    text-align: left;
+    text-decoration: none;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.sidebar .drawer-link span { flex: 1 1 auto; }
+.sidebar .nav-podgrupa-items { padding-left: 0.9rem; }
+.sidebar .nav-podgrupa-items .drawer-link { font-weight: 500; font-size: 0.86rem; padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.sidebar .nav-podgrupa-items .nav-podgrupa-items { padding-left: 0.7rem; }
+.nav-strelica { transition: transform var(--transition-fast, 0.2s); flex: 0 0 auto; }
+.nav-podgrupa-toggle[aria-expanded="true"] .nav-strelica { transform: rotate(180deg); }
+.nav-crta { margin: 0.35rem 0.9rem; border: 0; border-top: 1px solid rgba(255, 255, 255, 0.18); opacity: 1; }
+.sidebar .drawer-logout-form { margin: 0; }
+/* Скупљена трака: иконе центриране, натписи/стрелице/подгрупе скривени
+   (правила у base.html), ширина 76px. Натпис у title за tooltip. */
+.sidebar-collapsed .drawer-section-title { display: none; }
+/* Мобилна фиока: исто стабло, подгрупе увучене. */
+.mobile-drawer .nav-podgrupa-items { padding-left: 1rem; }
+.mobile-drawer .nav-podgrupa-toggle { width: 100%; text-align: left; border: 0; background: none; font: inherit; }
+.mobile-drawer .nav-crta { border-top-color: var(--border-color, rgba(0, 0, 0, 0.12)); }
+/* Навбар: без главних ставки, десна група остаје уз десну ивицу. */
+@media (min-width: 992px) {
+    .navbar .navbar-nav.ms-auto { margin-left: auto; }
+}
+.sidebar .sidebar-panel-scroll { padding-bottom: 76px; }

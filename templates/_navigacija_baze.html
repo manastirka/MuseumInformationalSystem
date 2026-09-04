@@ -1,0 +1,252 @@
+{# Стабло база података — заједничко за леву траку (nav_prefiks="") и
+   мобилну фиоку (nav_prefiks="m-"). Иста правила приступа као раније:
+   has_module_access + u_razvoju + endpoint_exists; подмени „У развоју“
+   из museum_baze_stanje. Подгрупе су Bootstrap collapse. #}
+{% set nav_prefiks = nav_prefiks|default("") %}
+<div class="nav-stablo">
+    <a class="drawer-link" href="{{ url_for('museum_databases') }}">
+        <i class="bi bi-collection" aria-hidden="true"></i><span>Све базе података</span>
+    </a>
+    <hr class="nav-crta">
+
+    <!-- Biology Section -->
+    {% if has_module_access('botany_collection') or has_module_access('ornithology_collection') or has_module_access('bird_ringing_database') or has_module_access('ichthyology_collection') or has_module_access('herpetology_collection') or has_module_access('entomology_collection') or has_module_access('mycology_collection') or has_module_access('biodiversity_map') or has_module_access('bilja_hydrobioidea_radoman') or has_module_access('bilja_suvozemni_puzevi_pavlovic') or has_module_access('bilja_opsta_zbirka_mollusca') or has_module_access('bilja_skoljke_tadic') or has_module_access('bilja_recentni_morski_mekusci') %}
+    <div class="nav-podgrupa">
+        <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}biologySubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}biologySubmenu">
+            <i class="bi bi-tree" aria-hidden="true"></i><span>Биологија</span>
+            <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+        </button>
+        <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}biologySubmenu">
+            {% if has_module_access('botany_collection') and not u_razvoju('botany_collection') %}
+            <a class="drawer-link" href="{{ url_for('botany_collection') if endpoint_exists('botany_collection') else '#' }}">
+                <i class="bi bi-flower1" aria-hidden="true"></i><span>Ботаничка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('ornithology_collection') and not u_razvoju('ornithology_collection') %}
+            <a class="drawer-link" href="{{ url_for('ornithology_collection') if endpoint_exists('ornithology_collection') else '#' }}">
+                <i class="museum-icon-bird" aria-hidden="true"></i><span>Орнитолошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('bird_ringing_database') %}
+            <a class="drawer-link" href="{{ url_for('bird_ringing_database_view') if endpoint_exists('bird_ringing_database_view') else '#' }}">
+                <i class="bi bi-circle" aria-hidden="true"></i><span>База прстеновања птица</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('ichthyology_collection') and not u_razvoju('ichthyology_collection') %}
+            <a class="drawer-link" href="{{ url_for('ichthyology_collection') if endpoint_exists('ichthyology_collection') else '#' }}">
+                <i class="museum-icon-fish" aria-hidden="true"></i><span>Ихтиолошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('herpetology_collection') and not u_razvoju('herpetology_collection') %}
+            <a class="drawer-link" href="{{ url_for('herpetology_collection') if endpoint_exists('herpetology_collection') else '#' }}">
+                <i class="museum-icon-snake" aria-hidden="true"></i><span>Херпетолошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('entomology_collection') and not u_razvoju('entomology_collection') %}
+            <a class="drawer-link" href="{{ url_for('entomology_collection') if endpoint_exists('entomology_collection') else '#' }}">
+                <i class="bi bi-bug-fill" aria-hidden="true"></i><span>Ентомолошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('mycology_collection') and not u_razvoju('mycology_collection') %}
+            <a class="drawer-link" href="{{ url_for('mycology_collection') if endpoint_exists('mycology_collection') else '#' }}">
+                <i class="museum-icon-mushroom" aria-hidden="true"></i><span>Миколошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('bilja_hydrobioidea_radoman') or has_module_access('bilja_suvozemni_puzevi_pavlovic') or has_module_access('bilja_opsta_zbirka_mollusca') or has_module_access('bilja_skoljke_tadic') or has_module_access('bilja_recentni_morski_mekusci') %}
+            <div class="nav-podgrupa">
+                <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}biljaMolluscaSubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}biljaMolluscaSubmenu">
+                    <i class="museum-icon-snail" aria-hidden="true"></i><span>Збирка мекушаца</span>
+                    <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+                </button>
+                <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}biljaMolluscaSubmenu">
+                    {% if has_module_access('bilja_hydrobioidea_radoman') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_hydrobioidea_radoman') if endpoint_exists('bilja_hydrobioidea_radoman') else '#' }}">
+                        <i class="museum-icon-snail" aria-hidden="true"></i><span>Hydrobioidea — П. Радоман</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('bilja_suvozemni_puzevi_pavlovic') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_suvozemni_puzevi_pavlovic') if endpoint_exists('bilja_suvozemni_puzevi_pavlovic') else '#' }}">
+                        <i class="museum-icon-snail" aria-hidden="true"></i><span>Сувоземни пужеви — П. С. Павловић</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('bilja_opsta_zbirka_mollusca') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_opsta_zbirka_mollusca') if endpoint_exists('bilja_opsta_zbirka_mollusca') else '#' }}">
+                        <i class="museum-icon-shell" aria-hidden="true"></i><span>Општа збирка мекушаца</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('bilja_skoljke_tadic') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_skoljke_tadic') if endpoint_exists('bilja_skoljke_tadic') else '#' }}">
+                        <i class="museum-icon-shell" aria-hidden="true"></i><span>Збирка шкољки — А. Тадић</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('bilja_recentni_morski_mekusci') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_recentni_morski_mekusci') if endpoint_exists('bilja_recentni_morski_mekusci') else '#' }}">
+                        <i class="museum-icon-shell" aria-hidden="true"></i><span>Рецентни морски мекушци</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if has_module_access('biodiversity_map') %}
+            <hr class="nav-crta">
+            <a class="drawer-link" href="{{ url_for('maps.admin_biodiversity_map') if endpoint_exists('maps.admin_biodiversity_map') else '#' }}">
+                <i class="bi bi-globe-americas" aria-hidden="true"></i><span>Карта биодиверзитета Србије</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Geology Section -->
+    {% if has_module_access('mineral_database') or has_module_access('petrology_collection') or has_module_access('meteorite_collection') or has_module_access('paleozoology_collection') or has_module_access('sanja_paleogene_neogene_mammals') or has_module_access('bilja_kenozojske_invertebrate') or has_module_access('paleobotany_collection') or has_module_access('maps_karte') %}
+    <div class="nav-podgrupa">
+        <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}geologySubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}geologySubmenu">
+            <i class="bi bi-gem" aria-hidden="true"></i><span>Геологија</span>
+            <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+        </button>
+        <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}geologySubmenu">
+            {% if has_module_access('mineral_database') %}
+            <a class="drawer-link" href="{{ url_for('admin_mineral_collection') if endpoint_exists('admin_mineral_collection') else '#' }}">
+                <i class="bi bi-gem" aria-hidden="true"></i><span>Збирка минерала</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('petrology_collection') and not u_razvoju('petrology_collection') %}
+            <a class="drawer-link" href="{{ url_for('petrology_collection') if endpoint_exists('petrology_collection') else '#' }}">
+                <i class="bi bi-bricks" aria-hidden="true"></i><span>Петролошка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('meteorite_collection') and not u_razvoju('meteorite_collection') %}
+            <a class="drawer-link" href="{{ url_for('meteorite_collection') if endpoint_exists('meteorite_collection') else '#' }}">
+                <i class="museum-icon-shooting-star" aria-hidden="true"></i><span>Збирка метеорита</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('paleozoology_collection') or has_module_access('sanja_paleogene_neogene_mammals') or has_module_access('bilja_kenozojske_invertebrate') %}
+            <div class="nav-podgrupa">
+                <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}paleozoologySubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}paleozoologySubmenu">
+                    <i class="museum-icon-dinosaur" aria-hidden="true"></i><span>Палеозоологија</span>
+                    <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+                </button>
+                <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}paleozoologySubmenu">
+                    {% if has_module_access('paleozoology_collection') and not u_razvoju('paleozoology_collection') %}
+                    <a class="drawer-link" href="{{ url_for('paleozoology_collection') if endpoint_exists('paleozoology_collection') else '#' }}">
+                        <i class="museum-icon-dinosaur" aria-hidden="true"></i><span>Палеозоолошка збирка</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('sanja_paleogene_neogene_mammals') and not u_razvoju('sanja_paleogene_neogene_mammals') %}
+                    <a class="drawer-link" href="{{ url_for('sanja_paleogene_neogene_mammals') if endpoint_exists('sanja_paleogene_neogene_mammals') else '#' }}">
+                        <i class="museum-icon-mammoth" aria-hidden="true"></i><span>Крупни сисари палеоген/неоген</span>
+                    </a>
+                    {% endif %}
+                    {% if has_module_access('bilja_kenozojske_invertebrate') %}
+                    <a class="drawer-link" href="{{ url_for('bilja_kenozojske_invertebrate') if endpoint_exists('bilja_kenozojske_invertebrate') else '#' }}">
+                        <i class="museum-icon-dinosaur" aria-hidden="true"></i><span>Кенозојски инвертебрати</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if has_module_access('paleobotany_collection') and not u_razvoju('paleobotany_collection') %}
+            <a class="drawer-link" href="{{ url_for('paleobotany_collection') if endpoint_exists('paleobotany_collection') else '#' }}">
+                <i class="bi bi-leaf" aria-hidden="true"></i><span>Палеоботаничка збирка</span>
+            </a>
+            {% endif %}
+            {% if has_module_access('maps_karte') %}
+            <hr class="nav-crta">
+            <a class="drawer-link" href="{{ url_for('maps.admin_maps') if endpoint_exists('maps.admin_maps') else '#' }}">
+                <i class="bi bi-map" aria-hidden="true"></i><span>Геолошка карта Србије</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Library Section -->
+    {% if has_module_access('library_database') %}
+    <div class="nav-podgrupa">
+        <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}librarySubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}librarySubmenu">
+            <i class="bi bi-book" aria-hidden="true"></i><span>Библиотека</span>
+            <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+        </button>
+        <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}librarySubmenu">
+            <a class="drawer-link" href="{{ url_for('library_database') if endpoint_exists('library_database') else '#' }}">
+                <i class="bi bi-journal-bookmark" aria-hidden="true"></i><span>Библиотека музеја</span>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Музејске евиденције и збирке (изравнато из некадашње
+         „Администрација" групе — админ панел је у главној навигацији) -->
+    {% if has_module_access('employees_database') or has_module_access('employee_profiles') or has_module_access('exhibitions_database') or has_module_access('exhibits_database') or has_module_access('cultural_heritage') %}
+    <hr class="nav-crta">
+    {% endif %}
+    {% if has_module_access('employees_database') %}
+    <a class="drawer-link" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
+        <i class="bi bi-people" aria-hidden="true"></i><span>База запослених</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('employee_profiles') %}
+    <a class="drawer-link" href="{{ url_for('employee_profiles_database') if endpoint_exists('employee_profiles_database') else '#' }}">
+        <i class="bi bi-person-badge" aria-hidden="true"></i><span>Профили запослених</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('employees_database') and not u_razvoju('visitors_database') %}
+    <a class="drawer-link" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
+        <i class="bi bi-person-walking" aria-hidden="true"></i><span>База посетилаца</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('employees_database') and not u_razvoju('research_database') %}
+    <a class="drawer-link" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
+        <i class="bi bi-mortarboard" aria-hidden="true"></i><span>Истраживачки пројекти</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('exhibitions_database') %}
+    <a class="drawer-link" href="{{ url_for('exhibitions_database') if endpoint_exists('exhibitions_database') else '#' }}">
+        <i class="bi bi-easel" aria-hidden="true"></i><span>База изложби</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('exhibits_database') and not u_razvoju('exhibits_database') %}
+    <a class="drawer-link" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
+        <i class="bi bi-box" aria-hidden="true"></i><span>База експоната</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('cultural_heritage') and not u_razvoju('cultural_heritage') %}
+    <a class="drawer-link" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
+        <i class="bi bi-bank" aria-hidden="true"></i><span>Културно наслеђе</span>
+    </a>
+    {% endif %}
+
+                                    <!-- У развоју: базе без стварних музејских података (museum_baze_stanje) -->
+    {% set _u_razvoju = baze_u_razvoju() %}
+    {% if _u_razvoju %}
+    <hr class="nav-crta">
+    <div class="nav-podgrupa">
+        <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}uRazvojuSubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}uRazvojuSubmenu">
+            <i class="bi bi-cone-striped" aria-hidden="true"></i><span>У развоју</span>
+            <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+        </button>
+        <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}uRazvojuSubmenu">
+            {% for s in _u_razvoju %}
+            <a class="drawer-link" href="{{ url_for(s.endpoint) if endpoint_exists(s.endpoint) else '#' }}" title="Још нема стварних података — {{ s.odeljak }}">
+                <i class="{{ s.ikona }}" aria-hidden="true"></i><span>{{ s.naziv }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+<!-- External Databases Section -->
+    {% if has_module_access('nhm_data_portal') %}
+    <div class="nav-podgrupa">
+        <button type="button" class="drawer-link nav-podgrupa-toggle" data-bs-toggle="collapse" data-bs-target="#{{ nav_prefiks }}externalSubmenu" aria-expanded="false" aria-controls="{{ nav_prefiks }}externalSubmenu">
+            <i class="bi bi-globe" aria-hidden="true"></i><span>Екстерне базе</span>
+            <i class="bi bi-chevron-down nav-strelica ms-auto" aria-hidden="true"></i>
+        </button>
+        <div class="collapse nav-podgrupa-items" id="{{ nav_prefiks }}externalSubmenu">
+            <a class="drawer-link" href="{{ url_for('nhm_data_portal') if endpoint_exists('nhm_data_portal') else '#' }}">
+                <i class="bi bi-globe-europe-africa" aria-hidden="true"></i><span>NHM London Data Portal</span>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>

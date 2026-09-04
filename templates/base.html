@@ -398,7 +398,7 @@
             width: var(--sidebar-collapsed-width, 96px);
         }
 
-        .sidebar-collapsed .nav-link span {
+        .sidebar-collapsed :is(.nav-link, .drawer-link) span {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -412,17 +412,20 @@
 
         .sidebar-collapsed .sidebar-brand-copy,
         .sidebar-collapsed .sidebar-section-title,
+        .sidebar-collapsed .drawer-section-title,
+        .sidebar-collapsed .nav-strelica,
+        .sidebar-collapsed .nav-crta,
         .sidebar-collapsed .bi-chevron-down,
         .sidebar-collapsed .sidebar-user-meta {
             display: none;
         }
 
-        .sidebar-collapsed .nav-link {
+        .sidebar-collapsed :is(.nav-link, .drawer-link) {
             justify-content: center;
             padding: 0.9rem 0.75rem;
         }
 
-        .sidebar-collapsed .nav-link i,
+        .sidebar-collapsed :is(.nav-link, .drawer-link) i,
         .sidebar-collapsed .sidebar-avatar {
             margin-right: 0;
         }
@@ -442,7 +445,8 @@
             padding-right: 0.6rem;
         }
 
-        .sidebar-collapsed .sidebar-submenu {
+        .sidebar-collapsed .sidebar-submenu,
+        .sidebar-collapsed .nav-podgrupa-items {
             display: none;
         }
 
@@ -938,369 +942,6 @@
                                 </template>
                             </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('dashboard') }}">
-                                <i class="bi bi-house me-1"></i>Почетна
-                            </a>
-                        </li>
-                        {% if has_module_access('timesheet') %}
-                        <li class="nav-item dropdown">
-                            {% if is_admin() or is_director() %}
-                            <a class="nav-link" href="{{ url_for('admin_timesheet_main') }}">
-                                <i class="bi bi-calendar-check me-1"></i>Радне листе
-                            </a>
-                            {% elif is_department_head() %}
-                            <a class="nav-link dropdown-toggle" href="#" id="timesheetDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-calendar-check me-1"></i>Радне листе
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('timesheet_entry') }}">
-                                    <i class="bi bi-pencil-square me-2"></i>Унос радних листа
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('timesheet_view') }}">
-                                    <i class="bi bi-eye me-2"></i>Преглед радних листа
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('admin_timesheet_reports') }}">
-                                    <i class="bi bi-card-checklist me-2"></i>Извештаји (одељење)
-                                </a></li>
-                            </ul>
-                            {% else %}
-                            <a class="nav-link dropdown-toggle" href="#" id="timesheetDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-calendar-check me-1"></i>Радне листе
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('timesheet_entry') }}">
-                                    <i class="bi bi-pencil-square me-2"></i>Унос радних листа
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('timesheet_view') }}">
-                                    <i class="bi bi-eye me-2"></i>Преглед радних листа
-                                </a></li>
-                            </ul>
-                            {% endif %}
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('vehicles.vehicle_reservations') }}">
-                                <i class="bi bi-truck me-1"></i>Возила
-                            </a>
-                        </li>
-                        {% if has_module_access('museum_databases') %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="{{ url_for('museum_databases') }}" id="databasesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-database me-1"></i>Базе података
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-mega" aria-labelledby="databasesDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('museum_databases') }}">
-                                    <i class="bi bi-collection me-2"></i>Све базе података
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-
-                                <!-- Biology Section -->
-                                {% if has_module_access('botany_collection') or has_module_access('ornithology_collection') or has_module_access('bird_ringing_database') or has_module_access('ichthyology_collection') or has_module_access('herpetology_collection') or has_module_access('entomology_collection') or has_module_access('mycology_collection') or has_module_access('biodiversity_map') or has_module_access('bilja_hydrobioidea_radoman') or has_module_access('bilja_suvozemni_puzevi_pavlovic') or has_module_access('bilja_opsta_zbirka_mollusca') or has_module_access('bilja_skoljke_tadic') or has_module_access('bilja_recentni_morski_mekusci') %}
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="biologySubmenu">
-                                        <i class="bi bi-tree me-2"></i>Биологија
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="biologySubmenu">
-                                        {% if has_module_access('botany_collection') and not u_razvoju('botany_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('botany_collection') if endpoint_exists('botany_collection') else '#' }}">
-                                            <i class="bi bi-flower1 me-2"></i>Ботаничка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('ornithology_collection') and not u_razvoju('ornithology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('ornithology_collection') if endpoint_exists('ornithology_collection') else '#' }}">
-                                            <i class="museum-icon-bird me-2"></i>Орнитолошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('bird_ringing_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('bird_ringing_database_view') if endpoint_exists('bird_ringing_database_view') else '#' }}">
-                                            <i class="bi bi-circle me-2"></i>База прстеновања птица
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('ichthyology_collection') and not u_razvoju('ichthyology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('ichthyology_collection') if endpoint_exists('ichthyology_collection') else '#' }}">
-                                            <i class="museum-icon-fish me-2"></i>Ихтиолошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('herpetology_collection') and not u_razvoju('herpetology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('herpetology_collection') if endpoint_exists('herpetology_collection') else '#' }}">
-                                            <i class="museum-icon-snake me-2"></i>Херпетолошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('entomology_collection') and not u_razvoju('entomology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('entomology_collection') if endpoint_exists('entomology_collection') else '#' }}">
-                                            <i class="bi bi-bug-fill me-2"></i>Ентомолошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('mycology_collection') and not u_razvoju('mycology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('mycology_collection') if endpoint_exists('mycology_collection') else '#' }}">
-                                            <i class="museum-icon-mushroom me-2"></i>Миколошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('bilja_hydrobioidea_radoman') or has_module_access('bilja_suvozemni_puzevi_pavlovic') or has_module_access('bilja_opsta_zbirka_mollusca') or has_module_access('bilja_skoljke_tadic') or has_module_access('bilja_recentni_morski_mekusci') %}
-                                        <li class="dropdown-submenu">
-                                            <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="biljaMolluscaSubmenu">
-                                                <i class="museum-icon-snail me-2"></i>Збирка мекушаца
-                                                <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                            </a>
-                                            <ul class="dropdown-submenu-items" id="biljaMolluscaSubmenu">
-                                                {% if has_module_access('bilja_hydrobioidea_radoman') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_hydrobioidea_radoman') if endpoint_exists('bilja_hydrobioidea_radoman') else '#' }}">
-                                                    <i class="museum-icon-snail me-2"></i>Hydrobioidea — П. Радоман
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('bilja_suvozemni_puzevi_pavlovic') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_suvozemni_puzevi_pavlovic') if endpoint_exists('bilja_suvozemni_puzevi_pavlovic') else '#' }}">
-                                                    <i class="museum-icon-snail me-2"></i>Сувоземни пужеви — П. С. Павловић
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('bilja_opsta_zbirka_mollusca') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_opsta_zbirka_mollusca') if endpoint_exists('bilja_opsta_zbirka_mollusca') else '#' }}">
-                                                    <i class="museum-icon-shell me-2"></i>Општа збирка мекушаца
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('bilja_skoljke_tadic') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_skoljke_tadic') if endpoint_exists('bilja_skoljke_tadic') else '#' }}">
-                                                    <i class="museum-icon-shell me-2"></i>Збирка шкољки — А. Тадић
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('bilja_recentni_morski_mekusci') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_recentni_morski_mekusci') if endpoint_exists('bilja_recentni_morski_mekusci') else '#' }}">
-                                                    <i class="museum-icon-shell me-2"></i>Рецентни морски мекушци
-                                                </a></li>
-                                                {% endif %}
-                                            </ul>
-                                        </li>
-                                        {% endif %}
-                                        {% if has_module_access('biodiversity_map') %}
-                                        <li><hr class="dropdown-divider my-1"></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('maps.admin_biodiversity_map') if endpoint_exists('maps.admin_biodiversity_map') else '#' }}">
-                                            <i class="bi bi-globe-americas me-2"></i>Карта биодиверзитета Србије
-                                        </a></li>
-                                        {% endif %}
-                                    </ul>
-                                </li>
-                                {% endif %}
-
-                                <!-- Geology Section -->
-                                {% if has_module_access('mineral_database') or has_module_access('petrology_collection') or has_module_access('meteorite_collection') or has_module_access('paleozoology_collection') or has_module_access('sanja_paleogene_neogene_mammals') or has_module_access('bilja_kenozojske_invertebrate') or has_module_access('paleobotany_collection') or has_module_access('maps_karte') %}
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="geologySubmenu">
-                                        <i class="bi bi-gem me-2"></i>Геологија
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="geologySubmenu">
-                                        {% if has_module_access('mineral_database') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('admin_mineral_collection') if endpoint_exists('admin_mineral_collection') else '#' }}">
-                                            <i class="bi bi-gem me-2"></i>Збирка минерала
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('petrology_collection') and not u_razvoju('petrology_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('petrology_collection') if endpoint_exists('petrology_collection') else '#' }}">
-                                            <i class="bi bi-bricks me-2"></i>Петролошка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('meteorite_collection') and not u_razvoju('meteorite_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('meteorite_collection') if endpoint_exists('meteorite_collection') else '#' }}">
-                                            <i class="museum-icon-shooting-star me-2"></i>Збирка метеорита
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('paleozoology_collection') or has_module_access('sanja_paleogene_neogene_mammals') or has_module_access('bilja_kenozojske_invertebrate') %}
-                                        <li class="dropdown-submenu">
-                                            <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="paleozoologySubmenu">
-                                                <i class="museum-icon-dinosaur me-2"></i>Палеозоологија
-                                                <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                            </a>
-                                            <ul class="dropdown-submenu-items" id="paleozoologySubmenu">
-                                                {% if has_module_access('paleozoology_collection') and not u_razvoju('paleozoology_collection') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('paleozoology_collection') if endpoint_exists('paleozoology_collection') else '#' }}">
-                                                    <i class="museum-icon-dinosaur me-2"></i>Палеозоолошка збирка
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('sanja_paleogene_neogene_mammals') and not u_razvoju('sanja_paleogene_neogene_mammals') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('sanja_paleogene_neogene_mammals') if endpoint_exists('sanja_paleogene_neogene_mammals') else '#' }}">
-                                                    <i class="museum-icon-mammoth me-2"></i>Крупни сисари палеоген/неоген
-                                                </a></li>
-                                                {% endif %}
-                                                {% if has_module_access('bilja_kenozojske_invertebrate') %}
-                                                <li><a class="dropdown-item" href="{{ url_for('bilja_kenozojske_invertebrate') if endpoint_exists('bilja_kenozojske_invertebrate') else '#' }}">
-                                                    <i class="museum-icon-dinosaur me-2"></i>Кенозојски инвертебрати
-                                                </a></li>
-                                                {% endif %}
-                                            </ul>
-                                        </li>
-                                        {% endif %}
-                                        {% if has_module_access('paleobotany_collection') and not u_razvoju('paleobotany_collection') %}
-                                        <li><a class="dropdown-item" href="{{ url_for('paleobotany_collection') if endpoint_exists('paleobotany_collection') else '#' }}">
-                                            <i class="bi bi-leaf me-2"></i>Палеоботаничка збирка
-                                        </a></li>
-                                        {% endif %}
-                                        {% if has_module_access('maps_karte') %}
-                                        <li><hr class="dropdown-divider my-1"></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('maps.admin_maps') if endpoint_exists('maps.admin_maps') else '#' }}">
-                                            <i class="bi bi-map me-2"></i>Геолошка карта Србије
-                                        </a></li>
-                                        {% endif %}
-                                    </ul>
-                                </li>
-                                {% endif %}
-
-                                <!-- Library Section -->
-                                {% if has_module_access('library_database') %}
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="librarySubmenu">
-                                        <i class="bi bi-book me-2"></i>Библиотека
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="librarySubmenu">
-                                        <li><a class="dropdown-item" href="{{ url_for('library_database') if endpoint_exists('library_database') else '#' }}">
-                                            <i class="bi bi-journal-bookmark me-2"></i>Библиотека музеја
-                                        </a></li>
-                                    </ul>
-                                </li>
-                                {% endif %}
-
-                                <!-- Музејске евиденције и збирке (изравнато из некадашње
-                                     „Администрација" групе — админ панел је у главној навигацији) -->
-                                {% if has_module_access('employees_database') or has_module_access('employee_profiles') or has_module_access('exhibitions_database') or has_module_access('exhibits_database') or has_module_access('cultural_heritage') %}
-                                <li><hr class="dropdown-divider"></li>
-                                {% endif %}
-                                {% if has_module_access('employees_database') %}
-                                <li><a class="dropdown-item" href="{{ url_for('employees_database') if endpoint_exists('employees_database') else '#' }}">
-                                    <i class="bi bi-people me-2"></i>База запослених
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('employee_profiles') %}
-                                <li><a class="dropdown-item" href="{{ url_for('employee_profiles_database') if endpoint_exists('employee_profiles_database') else '#' }}">
-                                    <i class="bi bi-person-badge me-2"></i>Профили запослених
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('employees_database') and not u_razvoju('visitors_database') %}
-                                <li><a class="dropdown-item" href="{{ url_for('visitors_database') if endpoint_exists('visitors_database') else '#' }}">
-                                    <i class="bi bi-person-walking me-2"></i>База посетилаца
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('employees_database') and not u_razvoju('research_database') %}
-                                <li><a class="dropdown-item" href="{{ url_for('research_database') if endpoint_exists('research_database') else '#' }}">
-                                    <i class="bi bi-mortarboard me-2"></i>Истраживачки пројекти
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('exhibitions_database') %}
-                                <li><a class="dropdown-item" href="{{ url_for('exhibitions_database') if endpoint_exists('exhibitions_database') else '#' }}">
-                                    <i class="bi bi-easel me-2"></i>База изложби
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('exhibits_database') and not u_razvoju('exhibits_database') %}
-                                <li><a class="dropdown-item" href="{{ url_for('exhibits_database') if endpoint_exists('exhibits_database') else '#' }}">
-                                    <i class="bi bi-box me-2"></i>База експоната
-                                </a></li>
-                                {% endif %}
-                                {% if has_module_access('cultural_heritage') and not u_razvoju('cultural_heritage') %}
-                                <li><a class="dropdown-item" href="{{ url_for('cultural_heritage_database') if endpoint_exists('cultural_heritage_database') else '#' }}">
-                                    <i class="bi bi-bank me-2"></i>Културно наслеђе
-                                </a></li>
-                                {% endif %}
-
-                                                                <!-- У развоју: базе без стварних музејских података (museum_baze_stanje) -->
-                                {% set _u_razvoju = baze_u_razvoju() %}
-                                {% if _u_razvoju %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="uRazvojuSubmenu">
-                                        <i class="bi bi-cone-striped me-2"></i>У развоју
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="uRazvojuSubmenu">
-                                        {% for s in _u_razvoju %}
-                                        <li><a class="dropdown-item" href="{{ url_for(s.endpoint) if endpoint_exists(s.endpoint) else '#' }}" title="Још нема стварних података — {{ s.odeljak }}">
-                                            <i class="{{ s.ikona }} me-2"></i>{{ s.naziv }}
-                                        </a></li>
-                                        {% endfor %}
-                                    </ul>
-                                </li>
-                                {% endif %}
-
-<!-- External Databases Section -->
-                                {% if has_module_access('nhm_data_portal') %}
-                                <li class="dropdown-submenu">
-                                    <a class="dropdown-item dropdown-toggle-submenu" href="#" data-submenu="externalSubmenu">
-                                        <i class="bi bi-globe me-2"></i>Екстерне базе
-                                        <i class="bi bi-chevron-down submenu-arrow ms-auto"></i>
-                                    </a>
-                                    <ul class="dropdown-submenu-items" id="externalSubmenu">
-                                        <li><a class="dropdown-item" href="{{ url_for('nhm_data_portal') if endpoint_exists('nhm_data_portal') else '#' }}">
-                                            <i class="bi bi-globe-europe-africa me-2"></i>NHM London Data Portal
-                                        </a></li>
-                                    </ul>
-                                </li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item nav-wide-only">
-                            <a class="nav-link" href="{{ url_for('museum_terminology') }}">
-                                <i class="bi bi-book me-1"></i>Терминологија
-                            </a>
-                        </li>
-                        <li class="nav-item nav-wide-only">
-                            <a class="nav-link" href="{{ url_for('exhibition_planner') if endpoint_exists('exhibition_planner') else '#' }}">
-                                <i class="bi bi-easel me-1"></i>Изложбе
-                            </a>
-                        </li>
-                        <li class="nav-item dropdown nav-wide-only">
-                            <a class="nav-link dropdown-toggle" href="#" id="projektiDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-building me-1"></i>Пројекти
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti') }}">
-                                    <i class="bi bi-building me-2"></i>Преглед пројекта
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti_dokumentacija') }}">
-                                    <i class="bi bi-journal-richtext me-2"></i>Пројектна документација
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti_space_planner') }}">
-                                    <i class="bi bi-bounding-box-circles me-2"></i>Интерактивни план -5
-                                </a></li>
-                            </ul>
-                        </li>
-                        {% if is_admin() or is_director() %}
-                        <li class="nav-item nav-wide-only">
-                            <a class="nav-link" href="{{ url_for('admin_panel') }}">
-                                <i class="bi bi-gear me-1"></i>Администрација
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item dropdown nav-compact-only">
-                            <a class="nav-link dropdown-toggle" href="#" id="moreNavDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots me-1"></i>Више
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('museum_terminology') }}">
-                                    <i class="bi bi-book me-2"></i>Терминологија
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('exhibition_planner') if endpoint_exists('exhibition_planner') else '#' }}">
-                                    <i class="bi bi-easel me-2"></i>Изложбе
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti') }}">
-                                    <i class="bi bi-building me-2"></i>Преглед пројекта
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti_dokumentacija') }}">
-                                    <i class="bi bi-journal-richtext me-2"></i>Пројектна документација
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('projects.admin_projekti_space_planner') }}">
-                                    <i class="bi bi-bounding-box-circles me-2"></i>Интерактивни план -5
-                                </a></li>
-                                {% if is_admin() or is_director() %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('admin_panel') }}">
-                                    <i class="bi bi-gear me-2"></i>Администрација
-                                </a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle me-1"></i>{{ user_name }}
@@ -1341,201 +982,7 @@
         <div class="sidebar-organic-panel">
             <div class="sidebar-panel-scroll">
                 <nav class="sidebar-nav">
-                    <ul class="nav flex-column">
-                {% if is_admin() or is_director() %}
-                <li class="sidebar-section-title" aria-hidden="true">Админ преглед</li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('archive_signature.admin_archive_dashboard') }}" aria-label="Преглед архиве">
-                        <i class="bi bi-speedometer2"></i>
-                        <span>Преглед</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('approval_center.centar_odobravanje') }}" aria-label="Центар за одобравање">
-                        <i class="bi bi-check2-square"></i>
-                        <span>Центар за одобравање</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('approval_center.arhiva') }}" aria-label="Архива">
-                        <i class="bi bi-archive"></i>
-                        <span>Архива</span>
-                    </a>
-                </li>
-                <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
-                {% else %}
-                <li class="sidebar-section-title" aria-hidden="true">Оперативни модули</li>
-                <!-- Zahtevi Section -->
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="collapse" href="#zahteviSubmenu" data-bs-target="#zahteviSubmenu" role="button" aria-expanded="false" aria-controls="zahteviSubmenu">
-                        <i class="bi bi-file-earmark-text"></i>
-                        <span>Захтеви</span>
-                        <i class="bi bi-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="zahteviSubmenu">
-                        <ul class="nav flex-column sidebar-submenu">
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('zahtev_slobodan_dan') if endpoint_exists('zahtev_slobodan_dan') else '#' }}">
-                                    <i class="bi bi-calendar-x me-2"></i>
-                                    <span>Захтев за слободан дан</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('zahtev_godisnji_odmor') if endpoint_exists('zahtev_godisnji_odmor') else '#' }}">
-                                    <i class="bi bi-sun me-2"></i>
-                                    <span>Захтев за годишњи одмор</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('zahtev_razno') if endpoint_exists('zahtev_razno') else '#' }}">
-                                    <i class="bi bi-file-earmark-plus me-2"></i>
-                                    <span>Захтев разно</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- Finansije Section -->
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="collapse" href="#finansijeSubmenu" data-bs-target="#finansijeSubmenu" role="button" aria-expanded="false" aria-controls="finansijeSubmenu">
-                        <i class="bi bi-wallet2"></i>
-                        <span>Финансије</span>
-                        <i class="bi bi-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="finansijeSubmenu">
-                        <ul class="nav flex-column sidebar-submenu">
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('finansijski_plan') if endpoint_exists('finansijski_plan') else '#' }}">
-                                    <i class="bi bi-graph-up me-2"></i>
-                                    <span>Финансијски план</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('zahtev_nabavka') if endpoint_exists('zahtev_nabavka') else '#' }}">
-                                    <i class="bi bi-cart-plus me-2"></i>
-                                    <span>Захтев за набавку</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- Terenska aktivnost -->
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="collapse" href="#terenskaSubmenu" data-bs-target="#terenskaSubmenu" role="button" aria-expanded="false" aria-controls="terenskaSubmenu">
-                        <i class="bi bi-geo-alt"></i>
-                        <span>Теренска активност</span>
-                        <i class="bi bi-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="terenskaSubmenu">
-                        <ul class="nav flex-column sidebar-submenu">
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('terenska_aktivnost') if endpoint_exists('terenska_aktivnost') else '#' }}">
-                                    <i class="bi bi-list-ul me-2"></i>
-                                    <span>Преглед активности</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('zahtev_sluzbeni_put') if endpoint_exists('zahtev_sluzbeni_put') else '#' }}">
-                                    <i class="bi bi-signpost-2 me-2"></i>
-                                    <span>Захтев за службени пут</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-
-                {% if is_department_head() %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('approval_center.centar_odobravanje') }}" aria-label="Центар за одобравање">
-                        <i class="bi bi-check2-square"></i>
-                        <span>Центар за одобравање</span>
-                    </a>
-                </li>
-                {% endif %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('approval_center.arhiva') }}" aria-label="Архива">
-                        <i class="bi bi-archive"></i>
-                        <span>Архива</span>
-                    </a>
-                </li>
-
-                <li class="sidebar-divider" role="presentation" aria-hidden="true"></li>
-                {% endif %}
-
-                <li class="sidebar-section-title" aria-hidden="true">Брзи приступ</li>
-
-                <!-- Quick Links -->
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard') }}" aria-label="Почетна">
-                        <i class="bi bi-house"></i>
-                        <span>Почетна</span>
-                    </a>
-                </li>
-                {% if has_module_access('dokumenti') %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('documents.dokumenti_lista') }}" aria-label="Документа">
-                        <i class="bi bi-folder2-open"></i>
-                        <span>Документа</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if has_module_access('fototeka') %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('fototeka.fototeka_galerija') }}" aria-label="Фототека">
-                        <i class="bi bi-camera"></i>
-                        <span>Фототека</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('fototeka.fototeka_prijemni_red') }}" aria-label="Пријемни ред">
-                        <i class="bi bi-inboxes"></i>
-                        <span>Пријемни ред</span>
-                    </a>
-                </li>
-                {% if is_admin() or is_director() %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('fototeka.fototeka_import') }}" aria-label="Увоз са диска">
-                        <i class="bi bi-hdd-network"></i>
-                        <span>Увоз са диска</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% endif %}
-                {% if has_module_access('kr_dosije') %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('kr_dosije.lista') }}" aria-label="К-Р досије">
-                        <i class="bi bi-clipboard2-pulse"></i>
-                        <span>К-Р досије</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if has_module_access('museum_databases') %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('museum_databases') }}" aria-label="Базе података">
-                        <i class="bi bi-database"></i>
-                        <span>Базе података</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if has_module_access('news') %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('museum_news') }}" aria-label="Музејске вести">
-                        <i class="bi bi-newspaper"></i>
-                        <span>Музејске вести</span>
-                    </a>
-                </li>
-                {% endif %}
-                {% if not is_admin() %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('mail.mail_client_page') }}">
-                        <i class="bi bi-envelope"></i>
-                        <span>Електронска пошта</span>
-                    </a>
-                </li>
-                {% endif %}
-                    </ul>
+                    {% include '_navigacija.html' %}
                 </nav>
             </div>
         </div>
@@ -1701,7 +1148,7 @@
         }
 
         // Close sidebar on link click (mobile)
-        document.querySelectorAll('.sidebar-nav .nav-link:not([data-bs-toggle])').forEach(link => {
+        document.querySelectorAll('.sidebar-nav :is(.nav-link, .drawer-link):not([data-bs-toggle])').forEach(link => {
             link.addEventListener('click', function() {
                 if (window.innerWidth < 992) {
                     toggleSidebar();
@@ -1771,7 +1218,7 @@
             const sidebar = document.getElementById('sidebar');
             const contentWrapper = document.querySelector('.content-wrapper');
             const savedSidebarCollapsed = localStorage.getItem('sidebarCollapsed');
-            const isCollapsed = savedSidebarCollapsed === null ? true : savedSidebarCollapsed === 'true';
+            const isCollapsed = savedSidebarCollapsed === null ? false : savedSidebarCollapsed === 'true';
 
             if (sidebar && isCollapsed) {
                 sidebar.classList.add('sidebar-collapsed');
@@ -1790,9 +1237,17 @@
                 sidebar.appendChild(collapseBtn);
             }
 
+            // Натпис у title — tooltip кад је трака скупљена на иконе
+            if (sidebar) {
+                sidebar.querySelectorAll('.drawer-link').forEach(link => {
+                    const span = link.querySelector('span');
+                    if (span && !link.title) { link.title = span.textContent.trim(); }
+                });
+            }
+
             // Expand sidebar when clicking any icon in collapsed mode
             if (sidebar) {
-                sidebar.querySelectorAll('.nav-link').forEach(link => {
+                sidebar.querySelectorAll('.nav-link, .drawer-link').forEach(link => {
                     link.addEventListener('click', function(e) {
                         if (sidebar.classList.contains('sidebar-collapsed')) {
                             e.preventDefault();
@@ -1811,7 +1266,7 @@
 
             // Active menu highlight
             const currentPath = window.location.pathname;
-            const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
+            const sidebarLinks = document.querySelectorAll('.sidebar :is(.nav-link, .drawer-link)');
             sidebarLinks.forEach(link => {
                 const href = link.getAttribute('href');
                 if (href && currentPath === href) {

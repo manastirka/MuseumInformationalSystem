@@ -43,14 +43,15 @@ test.describe('UI доградње (fix/ui-doterivanje-2)', () => {
   test('3) „Администрација" није у Базе података, али базе и главни нав остају', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'networkidle' });
     const info = await page.evaluate(() => {
-      const dd = document.querySelector('ul[aria-labelledby="databasesDropdown"]');
+      // Базе живе у левој траци (templates/_navigacija_baze.html), не у мега-менију навбара.
+      const dd = document.querySelector('.sidebar .nav-stablo');
       const adminInMenu = dd
         ? [...dd.querySelectorAll('a, span')].some((e) => /Администрација/.test(e.textContent))
         : true;
       const links = dd
-        ? [...dd.querySelectorAll('a.dropdown-item')].map((a) => a.textContent.trim().replace(/\s+/g, ' '))
+        ? [...dd.querySelectorAll('a.drawer-link')].map((a) => a.textContent.trim().replace(/\s+/g, ' '))
         : [];
-      const mainNavAdmin = [...document.querySelectorAll('a.nav-link')]
+      const mainNavAdmin = [...document.querySelectorAll('.navbar a.nav-link')]
         .some((a) => /Администрација/.test(a.textContent) && a.getAttribute('href') === '/admin');
       return { adminInMenu, links, mainNavAdmin };
     });

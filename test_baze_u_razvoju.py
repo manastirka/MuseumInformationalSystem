@@ -86,8 +86,10 @@ class BazaIMeniTest(unittest.TestCase):
         odgovor = self.client.get('/dashboard', base_url=BAZA)
         self.assertEqual(odgovor.status_code, 200)
         telo = odgovor.get_data(as_text=True)
+        # Лева трака (без префикса) — мобилна фиока понавља исто стабло са „m-“ префиксом.
         poc = telo.index('id="databasesDropdown"')
-        return telo[poc:]
+        kraj = telo.find('id="m-databasesDropdown"', poc + 1)
+        return telo[poc:kraj if kraj > 0 else None]
 
     def test_prazna_zbirka_je_u_razvoju_a_sa_zapisom_se_vraca(self):
         # тест база: collection_specimens празна → ботаника у развоју
