@@ -62,10 +62,8 @@ class ZaglavljePrimenaTest(unittest.TestCase):
         stari = re.compile(r'<div class="card bg-\w+ text-\w+ (?:db-hero|page-hero)"')
         preostali = sorted(p.name for p in (KOREN / 'templates').glob('*.html')
                            if stari.search(p.read_text(encoding='utf-8', errors='ignore')))
-        # Дозвољени изузеци: странице са условним насловом које чекају ручну обраду.
-        dozvoljeno = {'admin_add_bilja_item.html', 'admin_add_sanja_paleogene_neogene_mammal.html',
-                      'admin_timesheet_report_detail.html'}
-        self.assertEqual(set(preostali) - dozvoljeno, set(), preostali)
+        # Изузетака више нема: све стране иду кроз макро _zaglavlje_strane.html.
+        self.assertEqual(preostali, [], preostali)
 
     def test_kljucne_strane_koriste_makro(self):
         for ime in ('admin_collection_database.html', 'admin_mineral_collection.html', 'admin_library_database.html',

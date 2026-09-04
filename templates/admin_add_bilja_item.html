@@ -2,31 +2,13 @@
 
 {% block title %}{% if is_edit %}Уреди примерак{% else %}Додај примерак{% endif %} — {{ collection_name }}{% endblock %}
 
+{% from '_zaglavlje_strane.html' import zaglavlje %}
+
 {% block content %}
 <div class="container-main">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-primary text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
-                        <div>
-                            <h1 class="h3 mb-1">
-                                <i class="{{ collection_icon }} me-2"></i>
-                                {% if is_edit %}Уреди примерак{% else %}Додај нови примерак{% endif %}
-                            </h1>
-                            <p class="mb-0 opacity-75">{{ collection_name }}</p>
-                            {% if collection_description %}
-                            <small class="opacity-75">{{ collection_description }}</small>
-                            {% endif %}
-                        </div>
-                        <a href="{{ url_for(collection_route) }}" class="btn btn-light">
-                            <i class="bi bi-arrow-left me-1"></i>Назад на збирку
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{ zaglavlje(('Уреди примерак' if is_edit else 'Додај нови примерак'),
+                 podnaslov=(collection_name ~ (' · ' ~ collection_description if collection_description else '')),
+                 ikona=collection_icon, nazad=url_for(collection_route), nazad_tekst='Назад на збирку') }}
 
     <form method="POST" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

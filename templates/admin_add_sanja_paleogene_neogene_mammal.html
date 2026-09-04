@@ -2,28 +2,13 @@
 
 {% block title %}Додај примерак - {{ collection_name }}{% endblock %}
 
+{% from '_zaglavlje_strane.html' import zaglavlje %}
+
 {% block content %}
 <div class="container-main">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-success text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
-                        <div>
-                            <h1 class="h3 mb-1">
-                                <i class="museum-icon-mammoth me-2"></i>
-                                {% if is_edit %}Уреди примерак{% else %}Додај нови примерак{% endif %}
-                            </h1>
-                            <p class="mb-0 opacity-75">{{ collection_name }}</p>
-                        </div>
-                        <a href="{{ url_for(collection_route) }}" class="btn btn-light">
-                            <i class="bi bi-arrow-left me-1"></i>Назад на збирку
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{ zaglavlje(('Уреди примерак' if is_edit else 'Додај нови примерак'),
+                 podnaslov=collection_name, ikona='museum-icon-mammoth',
+                 nazad=url_for(collection_route), nazad_tekst='Назад на збирку') }}
 
     <form method="POST" id="addSanjaMammalForm" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

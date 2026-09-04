@@ -16,17 +16,21 @@
   Параметри: naslov (обавезан), podnaslov, ikona (Bootstrap класа без „bi “,
   или пуна класа), brojac + brojac_naziv (један истакнут број, не ред
   статистика), nazad (URL → дугме „Назад“ на крају радњи), nazad_tekst,
-  klasa (додатне CSS класе), oznaka (мали беџ уз наслов, нпр. „Архива“).
+  klasa (додатне CSS класе), oznaka (мали беџ уз наслов, нпр. „Архива“)
+  са oznaka_ikona, oznaka_naslov (tooltip) и oznaka_vrsta
+  (uspeh / pazi / greska — боја беџа; подразумевано неутрална).
   Стил: static/css/main.css, блок „Заглавље стране (.zaglavlje)“.
 #}
-{% macro zaglavlje(naslov, podnaslov='', ikona='', brojac=None, brojac_naziv='', nazad=None, nazad_tekst='Назад', klasa='', oznaka='', slika='', slika_alt='') -%}
+{% macro zaglavlje(naslov, podnaslov='', ikona='', brojac=None, brojac_naziv='', nazad=None, nazad_tekst='Назад', klasa='', oznaka='', oznaka_ikona='', oznaka_vrsta='', oznaka_naslov='', slika='', slika_alt='') -%}
 <header class="zaglavlje page-hero{% if klasa %} {{ klasa }}{% endif %}">
     {% if slika %}<img class="zaglavlje__slika" src="{{ slika }}" alt="{{ slika_alt }}">{% endif %}
     <div class="zaglavlje__tekst">
         <h1 class="zaglavlje__naslov">
             {%- if ikona %}<i class="{% if ikona.startswith('bi-') %}bi {% endif %}{{ ikona }}" aria-hidden="true"></i>{% endif -%}
             <span>{{ naslov }}</span>
-            {%- if oznaka %}<span class="zaglavlje__oznaka">{{ oznaka }}</span>{% endif -%}
+            {%- if oznaka %}<span class="zaglavlje__oznaka{% if oznaka_vrsta %} zaglavlje__oznaka--{{ oznaka_vrsta }}{% endif %}"{% if oznaka_naslov %} title="{{ oznaka_naslov }}"{% endif %}>
+                {%- if oznaka_ikona %}<i class="{% if oznaka_ikona.startswith('bi-') %}bi {% endif %}{{ oznaka_ikona }}" aria-hidden="true"></i> {% endif -%}
+                {{ oznaka }}</span>{% endif -%}
         </h1>
         {% if podnaslov %}<p class="zaglavlje__podnaslov">{{ podnaslov }}</p>{% endif %}
     </div>

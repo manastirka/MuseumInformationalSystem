@@ -5143,3 +5143,20 @@ html[data-density="kompakt"][data-style="terenska"] {
 .pretraga-opis { font-size: 0.85rem; color: var(--text-secondary); }
 .pretraga-podnozje { justify-content: flex-start; gap: 1rem; font-size: 0.78rem; color: var(--text-secondary); padding: 0.5rem 1rem; }
 .pretraga-podnozje kbd { font-size: 0.72rem; padding: 0.1rem 0.35rem; margin-right: 0.2rem; }
+
+/* Ознака статуса у заглављу: боја носи значење (одобрено/поднето/враћено).
+   Само подлога и ивица — текст остаје бео, јер га правило
+   `[data-palette] body.heritage-shell .page-hero *` намерно држи белим
+   ради контраста; значење носе и иконица и реч у ознаци. */
+.zaglavlje__oznaka--uspeh {
+    background: rgba(126, 217, 154, 0.22);
+    border-color: rgba(126, 217, 154, 0.6);
+}
+.zaglavlje__oznaka--pazi {
+    background: rgba(247, 201, 106, 0.24);
+    border-color: rgba(247, 201, 106, 0.65);
+}
+.zaglavlje__oznaka--greska {
+    background: rgba(240, 130, 130, 0.24);
+    border-color: rgba(240, 130, 130, 0.65);
+}

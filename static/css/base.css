@@ -327,6 +327,16 @@
             content: "🦣";
         }
 
+        /* Збирке мекушаца су користиле ове класе, а оне нису биле дефинисане —
+           наслов је остајао без симбола. */
+        .museum-icon-shell::before {
+            content: "🐚";
+        }
+
+        .museum-icon-snail::before {
+            content: "🐌";
+        }
+
         .museum-icon-employees::before {
             content: "👥";
         }
