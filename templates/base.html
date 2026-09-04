@@ -818,6 +818,14 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if user_logged_in() %}
+                    <!-- Глобална претрага (Ctrl+K) -->
+                    <li class="nav-item me-2 d-none d-lg-flex align-items-center">
+                        <button type="button" class="pretraga-dugme" data-pretraga-otvori aria-label="Претрага (Ctrl+K)" title="Претрага (Ctrl+K)">
+                            <i class="bi bi-search" aria-hidden="true"></i><span>Претрага</span><kbd>Ctrl K</kbd>
+                        </button>
+                    </li>
+                    {% endif %}
                     <!-- Language/Script Switcher -->
                     <li class="nav-item dropdown me-2" data-no-translate>
                         <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center"
@@ -998,6 +1006,25 @@
 
     <!-- Обједињена мобилна бочна фиока (замењује collapse навбара + sidebar FAB испод 992px) -->
     {% include '_mobile_drawer.html' %}
+
+    <!-- Глобална претрага: модал (Ctrl+K) -->
+    <div class="modal fade pretraga-modal" id="pretragaModal" tabindex="-1" aria-labelledby="pretragaNaslov" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header pretraga-zaglavlje">
+                    <label for="pretragaPolje" class="visually-hidden" id="pretragaNaslov">Претрага</label>
+                    <i class="bi bi-search pretraga-ikona" aria-hidden="true"></i>
+                    <input type="search" class="form-control pretraga-polje" id="pretragaPolje"
+                           placeholder="Претражи све базе…" autocomplete="off" spellcheck="false" enterkeyhint="search">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
+                </div>
+                <div class="modal-body pretraga-telo" id="pretragaRezultati" role="listbox" aria-label="Резултати претраге"></div>
+                <div class="modal-footer pretraga-podnozje">
+                    <span><kbd>↑</kbd><kbd>↓</kbd> избор</span><span><kbd>Enter</kbd> отвори</span><span><kbd>Esc</kbd> затвори</span>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
     <!-- Content Wrapper -->
@@ -1506,6 +1533,7 @@
     <script src="{{ url_for('static', filename='js/sortiranje_tabela.js') }}?v=1"></script>
     {% if user_logged_in() %}
     <script src="{{ url_for('static', filename='js/mobile_drawer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pretraga.js') }}?v=1"></script>
     {% endif %}
 
     {% block scripts %}{% endblock %}

@@ -70,6 +70,7 @@ from blueprints.documents import documents_bp
 from blueprints.fototeka import fototeka_bp
 from blueprints.kr_dosije import kr_dosije_bp
 from blueprints.qr import qr_bp
+from blueprints.pretraga import pretraga_bp
 from blueprints.mail import MAILBOX_ADMIN_FORBIDDEN_MESSAGE, mail_bp
 from blueprints.chat import chat_bp
 from blueprints.vehicles import vehicles_bp
@@ -397,6 +398,7 @@ app.register_blueprint(approval_center_bp)
 app.register_blueprint(documents_bp)
 app.register_blueprint(fototeka_bp)
 app.register_blueprint(kr_dosije_bp)
+app.register_blueprint(pretraga_bp)
 app_blueprint_support.register_standard_blueprints(
     app,
     {

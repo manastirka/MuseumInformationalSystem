@@ -334,6 +334,8 @@
 
 <script>
 // Search functionality
+(function () { var q = new URLSearchParams(location.search).get('q'); var p = document.getElementById('searchInput');
+    if (q && p) { p.value = q; setTimeout(function () { p.dispatchEvent(new Event('keyup')); }, 0); } })();
 document.getElementById('searchInput').addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const tableRows = document.querySelectorAll('#employeesTable tr');

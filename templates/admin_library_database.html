@@ -167,6 +167,8 @@
 
 <script>
 // Search functionality - improved to search all fields including detailed info
+(function () { var q = new URLSearchParams(location.search).get('q'); var p = document.getElementById('bookSearch');
+    if (q && p) { p.value = q; setTimeout(function () { p.dispatchEvent(new Event('input')); }, 0); } })();
 document.getElementById('bookSearch').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('#booksTable tbody tr');
