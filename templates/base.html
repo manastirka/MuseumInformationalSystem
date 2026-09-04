@@ -2047,6 +2047,8 @@
 
     <!-- Language/Script Translator -->
     <script src="{{ url_for('static', filename='js/translator.js') }}"></script>
+    <!-- Сортирање табела кликом на заглавље (табеле без сопственог сортирања) -->
+    <script src="{{ url_for('static', filename='js/sortiranje_tabela.js') }}?v=1"></script>
     {% if user_logged_in() %}
     <script src="{{ url_for('static', filename='js/mobile_drawer.js') }}"></script>
     {% endif %}
