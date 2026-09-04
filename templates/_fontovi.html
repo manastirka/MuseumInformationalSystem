@@ -1,0 +1,21 @@
+{#- Google Fonts: учитавају се само породице које активни изглед стварно
+    користи, а не свих шест одједном. Породице по стилу прате токене
+    --font-family/--font-display у static/css/main.css:
+      институционална (подразумевана) → Inter + Cormorant Garamond
+      модерна   → Noto Sans
+      архивска  → PT Serif + Source Serif 4
+      теренска  → PT Sans
+    Оса стила важи само за наслеђену (heritage) палету — равне и корисничке
+    палете увек користе подразумеване фонтове, исто као што им се и
+    data-style не исписује. Тема се мења уз поновно учитавање стране, па
+    нема потребе за динамичким дописивањем. -#}
+{%- set _stil_fonta = 'institucionalna' if (_flat|default(false) or _is_custom|default(false))
+                      else current_theme_style|default('institucionalna') -%}
+{%- set _porodice = {
+    'institucionalna': 'family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700',
+    'moderna': 'family=Noto+Sans:wght@400;500;600;700',
+    'arhivska': 'family=PT+Serif:wght@400;700&family=Source+Serif+4:wght@400;600;700',
+    'terenska': 'family=PT+Sans:wght@400;700',
+} -%}
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?{{ _porodice.get(_stil_fonta, _porodice['institucionalna']) }}&display=swap" rel="stylesheet">

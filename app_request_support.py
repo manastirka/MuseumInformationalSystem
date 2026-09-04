@@ -9,6 +9,7 @@ from pathlib import Path
 from flask import current_app, render_template, request, session
 
 import museum_baze_stanje
+from statika import verzija_statike
 from core_app_views import current_custom_theme_render, current_theme_accent, current_theme_density, current_theme_mode, current_theme_palette, current_theme_style, current_ui_language
 
 
@@ -137,6 +138,7 @@ def register_template_context(
             weather_windspeed=weather_data.get('windspeed'),
             weather_description=weather_data.get('description', ''),
             weather_particles_version=weather_script_version,
+            v_statike=verzija_statike,
             current_lang=current_ui_language(),
             current_theme_mode=current_theme_mode(),
             current_theme_accent=current_theme_accent(),

@@ -1,0 +1,118 @@
+/* --- Фототека галерија: специфично за приказ (шире дели дизајн Центра за
+   одобравање из _odobravanje_style.html) --- */
+
+/* traka iznad galerije: ukupno + prekidač prikaza + selekcija + preuzimanje */
+.fototeka-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.8rem; padding: 0.7rem 1.1rem;
+    border-bottom: 1px solid var(--oc-line-soft); flex-wrap: wrap;
+}
+.fototeka-toolbar .left, .fototeka-toolbar .right { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.fototeka-total { font-size: 0.84rem; color: var(--oc-ink-muted); }
+.fototeka-sel { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.84rem; color: var(--oc-ink-soft); margin: 0; }
+
+/* segmentirani prekidač prikaza (мрежа / листа / компактно) */
+.fototeka-seg { display: inline-flex; border: 1px solid var(--oc-line); border-radius: 8px; overflow: hidden; background: #fff; }
+.fototeka-seg .fototeka-view-btn {
+    border: none; background: #fff; color: var(--oc-ink-muted);
+    padding: 0.35rem 0.7rem; cursor: pointer; font-size: 0.95rem;
+    border-right: 1px solid var(--oc-line); display: inline-flex; align-items: center;
+}
+.fototeka-seg .fototeka-view-btn:last-child { border-right: none; }
+.fototeka-seg .fototeka-view-btn:hover { color: var(--oc-green-800); background: #f7f6f1; }
+.fototeka-seg .fototeka-view-btn.active { background: var(--oc-green-700); color: #fff; }
+
+/* --- selekcija (ZELENA, унутар белог квадрата, горе лево над сликом) --- */
+.foto-item { position: relative; }
+.foto-item.selected { outline: 3px solid var(--oc-green-700); outline-offset: -3px; border-radius: 12px; }
+.view-grid .foto-item.selected .foto-thumb img { filter: brightness(0.85); }
+.view-list .foto-item.selected, .view-compact .foto-item.selected { background: var(--oc-green-050); }
+.foto-check {
+    width: 1.2rem; height: 1.2rem; margin: 0; cursor: pointer;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.foto-check:checked {
+    background-color: #fff;
+    border-color: var(--oc-green-700);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%232d6a4f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M6 10l3 3 6-6'/%3e%3c/svg%3e");
+}
+
+/* --- три режима приказа; JS toggluje класу контејнера --- */
+.view-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; padding: 1.1rem; }
+.view-grid .foto-item { border: 1px solid var(--oc-line-soft); border-radius: 12px; overflow: hidden; background: #fff; }
+.view-grid .foto-thumb img { width: 100%; height: 150px; object-fit: cover; display: block; background: #eee; }
+.view-grid .foto-meta { padding: 0.5rem 0.7rem; font-size: 0.83rem; }
+.view-grid .foto-check { position: absolute; top: 8px; left: 8px; z-index: 3; }
+
+.view-list { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.1rem; }
+.view-list .foto-item { display: flex; align-items: center; gap: 0.75rem; border: 1px solid var(--oc-line-soft); border-radius: 10px; padding: 0.5rem; background: #fff; }
+.view-list .foto-thumb img { width: 90px; height: 68px; object-fit: cover; border-radius: 8px; display: block; background: #eee; }
+.view-list .foto-meta { flex: 1; min-width: 0; }
+
+.view-compact { display: flex; flex-direction: column; padding: 0.4rem 1.1rem 1rem; }
+.view-compact .foto-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--oc-line-soft); }
+.view-compact .foto-thumb { display: none; }
+.view-compact .foto-meta { flex: 1; min-width: 0; }
+.view-compact .foto-sub { display: none; }
+
+.foto-meta .foto-title { color: #1f2937; }
+.foto-meta .foto-sub { color: var(--oc-ink-muted); font-size: 0.76rem; }
+
+/* --- ознака формата (доле десно над thumbnail-ом; чита се и на светлим и
+   на тамним сликама захваљујући тамној полупрозирној подлози + светлом ободу) --- */
+.foto-thumb { position: relative; display: block; }
+.foto-format {
+    position: absolute; right: 6px; bottom: 6px;
+    padding: 2px 5px; border-radius: 5px;
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em; line-height: 1;
+    color: #fff; background: rgba(17, 24, 39, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    pointer-events: none; user-select: none;
+}
+/* компактни режим нема thumbnail — нема ни ознаке */
+.view-compact .foto-format { display: none; }
+
+/* paginacija u kartici */
+.fototeka-pager { padding: 0.9rem 1.1rem; border-top: 1px solid var(--oc-line-soft); }
+
+/* --- модал за преузимање (избор JPG/оригинал, величина, упозорење) --- */
+.foto-modal-backdrop {
+    position: fixed; inset: 0; z-index: 1080;
+    background: rgba(17, 24, 39, 0.5);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.foto-modal-backdrop[hidden] { display: none; }
+.foto-modal {
+    background: #fff; border-radius: 14px; max-width: 460px; width: 100%;
+    box-shadow: 0 24px 60px rgba(24, 43, 29, 0.28);
+    padding: 1.25rem 1.35rem;
+}
+.foto-modal-title { color: var(--oc-green-700); margin: 0 0 0.85rem; font-size: 1.05rem; }
+.foto-modal-stats { color: var(--oc-ink-muted); font-size: 0.88rem; margin-bottom: 0.85rem; }
+.foto-modal-choice { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+.foto-radio {
+    display: flex; gap: 0.55rem; align-items: flex-start;
+    border: 1px solid var(--oc-line-soft); border-radius: 10px;
+    padding: 0.6rem 0.7rem; cursor: pointer; font-size: 0.85rem;
+}
+.foto-radio input { margin-top: 0.15rem; }
+.foto-modal-warn {
+    background: #fff8e6; border: 1px solid #f0d68a; color: #7a5a00;
+    border-radius: 8px; padding: 0.55rem 0.7rem; font-size: 0.82rem; margin-bottom: 0.4rem;
+}
+.foto-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
+
+/* --- tamna tema --- */
+[data-theme="dark"] .fototeka-seg,
+[data-theme="dark"] .fototeka-seg .fototeka-view-btn { background: #242b27; }
+[data-theme="dark"] .fototeka-seg .fototeka-view-btn:hover { background: #2a322d; }
+[data-theme="dark"] .view-grid .foto-item,
+[data-theme="dark"] .view-list .foto-item { background: #242b27; }
+[data-theme="dark"] .view-grid .foto-thumb img,
+[data-theme="dark"] .view-list .foto-thumb img { background: #1a201c; }
+[data-theme="dark"] .foto-meta .foto-title { color: #e6ddc9; }
+[data-theme="dark"] .foto-check { box-shadow: 0 0 0 2px rgba(36, 43, 39, 0.9), 0 1px 3px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .foto-modal { background: #242b27; }
+[data-theme="dark"] .foto-modal-warn { background: #33270f; border-color: #6e5620; color: #e5b566; }
