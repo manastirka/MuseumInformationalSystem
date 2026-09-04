@@ -73,7 +73,8 @@ def _resolve(tokens_layers, name, _depth=0):
 
 FIXED_SELECTORS = [
     ('templates/admin_mineral_collection.html', '.table-header-light th'),
-    ('templates/admin_mineral_collection.html', '.page-header'),
+    # .page-header минерала замењен заједничким макроом (templates/_zaglavlje_strane.html, CSS у main.css)
+    ('static/css/main.css', '.zaglavlje'),
     ('templates/admin_mineral_collection.html', '.nav-tabs-custom .nav-link'),
     ('templates/admin_mineral_collection.html', '.nav-tabs-custom .nav-link.active'),
     ('templates/admin_mineral_detail.html', '.mineral-name-box'),

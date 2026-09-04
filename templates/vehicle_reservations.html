@@ -5,39 +5,10 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-primary text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-truck me-2"></i>
-                                Резервација музејских возила
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Распоред резервација музејских возила
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-                                {% if is_admin() %}
-                                <a href="{{ url_for('vehicles.vehicle_management') }}" class="btn btn-light">
-                                    <i class="bi bi-gear me-1"></i>
-                                    Управљање возилима
-                                </a>
-                                {% endif %}
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#reservationModal">
-                                    <i class="bi bi-plus-circle me-1"></i>
-                                    Нова резервација
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {% call zaglavlje('Резервација музејских возила', 'Распоред резервација музејских возила', ikona='bi-truck') %}
+        <a href="{{ url_for('vehicles.vehicle_management') }}" class="btn btn-light"> <i class="bi bi-gear me-1"></i> Управљање возилима </a>
+    {% endcall %}
 
     <!-- Vehicle Cards -->
     <div class="row mb-4">

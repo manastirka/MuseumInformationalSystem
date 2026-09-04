@@ -4,32 +4,19 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2><i class="{{ collection_icon }} me-2"></i>{{ collection_name }}</h2>
-                    {% if highlight %}
-                    <div class="alert alert-info d-inline-block py-2 px-3 mb-0 mt-2">
-                        <i class="bi bi-qr-code me-2"></i>
-                        <strong>Издвојен примерак:</strong> {{ highlight }}
-                        <a href="{{ request.path }}" class="btn btn-sm btn-outline-primary ms-3">
-                            <i class="bi bi-grid-3x3-gap me-1"></i>Прикажи све примерке
-                        </a>
-                    </div>
-                    {% else %}
-                    <p class="text-muted">Преглед свих примерака у збирци</p>
-                    {% endif %}
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-1"></i> Назад на базе података
-                    </a>
-                </div>
-            </div>
-        </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje(collection_name, 'Преглед свих примерака у збирци', ikona=collection_icon,
+                 nazad=url_for('museum_databases'), nazad_tekst='Назад на базе') }}
+    {% if highlight %}
+    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-4">
+        <i class="bi bi-qr-code"></i>
+        <span><strong>Издвојен примерак:</strong> {{ highlight }}</span>
+        <a href="{{ request.path }}" class="btn btn-sm btn-outline-primary ms-auto">
+            <i class="bi bi-grid-3x3-gap me-1"></i>Прикажи све примерке
+        </a>
     </div>
+    {% endif %}
+
 
 
     <!-- Specimens Table -->
@@ -48,11 +35,11 @@
                             </a>
                             {% endif %}
                             {% if collection_export_enabled|default(collection_actions_enabled|default(true)) %}
-                            <a href="{{ url_for('export_collection_to_pdf', collection_type=collection_type) }}" class="btn btn-sm btn-danger" title="Извоз збирке у ПДФ">
+                            <a href="{{ url_for('export_collection_to_pdf', collection_type=collection_type) }}" class="btn btn-sm btn-outline-secondary" title="Извоз збирке у ПДФ">
                                 <i class="bi bi-file-pdf me-1"></i>Извоз ПДФ
                             </a>
                             {% endif %}
-                            <button class="btn btn-sm btn-outline-primary" onclick="toggleColumnSelector()">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleColumnSelector()">
                                 <i class="bi bi-sliders me-1"></i>Колоне
                             </button>
                             <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Претрага..." onkeyup="filterTable()" style="min-width: 200px;">
@@ -64,10 +51,10 @@
                             <!-- Dynamically populated -->
                         </div>
                         <div class="mt-2">
-                            <button class="btn btn-sm btn-success" onclick="selectAllColumns()">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="selectAllColumns()">
                                 <i class="bi bi-check-all"></i> Изабери све
                             </button>
-                            <button class="btn btn-sm btn-secondary" onclick="deselectAllColumns()">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAllColumns()">
                                 <i class="bi bi-x-lg"></i> Поништи све
                             </button>
                         </div>
@@ -203,16 +190,11 @@ const defaultColumnLayouts = {
         'inventarski_broj', 'klasa', 'familija', 'rod', 'vrsta',
         'lokalitet', 'broj_primeraka', 'izbrojan_broj_primeraka'
     ],
+    // Сажет подразумевани приказ (остале колоне кроз „Колоне“); пун снимак
+    // од 31 колоне био је нечитљив — свака колона 40 px.
     meteorite: [
         'catalog_number', 'specimen_name', 'meteorite_class',
-        'mass', 'mass_unit', 'total_mass', 'total_mass_unit',
-        'quantity', 'chemical_composition', 'mineralogy',
-        'fall_date_text', 'fall_type', 'fall_location', 'fall_witnessed',
-        'collector', 'acquisition_date_text', 'acquisition_method',
-        'shock_stage', 'weathering_grade', 'parent_body',
-        'cosmic_ray_exposure', 'widmanstatten_pattern', 'fusion_crust',
-        'meteorite_bulletin_number', 'serbian_meteorite', 'description',
-        'meteorite_name', 'classification', 'location_found', 'curator', 'source'
+        'mass', 'mass_unit', 'fall_location', 'fall_type', 'curator'
     ]
 };
 const defaultColumnLayoutVersions = {
@@ -223,7 +205,7 @@ const defaultColumnLayoutVersions = {
     bilja_opsta_zbirka_mollusca: '2026-04-15-bilja-initial',
     bilja_skoljke_tadic: '2026-04-15-bilja-initial',
     bilja_recentni_morski_mekusci: '2026-04-15-bilja-initial',
-    meteorite: '2026-04-15-meteorite-populated-snapshot'
+    meteorite: '2026-09-04-meteorite-sazeto'
 };
 
 // Get all unique column names from specimens

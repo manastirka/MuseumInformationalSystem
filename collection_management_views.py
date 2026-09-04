@@ -784,7 +784,7 @@ def render_meteorite_collection(
     return render_template(
         'admin_collection_database.html',
         collection_name='Збирка метеорита',
-        collection_icon='museum-icon-shooting-star',
+        collection_icon='bi bi-stars',
         specimens=specimens,
         statistics=meteorite_db['statistics'],
         collection_type='meteorite',

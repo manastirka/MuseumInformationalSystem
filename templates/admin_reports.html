@@ -5,31 +5,8 @@
 {% block content %}
 <div class="container-main page-transition">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card card-glass card-shine bg-secondary text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-graph-up me-2"></i>
-                                Извештаји система
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Аналитика и статистике информационог система музеја
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">{{ report_data.system_overview.active_databases }}</h2>
-                                <small>Активне базе</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Извештаји система', 'Аналитика и статистике информационог система музеја', ikona='bi-graph-up', brojac=report_data.system_overview.active_databases, brojac_naziv='Активне базе') }}
 
     <!-- System Overview Cards -->
     <div class="row g-4 mb-4 stagger-children">

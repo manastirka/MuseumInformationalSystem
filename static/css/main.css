@@ -4893,3 +4893,152 @@ html[data-density="kompakt"][data-style="terenska"] {
         color: #1f2937 !important;
     }
 }
+
+/* ==========================================================================
+   Заглавље стране (.zaglavlje) — заједничка компонента (templates/_zaglavlje_strane.html)
+   Једна структура за базе, збирке и администрацију: наслов + поднаслов,
+   опциони истакнути број, радње десно. У класичној (heritage) теми носи
+   бордо градијент као контролна табла; под палетама важи општи `.page-hero`
+   третман (равна --pal-thead-bg + бело мастило), па се овде не понавља.
+   ========================================================================== */
+.zaglavlje {
+    --zaglavlje-boja: var(--pal-thead-bg, rgb(92, 23, 25));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4, 1rem) var(--space-6, 1.5rem);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: var(--space-6, 1.5rem);
+    border-radius: var(--radius-card, 16px);
+    background:
+        radial-gradient(circle at 22% 20%, rgba(255, 231, 188, 0.14), transparent 26%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.14)),
+        var(--zaglavlje-boja);
+    color: var(--on-accent, rgb(255, 255, 255));
+    border: 1px solid rgba(230, 192, 118, 0.3);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 238, 201, 0.12);
+}
+.zaglavlje__tekst { flex: 1 1 18rem; min-width: 0; }
+.zaglavlje__slika {
+    max-height: 88px;
+    width: auto;
+    padding: 6px;
+    border-radius: 10px;
+    background: #ffffff;
+}
+.zaglavlje__naslov {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: inherit;
+}
+.zaglavlje__naslov .bi,
+.zaglavlje__naslov [class*="museum-icon-"] { font-size: 1.2em; opacity: 0.92; line-height: 1; }
+.zaglavlje__oznaka {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.zaglavlje__podnaslov {
+    margin: 0.4rem 0 0;
+    max-width: 64ch;
+    opacity: 0.84;
+    color: inherit;
+}
+.zaglavlje__brojac {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 7.5rem;
+    padding: 0.65rem 1.1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.zaglavlje__broj {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.zaglavlje__brojac-naziv { margin-top: 0.3rem; font-size: 0.8rem; opacity: 0.82; }
+.zaglavlje__radnje {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+.zaglavlje__radnje .btn { white-space: nowrap; }
+/* Хијерархија дугмади у заглављу: btn-light = примарна радња (пуна светла
+   подлога), btn-outline-light = споредна (обрис). Под палетама општи
+   `.page-hero .btn` форсира пуну светлу подлогу — обрисно дугме то поништава. */
+[data-palette] body.heritage-shell .page-hero.zaglavlje .btn-outline-light {
+    background: transparent !important;
+    border-color: rgba(255, 255, 255, 0.55) !important;
+}
+[data-palette] body.heritage-shell .page-hero.zaglavlje .btn-outline-light,
+[data-palette] body.heritage-shell .page-hero.zaglavlje .btn-outline-light * {
+    color: #ffffff !important;
+}
+[data-palette] body.heritage-shell .page-hero.zaglavlje .btn-outline-light:hover,
+[data-palette] body.heritage-shell .page-hero.zaglavlje .btn-outline-light:focus-visible {
+    background: rgba(255, 255, 255, 0.14) !important;
+}
+@media (max-width: 767.98px) {
+    .zaglavlje { padding: var(--space-4, 1.15rem); gap: var(--space-3, 0.85rem) var(--space-4, 1rem); }
+    .zaglavlje__naslov { font-size: 1.35rem; }
+    .zaglavlje__brojac { align-items: flex-start; padding: 0.5rem 0.9rem; }
+    .zaglavlje__broj { font-size: 1.5rem; }
+    .zaglavlje__radnje { width: 100%; justify-content: flex-start; }
+    .zaglavlje__radnje .btn { flex: 1 1 auto; white-space: normal; }
+}
+@media print {
+    .zaglavlje { box-shadow: none; border-color: var(--border-color, rgb(153, 153, 153)); }
+    .zaglavlje__radnje { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Пријава: иконице у пољу (омотач .position-relative је референца за
+   апсолутно позиционирање, па `top: 2.5rem` пада испод поља) и палета —
+   заглавље картице прати изабрану плаву палету као и све остало.
+   -------------------------------------------------------------------------- */
+.form-floating-custom .position-relative > .form-icon,
+.form-floating-custom .position-relative > .password-toggle {
+    top: 50%;
+    transform: translateY(-50%);
+}
+[data-palette] body.heritage-shell .login-header {
+    background: var(--pal-thead-bg) !important;
+    background-image: none !important;
+    border-bottom: 1px solid var(--pal-primary-dark);
+}
+[data-palette] body.heritage-shell .login-header h2 { color: #ffffff; }
+[data-palette] body.heritage-shell .login-header p { color: rgba(255, 255, 255, 0.86); }
+[data-palette] body.heritage-shell .login-card {
+    background: var(--pal-bg-card, var(--bg-card));
+    background-image: none;
+    border: 1px solid var(--border-color);
+}
+[data-palette] body.heritage-shell .form-floating-custom .form-control {
+    background: var(--pal-bg-card, var(--bg-card));
+    background-image: none;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+[data-palette] body.heritage-shell .form-floating-custom label,
+[data-palette] body.heritage-shell .form-floating-custom .form-icon,
+[data-palette] body.heritage-shell .password-toggle,
+[data-palette] body.heritage-shell .back-link {
+    color: var(--text-secondary);
+}

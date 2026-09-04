@@ -5,28 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-info text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-book-half me-2"></i>
-                                Додај нову књигу у библиотеку
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Унос нове књиге у музејску библиотеку
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <i class="bi bi-journal-plus" style="font-size: 3rem; opacity: 0.3;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Додај нову књигу у библиотеку', 'Унос нове књиге у музејску библиотеку', ikona='bi-book-half') }}
 
     <!-- Navigation -->
     <div class="row mb-4">

@@ -12,42 +12,14 @@
         crossorigin=""></script>
 
 <div class="container-main bird-ringing-wide">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-info text-white db-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-2 text-center">
-                            <img src="{{ url_for('static', filename='images/bird_ringing_logo.jpg') }}"
-                                 alt="Serbian Bird Ringing Scheme Logo"
-                                 class="img-fluid rounded"
-                                 style="max-height: 120px; width: auto; background-color: white; padding: 8px;">
-                        </div>
-                        <div class="col-md-6">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-egg me-2"></i>
-                                База прстеновања птица
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Комплетна евиденција прстенованих птица - Орнитолошка збирка
-                            </p>
-                            <p class="mb-0 opacity-75 small mt-1">
-                                <i class="bi bi-person-badge me-1"></i>
-                                Одговорна особа: Вук Попић (vuk.popic@nhmbeo.rs)
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <a href="{{ url_for('add_bird_ringing') }}" class="btn btn-light mb-3">
-                                <i class="bi bi-plus-circle me-1"></i>
-                                Додај нови запис
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {% call zaglavlje('База прстеновања птица',
+                      'Комплетна евиденција прстенованих птица — Орнитолошка збирка. Одговорна особа: Вук Попић (vuk.popic@nhmbeo.rs)',
+                      ikona='bi-egg', slika=url_for('static', filename='images/bird_ringing_logo.jpg'),
+                      slika_alt='Центар за маркирање животиња — лого') %}
+        <a href="{{ url_for('add_bird_ringing') }}" class="btn btn-light"><i class="bi bi-plus-circle me-1"></i>Додај нови запис</a>
+    {% endcall %}
+
 
 
     <!-- Filters and Search -->

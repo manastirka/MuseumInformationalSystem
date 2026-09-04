@@ -5,31 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark text-white db-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-search me-2"></i>
-                                База истраживања
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Научни радови и истраживачки пројекти музеја
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">{{ total_projects }}</h2>
-                                <small>Пројеката</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('База истраживања', 'Научни радови и истраживачки пројекти музеја', ikona='bi-search', brojac=total_projects, brojac_naziv='Пројеката') }}
 
     <!-- Statistics Cards -->
     <div class="row g-4 mb-4">

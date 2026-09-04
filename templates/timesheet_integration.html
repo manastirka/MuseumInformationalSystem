@@ -5,28 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-success text-white page-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-calendar-check me-2"></i>
-                                Систем за радне листе
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Управљање радним листама запослених музеја
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <i class="bi bi-clock-history" style="font-size: 3rem; opacity: 0.3;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Систем за радне листе', 'Управљање радним листама запослених музеја', ikona='bi-calendar-check') }}
 
     <!-- Access Options -->
     <div class="row g-4 mb-4">

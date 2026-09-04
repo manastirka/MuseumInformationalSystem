@@ -5,31 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-success text-white db-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-flower1 me-2"></i>
-                                Ботаничка збирка
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Хербаријум >40.000 примерака - ендемске биљке Балкана
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">>40,000</h2>
-                                <small>Примерака</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Ботаничка збирка', 'Хербаријум >40.000 примерака - ендемске биљке Балкана', ikona='bi-flower1', brojac='>40,000', brojac_naziv='Примерака') }}
 
     <!-- Search and Actions -->
     <div class="row mb-4">

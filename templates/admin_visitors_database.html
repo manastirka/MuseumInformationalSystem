@@ -5,31 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-info text-white db-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-person-check me-2"></i>
-                                База посетилаца
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Евиденција посета и статистика посетилаца музеја
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">{{ total_visitors }}</h2>
-                                <small>Забележених посета</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('База посетилаца', 'Евиденција посета и статистика посетилаца музеја', ikona='bi-person-check', brojac=total_visitors, brojac_naziv='Забележених посета') }}
 
     <!-- Statistics Cards -->
     <div class="row g-4 mb-4">

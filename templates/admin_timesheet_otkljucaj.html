@@ -4,22 +4,8 @@
 
 {% block content %}
 <div class="container-main">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-info text-white page-hero">
-                <div class="card-body p-4">
-                    <h1 class="h3 mb-1">
-                        <i class="bi bi-unlock me-2"></i>
-                        Откључавање уноса радне листе
-                    </h1>
-                    <p class="mb-0 opacity-75">
-                        Изаберите запосленог и месец (или период) да му привремено
-                        омогућите унос листе после истека редовног рока.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Откључавање уноса радне листе', 'Изаберите запосленог и месец (или период) да му привремено омогућите унос листе после истека редовног рока.', ikona='bi-unlock') }}
 
     <div class="row">
         <div class="col-lg-8">

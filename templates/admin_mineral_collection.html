@@ -32,53 +32,10 @@ table th.action-cell {
 }
 
 /* Page header styling - enhanced */
-.page-header {
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
-    color: var(--on-accent);
-    padding: 2rem;
-    border-radius: 16px;
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-lg);
-    position: relative;
-    overflow: hidden;
-}
 
-.page-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    pointer-events: none;
-}
 
-.page-header::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: -10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-    pointer-events: none;
-}
 
-.page-header h2 {
-    margin-bottom: 0.5rem;
-    font-weight: 700;
-    font-size: 1.75rem;
-    position: relative;
-    z-index: 1;
-}
 
-.page-header .subtitle {
-    opacity: 0.9;
-    font-size: 0.95rem;
-    position: relative;
-    z-index: 1;
-}
 
 /* Quick stats in header */
 .stat-card {
@@ -773,27 +730,11 @@ table th.action-cell {
 {%- endmacro %}
 
 <div class="container-fluid px-4 mt-4">
-    <!-- Page Header -->
-    <div class="page-header db-hero">
-        <div class="row align-items-center">
-            <div class="col-lg-8">
-                <h2><i class="bi bi-gem me-2"></i>Минералошка збирка</h2>
-                <p class="subtitle mb-0">
-                    Природњачки музеј у Београду • Геолошко одељење
-                </p>
-            </div>
-            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
-                <div class="d-flex flex-column gap-2 align-items-lg-end">
-                    <a href="{{ url_for('add_mineral') }}" class="btn btn-light">
-                        <i class="bi bi-plus-circle me-1"></i>Додај минерал
-                    </a>
-                    <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-light btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i>Назад на базе
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {% call zaglavlje('Минералошка збирка', 'Природњачки музеј у Београду • Геолошко одељење', ikona='bi-gem') %}
+        <a href="{{ url_for('add_mineral') }}" class="btn btn-light"><i class="bi bi-plus-circle me-1"></i>Додај минерал</a>
+        <a href="{{ url_for('museum_databases') }}" class="btn btn-outline-light"><i class="bi bi-arrow-left me-1"></i>Назад на базе</a>
+    {% endcall %}
 
     <!-- Mineralogical Database Sub Navigation -->
     <nav class="mineral-subnav" aria-label="Навигација минералошке базе">

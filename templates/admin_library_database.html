@@ -5,71 +5,10 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-info text-white db-hero">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h1 class="h3 mb-1">
-                                <i class="bi bi-book me-2"></i>
-                                База библиотеке
-                            </h1>
-                            <p class="mb-0 opacity-75">
-                                Каталог књига и научних публикација музејске библиотеке
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-white bg-opacity-25 rounded p-3">
-                                <h2 class="mb-0">{{ statistics.total_books }}</h2>
-                                <small>Укупно књига</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('База библиотеке', 'Каталог књига и научних публикација музејске библиотеке', ikona='bi-book', brojac=statistics.total_books, brojac_naziv='Укупно књига') }}
 
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--museum-success); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.available_books }}</h5>
-                    <p class="text-muted mb-0 small">Доступне књиге</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-arrow-right-circle" style="font-size: 2rem; color: var(--museum-warning); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.borrowed_books }}</h5>
-                    <p class="text-muted mb-0 small">Позајмљене књиге</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-tags" style="font-size: 2rem; color: var(--museum-primary); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ statistics.total_categories }}</h5>
-                    <p class="text-muted mb-0 small">Категорије</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-graph-up" style="font-size: 2rem; color: var(--museum-accent); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ ((statistics.borrowed_books / statistics.total_books) * 100)|round|int }}%</h5>
-                    <p class="text-muted mb-0 small">Искориштеност</p>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Search and Actions -->
     <div class="row mb-4">
@@ -83,15 +22,15 @@
         </div>
         <div class="col-md-4">
             <div class="d-flex gap-2">
-                <a href="{{ url_for('add_book') }}" class="btn btn-info">
+                <a href="{{ url_for('add_book') }}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-1"></i>
                     Додај књигу
                 </a>
-                <button class="btn btn-primary" onclick="window.print()">
+                <button class="btn btn-outline-secondary" onclick="window.print()">
                     <i class="bi bi-printer me-1"></i>
                     Штампај
                 </button>
-                <button class="btn btn-success" onclick="exportLibraryToCSV()">
+                <button class="btn btn-outline-secondary" onclick="exportLibraryToCSV()">
                     <i class="bi bi-download me-1"></i>
                     Извези CSV
                 </button>
@@ -110,7 +49,7 @@
                             Све категорије
                         </button>
                         {% for category in categories %}
-                        <button class="btn btn-outline-info btn-sm category-filter" data-category="{{ category }}">
+                        <button class="btn btn-outline-secondary btn-sm category-filter" data-category="{{ category }}">
                             {{ category }}
                         </button>
                         {% endfor %}

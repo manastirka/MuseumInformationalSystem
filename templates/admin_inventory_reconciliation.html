@@ -5,21 +5,8 @@
 {% block content %}
 <div class="container-main">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-danger text-white page-hero">
-                <div class="card-body p-4">
-                    <h1 class="h3 mb-1">
-                        <i class="bi bi-clipboard-check me-2"></i>
-                        Упоређивање инвентара
-                    </h1>
-                    <p class="mb-0 opacity-75">
-                        Алат за упоређивање физичке књиге инвентара са стварном ревидираном базом података
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% from '_zaglavlje_strane.html' import zaglavlje %}
+    {{ zaglavlje('Упоређивање инвентара', 'Алат за упоређивање физичке књиге инвентара са стварном ревидираном базом података', ikona='bi-clipboard-check') }}
 
     <!-- Quick Actions -->
     <div class="row mb-4">
