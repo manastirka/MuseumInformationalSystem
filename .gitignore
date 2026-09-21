@@ -76,6 +76,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+# проба свите на Python-у 3.14 — верзији која ради на продукцији
+venv314/
 
 # Rope project settings
 .ropeproject

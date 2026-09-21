@@ -27,9 +27,12 @@ tagovima `arhiva/*` i snimku `~/grane-pre-konsolidacije.txt`.
 
 **Na DEV mašini** — puna sloboda: pisanje koda, refaktorisanje,
 eksperimenti. Obavezno pri tom:
-- `pytest test_*.py` mora biti zelen pre svakog commita (suite ima
-  ~1040 testova; puna kolekcija bez argumenata hvata i 2 pokvarena
-  skripta u `PrirodnjackiMuzej/` — ne koristiti);
+- `pytest` mora biti zelen pre svakog commita (21.09.2026: 2155 testova,
+  ~75 s; pokretati u pozadini jer alat puca posle 60 s);
+- **produkcija radi na Python-u 3.14, `venv/` na dev-u je 3.13** — pre
+  većih izmena pustiti svitu i na `venv314/bin/python -m pytest`
+  (napravljeno sa `uv venv --python 3.14 venv314` + `uv pip install
+  -r requirements.lock`, bez root-a);
 - izmene šeme baze isključivo kroz migracije, nikad ručni `ALTER`;
 - nove zavisnosti odmah u `requirements.txt`, sa verzijom;
 - konfiguracija (putanje, kredencijali, SECRET_KEY) samo kroz `.env` /
