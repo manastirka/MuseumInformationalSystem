@@ -57,7 +57,7 @@
             <div class="card text-center h-100">
                 <div class="card-body">
                     <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--museum-danger); margin-bottom: 1rem;"></i>
-                    <h5 class="mb-1">{{ report.statistics.missing_from_collection + report.statistics.missing_from_book + report.statistics.name_differences + report.statistics.locality_differences }}</h5>
+                    <h5 class="mb-1">{{ (report.statistics.missing_from_collection or 0) + (report.statistics.missing_from_book or 0) + (report.statistics.name_differences or 0) + (report.statistics.locality_differences or 0) }}</h5>
                     <p class="text-muted mb-0 small">Неслагања</p>
                 </div>
             </div>

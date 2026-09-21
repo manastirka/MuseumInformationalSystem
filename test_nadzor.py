@@ -34,6 +34,8 @@ def _odeljci(**preklopi):
             'backup-nhmb.timer active',
         ],
         'MARKERI': [],
+        'GRESKE5XX': ['mis 0', 'scisearch-web 0'],
+        'GRESKE5XX_PRIMERI': [],
         'DISK': ['/           16%', '/backup      1%'],
         'ZDRAVLJE': ['{"db":"ok","redis":"ok","status":"ok"}'],
         'PROBA': [time.strftime('%a %Y-%m-%d %H:%M:%S CEST',
@@ -156,3 +158,25 @@ def test_prazan_popis_stabala_ne_lazira_uspeh(nadzor):
     nalazi, u_redu = nadzor.procena(_odeljci(STABLA_PROD=[], STABLA_BEKAP=[]))
     assert not any('гране' in u for u in u_redu), u_redu
     assert not any('НИЈЕ У БЕКАПУ' in n for n in nalazi), nalazi
+
+
+def test_odgovori_5xx_su_nalaz(nadzor):
+    o = _odeljci(GRESKE5XX=['mis 5', 'scisearch-web 0'],
+                 GRESKE5XX_PRIMERI=['      5 "GET /admin/library_database HTTP/1.1" 500'])
+    nalazi, _ = nadzor.procena(o)
+    assert any('5xx' in n and 'mis=5' in n for n in nalazi), nalazi
+    assert any('library_database' in n for n in nalazi), nalazi
+
+
+def test_nula_5xx_nije_nalaz_nego_potvrda(nadzor):
+    nalazi, u_redu = nadzor.procena(_odeljci())
+    assert nalazi == []
+    assert any('5xx' in r for r in u_redu), u_redu
+
+
+def test_stari_kolektor_bez_odeljka_ne_lazira_ni_nalaz_ni_uspeh(nadzor):
+    o = _odeljci()
+    del o['GRESKE5XX']
+    nalazi, u_redu = nadzor.procena(o)
+    assert nalazi == []
+    assert not any('5xx' in r for r in u_redu), u_redu

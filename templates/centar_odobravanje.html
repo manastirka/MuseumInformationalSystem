@@ -88,21 +88,21 @@
                                     {%- if not loop.last %}<span class="oc-chain-arrow">→</span>{% endif %}
                                     {% endfor %}
                                 </div>
-                                <div class="muted">Корак {{ req.approval_step + 1 }} од {{ req.chain_labels | length }}</div>
+                                <div class="muted">Корак {{ (req.approval_step or 0) + 1 }} од {{ req.chain_labels | length }}</div>
                             </td>
                             <td>{{ status_badge('na_odobrenju') }}</td>
                             <td class="text-end text-nowrap">
                                 {% set broj_koraka = req.chain_labels | length %}
-                                {% set poslednji = req.approval_step + 1 >= broj_koraka %}
+                                {% set poslednji = (req.approval_step or 0) + 1 >= broj_koraka %}
                                 {% if poslednji %}
-                                {% set step_text = 'Одобравате корак ' ~ (req.approval_step + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ ') — последњи корак: захтев ће бити одобрен и архивиран.' %}
+                                {% set step_text = 'Одобравате корак ' ~ ((req.approval_step or 0) + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ ') — последњи корак: захтев ће бити одобрен и архивиран.' %}
                                 {% else %}
-                                {% set step_text = 'Одобравате корак ' ~ (req.approval_step + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ '); следећи корак: ' ~ req.chain_labels[req.approval_step + 1] ~ '.' %}
+                                {% set step_text = 'Одобравате корак ' ~ ((req.approval_step or 0) + 1) ~ ' од ' ~ broj_koraka ~ ' (' ~ req.chain_labels[req.approval_step] ~ '); следећи корак: ' ~ req.chain_labels[(req.approval_step or 0) + 1] ~ '.' %}
                                 {% endif %}
                                 <button type="button" class="btn btn-sm btn-oc-approve act-approve"
                                         data-kind="zahtev" data-id="{{ req.id }}" data-title="{{ req.title or '—' }}"
                                         data-final="{{ '1' if poslednji else '0' }}"
-                                        data-next="{{ '' if poslednji else req.chain_labels[req.approval_step + 1] }}"
+                                        data-next="{{ '' if poslednji else req.chain_labels[(req.approval_step or 0) + 1] }}"
                                         data-step-text="{{ step_text }}">
                                     Одобри
                                 </button>

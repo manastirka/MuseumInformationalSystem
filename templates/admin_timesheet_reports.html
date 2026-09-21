@@ -308,7 +308,7 @@
                             <td class="col-org">{{ report.organization_unit or 'N/A' }}</td>
                             <td class="text-end col-number">{{ '%.2f'|format(report.work_in_museum) }}</td>
                             <td class="text-end col-number">{{ '%.2f'|format(report.work_outside) }}</td>
-                            <td class="text-end col-number">{{ '%.2f'|format(report.vacation + report.public_holiday + report.paid_leave + report.other_leave + report.sick_lt30 + report.sick_gte30) }}</td>
+                            <td class="text-end col-number">{{ '%.2f'|format((report.vacation or 0) + (report.public_holiday or 0) + (report.paid_leave or 0) + (report.other_leave or 0) + (report.sick_lt30 or 0) + (report.sick_gte30 or 0)) }}</td>
                             <td class="text-end col-number fw-semibold">{{ '%.2f'|format(report.total_hours) }}</td>
                             <td class="text-end col-actions">{{ report_akcije(report) }}</td>
                         </tr>
@@ -351,7 +351,7 @@
                         </div>
                         <div class="mobil-polje">
                             <span class="mobil-polje-oznaka">Одсуства</span>
-                            <span class="mobil-polje-vrednost">{{ '%.2f'|format(report.vacation + report.public_holiday + report.paid_leave + report.other_leave + report.sick_lt30 + report.sick_gte30) }}</span>
+                            <span class="mobil-polje-vrednost">{{ '%.2f'|format((report.vacation or 0) + (report.public_holiday or 0) + (report.paid_leave or 0) + (report.other_leave or 0) + (report.sick_lt30 or 0) + (report.sick_gte30 or 0)) }}</span>
                         </div>
                         <div class="mobil-polje">
                             <span class="mobil-polje-oznaka">Укупно</span>
@@ -374,11 +374,11 @@
             <div>
                 {% if reports.page > 1 %}
                 <a class="btn btn-outline-secondary btn-sm"
-                   href="{{ url_for('admin_timesheet_reports', page=reports.page-1, month=month, year=year, search=search, only_verifiable='1' if only_verifiable else None) }}">Назад</a>
+                   href="{{ url_for('admin_timesheet_reports', page=(reports.page or 1)-1, month=month, year=year, search=search, only_verifiable='1' if only_verifiable else None) }}">Назад</a>
                 {% endif %}
                 {% if reports.page < reports.total_pages %}
                 <a class="btn btn-outline-secondary btn-sm ms-2"
-                   href="{{ url_for('admin_timesheet_reports', page=reports.page+1, month=month, year=year, search=search) }}">Напред</a>
+                   href="{{ url_for('admin_timesheet_reports', page=(reports.page or 1)+1, month=month, year=year, search=search) }}">Напред</a>
                 {% endif %}
             </div>
         </div>
