@@ -14,7 +14,7 @@ set -u
 
 JEDINICE="mis.service mis-fototeka-worker.service nginx.service postgresql.service
           backup-nhmb.service backup-nhmb.timer restore-proba.service
-          restore-proba.timer fototeka-import.timer"
+          restore-proba.timer fototeka-import.timer scisearch-web.service"
 
 echo "###VREME"
 date +%s
@@ -41,6 +41,16 @@ cd /data 2>/dev/null && find . -mindepth 1 -maxdepth 2 -type d -printf '%P\n' 2>
 
 echo "###STABLA_BEKAP"
 cd /backup/current/data 2>/dev/null && find . -mindepth 1 -maxdepth 2 -type d -printf '%P\n' 2>/dev/null | sort
+
+echo "###GRESKE5XX"
+# Одговори 5xx у последња 24 h. Грешка коју нико не гледа не постоји —
+# 21.09.2026 је /admin/library_database враћао 500 а то се сазнало случајно.
+for j in mis scisearch-web; do
+    printf '%s %s\n' "$j" "$(journalctl -u "$j" --since '-24 hours' --no-pager 2>/dev/null | grep -cE '" 5[0-9][0-9] ')"
+done
+
+echo "###GRESKE5XX_PRIMERI"
+journalctl -u mis --since '-24 hours' --no-pager 2>/dev/null | grep -oE '"[A-Z]+ [^"?]+[^"]*" 5[0-9][0-9]' | sed -E 's/\?[^"]*//' | sort | uniq -c | sort -rn | head -5
 
 echo "###PROBA"
 systemctl show restore-proba.service -p ExecMainStartTimestamp --value

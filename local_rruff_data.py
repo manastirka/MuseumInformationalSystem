@@ -25,6 +25,7 @@ class LocalRRUFFData:
 
     def __init__(self, data_path: str = RRUFF_DATA_PATH):
         self.data_path = data_path
+        self.available = os.path.isdir(data_path)
         self.powder_path = os.path.join(data_path, 'powder')
         self.raman_path = os.path.join(data_path, 'raman')
         self.infrared_path = os.path.join(data_path, 'infrared')
@@ -40,6 +41,14 @@ class LocalRRUFFData:
 
     def _load_or_build_index(self):
         """Load existing index or build new one."""
+        if not self.available:
+            logger.warning(
+                'Локални RRUFF скуп не постоји (%s) — упити враћају празан резултат',
+                self.data_path,
+            )
+            self._index = {'minerals': {}, 'rruff_ids': {}, 'stats': {}}
+            return
+
         if os.path.exists(self._index_file):
             try:
                 self._index = load_json_file(self._index_file, default={})
@@ -179,6 +188,9 @@ class LocalRRUFFData:
     def _index_images(self):
         """Index image files in the root RRUFF data folder."""
         count = 0
+        if not os.path.isdir(self.data_path):
+            return
+
         for filename in os.listdir(self.data_path):
             if not (filename.endswith('.jpeg') or filename.endswith('.jpg') or filename.endswith('.png')):
                 continue

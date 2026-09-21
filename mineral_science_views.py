@@ -453,6 +453,16 @@ def api_get_geochemical_data(mineral_name):
         return jsonify({'success': False, 'message': str(exc)}), 500
 
 
+def _rruff_nedostupan():
+    """Локални RRUFF скуп није инсталиран на овом серверу — то није грешка
+    него одсуство необавезних података, па иде 200 са јасном поруком."""
+    return jsonify({
+        'success': False,
+        'available': False,
+        'message': 'Локални RRUFF подаци нису доступни на овом серверу',
+    })
+
+
 def api_get_local_rruff_data(mineral_name):
     """Get local RRUFF data for a mineral."""
     try:
@@ -460,6 +470,8 @@ def api_get_local_rruff_data(mineral_name):
         from mineral_translator import get_all_translations
 
         rruff = LocalRRUFFData()
+        if not rruff.available:
+            return _rruff_nedostupan()
         all_results = []
         seen_minerals = set()
 
@@ -502,6 +514,8 @@ def api_get_local_rruff_dif(mineral_name):
         from mineral_translator import get_all_translations
 
         rruff = LocalRRUFFData()
+        if not rruff.available:
+            return _rruff_nedostupan()
         for trans in get_all_translations(mineral_name):
             english_name = trans['english']
             dif_data = rruff.get_powder_dif_data(english_name)
@@ -529,6 +543,8 @@ def api_get_local_rruff_cif(mineral_name):
 
         view_mode = request.args.get('view_mode', 'asymmetric')
         rruff = LocalRRUFFData()
+        if not rruff.available:
+            return _rruff_nedostupan()
 
         for trans in get_all_translations(mineral_name):
             english_name = trans['english']
@@ -580,6 +596,8 @@ def api_get_local_rruff_spectrum(spectrum_type, mineral_name):
             ), 400
 
         rruff = LocalRRUFFData()
+        if not rruff.available:
+            return _rruff_nedostupan()
         for trans in get_all_translations(mineral_name):
             english_name = trans['english']
             spectrum_data = (
@@ -616,6 +634,8 @@ def api_get_local_rruff_powder_xy(mineral_name):
         from mineral_translator import get_all_translations
 
         rruff = LocalRRUFFData()
+        if not rruff.available:
+            return _rruff_nedostupan()
         for trans in get_all_translations(mineral_name):
             english_name = trans['english']
             xy_data = rruff.get_powder_xy_data(english_name)

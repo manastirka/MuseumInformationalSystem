@@ -250,6 +250,10 @@ app.config.from_object(app_config)
 app_config.init_app(app)
 init_observability(app)
 
+# NULL из базе не сме да обори страну нити да се испише као „None“ —
+# 21.09.2026 је /admin/library_database пуцао на књизи без аутора.
+app.jinja_env.finalize = lambda vrednost: '' if vrednost is None else vrednost
+
 def apply_shared_system_settings(saved_settings):
     """Apply persisted system/security settings to the current Flask process."""
     if not saved_settings:

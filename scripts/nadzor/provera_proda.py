@@ -193,6 +193,25 @@ def procena(o: dict) -> tuple[list[str], list[str]]:
         except Exception:
             u_redu.append(f"проба враћања: {proba}")
 
+    # 8. одговори 5xx у последња 24 h — грешка коју нико не гледа не постоји.
+    # Стари колектор нема овај одељак: тада нема ни налаза ни лажног „у реду“.
+    broj5xx: dict[str, int] = {}
+    for red in o.get('GRESKE5XX', []):
+        delovi = red.split()
+        if len(delovi) == 2 and delovi[1].lstrip('-').isdigit():
+            broj5xx[delovi[0]] = int(delovi[1])
+    if broj5xx:
+        pale = {j: n for j, n in broj5xx.items() if n > 0}
+        if pale:
+            primeri = [' '.join(r.split()) for r in o.get('GRESKE5XX_PRIMERI', []) if r.strip()][:3]
+            nalazi.append(
+                'ГРЕШКЕ 5xx (24 h): '
+                + ', '.join(f"{j}={n}" for j, n in pale.items())
+                + (' — ' + ' | '.join(primeri) if primeri else '')
+            )
+        else:
+            u_redu.append('ниједан 5xx одговор у последња 24 h')
+
     STANJE.parent.mkdir(parents=True, exist_ok=True)
     STANJE.write_text(json.dumps({"markeri": markeri}, ensure_ascii=False))
     return nalazi, u_redu
