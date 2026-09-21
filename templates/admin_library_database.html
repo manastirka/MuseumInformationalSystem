@@ -89,8 +89,8 @@
                                 <tr class="book-row"
                                     data-category="{{ book.category }}"
                                     data-book-id="{{ book.id }}"
-                                    data-title="{{ book.title }}"
-                                    data-author="{{ book.author }}"
+                                    data-title="{{ book.title or '' }}"
+                                    data-author="{{ book.author or '' }}"
                                     data-year="{{ book.year }}"
                                     data-location="{{ book.location }}"
                                     data-status="{{ book.status }}"
@@ -100,7 +100,7 @@
                                     data-language="{{ book.language or '' }}"
                                     data-inventory="{{ book.inventory_number or '' }}"
                                     data-detailed-info="{{ book.detailed_info or book.description or '' }}"
-                                    data-search-text="{{ (book.title + ' ' + book.author + ' ' + (book.isbn or '') + ' ' + (book.description or '') + ' ' + (book.publisher or ''))|lower }}">
+                                    data-search-text="{{ ((book.title or '') + ' ' + (book.author or '') + ' ' + (book.isbn or '') + ' ' + (book.description or '') + ' ' + (book.publisher or ''))|lower }}">
                                     <td>
                                         <span class="badge bg-secondary">{{ book.id }}</span>
                                     </td>
@@ -112,7 +112,7 @@
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td>{{ book.author }}</td>
+                                    <td>{{ book.author or '' }}</td>
                                     <td>
                                         <span class="badge bg-info bg-opacity-10 text-info">{{ book.category }}</span>
                                     </td>
