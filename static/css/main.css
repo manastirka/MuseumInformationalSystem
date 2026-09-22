@@ -4847,8 +4847,9 @@ html[data-density="kompakt"][data-style="terenska"] {
    (навигација, бочни мени, модали, падајући менији) од тамног димљеног
    стакла са backdrop-filter замућењем, картице скоро непрозирне.
    Мерен контраст (најгори случај — површина преко најјаче тачке
-   градијента): бело на рам-стаклу 9,1:1 · текст на картици 13,7:1 ·
-   --pal-primary на картици 4,8:1 · зелена/жута/црвена ≥ 4,5:1 ·
+   градијента, картица 66% непрозирна): бело на рам-стаклу 8,4:1 ·
+   текст на картици 13,7:1 · --pal-primary 5,6:1 · зелена/жута/црвена ≥ 4,5:1 ·
+   кремасто мастило (наслеђени беџеви/пагинација) на акценту 4,8:1 ·
    бело на дугмету 5,7:1 ·
    светли акценат на тамној картици 7,4:1.
    Долази ПОСЛЕ фазе 2, ПРЕ @media print.
@@ -4856,18 +4857,18 @@ html[data-density="kompakt"][data-style="terenska"] {
 
 /* 1) Сирове вредности палете */
 [data-palette="staklo"] {
-    --pal-primary: #0b63ce; --pal-primary-dark: #08499b; --pal-primary-light: #4a90e2;
-    --pal-bg-body: #eaf0ff; --pal-bg-card: rgba(255, 255, 255, 0.74);
+    --pal-primary: #0a58b8; --pal-primary-dark: #084391; --pal-primary-light: #3f86dd;
+    --pal-bg-body: #e9efff; --pal-bg-card: rgba(255, 255, 255, 0.66);
     --pal-bg-nav: rgba(16, 28, 48, 0.72);
-    --pal-elevated: rgba(255, 255, 255, 0.58);
+    --pal-elevated: rgba(255, 255, 255, 0.50);
     --pal-text: #16202e; --pal-text2: #3f4b5c; --pal-muted: #4f5b6b;
     --pal-border: rgba(22, 40, 72, 0.14);
     --pal-thead-bg: rgba(16, 28, 48, 0.78); --pal-thead-text: #ffffff;
     --pal-sel-bg: #dbe8fb; --pal-sel-text: #0c3c74;
-    --pal-stripe: rgba(255, 255, 255, 0.45); --pal-hover: rgba(11, 99, 206, 0.09);
+    --pal-stripe: rgba(255, 255, 255, 0.45); --pal-hover: rgba(10, 88, 184, 0.09);
     --pal-side-bg: rgba(13, 24, 42, 0.72); --pal-side-text: #eef4ff;
     --pal-radius-card: 18px; --pal-radius-btn: 12px;
-    --pal-focus: rgba(11, 99, 206, 0.35);
+    --pal-focus: rgba(10, 88, 184, 0.35);
     --pal-shadow: 0 10px 30px rgba(14, 30, 58, 0.12), 0 2px 8px rgba(14, 30, 58, 0.08);
     --pal-primary-dk: #6fb3ff; --pal-onacc-dk: #04203f;
 }
@@ -4875,12 +4876,12 @@ html[data-density="kompakt"][data-style="terenska"] {
 /* 2) Радна површина — благ вишеслојни градијент, фиксиран да стакло има
       шта да замути при скроловању. */
 [data-palette="staklo"] body.heritage-shell {
-    background-color: #eaf0ff;
+    background-color: #e9efff;
     background-image:
-        radial-gradient(1400px 900px at 26% -6%, rgba(86, 148, 255, 0.50), transparent 66%),
-        radial-gradient(1200px 820px at 86% 14%, rgba(178, 126, 255, 0.38), transparent 66%),
-        radial-gradient(1200px 900px at 56% 104%, rgba(96, 214, 235, 0.40), transparent 66%),
-        linear-gradient(180deg, #e8eeff 0%, #dbe4f7 100%);
+        radial-gradient(1400px 900px at 26% -6%, rgba(125, 178, 255, 0.55), transparent 66%),
+        radial-gradient(1200px 820px at 86% 14%, rgba(201, 166, 255, 0.38), transparent 66%),
+        radial-gradient(1200px 900px at 56% 104%, rgba(134, 223, 242, 0.45), transparent 66%),
+        linear-gradient(180deg, #e9efff 0%, #dee6f9 100%);
     background-attachment: fixed;
     background-repeat: no-repeat;
 }
@@ -4912,8 +4913,8 @@ html[data-density="kompakt"][data-style="terenska"] {
 [data-palette="staklo"] body.heritage-shell .alert {
     -webkit-backdrop-filter: blur(18px) saturate(160%);
     backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.62);
-    box-shadow: var(--pal-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: var(--pal-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 [data-palette="staklo"] body.heritage-shell .card-header,
 [data-palette="staklo"] body.heritage-shell .card-footer,
