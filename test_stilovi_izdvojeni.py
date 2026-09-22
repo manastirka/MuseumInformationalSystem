@@ -93,8 +93,11 @@ class FontoviTest(unittest.TestCase):
         html = self._strana()
         veze = re.findall(r'fonts\.googleapis\.com/css2\?([^"]+)', html)
         self.assertEqual(len(veze), 1, 'тачно једна веза ка Google Fonts')
-        self.assertLessEqual(veze[0].count('family='), 2, 'највише две породице по страни')
+        # Две породице по стилу + Source Serif 4 за натпис у горњој траци
+        # (--font-brand); списак остаје далеко испод свих шест.
+        self.assertLessEqual(veze[0].count('family='), 3, 'највише три породице по страни')
         self.assertIn('Inter', veze[0])
+        self.assertIn('Source+Serif+4', veze[0], 'фонт натписа се увек учитава')
 
     def test_nijedan_sablon_ne_ucitava_fontove_mimo_ukljucka(self):
         for p in glob.glob('templates/*.html'):
