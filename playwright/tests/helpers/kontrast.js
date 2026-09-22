@@ -24,7 +24,7 @@ const STILOVI = ['institucionalna', 'moderna', 'arhivska', 'terenska'];
 // светлом и тамном режиму (фаза 2: равна палета поштује mode кроз dark-flat слој).
 const PALETE = ['plava-klasicna', 'plava-windows', 'plava-tamna', 'plava-ledena',
   'plava-muzejska', 'siva-poslovna', 'zelena-institucionalna', 'bordo-muzejska',
-  'crno-bela'];
+  'crno-bela', 'staklo'];
 const GUSTINE = ['komforno', 'kompakt'];
 const PALETE_REZIMI = ['light', 'dark'];
 // Акцентна оса (фаза 2). 'podrazumevano' (идентитет палете) се покрива
