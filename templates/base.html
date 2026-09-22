@@ -720,6 +720,11 @@
                 sidebar.classList.toggle('sidebar-collapsed');
                 const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
                 localStorage.setItem('sidebarCollapsed', isCollapsed);
+                const rucica = sidebar.querySelector('.sidebar-collapse-btn');
+                if (rucica) {
+                    rucica.setAttribute('aria-expanded', String(!isCollapsed));
+                    rucica.title = isCollapsed ? 'Прошири бочну траку' : 'Скупи бочну траку';
+                }
                 if (contentWrapper) {
                     contentWrapper.classList.toggle('sidebar-is-collapsed', isCollapsed);
                 }
@@ -746,7 +751,13 @@
                 collapseBtn.className = 'sidebar-collapse-btn';
                 collapseBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
                 collapseBtn.onclick = toggleSidebarCollapse;
+                collapseBtn.type = 'button';
                 collapseBtn.setAttribute('aria-label', 'Скупи/прошири бочну траку');
+                collapseBtn.setAttribute('aria-controls', 'sidebar');
+                collapseBtn.setAttribute('aria-expanded',
+                    String(!sidebar.classList.contains('sidebar-collapsed')));
+                collapseBtn.title = sidebar.classList.contains('sidebar-collapsed')
+                    ? 'Прошири бочну траку' : 'Скупи бочну траку';
                 sidebar.appendChild(collapseBtn);
             }
 

@@ -200,33 +200,74 @@
             margin-left: calc(var(--sidebar-collapsed-width, 96px) + 0.75rem);
         }
 
+        /* Ручица за скупљање бочне траке.
+           Пре: округло дугме на дну траке, са хардкодованим heritage
+           градијентом (бордо → зелено) — на свакој другој палети страно тело,
+           а стајало је ПРЕКО последњих ставки менија.
+           Сада: танка ручица на десној ивици траке, половином изван панела,
+           у тону саме траке (--sidebar-*), пригушена док се не пређе мишем.
+           Место је исто где корисник и очекује границу коју вуче. */
         .sidebar-collapse-btn {
             position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(180deg, rgba(122, 41, 43, 0.94), rgba(33, 71, 61, 0.96));
-            color: var(--sidebar-ivory, #f7ebda);
-            border: 1px solid rgba(240, 210, 151, 0.4);
+            top: 50%;
+            right: -11px;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 58px;
+            border-radius: 11px;
+            background: var(--sidebar-wood-mid, var(--sidebar-card-strong, rgba(20, 34, 56, 0.9)));
+            color: var(--sidebar-ink, #eef4ff);
+            border: 1px solid var(--sidebar-border-soft, rgba(255, 255, 255, 0.2));
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: 0 10px 24px rgba(51, 17, 18, 0.24);
+            opacity: 0.7;
+            padding: 0;
+            transition: opacity 0.18s ease, background 0.18s ease, transform 0.18s ease;
+            box-shadow: 0 6px 18px var(--sidebar-shadow, rgba(8, 22, 40, 0.35));
             z-index: 3;
         }
 
+        .sidebar-collapse-btn i {
+            font-size: 0.78rem;
+            line-height: 1;
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar:hover .sidebar-collapse-btn,
+        .sidebar-collapse-btn:focus-visible {
+            opacity: 1;
+        }
+
         .sidebar-collapse-btn:hover {
-            transform: translateX(-50%) translateY(-2px);
-            filter: brightness(1.04);
+            opacity: 1;
+            transform: translateY(-50%) scale(1.06);
+        }
+
+        .sidebar-collapse-btn:focus-visible {
+            outline: 2px solid var(--focus-ring, rgba(255, 255, 255, 0.6));
+            outline-offset: 2px;
         }
 
         .sidebar-collapsed .sidebar-collapse-btn i {
             transform: rotate(180deg);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar-collapse-btn,
+            .sidebar-collapse-btn i {
+                transition: none;
+            }
+        }
+
+        /* Испод 992px бочна трака уступа место фиоци — ручица нема шта да скупља. */
+        @media (max-width: 991.98px) {
+            .sidebar-collapse-btn {
+                display: none;
+            }
         }
 
         /* Scroll to top button */
