@@ -102,6 +102,10 @@
     --font-size-2xl: 1.5rem;
     --font-size-3xl: 1.875rem;
     --font-display: 'Cormorant Garamond', Georgia, serif;
+    /* Натпис у горњој траци носи име установе — свој, пунији рез, независан
+       од осе стила (иста реч на свим темама). Учитава се увек, види
+       templates/_fontovi.html. */
+    --font-brand: 'Source Serif 4', Georgia, serif;
     --heading-weight: 700;
     --lh-base: 1.6;
 
@@ -707,7 +711,8 @@ body {
 }
 
 .navbar-brand {
-    font-weight: 600;
+    font-family: var(--font-brand);
+    font-weight: 700;
     color: var(--navbar-text) !important;
     font-size: 1rem;
     display: flex;
@@ -2235,10 +2240,10 @@ body.heritage-shell .navbar::after {
 
 body.heritage-shell .navbar-brand {
     color: #e6c37e !important;
-    font-family: var(--font-display);
+    font-family: var(--font-brand);
     font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.5rem);
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    font-weight: 700;
+    letter-spacing: 0.005em;
     text-shadow: 0 1px 0 rgba(28, 7, 8, 0.5);
 }
 
