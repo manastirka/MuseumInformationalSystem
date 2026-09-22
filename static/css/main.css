@@ -4841,6 +4841,208 @@ html[data-density="kompakt"][data-style="terenska"] {
 }
 
 /* ============================================
+   ФАЗА 4 — ТЕЧНО СТАКЛО (data-palette="staklo")
+   --------------------------------------------
+   macOS „liquid glass": светла радна површина са благим градијентом, рам
+   (навигација, бочни мени, модали, падајући менији) од тамног димљеног
+   стакла са backdrop-filter замућењем, картице скоро непрозирне.
+   Мерен контраст (најгори случај — површина преко најјаче тачке
+   градијента): бело на рам-стаклу 9,1:1 · текст на картици 13,7:1 ·
+   --pal-primary на картици 4,8:1 · зелена/жута/црвена ≥ 4,5:1 ·
+   бело на дугмету 5,7:1 ·
+   светли акценат на тамној картици 7,4:1.
+   Долази ПОСЛЕ фазе 2, ПРЕ @media print.
+   ============================================ */
+
+/* 1) Сирове вредности палете */
+[data-palette="staklo"] {
+    --pal-primary: #0b63ce; --pal-primary-dark: #08499b; --pal-primary-light: #4a90e2;
+    --pal-bg-body: #eaf0ff; --pal-bg-card: rgba(255, 255, 255, 0.74);
+    --pal-bg-nav: rgba(16, 28, 48, 0.72);
+    --pal-elevated: rgba(255, 255, 255, 0.58);
+    --pal-text: #16202e; --pal-text2: #3f4b5c; --pal-muted: #4f5b6b;
+    --pal-border: rgba(22, 40, 72, 0.14);
+    --pal-thead-bg: rgba(16, 28, 48, 0.78); --pal-thead-text: #ffffff;
+    --pal-sel-bg: #dbe8fb; --pal-sel-text: #0c3c74;
+    --pal-stripe: rgba(255, 255, 255, 0.45); --pal-hover: rgba(11, 99, 206, 0.09);
+    --pal-side-bg: rgba(13, 24, 42, 0.72); --pal-side-text: #eef4ff;
+    --pal-radius-card: 18px; --pal-radius-btn: 12px;
+    --pal-focus: rgba(11, 99, 206, 0.35);
+    --pal-shadow: 0 10px 30px rgba(14, 30, 58, 0.12), 0 2px 8px rgba(14, 30, 58, 0.08);
+    --pal-primary-dk: #6fb3ff; --pal-onacc-dk: #04203f;
+}
+
+/* 2) Радна површина — благ вишеслојни градијент, фиксиран да стакло има
+      шта да замути при скроловању. */
+[data-palette="staklo"] body.heritage-shell {
+    background-color: #eaf0ff;
+    background-image:
+        radial-gradient(1400px 900px at 26% -6%, rgba(86, 148, 255, 0.50), transparent 66%),
+        radial-gradient(1200px 820px at 86% 14%, rgba(178, 126, 255, 0.38), transparent 66%),
+        radial-gradient(1200px 900px at 56% 104%, rgba(96, 214, 235, 0.40), transparent 66%),
+        linear-gradient(180deg, #e8eeff 0%, #dbe4f7 100%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
+/* 3) Рам — тамно димљено стакло. Бело мастило остаје (6,9:1 у најгорем
+      случају), па ниједна страна не мора да мења своје боје. */
+[data-palette="staklo"] body.heritage-shell .navbar {
+    background: linear-gradient(180deg, rgba(34, 52, 84, 0.78), rgba(12, 22, 40, 0.72));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 28px rgba(10, 22, 44, 0.18);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+}
+[data-palette="staklo"] body.heritage-shell .sidebar,
+[data-palette="staklo"] body.heritage-shell .sidebar-organic-panel,
+[data-palette="staklo"] body.heritage-shell .offcanvas {
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 40px rgba(10, 22, 44, 0.18);
+}
+
+/* 4) Садржај — светло стакло: замућење + бела ивица-влас + унутрашњи одсјај.
+      Непрозирност 0,78 држи текст на 15,7:1. */
+[data-palette="staklo"] body.heritage-shell .card,
+[data-palette="staklo"] body.heritage-shell .modal-content,
+[data-palette="staklo"] body.heritage-shell .dropdown-menu,
+[data-palette="staklo"] body.heritage-shell .list-group,
+[data-palette="staklo"] body.heritage-shell .alert {
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    box-shadow: var(--pal-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+[data-palette="staklo"] body.heritage-shell .card-header,
+[data-palette="staklo"] body.heritage-shell .card-footer,
+[data-palette="staklo"] body.heritage-shell .modal-header,
+[data-palette="staklo"] body.heritage-shell .modal-footer {
+    background: rgba(255, 255, 255, 0.34);
+    border-color: rgba(22, 40, 72, 0.10);
+}
+
+/* 5) Поља и дугмад — macOS геометрија, мекан фокусни прстен. */
+[data-palette="staklo"] body.heritage-shell .form-control,
+[data-palette="staklo"] body.heritage-shell .form-select,
+[data-palette="staklo"] body.heritage-shell textarea.form-control {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(22, 40, 72, 0.16);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+[data-palette="staklo"] body.heritage-shell .form-control:focus,
+[data-palette="staklo"] body.heritage-shell .form-select:focus,
+[data-palette="staklo"] body.heritage-shell textarea.form-control:focus {
+    background: #ffffff;
+    box-shadow: 0 0 0 4px var(--pal-focus);
+}
+[data-palette="staklo"] body.heritage-shell .btn {
+    box-shadow: 0 1px 2px rgba(14, 30, 58, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* 6) Табеле — стаклена заглавља, изразито дискретне пруге. */
+[data-palette="staklo"] body.heritage-shell .table > thead th {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+/* 7) ТАМНА ВАРИЈАНТА — мора после dark-flat слоја и на body нивоу (0,3,1). */
+[data-palette="staklo"][data-theme="dark"],
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell {
+    --pal-bg-body: #0c111c;
+    --pal-bg-card: rgba(28, 36, 52, 0.74);
+    --pal-elevated: rgba(40, 50, 68, 0.66);
+    --pal-bg-nav: rgba(10, 16, 28, 0.74);
+    --pal-side-bg: rgba(8, 13, 24, 0.76);
+    --pal-stripe: rgba(255, 255, 255, 0.04);
+    --pal-hover: rgba(111, 179, 255, 0.14);
+    --pal-border: rgba(255, 255, 255, 0.12);
+    --pal-thead-bg: rgba(10, 18, 32, 0.82);
+}
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell {
+    background-color: #0c111c;
+    background-image:
+        radial-gradient(1100px 700px at 12% -10%, rgba(40, 92, 180, 0.34), transparent 60%),
+        radial-gradient(900px 600px at 88% 0%, rgba(96, 62, 164, 0.30), transparent 62%),
+        linear-gradient(180deg, #141c2c 0%, #090e17 100%);
+}
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .card,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .modal-content,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .dropdown-menu,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .list-group,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .alert {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .navbar {
+    background: linear-gradient(180deg, rgba(22, 32, 52, 0.80), rgba(8, 13, 24, 0.74));
+}
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .card-header,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .card-footer,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .modal-header,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .modal-footer,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-control,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-select,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell textarea.form-control {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-control:focus,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-select:focus,
+[data-palette="staklo"][data-theme="dark"] body.heritage-shell textarea.form-control:focus {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* 8) РЕЗЕРВА — прегледачи без backdrop-filter, корисници који траже мање
+      прозирности, и штампа: пуне површине уместо стакла. */
+@supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+    [data-palette="staklo"] {
+        --pal-bg-card: #ffffff; --pal-elevated: #eef2f9;
+        --pal-bg-nav: #14263f; --pal-side-bg: #0f1a2e;
+        --pal-thead-bg: #14263f; --pal-stripe: #f4f7fd;
+    }
+    [data-palette="staklo"] body.heritage-shell .navbar {
+        background: #14263f;
+    }
+}
+@media (prefers-reduced-transparency: reduce) {
+    [data-palette="staklo"] {
+        --pal-bg-card: #ffffff; --pal-elevated: #eef2f9;
+        --pal-bg-nav: #14263f; --pal-side-bg: #0f1a2e;
+        --pal-thead-bg: #14263f; --pal-stripe: #f4f7fd;
+    }
+    [data-palette="staklo"] body.heritage-shell {
+        background-image: none;
+    }
+    [data-palette="staklo"] body.heritage-shell .navbar,
+    [data-palette="staklo"] body.heritage-shell .sidebar,
+    [data-palette="staklo"] body.heritage-shell .sidebar-organic-panel,
+    [data-palette="staklo"] body.heritage-shell .card,
+    [data-palette="staklo"] body.heritage-shell .modal-content,
+    [data-palette="staklo"] body.heritage-shell .dropdown-menu {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    [data-palette="staklo"] body.heritage-shell .navbar {
+        background: #14263f;
+    }
+}
+@media print {
+    [data-palette="staklo"] body.heritage-shell {
+        background: #ffffff;
+    }
+    [data-palette="staklo"] body.heritage-shell .card,
+    [data-palette="staklo"] body.heritage-shell .modal-content {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        background: #ffffff;
+        box-shadow: none;
+    }
+}
+
+/* ============================================
    ŠTAMPA — uvek svetla, bez obzira na temu
    ============================================ */
 @media print {

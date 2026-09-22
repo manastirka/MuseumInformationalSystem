@@ -8,6 +8,7 @@ os.environ.setdefault('REDIS_URL', '')
 os.environ.setdefault('SESSION_TYPE', 'filesystem')
 os.environ.setdefault('SESSION_FILE_DIR', '/tmp/museum-test-theme-prefs')
 
+from pathlib import Path
 import pytest
 from flask import Flask, session
 
@@ -322,6 +323,37 @@ def test_normalize_theme_palette_accepts_faza2():
     for paleta in ('siva-poslovna', 'zelena-institucionalna',
                    'bordo-muzejska', 'crno-bela'):
         assert core_app_views.normalize_theme_palette(paleta) == paleta
+
+
+# ---- Faza 4: tecno staklo (migracija 059) ---------------------------------
+
+def test_set_theme_stores_staklo(theme_app):
+    """Paleta 'staklo' se cuva u sesiji i kolacicu kao i ostale ravne."""
+    with theme_app.test_request_context(
+        '/set_theme',
+        method='POST',
+        json={'mode': 'light', 'accent': 'podrazumevano', 'palette': 'staklo'},
+    ):
+        response = core_app_views.set_theme_preference()
+        assert session['museum_palette'] == 'staklo'
+
+    cookies = response.headers.getlist('Set-Cookie')
+    assert any('museum_palette=staklo' in c for c in cookies)
+
+
+def test_normalize_theme_palette_accepts_staklo():
+    assert core_app_views.normalize_theme_palette('staklo') == 'staklo'
+
+
+def test_staklo_ima_svoj_css_blok():
+    """Paleta bez CSS-a bi dala shell bez tokena — token blok mora postojati,
+    zajedno sa tamnom varijantom i rezervom bez backdrop-filter-a."""
+    css = (Path(__file__).resolve().parent / 'static' / 'css'
+           / 'main.css').read_text(encoding='utf-8')
+    assert '[data-palette="staklo"] {' in css
+    assert '[data-palette="staklo"][data-theme="dark"]' in css
+    assert 'backdrop-filter: blur' in css
+    assert '@supports not ((backdrop-filter: blur(4px))' in css
 
 
 @pytest.mark.parametrize('akcenat', [

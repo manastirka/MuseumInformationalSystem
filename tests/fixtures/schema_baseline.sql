@@ -5329,7 +5329,7 @@ CREATE TABLE public.users (
     CONSTRAINT users_theme_accent_check CHECK (((theme_accent)::text = ANY ((ARRAY['podrazumevano'::character varying, 'zelena'::character varying, 'bordo'::character varying, 'oker'::character varying, 'petrolej'::character varying, 'klasicna-plava'::character varying, 'svetloplava'::character varying, 'tamnoplava'::character varying, 'tirkizna'::character varying, 'ljubicasta'::character varying, 'narandzasta'::character varying, 'grafitnosiva'::character varying])::text[]))),
     CONSTRAINT users_theme_density_check CHECK (((theme_density)::text = ANY ((ARRAY['komforno'::character varying, 'kompakt'::character varying])::text[]))),
     CONSTRAINT users_theme_mode_check CHECK (((theme_mode)::text = ANY ((ARRAY['light'::character varying, 'dark'::character varying, 'system'::character varying, 'contrast'::character varying])::text[]))),
-    CONSTRAINT users_theme_palette_check CHECK (((theme_palette)::text = ANY ((ARRAY['heritage'::character varying, 'plava-klasicna'::character varying, 'plava-windows'::character varying, 'plava-tamna'::character varying, 'plava-ledena'::character varying, 'plava-muzejska'::character varying, 'siva-poslovna'::character varying, 'zelena-institucionalna'::character varying, 'bordo-muzejska'::character varying, 'crno-bela'::character varying, 'custom'::character varying])::text[]))),
+    CONSTRAINT users_theme_palette_check CHECK (((theme_palette)::text = ANY ((ARRAY['heritage'::character varying, 'plava-klasicna'::character varying, 'plava-windows'::character varying, 'plava-tamna'::character varying, 'plava-ledena'::character varying, 'plava-muzejska'::character varying, 'siva-poslovna'::character varying, 'zelena-institucionalna'::character varying, 'bordo-muzejska'::character varying, 'crno-bela'::character varying, 'staklo'::character varying, 'custom'::character varying])::text[]))),
     CONSTRAINT users_theme_style_check CHECK (((theme_style)::text = ANY ((ARRAY['institucionalna'::character varying, 'moderna'::character varying, 'arhivska'::character varying, 'terenska'::character varying])::text[])))
 );
 
@@ -5338,7 +5338,7 @@ CREATE TABLE public.users (
 -- Name: COLUMN users.theme_palette; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.users.theme_palette IS 'Named theme palette: heritage (classic museum look) | plava-* (phase 1) | siva-poslovna | zelena-institucionalna | bordo-muzejska | crno-bela (phase 2 flat palettes) | custom (phase 3, render active_custom_theme_id)';
+COMMENT ON COLUMN public.users.theme_palette IS 'Named theme palette: heritage (classic museum look) | plava-* (phase 1) | siva-poslovna | zelena-institucionalna | bordo-muzejska | crno-bela (phase 2 flat palettes) | staklo (phase 4, liquid glass) | custom (phase 3, render active_custom_theme_id)';
 
 
 --

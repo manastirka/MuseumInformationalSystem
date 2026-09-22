@@ -85,7 +85,7 @@ THEME_DENSITIES = ('komforno', 'kompakt')
 THEME_PALETTES = ('heritage', 'plava-klasicna', 'plava-windows',
                   'plava-tamna', 'plava-ledena', 'plava-muzejska',
                   'siva-poslovna', 'zelena-institucionalna',
-                  'bordo-muzejska', 'crno-bela', 'custom')
+                  'bordo-muzejska', 'crno-bela', 'staklo', 'custom')
 DEFAULT_PALETTE = 'plava-klasicna'
 
 
