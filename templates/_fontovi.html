@@ -11,8 +11,8 @@
     нема потребе за динамичким дописивањем. -#}
 {%- set _stil_fonta = 'institucionalna' if (_flat|default(false) or _is_custom|default(false))
                       else current_theme_style|default('institucionalna') -%}
-{#- Натпис у горњој траци (--font-brand) увек тражи Source Serif 4 700;
-    архивски стил га већ има у свом списку, па се тамо не дописује. -#}
+{#- Натпис у горњој траци (--font-brand) увек тражи Inter 600;
+    институционални стил га већ има у свом списку, па се тамо не дописује. -#}
 {%- set _porodice = {
     'institucionalna': 'family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700',
     'moderna': 'family=Noto+Sans:wght@400;500;600;700',
@@ -20,5 +20,5 @@
     'terenska': 'family=PT+Sans:wght@400;700',
 } -%}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-{%- set _brend = '' if _stil_fonta == 'arhivska' else '&family=Source+Serif+4:wght@700' -%}
+{%- set _brend = '' if _stil_fonta == 'institucionalna' else '&family=Inter:wght@600' -%}
 <link href="https://fonts.googleapis.com/css2?{{ _porodice.get(_stil_fonta, _porodice['institucionalna']) }}{{ _brend }}&display=swap" rel="stylesheet">
