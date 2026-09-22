@@ -4952,33 +4952,36 @@ html[data-density="kompakt"][data-style="terenska"] {
 /* 7) ТАМНА ВАРИЈАНТА — мора после dark-flat слоја и на body нивоу (0,3,1). */
 [data-palette="staklo"][data-theme="dark"],
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell {
-    --pal-bg-body: #0c111c;
-    --pal-bg-card: rgba(28, 36, 52, 0.74);
-    --pal-elevated: rgba(40, 50, 68, 0.66);
-    --pal-bg-nav: rgba(10, 16, 28, 0.74);
-    --pal-side-bg: rgba(8, 13, 24, 0.76);
-    --pal-stripe: rgba(255, 255, 255, 0.04);
-    --pal-hover: rgba(111, 179, 255, 0.14);
-    --pal-border: rgba(255, 255, 255, 0.12);
-    --pal-thead-bg: rgba(10, 18, 32, 0.82);
+    --pal-bg-body: #0e1424;
+    --pal-bg-card: rgba(30, 40, 60, 0.62);
+    --pal-elevated: rgba(48, 60, 86, 0.58);
+    --pal-bg-nav: rgba(12, 18, 32, 0.62);
+    --pal-side-bg: rgba(10, 15, 28, 0.64);
+    --pal-stripe: rgba(255, 255, 255, 0.05);
+    --pal-hover: rgba(111, 179, 255, 0.16);
+    --pal-border: rgba(255, 255, 255, 0.16);
+    --pal-thead-bg: rgba(10, 18, 32, 0.72);
 }
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell {
-    background-color: #0c111c;
+    background-color: #0e1424;
     background-image:
-        radial-gradient(1100px 700px at 12% -10%, rgba(40, 92, 180, 0.34), transparent 60%),
-        radial-gradient(900px 600px at 88% 0%, rgba(96, 62, 164, 0.30), transparent 62%),
-        linear-gradient(180deg, #141c2c 0%, #090e17 100%);
+        radial-gradient(1400px 900px at 22% -8%, rgba(64, 124, 220, 0.42), transparent 66%),
+        radial-gradient(1200px 820px at 84% 12%, rgba(138, 96, 224, 0.32), transparent 66%),
+        radial-gradient(1200px 900px at 56% 106%, rgba(52, 160, 190, 0.32), transparent 66%),
+        linear-gradient(180deg, #141d31 0%, #0a0f1b 100%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
 }
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .card,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .modal-content,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .dropdown-menu,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .list-group,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .alert {
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .navbar {
-    background: linear-gradient(180deg, rgba(22, 32, 52, 0.80), rgba(8, 13, 24, 0.74));
+    background: linear-gradient(180deg, rgba(30, 44, 74, 0.70), rgba(10, 16, 30, 0.62));
 }
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .card-header,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .card-footer,
@@ -4987,8 +4990,8 @@ html[data-density="kompakt"][data-style="terenska"] {
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-control,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-select,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell textarea.form-control {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-control:focus,
 [data-palette="staklo"][data-theme="dark"] body.heritage-shell .form-select:focus,
