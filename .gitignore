@@ -123,6 +123,8 @@ localSQLtesting/
 static/*
 !static/css/
 !static/js/
+# Мотор уџбеника (bundle из репоа mis-udzbenik; видети static/udzbenik/README.md)
+!static/udzbenik/
 
 
 # --- ML model weights ---

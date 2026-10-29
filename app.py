@@ -71,6 +71,7 @@ from blueprints.fototeka import fototeka_bp
 from blueprints.kr_dosije import kr_dosije_bp
 from blueprints.qr import qr_bp
 from blueprints.pretraga import pretraga_bp
+from blueprints.udzbenik import udzbenik_bp
 from blueprints.mail import MAILBOX_ADMIN_FORBIDDEN_MESSAGE, mail_bp
 from blueprints.chat import chat_bp
 from blueprints.vehicles import vehicles_bp
@@ -403,6 +404,7 @@ app.register_blueprint(documents_bp)
 app.register_blueprint(fototeka_bp)
 app.register_blueprint(kr_dosije_bp)
 app.register_blueprint(pretraga_bp)
+app.register_blueprint(udzbenik_bp)
 app_blueprint_support.register_standard_blueprints(
     app,
     {
@@ -669,6 +671,13 @@ MODULE_ACCESS = {
         'icon': 'bi-camera',
         'default_access': True,  # Everyone has access by default
         'restricted_users': []   # No restrictions
+    },
+    'udzbenik': {
+        'name': 'Интерактивни уџбеник',
+        'description': 'Уџбеници по збиркама — кристалографија, особине, примерци',
+        'icon': 'bi-book',
+        'default_access': True,  # Everyone has access by default
+        'authorized_users': []
     },
     'kr_dosije': {
         'name': 'К-Р досије',

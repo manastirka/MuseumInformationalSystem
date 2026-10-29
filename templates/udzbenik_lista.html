@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from '_zaglavlje_strane.html' import zaglavlje %}
+
+{% block title %}Интерактивни уџбеник{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/strane/udzbenik.css') }}?v={{ v_statike('css/strane/udzbenik.css') }}">
+<div class="container-fluid py-3 udzbenik-strana">
+    {{ zaglavlje('Интерактивни уџбеник', 'Уџбеници по збиркама — кристалографија, особине, примерци', ikona='bi-book', brojac=udzbenici|length, brojac_naziv='уџбеника') }}
+
+    {% if udzbenici %}
+    <div class="udzbenik-mreza">
+        {% for u in udzbenici %}
+        <a class="udzbenik-kartica" href="{{ url_for('udzbenik.ljuska', zbirka=u.zbirka) }}">
+            <h2 class="udzbenik-kartica__naslov">{{ u.naslov }}</h2>
+            {% if u.opis %}<p class="udzbenik-kartica__opis">{{ u.opis }}</p>{% endif %}
+            <p class="udzbenik-kartica__meta">
+                <span><i class="bi bi-journal-text" aria-hidden="true"></i> {{ u.broj_lekcija }} лекција</span>
+                {% if u.procenat is not none %}<span><i class="bi bi-check2-circle" aria-hidden="true"></i> {{ u.procenat }}% завршено</span>{% endif %}
+                {% if u.status == 'nacrt' %}<span class="udzbenik-znak">Нацрт</span>{% endif %}
+            </p>
+            {% if u.procenat is not none %}
+            <div class="udzbenik-traka" role="progressbar" aria-label="Завршено" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ u.procenat }}">
+                <span class="udzbenik-traka__popuna" style="width: {{ u.procenat }}%"></span>
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="udzbenik-prazno">Још нема уџбеника на које имате приступ.</p>
+    {% endif %}
+</div>
+{% endblock %}
