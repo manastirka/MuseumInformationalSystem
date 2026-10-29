@@ -207,6 +207,20 @@
                 "visina": "srednja"
               },
               {
+                "id": "zasto-struktura",
+                "tip": "tekst",
+                "markdown": "Zašto baš te ravni? U strukturi halita (NaCl) joni natrijuma i hlora naizmenično zauzimaju čvorove kubne mreže. Ravni {100} sadrže podjednako Na⁺ i Cl⁻ i električno su neutralne, pa se duž njih kristal razdvaja uz najmanji otpor. Ravni {111} su, naprotiv, sastavljene samo od jedne vrste jona — razdvajanje po njima ostavilo bi dve naelektrisane površi, što struktura „ne dozvoljava“. Cepljivost je, dakle, struktura viđena golim okom."
+              },
+              {
+                "id": "scena-struktura-halit",
+                "tip": "scena",
+                "scena": "kristalna-struktura",
+                "parametri": { "mineral": "halit", "prikaz": "supercelija", "stil": "kugle-stapici", "prikazi_celiju": true, "oznake_atoma": true },
+                "potpis": "Struktura halita, 2×2×2 jedinične ćelije: Na⁺ (manje) i Cl⁻ (veće) kugle naizmenično u tri pravca pod 90° — isti pravci kao ravni cepljivosti.",
+                "opis_za_citac": "Kubna rešetka u kojoj se dve vrste jona smenjuju duž sve tri ose; ivice jedinične ćelije su paralelne ravnima cepljivosti.",
+                "visina": "visoka"
+              },
+              {
                 "id": "scena-kalcit",
                 "tip": "scena",
                 "scena": "cepljivost",
