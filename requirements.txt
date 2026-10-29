@@ -76,6 +76,9 @@ opentelemetry-exporter-otlp>=1.28.0
 opentelemetry-instrumentation-flask>=0.49b0
 opentelemetry-instrumentation-requests>=0.49b0
 
+# Валидација садржаја лекција уџбеника (scripts/udzbenik_uvoz.py)
+jsonschema>=4.26.0
+
 # Testing (development)
 pytest>=7.4.0
 pytest-flask>=1.3.0

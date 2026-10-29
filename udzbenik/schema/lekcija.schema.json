@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mis.nhmbeo.rs/udzbenik/lekcija.schema.json",
+  "title": "Sadržaj lekcije interaktivnog udžbenika (udzbenik_lekcija.sadrzaj)",
+  "description": "Izvor istine za ovu šemu je repo MuseumInfoSystem (udzbenik/schema/lekcija.schema.json). Repo mis-udzbenik nosi kopiju.",
+  "type": "object",
+  "required": ["verzija", "blokovi"],
+  "additionalProperties": false,
+  "properties": {
+    "verzija": { "const": 1 },
+    "blokovi": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/blok" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "description": "Stabilan identifikator bloka unutar lekcije (sidro, kasnije komentari). Jedinstven u lekciji."
+    },
+    "markdown": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000,
+      "description": "Markdown bez sirovog HTML-a. Motor renderuje uz sanitizaciju."
+    },
+    "blok": {
+      "type": "object",
+      "required": ["id", "tip"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "enum": ["tekst", "slika", "scena", "primerak", "pitanje", "napomena"] }
+      },
+      "oneOf": [
+        { "$ref": "#/$defs/tekst" },
+        { "$ref": "#/$defs/slika" },
+        { "$ref": "#/$defs/scena" },
+        { "$ref": "#/$defs/primerak" },
+        { "$ref": "#/$defs/pitanje" },
+        { "$ref": "#/$defs/napomena" }
+      ]
+    },
+    "tekst": {
+      "type": "object",
+      "required": ["id", "tip", "markdown"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "tekst" },
+        "markdown": { "$ref": "#/$defs/markdown" }
+      }
+    },
+    "slika": {
+      "type": "object",
+      "required": ["id", "tip", "fotografija_id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "slika" },
+        "fotografija_id": { "type": "integer", "minimum": 1, "description": "fotografije.id u Fototeci" },
+        "potpis": { "type": "string", "maxLength": 500 },
+        "alt": { "type": "string", "maxLength": 300, "description": "Tekstualna zamena; ako nema, motor koristi potpis." },
+        "poreklo": {
+          "enum": ["fotografija", "crtez", "ai-ilustracija", "dijagram"],
+          "default": "fotografija",
+          "description": "Vidljivo u potpisu — muzej ne meša fotografiju primerka i generisanu ilustraciju bez oznake."
+        },
+        "sirina": { "enum": ["puna", "pola", "mala"], "default": "puna" }
+      }
+    },
+    "scena": {
+      "type": "object",
+      "required": ["id", "tip", "scena", "parametri"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "scena" },
+        "scena": {
+          "enum": ["kristalni-sistem", "kristalna-struktura", "mohsova-skala", "cepljivost", "habitus"],
+          "description": "Tip scene = modul u motoru (src/scene/<ime>.ts). Nov tip = nov kod + dopuna ovog enuma."
+        },
+        "parametri": { "type": "object" },
+        "potpis": { "type": "string", "maxLength": 500 },
+        "opis_za_citac": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Šta scena pokazuje, za čitače ekrana i rezervni prikaz bez WebGL-a. Obavezno kad je scena jedini nosilac informacije."
+        },
+        "visina": { "enum": ["niska", "srednja", "visoka"], "default": "srednja" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scena": { "const": "kristalni-sistem" } } },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "required": ["sistem"],
+                "additionalProperties": false,
+                "properties": {
+                  "sistem": { "enum": ["kubni", "tetragonalni", "ortorombicni", "heksagonalni", "trigonalni", "monoklinicni", "triklinicni", "svi"] },
+                  "prikazi_ose": { "type": "boolean", "default": true },
+                  "prikazi_celiju": { "type": "boolean", "default": true },
+                  "animacija": { "enum": ["rotacija", "uporedi", "nema"], "default": "rotacija" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "scena": { "const": "kristalna-struktura" } } },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "required": ["mineral"],
+                "additionalProperties": false,
+                "properties": {
+                  "mineral": { "type": "string", "minLength": 2, "description": "Ime minerala kako ga zna RRUFF/mineral_translator (srpski ili engleski), npr. 'halit', 'kvarc', 'pirit'." },
+                  "prikaz": { "enum": ["celija", "supercelija"], "default": "celija" },
+                  "stil": { "enum": ["kugle", "kugle-stapici"], "default": "kugle-stapici" },
+                  "prikazi_celiju": { "type": "boolean", "default": true },
+                  "oznake_atoma": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "scena": { "const": "mohsova-skala" } } },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "istaknuti": { "type": "array", "items": { "type": "string" }, "description": "Imena referentnih minerala koje scena naglašava (talk, gips, kalcit, fluorit, apatit, ortoklas, kvarc, topaz, korund, dijamant)." },
+                  "prikazi_apsolutnu": { "type": "boolean", "default": false, "description": "Prikaz uporedne apsolutne tvrdoće (motor nosi tabelu sa poljem izvor)." },
+                  "prikazi_terenske_probe": { "type": "boolean", "default": true, "description": "Nokat, bakar, nož/staklo, turpija." }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "scena": { "const": "cepljivost" } } },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "required": ["vrsta"],
+                "additionalProperties": false,
+                "properties": {
+                  "vrsta": { "enum": ["kubna", "oktaedarska", "dodekaedarska", "romboedarska", "bazalna", "prizmatska", "nema"] },
+                  "primer": { "type": "string", "description": "Mineral-primer za natpis, npr. 'halit', 'fluorit', 'kalcit', 'muskovit', 'amfibol', 'kvarc'." },
+                  "ugao": { "type": "number", "minimum": 0, "maximum": 180, "description": "Za prizmatsku: ugao između pravaca cepljivosti u stepenima (amfibol ~56/124, piroksen ~87/93)." },
+                  "prikazi_prelom": { "type": "boolean", "default": false, "description": "Za 'nema': školjkast prelom umesto ravni." }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "scena": { "const": "habitus" } } },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "required": ["sistem", "forme"],
+                "additionalProperties": false,
+                "properties": {
+                  "sistem": { "enum": ["kubni"], "description": "v1: samo kubni sistem, holoedrija m-3m. Ostali sistemi u v2." },
+                  "forme": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "items": {
+                      "type": "object",
+                      "required": ["hkl", "d"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "hkl": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3, "description": "Milerovi indeksi jedne pljosni; motor generiše simetrijski ekvivalentne." },
+                        "d": { "type": "number", "exclusiveMinimum": 0, "description": "Rastojanje ravni od centra (relativno); menja koji oblik dominira." },
+                        "naziv": { "type": "string" }
+                      }
+                    }
+                  },
+                  "animacija": { "enum": ["prelaz", "rotacija", "nema"], "default": "prelaz", "description": "'prelaz' animira d vrednosti od prve do poslednje forme (kocka → oktaedar)." },
+                  "primer": { "type": "string", "description": "Mineral-primer za natpis, npr. 'pirit', 'fluorit', 'galenit', 'magnetit', 'granat'." }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "primerak": {
+      "type": "object",
+      "required": ["id", "tip", "zbirka", "objekat_id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "primerak" },
+        "zbirka": { "type": "string", "minLength": 2, "description": "Kanonski ključ zbirke kao u QR sistemu (museum_qr.normalizuj_zbirku): 'minerali', 'meteoriti', ..." },
+        "objekat_id": { "type": "integer", "minimum": 1 },
+        "napomena": { "type": "string", "maxLength": 1000, "description": "Zašto baš ovaj primerak — šta na njemu da se vidi." }
+      }
+    },
+    "pitanje": {
+      "type": "object",
+      "required": ["id", "tip", "pitanje", "odgovori"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "pitanje" },
+        "pitanje": { "type": "string", "minLength": 3, "maxLength": 1000 },
+        "odgovori": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["tekst", "tacan"],
+            "additionalProperties": false,
+            "properties": {
+              "tekst": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "tacan": { "type": "boolean" }
+            }
+          }
+        },
+        "vise_tacnih": { "type": "boolean", "default": false },
+        "objasnjenje": { "$ref": "#/$defs/markdown", "description": "Prikazuje se posle odgovora, tačnog ili pogrešnog." }
+      }
+    },
+    "napomena": {
+      "type": "object",
+      "required": ["id", "tip", "markdown"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tip": { "const": "napomena" },
+        "vrsta": { "enum": ["info", "pazi", "zanimljivost"], "default": "info" },
+        "naslov": { "type": "string", "maxLength": 120 },
+        "markdown": { "$ref": "#/$defs/markdown" }
+      }
+    }
+  }
+}

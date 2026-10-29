@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from '_zaglavlje_strane.html' import zaglavlje %}
+{# Љуска читача: ИСТА за /udzbenik/<zbirka> и дубоки линк на лекцију. Садржај
+   црта мотор из static/udzbenik/ (репо mis-udzbenik) — овде нема садржаја
+   лекције ни JS-а осим data-* атрибута (бриф §3). #}
+
+{% block title %}{{ udzbenik.naslov }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/strane/udzbenik.css') }}?v={{ v_statike('css/strane/udzbenik.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='udzbenik/udzbenik.css') }}?v={{ v_statike('udzbenik/udzbenik.css') }}">
+<div class="udzbenik-strana udzbenik-citac">
+    {{ zaglavlje(udzbenik.naslov, udzbenik.opis or '', ikona='bi-book',
+                 nazad=url_for('udzbenik.lista'), nazad_tekst='Сви уџбеници',
+                 oznaka=('Нацрт' if udzbenik.status == 'nacrt' else ''), oznaka_ikona='bi-pencil', oznaka_vrsta='pazi') }}
+    <div id="udzbenik-app"
+         data-api="{{ api }}"
+         data-zbirka="{{ udzbenik.zbirka }}"
+         data-poglavlje="{{ poglavlje }}"
+         data-lekcija="{{ lekcija }}"
+         data-pismo="{{ pismo }}"
+         data-moze-uredjuje="false">
+        <div class="udzbenik-ucitavanje" role="status">Учитавање уџбеника…</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='udzbenik/udzbenik.js') }}?v={{ v_statike('udzbenik/udzbenik.js') }}"></script>
+{% endblock %}

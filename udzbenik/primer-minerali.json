@@ -1,0 +1,251 @@
+{
+  "verzija": 1,
+  "udzbenik": {
+    "zbirka": "minerali",
+    "naslov": "Mineralogija — interaktivni udžbenik",
+    "opis": "Osnove kristalografije i fizičkih osobina minerala, sa primercima iz zbirke Prirodnjačkog muzeja u Beogradu.",
+    "status": "nacrt",
+    "javno": false
+  },
+  "poglavlja": [
+    {
+      "slug": "kristalografija",
+      "naslov": "Kristalografija",
+      "opis": "Unutrašnji red kristala i kako se on vidi spolja.",
+      "redosled": 1,
+      "lekcije": [
+        {
+          "slug": "kristalni-sistemi",
+          "naslov": "Kristalni sistemi",
+          "sazetak": "Sedam kristalnih sistema, jedinična ćelija i parametri a, b, c, α, β, γ.",
+          "redosled": 1,
+          "status": "nacrt",
+          "sadrzaj": {
+            "verzija": 1,
+            "blokovi": [
+              {
+                "id": "uvod",
+                "tip": "tekst",
+                "markdown": "Kristal je čvrsto telo u kome su atomi, joni ili molekuli uređeni u pravilnu, periodično ponovljenu trodimenzionalnu mrežu. Najmanji deo te mreže koji se ponavljanjem (translacijom) duž tri pravca gradi ceo kristal zove se **jedinična ćelija**.\n\nJediničnu ćeliju opisuje šest parametara: dužine ivica **a, b, c** i uglovi između njih **α** (između b i c), **β** (između a i c) i **γ** (između a i b). Po odnosima tih parametara kristali se razvrstavaju u **sedam kristalnih sistema**."
+              },
+              {
+                "id": "scena-sistemi",
+                "tip": "scena",
+                "scena": "kristalni-sistem",
+                "parametri": { "sistem": "svi", "animacija": "uporedi", "prikazi_ose": true, "prikazi_celiju": true },
+                "potpis": "Sedam kristalnih sistema — izaberi sistem da vidiš koje ivice i uglovi se menjaju u odnosu na kocku.",
+                "opis_za_citac": "Jedinična ćelija kao paralelopiped sa osama a, b, c i uglovima α, β, γ; prelaz iz kocke u izabrani sistem pokazuje koje dužine i uglovi postaju različiti.",
+                "visina": "visoka"
+              },
+              {
+                "id": "tabela",
+                "tip": "tekst",
+                "markdown": "| Sistem | Ivice | Uglovi | Primeri iz zbirke |\n|---|---|---|---|\n| kubni | a = b = c | α = β = γ = 90° | halit, pirit, fluorit, galenit, granat, magnetit |\n| tetragonalni | a = b ≠ c | α = β = γ = 90° | cirkon, rutil, kasiterit, šelit |\n| ortorombični | a ≠ b ≠ c | α = β = γ = 90° | olivin, topaz, barit, aragonit, sumpor |\n| heksagonalni | a = b ≠ c | α = β = 90°, γ = 120° | beril, apatit, grafit |\n| trigonalni | a = b = c | α = β = γ ≠ 90° (romboedarska postavka) | kvarc, kalcit, korund, turmalin |\n| monoklinični | a ≠ b ≠ c | α = γ = 90°, β ≠ 90° | gips, ortoklas, muskovit, augit, malahit |\n| triklinični | a ≠ b ≠ c | α ≠ β ≠ γ ≠ 90° | albit, mikroklin, kijanit, rodonit |\n\nTrigonalni sistem se često opisuje i u heksagonalnoj postavci (a = b ≠ c, γ = 120°), pa se u starijoj literaturi vodi kao podsistem heksagonalnog."
+              },
+              {
+                "id": "napomena-simetrija",
+                "tip": "napomena",
+                "vrsta": "info",
+                "naslov": "Sistem određuje simetrija, ne merenje",
+                "markdown": "Kristalni sistem se ne određuje po tome da li su a, b i c *izmereni* kao jednaki, nego po **elementima simetrije** koje kristal poseduje. Kubni kristal ima četiri trojne ose (telesne dijagonale kocke); zato su mu ivice jednake, a ne obrnuto."
+              },
+              {
+                "id": "pitanje-1",
+                "tip": "pitanje",
+                "pitanje": "Koji kristalni sistem ima a = b ≠ c i uglove α = β = 90°, γ = 120°?",
+                "odgovori": [
+                  { "tekst": "tetragonalni", "tacan": false },
+                  { "tekst": "heksagonalni", "tacan": true },
+                  { "tekst": "ortorombični", "tacan": false },
+                  { "tekst": "monoklinični", "tacan": false }
+                ],
+                "vise_tacnih": false,
+                "objasnjenje": "Ugao γ = 120° između jednakih osa a i b je obeležje heksagonalnog sistema. Tetragonalni takođe ima a = b ≠ c, ali su mu svi uglovi 90°."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "kristalni-oblici",
+          "naslov": "Kristalni oblici i habitus",
+          "sazetak": "Milerovi indeksi, kristalne forme kubnog sistema i kako kombinacija formi daje oblik kristala.",
+          "redosled": 2,
+          "status": "nacrt",
+          "sadrzaj": {
+            "verzija": 1,
+            "blokovi": [
+              {
+                "id": "uvod",
+                "tip": "tekst",
+                "markdown": "Spoljašnji oblik kristala čine **pljosni** — ravne površi koje odgovaraju ravnima gusto posednutim atomima u kristalnoj mreži. Svaka pljosan se opisuje **Milerovim indeksima** (hkl): recipročnim vrednostima odsečaka koje ravan pravi na kristalografskim osama, svedenim na najmanje cele brojeve. Pljosan paralelna osi ima indeks 0 za tu osu.\n\nSkup svih pljosni koje simetrija kristala prevodi jednu u drugu zove se **kristalna forma** i piše se u vitičastim zagradama, {hkl}. U kubnom sistemu (holoedrijska klasa m-3m):\n\n- **{100} — kocka (heksaedar)**, 6 pljosni\n- **{111} — oktaedar**, 8 pljosni\n- **{110} — rombododekaedar**, 12 pljosni\n\nKristal retko ima samo jednu formu. **Kombinacija** kocke i oktaedra daje oblike od kocke sa zasečenim rogljevima do oktaedra sa zasečenim vrhovima; kada su obe forme podjednako razvijene, dobija se **kubooktaedar** sa 14 pljosni."
+              },
+              {
+                "id": "scena-habitus",
+                "tip": "scena",
+                "scena": "habitus",
+                "parametri": {
+                  "sistem": "kubni",
+                  "forme": [
+                    { "hkl": [1, 0, 0], "d": 1.0, "naziv": "kocka {100}" },
+                    { "hkl": [1, 1, 1], "d": 1.155, "naziv": "oktaedar {111}" }
+                  ],
+                  "animacija": "prelaz",
+                  "primer": "fluorit"
+                },
+                "potpis": "Kombinacija kocke {100} i oktaedra {111}: animacija prelazi od čiste kocke, preko kubooktaedra, do čistog oktaedra. Fluorit i galenit iz zbirke pokazuju ovakve kombinacije.",
+                "opis_za_citac": "Poliedar nastao presekom šest ravni kocke i osam ravni oktaedra; kako se oktaedarske ravni približavaju centru, rogljevi kocke se zasecaju sve više dok ne ostane oktaedar.",
+                "visina": "visoka"
+              },
+              {
+                "id": "habitus",
+                "tip": "tekst",
+                "markdown": "**Habitus** je opšti izgled kristala koji zavisi od toga koje su forme razvijene i koliko: izometričan (granat, pirit), prizmatičan (kvarc, beril), igličast (rutil, natrolit), tabličast (barit, volastonit), listast (liskuni), dendritičan (samorodni bakar, srebro). Isti mineral može imati različit habitus u zavisnosti od uslova rasta — zato se habitus ne koristi sam za određivanje minerala, ali je dragocen trag o postanku."
+              },
+              {
+                "id": "napomena-pirit",
+                "tip": "napomena",
+                "vrsta": "zanimljivost",
+                "naslov": "Piritoedar",
+                "markdown": "Pirit često kristališe u **pentagondodekaedrima** (piritoedrima) {210} sa 12 petougaonih pljosni. Ta forma ne postoji u holoedrijskoj klasi m-3m — pripada nižoj klasi m-3 — pa je zasad nema u sceni iznad; biće dodata sa ostalim klasama simetrije."
+              },
+              {
+                "id": "pitanje-1",
+                "tip": "pitanje",
+                "pitanje": "Koliko pljosni ima forma {110} u kubnom sistemu (m-3m) i kako se zove?",
+                "odgovori": [
+                  { "tekst": "6 — kocka", "tacan": false },
+                  { "tekst": "8 — oktaedar", "tacan": false },
+                  { "tekst": "12 — rombododekaedar", "tacan": true },
+                  { "tekst": "24 — tetrakisheksaedar", "tacan": false }
+                ],
+                "vise_tacnih": false,
+                "objasnjenje": "Indeksi (110) imaju jednu nulu; permutacije i promene znaka daju 12 ravni — rombododekaedar, tipičan za granat."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "slug": "fizicke-osobine",
+      "naslov": "Fizičke osobine minerala",
+      "opis": "Osobine koje se proveravaju rukom i lupom: tvrdoća, cepljivost, prelom.",
+      "redosled": 2,
+      "lekcije": [
+        {
+          "slug": "mohsova-skala",
+          "naslov": "Tvrdoća — Mohsova skala",
+          "sazetak": "Deset referentnih minerala, terenske probe i zašto je skala ordinalna.",
+          "redosled": 1,
+          "status": "nacrt",
+          "sadrzaj": {
+            "verzija": 1,
+            "blokovi": [
+              {
+                "id": "uvod",
+                "tip": "tekst",
+                "markdown": "**Tvrdoća** je otpor minerala prema grebanju. Fridrih Mos je 1812. izabrao deset minerala i poređao ih tako da svaki grebe sve ispod sebe:\n\n1. talk · 2. gips · 3. kalcit · 4. fluorit · 5. apatit · 6. ortoklas · 7. kvarc · 8. topaz · 9. korund · 10. dijamant\n\nSkala je **ordinalna**: kaže samo ko koga grebe, ne i koliko je ko tvrđi. Razlika u apsolutnoj tvrdoći između korunda (9) i dijamanta (10) višestruko je veća od razlike između talka (1) i gipsa (2)."
+              },
+              {
+                "id": "scena-mohs",
+                "tip": "scena",
+                "scena": "mohsova-skala",
+                "parametri": { "istaknuti": ["kvarc", "korund"], "prikazi_apsolutnu": true, "prikazi_terenske_probe": true },
+                "potpis": "Mohsova skala sa terenskim probama; preklopnik „apsolutna tvrdoća“ pokazuje koliko je skala nelinearna.",
+                "opis_za_citac": "Lestvica od deset minerala; klik na mineral pokazuje koga on grebe. U apsolutnom prikazu stubići rastu blago do korunda, a zatim skaču kod dijamanta.",
+                "visina": "srednja"
+              },
+              {
+                "id": "terenske-probe",
+                "tip": "tekst",
+                "markdown": "Na terenu se umesto referentnih minerala koriste predmeti približno poznate tvrdoće: **nokat** (oko 2,5), **bakarni novčić** (oko 3,5), **čelični nož ili staklo** (oko 5,5), **čelična turpija** (oko 6,5). Mineral koji grebe staklo, a kvarc ga grebe, ima tvrdoću između 5,5 i 7."
+              },
+              {
+                "id": "napomena-proba",
+                "tip": "napomena",
+                "vrsta": "pazi",
+                "naslov": "Kako se izvodi proba grebanja",
+                "markdown": "Grebe se **sveža, neizmenjena površina**, jednim pokretom, i zatim se prstom obriše trag: prava brazda ostaje, a prah mekšeg minerala se obriše. Na muzejskim primercima proba se izvodi samo na neuglednom delu i samo kad je identifikacija nemoguća drugim putem — brazda je trajno oštećenje."
+              },
+              {
+                "id": "pitanje-1",
+                "tip": "pitanje",
+                "pitanje": "Mineral grebe staklo, ali ga grebe kvarc. U kom je opsegu njegova tvrdoća?",
+                "odgovori": [
+                  { "tekst": "3 – 4", "tacan": false },
+                  { "tekst": "5,5 – 7", "tacan": true },
+                  { "tekst": "7 – 8", "tacan": false },
+                  { "tekst": "ispod 2,5", "tacan": false }
+                ],
+                "vise_tacnih": false,
+                "objasnjenje": "Staklo ima tvrdoću oko 5,5, kvarc 7. Mineral je tvrđi od stakla, a mekši od kvarca — na primer ortoklas (6)."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "cepljivost-i-prelom",
+          "naslov": "Cepljivost i prelom",
+          "sazetak": "Ravni cepljivosti kao odraz kristalne strukture; vrste cepljivosti i preloma.",
+          "redosled": 2,
+          "status": "nacrt",
+          "sadrzaj": {
+            "verzija": 1,
+            "blokovi": [
+              {
+                "id": "uvod",
+                "tip": "tekst",
+                "markdown": "**Cepljivost** je sposobnost minerala da se pri udaru ili pritisku lomi po ravnim površima — **ravnima cepljivosti**. One odgovaraju ravnima u kristalnoj mreži duž kojih su veze najslabije, pa cepljivost direktno govori o strukturi. Opisuje se **brojem pravaca** i **uglovima** među njima, i **kvalitetom** (savršena, dobra, nejasna).\n\n- **kubna** — 3 pravca pod 90° (halit, galenit)\n- **oktaedarska** — 4 pravca (fluorit, dijamant)\n- **dodekaedarska** — 6 pravaca (sfalerit)\n- **romboedarska** — 3 pravca, uglovi ≠ 90° (kalcit, dolomit)\n- **bazalna (pinakoidalna)** — 1 pravac (liskuni, grafit, molibdenit)\n- **prizmatska** — 2 pravca: amfiboli ~56° i 124°, pirokseni ~87° i 93°"
+              },
+              {
+                "id": "scena-halit",
+                "tip": "scena",
+                "scena": "cepljivost",
+                "parametri": { "vrsta": "kubna", "primer": "halit" },
+                "potpis": "Kubna cepljivost halita: tri ravni pod pravim uglom, fragmenti su opet kockice.",
+                "opis_za_citac": "Kocka halita kroz koju prolaze tri uzajamno upravne ravni; telo se razdvaja na manje kocke.",
+                "visina": "srednja"
+              },
+              {
+                "id": "scena-kalcit",
+                "tip": "scena",
+                "scena": "cepljivost",
+                "parametri": { "vrsta": "romboedarska", "primer": "kalcit" },
+                "potpis": "Romboedarska cepljivost kalcita: tri ravni koje nisu pod pravim uglom — fragmenti su romboedri.",
+                "opis_za_citac": "Romboedar kalcita koji se cepa na manje romboedre, sa prikazanim uglovima među ravnima.",
+                "visina": "srednja"
+              },
+              {
+                "id": "prelom",
+                "tip": "tekst",
+                "markdown": "Kad mineral nema cepljivost ili se lomi mimo ravni cepljivosti, površina loma je **prelom**. Vrste: **školjkast** (glatke, zakrivljene površi kao na školjci — kvarc, opsidijan, opal), **neravan**, **iverast** (vlaknasti minerali), **kukast** (samorodni metali). Školjkast prelom kvarca je tako prepoznatljiv da je bio i prvi alat čoveka — zato ga ima u arheološkim zbirkama koliko i u mineraloškim."
+              },
+              {
+                "id": "scena-kvarc",
+                "tip": "scena",
+                "scena": "cepljivost",
+                "parametri": { "vrsta": "nema", "primer": "kvarc", "prikazi_prelom": true },
+                "potpis": "Kvarc nema cepljivost — lomi se školjkasto.",
+                "opis_za_citac": "Kristal kvarca koji se lomi po nepravilnoj zakrivljenoj površi, bez ravnih ploha.",
+                "visina": "niska"
+              },
+              {
+                "id": "pitanje-1",
+                "tip": "pitanje",
+                "pitanje": "Koje tvrdnje su tačne? (više odgovora)",
+                "odgovori": [
+                  { "tekst": "Ravni cepljivosti odgovaraju ravnima slabih veza u kristalnoj mreži.", "tacan": true },
+                  { "tekst": "Kvarc ima savršenu kubnu cepljivost.", "tacan": false },
+                  { "tekst": "Liskuni imaju jedan pravac cepljivosti.", "tacan": true },
+                  { "tekst": "Školjkast prelom je vrsta cepljivosti.", "tacan": false }
+                ],
+                "vise_tacnih": true,
+                "objasnjenje": "Cepljivost je uvek po ravnima mreže; kvarc je nema i lomi se školjkasto, a prelom nije cepljivost nego ono što ostaje kad cepljivosti nema."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

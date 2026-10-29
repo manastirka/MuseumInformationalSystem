@@ -225,6 +225,29 @@ def _prstenovanje(cur, s):
              'url': url_for('content.bird_ringing_record_detail', record_id=_v(r, 0, 'id'))} for r in cur.fetchall()]
 
 
+def _udzbenik(cur, s):
+    import udzbenik
+
+    cur.execute(
+        """SELECT u.zbirka, u.naslov, u.opis, u.status, u.javno, p.slug, l.slug, l.naslov, l.sazetak
+           FROM udzbenik_lekcija l
+           JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+           JOIN udzbenik u ON u.id = p.udzbenik_id
+           WHERE l.naslov ILIKE ANY(%s) OR l.sazetak ILIKE ANY(%s)
+           ORDER BY (l.naslov ILIKE ANY(%s)) DESC, u.zbirka, p.redosled, l.redosled
+           LIMIT %s""", (s, s, s, NAJVISE * 2))
+    st = []
+    for r in cur.fetchall():
+        if not udzbenik.sme_da_cita({'zbirka': r[0], 'status': r[3], 'javno': r[4]}):
+            continue
+        st.append({'naslov': r[7] or '',
+                   'opis': ' · '.join(x for x in (r[1] or '', (r[8] or '')[:80]) if x),
+                   'url': url_for('udzbenik.ljuska_lekcije', zbirka=r[0], poglavlje=r[5], lekcija=r[6])})
+        if len(st) >= NAJVISE:
+            break
+    return st
+
+
 def _q(t):
     from urllib.parse import quote
     return quote(str(t)[:80])
@@ -244,6 +267,7 @@ IZVORI = (
     ('kr', 'К-Р досијеи', 'bi-clipboard2-pulse', lambda: _ima_modul('kr_dosije'), _kr_dosijei, None),
     ('fotografije', 'Фототека', 'bi-camera', lambda: _ima_modul('fototeka'), _fotografije, None),
     ('dokumenti', 'Документа', 'bi-folder2-open', lambda: _ima_modul('dokumenti'), _dokumenti, None),
+    ('udzbenik', 'Уџбеник', 'bi-book', lambda: _ima_modul('udzbenik'), _udzbenik, None),
 )
 
 

@@ -252,7 +252,7 @@ def _app():
 def normalizuj_zbirku(zbirka):
     """Алијаси (minerals/mineral, meteorites/meteorite, geology/petrology) → канонски кључ."""
     zbirka = str(zbirka or '').strip().lower()
-    if zbirka == 'mineral':
+    if zbirka in ('mineral', 'minerali'):
         return ZBIRKA_MINERALI
     return _app().normalize_qr_collection_type(zbirka)
 

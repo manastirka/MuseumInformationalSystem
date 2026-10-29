@@ -80,7 +80,7 @@
 </div>
 {% endif %}
 
-{% if has_module_access('museum_databases') or has_module_access('kr_dosije') or has_module_access('news') %}
+{% if has_module_access('museum_databases') or has_module_access('kr_dosije') or has_module_access('news') or has_module_access('udzbenik') %}
 <div class="drawer-section">
     <p class="drawer-section-title" id="{{ nav_prefiks }}databasesDropdown">Базе података</p>
     {% if has_module_access('museum_databases') %}
@@ -92,6 +92,11 @@
     {% if has_module_access('kr_dosije') %}
     <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('kr_dosije.') %} active{% endif %}" href="{{ url_for('kr_dosije.lista') }}">
         <i class="bi bi-clipboard2-pulse" aria-hidden="true"></i><span>К-Р досије</span>
+    </a>
+    {% endif %}
+    {% if has_module_access('udzbenik') %}
+    <a class="drawer-link{% if request.endpoint and request.endpoint.startswith('udzbenik.') %} active{% endif %}" href="{{ url_for('udzbenik.lista') }}">
+        <i class="bi bi-book" aria-hidden="true"></i><span>Уџбеник</span>
     </a>
     {% endif %}
     {% if has_module_access('news') %}
