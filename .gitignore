@@ -268,3 +268,7 @@ cypress/downloads/
 static/images/*
 !static/images/specimen-placeholder.png
 !static/images/specimen-placeholder-thumb.png
+# Резервне слике сцена уџбеника: правило *.png изнад их искључује, а мотор
+# (static/udzbenik/udzbenik.js → rezerve/<scena>.png) их тражи кад нема WebGL-а.
+# Иду у git као и остатак bundle-а (видети static/udzbenik/README.md).
+!static/udzbenik/rezerve/*.png
