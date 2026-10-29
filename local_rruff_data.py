@@ -666,10 +666,17 @@ class LocalRRUFFData:
             # Apply symmetry operations to expand to full unit cell
             expanded_atoms = self._apply_symmetry_operations(atoms, symops)
 
-            # Apply supercell replication if requested
+            # Apply supercell replication if requested. The replicated atoms
+            # get fractional coordinates divided by nx/ny/nz, so the cell
+            # lengths (and with them the volume) must grow by the same
+            # factors; otherwise the supercell is nx*ny*nz times too dense.
             if supercell:
                 nx, ny, nz = supercell
                 expanded_atoms = self._generate_supercell_atoms(expanded_atoms, nx, ny, nz)
+                cell = dict(cell)
+                cell['a'] = cell.get('a', 10) * nx
+                cell['b'] = cell.get('b', 10) * ny
+                cell['c'] = cell.get('c', 10) * nz
 
             atoms_to_use = expanded_atoms
             atoms_are_expanded = True

@@ -246,6 +246,32 @@ class UvozTest(_Osnova):
         self.assertIn('poglavlja[0].lekcije[0].sadrzaj.blokovi[1].scena', err)
         self.assertIn('nepostojeca', err)
 
+    def test_poluprecnici_scene_kristalna_struktura(self):
+        """Шема: опционо ``poluprecnici`` ∈ {jonski, kovalentni}; пример (без
+        поља) и вредност kovalentni пролазе, непозната вредност пада с путањом."""
+        def parametri(p):
+            return p['poglavlja'][1]['lekcije'][1]['sadrzaj']['blokovi'][3]['parametri']
+        self.assertNotIn('poluprecnici', parametri(json.loads(PRIMER.read_text(encoding='utf-8'))))
+        self.assertEqual(_pokreni_uvoz('--fajl', str(PRIMER), '--dry-run')[0], 0)
+
+        def kovalentni(p):
+            parametri(p)['poluprecnici'] = 'kovalentni'
+        putanja = _primer_sa_izmenom(kovalentni)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+
+        def pogresno(p):
+            parametri(p)['poluprecnici'] = 'metalni'
+        putanja = _primer_sa_izmenom(pogresno)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre)
+        self.assertIn('poglavlja[1].lekcije[1].sadrzaj.blokovi[3].parametri.poluprecnici', err)
+        self.assertIn('metalni', err)
+
     def test_sve_greske_odjednom_sa_putanjom(self):
         def izmeni(p):
             blokovi = p['poglavlja'][1]['lekcije'][0]['sadrzaj']['blokovi']
@@ -656,10 +682,20 @@ class StrukturaTest(_Osnova):
                 telo = r.get_data(as_text=True)
                 self.assertIn('_atom_site_fract_x', telo)
                 self.assertIn("'P 1'", telo)
-            self.assertTrue(all(p[1] is True and p[2] is None for p in _LazniRruff.pozivi), _LazniRruff.pozivi)
-            r = self.get('/api/udzbenik/struktura/halit?prikaz=supercelija')
-            self.assertEqual(r.status_code, 200)
-            self.assertEqual(_LazniRruff.pozivi[-1], ('Halite', True, (2, 2, 2)))
+            self.assertTrue(_LazniRruff.pozivi)
+            self.assertTrue(all(p[1] is True and p[2] is None for p in _LazniRruff.pozivi),
+                            'API тражи САМО јединичну ћелију (без supercell): %r' % _LazniRruff.pozivi)
+
+    def test_parametar_prikaz_je_ukinut_400(self):
+        with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
+            for vrednost in ('celija', 'supercelija', 'nesto', ''):
+                r = self.get('/api/udzbenik/struktura/halit?prikaz=' + vrednost)
+                self.assertEqual(r.status_code, 400, vrednost)
+                greska = r.get_json()['greska']
+                self.assertIn('prikaz', greska)
+                self.assertIn('мотору', greska)
+                self.assertIn('P1', greska)
+        self.assertEqual(_LazniRruff.pozivi, [], 'уз prikaz се RRUFF ни не пита')
 
     def test_nepostojeci_mineral_404_json(self):
         with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
@@ -667,7 +703,7 @@ class StrukturaTest(_Osnova):
         self.assertEqual(r.status_code, 404)
         self.assertIn('greska', r.get_json())
         with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
-            self.assertEqual(self.get('/api/udzbenik/struktura/halit?prikaz=nesto').status_code, 400)
+            self.assertEqual(self.get('/api/udzbenik/struktura/h').status_code, 400, 'прекратак назив')
 
     def test_rruff_nedostupan_503(self):
         with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _NemaRruff):
@@ -698,6 +734,7 @@ class LjuskaTest(_Osnova):
         html = r.get_data(as_text=True)
         app_deo = html[html.index('id="udzbenik-app"'):html.index('</div>', html.index('id="udzbenik-app"'))]
         self.assertIn('data-api="/api/udzbenik/minerali"', app_deo)
+        self.assertIn('data-api-koren="/api/udzbenik"', app_deo)
         self.assertIn('data-zbirka="minerali"', app_deo)
         self.assertIn('data-poglavlje="fizicke-osobine"', app_deo)
         self.assertIn('data-lekcija="mohsova-skala"', app_deo)
