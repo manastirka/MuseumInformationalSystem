@@ -13,6 +13,7 @@ import udzbenik
 from rate_limit_ext import limiter
 
 udzbenik_bp = Blueprint('udzbenik', __name__)
+API_KOREN = '/api/udzbenik'
 
 
 def _pismo():
@@ -87,7 +88,7 @@ def ljuska_lekcije(zbirka, poglavlje, lekcija):
 def _ljuska(red, poglavlje, lekcija):
     return render_template(
         'udzbenik.html', udzbenik=red, poglavlje=poglavlje, lekcija=lekcija, pismo=_pismo(),
-        api=url_for('udzbenik.api_struktura', zbirka=red['zbirka']),
+        api=url_for('udzbenik.api_struktura', zbirka=red['zbirka']), api_koren=API_KOREN,
     )
 
 
@@ -95,7 +96,7 @@ def _ljuska(red, poglavlje, lekcija):
 # API
 # --------------------------------------------------------------------------
 
-@udzbenik_bp.route('/api/udzbenik/<zbirka>')
+@udzbenik_bp.route(API_KOREN + '/<zbirka>')
 @limiter.limit("120 per minute")
 def api_struktura(zbirka):
     red, odgovor = _udzbenik_za_api(zbirka)
@@ -104,7 +105,7 @@ def api_struktura(zbirka):
     return jsonify(udzbenik.struktura(red))
 
 
-@udzbenik_bp.route('/api/udzbenik/<zbirka>/lekcija/<poglavlje>/<lekcija>')
+@udzbenik_bp.route(API_KOREN + '/<zbirka>/lekcija/<poglavlje>/<lekcija>')
 @limiter.limit("120 per minute")
 def api_lekcija(zbirka, poglavlje, lekcija):
     red, odgovor = _udzbenik_za_api(zbirka)
@@ -116,7 +117,7 @@ def api_lekcija(zbirka, poglavlje, lekcija):
     return jsonify(podaci)
 
 
-@udzbenik_bp.route('/api/udzbenik/napredak', methods=['POST'])
+@udzbenik_bp.route(API_KOREN + '/napredak', methods=['POST'])
 @limiter.limit("120 per minute")
 def api_napredak():
     try:
@@ -125,16 +126,20 @@ def api_napredak():
         return jsonify({'ok': False, 'greska': exc.poruka}), exc.status
 
 
-@udzbenik_bp.route('/api/udzbenik/struktura/<mineral>')
+@udzbenik_bp.route(API_KOREN + '/struktura/<mineral>')
 @limiter.limit("120 per minute")
 def api_struktura_minerala(mineral):
-    """CIF (text/plain, P1) под правом модула ``udzbenik``."""
+    """CIF јединичне ћелије (text/plain, P1) под правом модула ``udzbenik``.
+    Параметар ``prikaz`` је укинут — суперћелију гради мотор на клијенту."""
     if not udzbenik.prijavljen():
         return _greska(401, 'Морате бити пријављени')
     if not udzbenik.ima_modul():
         return _greska(403, 'Немате дозволу за модул уџбеника')
+    if 'prikaz' in request.args:
+        return _greska(400, 'Параметар prikaz је укинут: API враћа само P1 јединичну ћелију, '
+                            'суперћелија се гради у мотору на клијенту')
     try:
-        cif = udzbenik.cif_strukture(mineral, request.args.get('prikaz', 'celija'))
+        cif = udzbenik.cif_strukture(mineral)
     except udzbenik.GreskaZahteva as exc:
         return _greska(exc.status, exc.poruka)
     odgovor = Response(cif, mimetype='text/plain')

@@ -120,6 +120,7 @@
                 "properties": {
                   "mineral": { "type": "string", "minLength": 2, "description": "Ime minerala kako ga zna RRUFF/mineral_translator (srpski ili engleski), npr. 'halit', 'kvarc', 'pirit'." },
                   "prikaz": { "enum": ["celija", "supercelija"], "default": "celija" },
+                  "poluprecnici": { "enum": ["jonski", "kovalentni"], "default": "jonski", "description": "Koji skup atomskih poluprečnika motor koristi za kugle (API daje samo P1 ćeliju, poluprečnike i superćeliju gradi motor)." },
                   "stil": { "enum": ["kugle", "kugle-stapici"], "default": "kugle-stapici" },
                   "prikazi_celiju": { "type": "boolean", "default": true },
                   "oznake_atoma": { "type": "boolean", "default": true }

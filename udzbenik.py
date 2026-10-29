@@ -30,7 +30,6 @@ MODUL = 'udzbenik'
 STATUS_NACRT = 'nacrt'
 STATUS_OBJAVLJEN = 'objavljen'
 STATUSI = (STATUS_NACRT, STATUS_OBJAVLJEN)
-PRIKAZI_STRUKTURE = ('celija', 'supercelija')
 NAJVISE_FOTOGRAFIJA_PRIMERKA = 4
 POZNATI_TIPOVI = ('tekst', 'slika', 'scena', 'primerak', 'pitanje', 'napomena')
 DERIVAT_VELIKI = 'jpg'
@@ -446,23 +445,21 @@ def upisi_napredak(telo):
 # Структура минерала (CIF) из локалног RRUFF скупа
 # --------------------------------------------------------------------------
 
-def cif_strukture(mineral, prikaz):
-    """CIF проширен у P1 за ``mineral`` (српски или енглески назив)."""
+def cif_strukture(mineral):
+    """CIF јединичне ћелије проширен у P1 за ``mineral`` (српски или
+    енглески назив). Само ћелија — суперћелију гради мотор на клијенту."""
     import local_rruff_data
     from mineral_translator import get_all_translations
 
-    if prikaz not in PRIKAZI_STRUKTURE:
-        raise GreskaZahteva(400, 'prikaz мора бити celija или supercelija')
     ime = ' '.join(str(mineral or '').split())
     if len(ime) < 2:
         raise GreskaZahteva(400, 'Назив минерала је прекратак')
     rruff = local_rruff_data.LocalRRUFFData()
     if not getattr(rruff, 'available', False):
         raise GreskaZahteva(503, 'Локални RRUFF подаци нису доступни на овом серверу')
-    supercelija = (2, 2, 2) if prikaz == 'supercelija' else None
     for kandidat in _kandidati_imena(ime):
         for prevod in get_all_translations(kandidat):
-            cif = rruff.generate_cif_from_dif(prevod['english'], expand_unitcell=True, supercell=supercelija)
+            cif = rruff.generate_cif_from_dif(prevod['english'], expand_unitcell=True)
             if cif:
                 return cif
     raise GreskaZahteva(404, 'Структура није доступна за овај минерал')

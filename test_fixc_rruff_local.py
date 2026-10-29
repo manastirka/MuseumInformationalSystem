@@ -137,5 +137,118 @@ def test_expanded_cif_keeps_p1_identity():
     assert '_symmetry_equiv_pos_as_xyz' not in cif
 
 
+def _cubic_rocksalt_instance(a=5.64):
+    inst = _make_instance()
+    inst.get_powder_dif_data = lambda name: {
+        'mineral_name': 'Halite',
+        'cell_parameters': {'a': a, 'b': a, 'c': a,
+                            'alpha': 90.0, 'beta': 90.0, 'gamma': 90.0},
+        'space_group': 'P 1',
+        'atoms': [{'element': 'Na', 'x': 0.0, 'y': 0.0, 'z': 0.0, 'occupancy': 1.0, 'b_iso': 0.5},
+                  {'element': 'Cl', 'x': 0.5, 'y': 0.5, 'z': 0.5, 'occupancy': 1.0, 'b_iso': 0.5}],
+    }
+    return inst
+
+
+def _parse_cif(cif):
+    """Return ({cell tag: float}, [(x, y, z) fractional]) from our own CIF text."""
+    cell, atoms, in_atoms = {}, [], False
+    for line in cif.split('\n'):
+        parts = line.split()
+        if not parts:
+            continue
+        if parts[0].startswith('_cell_'):
+            cell[parts[0]] = float(parts[1])
+        elif parts[0] == '_atom_site_U_iso_or_equiv':
+            in_atoms = True
+        elif in_atoms and len(parts) == 7 and not parts[0].startswith('_'):
+            atoms.append(tuple(float(v) for v in parts[2:5]))
+    return cell, atoms
+
+
+def _min_distance(cell, atoms):
+    # Cubic cell: Cartesian = fractional * a. No periodic images on purpose —
+    # the listed atoms alone must keep the same nearest-neighbour spacing.
+    import itertools
+    import math
+    a = cell['_cell_length_a']
+    return min(a * math.sqrt(sum((p[i] - q[i]) ** 2 for i in range(3)))
+               for p, q in itertools.combinations(atoms, 2))
+
+
+def test_supercell_scales_cell_lengths_and_keeps_spacing():
+    # Bug: _generate_supercell_atoms divides fractional coordinates by nx/ny/nz
+    # while _cell_length_a/b/c and _cell_volume stayed unscaled, so a (2,2,2)
+    # supercell was 8x denser than the real crystal.
+    inst = _cubic_rocksalt_instance(a=5.64)
+    cell_1, atoms_1 = _parse_cif(inst.generate_cif_from_dif('Halite', expand_unitcell=True))
+    cell_8, atoms_8 = _parse_cif(inst.generate_cif_from_dif('Halite', expand_unitcell=True,
+                                                            supercell=(2, 2, 2)))
+    assert cell_1['_cell_length_a'] == 5.64
+    assert len(atoms_1) == 2
+
+    assert cell_8['_cell_length_a'] == 11.28
+    assert cell_8['_cell_length_b'] == 11.28
+    assert cell_8['_cell_length_c'] == 11.28
+    for angle in ('alpha', 'beta', 'gamma'):
+        assert cell_8['_cell_angle_' + angle] == 90.0
+    assert abs(cell_8['_cell_volume'] - 5.64 ** 3 * 8) < 0.01  # CIF rounds to 2 decimals
+    assert len(atoms_8) == 8 * len(atoms_1)
+    assert all(0.0 <= v < 1.0 for atom in atoms_8 for v in atom)
+    assert abs(_min_distance(cell_8, atoms_8) - _min_distance(cell_1, atoms_1)) < 1e-6
+
+
+def test_supercell_anisotropic_scales_each_axis():
+    inst = _cubic_rocksalt_instance(a=4.0)
+    cell, atoms = _parse_cif(inst.generate_cif_from_dif('Halite', expand_unitcell=True,
+                                                        supercell=(1, 2, 3)))
+    assert (cell['_cell_length_a'], cell['_cell_length_b'], cell['_cell_length_c']) == (4.0, 8.0, 12.0)
+    assert len(atoms) == 2 * 6
+    assert cell['_cell_volume'] == 384.0
+
+
+def test_supercell_does_not_mutate_source_cell():
+    inst = _cubic_rocksalt_instance(a=5.0)
+    dif = inst.get_powder_dif_data('Halite')
+    inst.get_powder_dif_data = lambda name: dif
+    inst.generate_cif_from_dif('Halite', expand_unitcell=True, supercell=(2, 2, 2))
+    assert dif['cell_parameters'] == {'a': 5.0, 'b': 5.0, 'c': 5.0,
+                                      'alpha': 90.0, 'beta': 90.0, 'gamma': 90.0}
+    # A second call must not compound the scaling.
+    cell, _ = _parse_cif(inst.generate_cif_from_dif('Halite', expand_unitcell=True, supercell=(2, 2, 2)))
+    assert cell['_cell_length_a'] == 10.0
+
+
+def test_mineral_science_view_mode_supercell_route_still_serves():
+    # /api/local_rruff_cif?view_mode=supercell (admin_mineral_detail.html) is the
+    # other caller of the supercell path; it must get the rescaled cell, no error.
+    import json
+
+    import app as museum_app
+    import mineral_science_views
+
+    inst = _cubic_rocksalt_instance(a=5.64)
+
+    class Fake:
+        available = True
+
+        def __init__(self, *a, **k):
+            pass
+
+        def generate_cif_from_dif(self, *a, **k):
+            return inst.generate_cif_from_dif(*a, **k)
+
+    with patch.object(local_rruff_data, 'LocalRRUFFData', Fake), \
+            museum_app.app.test_request_context('/api/local_rruff_cif/Halite?view_mode=supercell'):
+        odgovor = mineral_science_views.api_get_local_rruff_cif('Halite')
+    telo = odgovor[0] if isinstance(odgovor, tuple) else odgovor
+    podaci = json.loads(telo.get_data(as_text=True))
+    assert podaci['success'] is True
+    assert podaci['view_mode'] == 'supercell'
+    cell, atoms = _parse_cif(podaci['cif_content'])
+    assert cell['_cell_length_a'] == 11.28
+    assert len(atoms) == 16
+
+
 def test_smoke_import():
     assert hasattr(local_rruff_data, 'LocalRRUFFData')
