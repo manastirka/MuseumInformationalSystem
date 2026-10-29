@@ -261,6 +261,27 @@ class UvozTest(_Osnova):
                     'blokovi[6].objekat_id', 'blokovi[7].tip'):
             self.assertIn(deo, err)
 
+    def test_kolizija_redosleda_sa_bazom_jasna_greska(self):
+        """Поглавље/лекција у бази а не у фајлу задржава redosled; ново са истим
+        redosled-ом мора пасти јасном поруком (и у dry-run), не UniqueViolation."""
+        _uvezi_primer()
+        pre = _brojevi()
+
+        def izmeni(p):
+            p['poglavlja'][0]['slug'] = 'novo-poglavlje'          # redosled 1 држи kristalografija
+            p['poglavlja'][1]['lekcije'][0]['slug'] = 'nova-lekcija'  # redosled 1 држи mohsova-skala
+        putanja = _primer_sa_izmenom(izmeni)
+        self.addCleanup(os.unlink, putanja)
+        for rezim in (('--dry-run',), ('--execute', 'mis_db')):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, *rezim)
+            self.assertEqual(kod, 1, rezim)
+            self.assertIn('poglavlja[0].redosled: redosled 1', err)
+            self.assertIn("'kristalografija'", err)
+            self.assertIn('poglavlja[1].lekcije[0].redosled: redosled 1', err)
+            self.assertIn('fizicke-osobine/mohsova-skala', err)
+            self.assertNotIn('UniqueViolation', err)
+            self.assertEqual(_brojevi(), pre, rezim)
+
     def test_upozorenje_za_lekciju_koje_nema_u_fajlu(self):
         _uvezi_primer()
 
@@ -371,6 +392,44 @@ class ApiTest(_Osnova):
         self.assertTrue(slika['nedostupan'])
         self.assertEqual(primerak, {'id': 'prim-1', 'tip': 'primerak', 'zbirka': 'minerali', 'objekat_id': mineral_id,
                                     'napomena': 'Коцке', 'nedostupan': True, 'razlog': 'nema prava na zbirku'})
+
+    def test_bez_modula_fototeka_slike_nedostupne(self):
+        """Медиј служи /fototeka/media под модулом fototeka — без њега блок
+        мора поштено рећи „недоступан“, а не дати URL који пуца на 302/403."""
+        mineral_id = _ubaci_mineral()
+        foto = _ubaci_fotografiju('e')
+        foto_primerka = _ubaci_fotografiju('f')
+        _izvrsi("INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj, mineral_id) "
+                "VALUES (%s, 'mineral', 'UDZTEST-1', %s)", (foto_primerka, mineral_id))
+        self._lekcija_sa_slikom_i_primerkom(foto, mineral_id)
+        bez_fototeke = lambda email, role, modul: modul != 'fototeka'  # noqa: E731
+        with mock.patch.object(museum_app, 'user_has_module_access', bez_fototeke):
+            r = self.get('/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi')
+        self.assertEqual(r.status_code, 200)
+        slika, primerak, _ = r.get_json()['lekcija']['blokovi']
+        self.assertEqual(slika, {'id': 'slika-1', 'tip': 'slika', 'fotografija_id': foto, 'potpis': 'Пирит',
+                                 'alt': 'Пирит', 'nedostupan': True, 'razlog': 'nema prava na Фототеку'})
+        self.assertNotIn('url', slika)
+        self.assertEqual(primerak['naziv'], 'Тестни пирит', 'примерак се разрешава, само без фотографија')
+        self.assertEqual(primerak['fotografije'], [])
+        self.assertEqual(primerak['fotografije_razlog'], 'nema prava na Фототеку')
+        self.assertNotIn('/fototeka/media', r.get_data(as_text=True))
+
+    def test_anonimni_javni_citalac_bez_slika(self):
+        mineral_id = _ubaci_mineral()
+        foto = _ubaci_fotografiju('g')
+        self._lekcija_sa_slikom_i_primerkom(foto, mineral_id)
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = 'minerali'")
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen'")
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        r = self.get('/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi')
+        self.assertEqual(r.status_code, 200)
+        slika, primerak, _ = r.get_json()['lekcija']['blokovi']
+        self.assertTrue(slika['nedostupan'])
+        self.assertEqual(slika['razlog'], 'nema prava na Фототеку')
+        self.assertTrue(primerak['nedostupan'], 'анонимни нема право ни на збирку')
+        self.assertNotIn('/fototeka/media', r.get_data(as_text=True))
 
     def test_obrisan_primerak_nedostupan(self):
         self._lekcija_sa_slikom_i_primerkom(999999999, 999999999)
