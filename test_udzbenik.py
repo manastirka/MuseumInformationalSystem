@@ -10,6 +10,8 @@ import importlib.util
 import io
 import json
 import os
+import re
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -32,6 +34,7 @@ from postgres_service import get_postgres_connection  # noqa: E402
 
 KOREN = Path(__file__).resolve().parent
 PRIMER = KOREN / 'udzbenik' / 'primer-minerali.json'
+BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik-three.js', 'udzbenik.css', 'VERZIJA.txt')
 if not PRIMER.exists():
     PRIMER = Path('/tmp/udzbenik/primer-minerali.json')
 BAZA = 'https://localhost'
@@ -771,10 +774,30 @@ class LjuskaTest(_Osnova):
         t = (KOREN / 'templates' / 'udzbenik.html').read_text(encoding='utf-8')
         self.assertEqual(t.count('<script'), 1)
         self.assertIn('type="module"', t)
-        for ime in ('README.md', 'udzbenik.js', 'udzbenik.css', 'VERZIJA.txt'):
+        for ime in BUNDLE_FAJLOVI:
             self.assertTrue((KOREN / 'static' / 'udzbenik' / ime).exists(), ime)
         self.assertIn('!static/udzbenik/', (KOREN / '.gitignore').read_text(encoding='utf-8'))
-        self.assertEqual((KOREN / 'static' / 'udzbenik' / 'VERZIJA.txt').read_text().strip(), 'nema')
+        verzija = (KOREN / 'static' / 'udzbenik' / 'VERZIJA.txt').read_text(encoding='utf-8').splitlines()[0]
+        self.assertRegex(verzija, r'^(nema|mis-udzbenik [0-9a-f]{7,40})$', verzija)
+
+    def test_bundle_motora_je_u_gitu(self):
+        """Bundle (README списак + rezerve/<scena>.png за сваку сцену из шеме)
+        мора бити праћен у git-у — глобално *.png је 2026-10-29 тихо
+        прогутало резервне слике, па свеж клон/прод не би имао пад без WebGL-a."""
+        readme = (KOREN / 'static' / 'udzbenik' / 'README.md').read_text(encoding='utf-8')
+        iz_readme = sorted(set(re.findall(r'`([\w-]+\.(?:js|css|txt))`', readme)))
+        self.assertIn('udzbenik-three.js', iz_readme)
+        sema = json.loads((KOREN / 'udzbenik' / 'schema' / 'lekcija.schema.json').read_text(encoding='utf-8'))
+        scene = sema['$defs']['scena']['properties']['scena']['enum']
+        self.assertGreaterEqual(len(scene), 5)
+        ocekivani = ['static/udzbenik/' + ime for ime in iz_readme]
+        ocekivani += ['static/udzbenik/rezerve/%s.png' % scena for scena in scene]
+        praceni = set(subprocess.run(['git', 'ls-files', '--', 'static/udzbenik'], cwd=KOREN, check=True,
+                                     capture_output=True, text=True).stdout.split())
+        self.assertEqual([f for f in ocekivani if f not in praceni], [], 'нису у git-у')
+        ignorisani = subprocess.run(['git', 'check-ignore', '--no-index', '--', *ocekivani], cwd=KOREN,
+                                    capture_output=True, text=True).stdout.split()
+        self.assertEqual(ignorisani, [], '.gitignore их искључује')
 
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 # static/udzbenik/ — мотор интерактивног уџбеника
 
 Bundle долази из репоа **mis-udzbenik** (`scripts/izgradi-u-mis.sh` тамо гради
-Vite/Three.js мотор и копира `udzbenik.js`, `udzbenik.css`, `rezerve/*.png` и
-`VERZIJA.txt` овде). **Не уређивати ручно** — свака ручна измена нестаје при
+Vite/Three.js мотор и копира `udzbenik.js`, `udzbenik-three.js`, `udzbenik.css`,
+`rezerve/*.png` и `VERZIJA.txt` овде). Све то иде у git (изузеци у .gitignore). **Не уређивати ручно** — свака ручна измена нестаје при
 следећој изградњи.
 
 Док мотор није изграђен, `udzbenik.js` је привремени чувар места који у

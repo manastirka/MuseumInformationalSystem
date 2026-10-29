@@ -250,5 +250,19 @@ def test_mineral_science_view_mode_supercell_route_still_serves():
     assert len(atoms) == 16
 
 
+def test_admin_mineral_detail_supercell_is_built_once_on_the_client():
+    # admin_mineral_detail.html fetches ONE plain CIF (/api/crystal/local,
+    # /api/crystal/cif?url=, /api/cod/cif) and builds the 2x2x2 view itself with
+    # 3Dmol replicateUnitCell. It must never also ask the server for
+    # view_mode=supercell, or the view would be replicated twice (4x4x4).
+    import re
+    from pathlib import Path
+
+    t = Path(__file__).with_name('templates').joinpath('admin_mineral_detail.html').read_text(encoding='utf-8')
+    assert 'view_mode=supercell' not in t
+    assert 'local_rruff/cif' not in t
+    assert len(re.findall(r'replicateUnitCell\(\s*2\s*,\s*2\s*,\s*2\s*\)', t)) == 1
+
+
 def test_smoke_import():
     assert hasattr(local_rruff_data, 'LocalRRUFFData')
