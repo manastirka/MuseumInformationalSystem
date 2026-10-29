@@ -93,6 +93,19 @@ def ima_modul():
         session.get('user_email', ''), session.get('user_role', 'user'), MODUL))
 
 
+def sme_fototeku():
+    """Медиј слика служи fototeka.fototeka_media (пријава + модул fototeka);
+    анонимни читалац јавног уџбеника и пријављени без модула не могу да га
+    учитају, па блок мора поштено да каже „недоступан“."""
+    if not prijavljen():
+        return False
+    return bool(_app().user_has_module_access(
+        session.get('user_email', ''), session.get('user_role', 'user'), 'fototeka'))
+
+
+RAZLOG_BEZ_FOTOTEKE = 'nema prava na Фототеку'
+
+
 def javan(udzbenik_red):
     return bool(udzbenik_red and udzbenik_red.get('javno')
                 and udzbenik_red.get('status') == STATUS_OBJAVLJEN)
@@ -266,6 +279,8 @@ def _ime_autora(cur, email):
 def _razresi_sliku(cur, blok):
     import fototeka_views
 
+    if not sme_fototeku():
+        return _nedostupan(blok, RAZLOG_BEZ_FOTOTEKE)
     cur.execute("""SELECT id, width, height, autor_email, vidljivost, obrisana, status
                    FROM fotografije WHERE id = %s""", (blok.get('fotografija_id'),))
     foto = _red(cur)
@@ -285,6 +300,8 @@ def _razresi_sliku(cur, blok):
 def _fotografije_primerka(cur, zbirka, zapis, katalog):
     import fototeka_views
 
+    if not sme_fototeku():
+        return []
     if zbirka == museum_qr.ZBIRKA_MINERALI:
         uslov = "(v.mineral_id = %s OR (v.database_name = 'mineral' AND v.inventarni_broj = %s))"
         parametri = [zapis.get('id'), str(katalog or '')]
@@ -321,7 +338,7 @@ def _razresi_primerak(cur, blok):
         return _nedostupan(blok, 'примерак не постоји')
     opis = museum_qr.opis_zapisa(zbirka, zapis)
     katalog = opis.get('katalog') or ''
-    return dict(
+    razresen = dict(
         blok,
         naziv=opis.get('naslov') or '',
         inventarni_broj=zapis.get('inventarni_broj_display') or katalog,
@@ -329,6 +346,9 @@ def _razresi_primerak(cur, blok):
         url_kartica=museum_qr.url_detalja(zbirka, zapis.get('id', blok.get('objekat_id'))),
         fotografije=_fotografije_primerka(cur, zbirka, zapis, katalog),
     )
+    if not sme_fototeku():
+        razresen['fotografije_razlog'] = RAZLOG_BEZ_FOTOTEKE
+    return razresen
 
 
 # --------------------------------------------------------------------------

@@ -232,7 +232,7 @@ def napravi_plan(cur, podaci):
     u = podaci['udzbenik']
     cur.execute('SELECT id, naslov, opis, status, javno FROM udzbenik WHERE zbirka = %s', (u['zbirka'],))
     red = cur.fetchone()
-    plan = {'zbirka': u['zbirka'], 'upozorenja': [], 'poglavlja': []}
+    plan = {'zbirka': u['zbirka'], 'upozorenja': [], 'greske': [], 'poglavlja': []}
     if red is None:
         plan['udzbenik'] = {'akcija': 'dodaje', 'id': None}
     else:
@@ -246,8 +246,15 @@ def napravi_plan(cur, podaci):
         cur.execute('SELECT id, slug, naslov, opis, redosled FROM udzbenik_poglavlje WHERE udzbenik_id = %s', (red[0],))
         postojeca_poglavlja = {r[1]: {'id': r[0], 'naslov': r[2], 'opis': r[3], 'redosled': r[4]} for r in cur.fetchall()}
 
-    for p in podaci['poglavlja']:
+    slugovi_u_fajlu = {p['slug'] for p in podaci['poglavlja']}
+    zauzeti = {v['redosled']: slug for slug, v in postojeca_poglavlja.items() if slug not in slugovi_u_fajlu}
+    for i, p in enumerate(podaci['poglavlja']):
         staro = postojeca_poglavlja.get(p['slug'])
+        if p['redosled'] in zauzeti:
+            plan['greske'].append(
+                f'poglavlja[{i}].redosled: redosled {p["redosled"]} већ држи поглавље '
+                f'{zauzeti[p["redosled"]]!r} које је у бази, а нема га у фајлу — додај га у фајл '
+                f'са другим redosled-ом или промени redosled новог поглавља')
         stavka = {'slug': p['slug'], 'id': staro['id'] if staro else None, 'lekcije': []}
         if staro is None:
             stavka['akcija'] = 'dodaje'
@@ -262,8 +269,15 @@ def napravi_plan(cur, podaci):
             postojece_lekcije = {r[1]: {'id': r[0], 'naslov': r[2], 'sazetak': r[3], 'redosled': r[4],
                                         'status': r[5], 'verzija': r[6], 'sadrzaj': _json(r[7])}
                                  for r in cur.fetchall()}
-        for lek in p['lekcije']:
+        slugovi_lekcija = {lek['slug'] for lek in p['lekcije']}
+        zauzete = {v['redosled']: slug for slug, v in postojece_lekcije.items() if slug not in slugovi_lekcija}
+        for j, lek in enumerate(p['lekcije']):
             stara = postojece_lekcije.get(lek['slug'])
+            if lek['redosled'] in zauzete:
+                plan['greske'].append(
+                    f'poglavlja[{i}].lekcije[{j}].redosled: redosled {lek["redosled"]} већ држи лекција '
+                    f'{p["slug"]}/{zauzete[lek["redosled"]]} која је у бази, а нема је у фајлу — додај је у фајл '
+                    f'са другим redosled-ом или промени redosled нове лекције')
             l_stavka = {'slug': lek['slug'], 'id': stara['id'] if stara else None, 'nova_verzija': None}
             if stara is None:
                 l_stavka['akcija'] = 'dodaje'
@@ -433,6 +447,13 @@ def main(argv=None):
                     conn.rollback()
                     return 1
                 plan = napravi_plan(cur, podaci)
+                if plan['greske']:
+                    print(f'ГРЕШКЕ У ПЛАНУ ({len(plan["greske"])}) — колизија redosled-а са базом, '
+                          'ништа није уписано:', file=sys.stderr)
+                    for g in plan['greske']:
+                        print(f'  - {g}', file=sys.stderr)
+                    conn.rollback()
+                    return 1
                 if izvrsavanje:
                     primeni_plan(cur, podaci, plan, arg.autor, napomena)
             if izvrsavanje:
