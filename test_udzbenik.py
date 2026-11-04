@@ -25,10 +25,12 @@ os.environ.setdefault('SESSION_TYPE', 'filesystem')
 os.environ.setdefault('SESSION_FILE_DIR', 'logs/qa_flask_session')
 
 import psycopg  # noqa: E402
+import requests  # noqa: E402
 
 import app as museum_app  # noqa: E402
 import local_rruff_data  # noqa: E402
 import pretraga  # noqa: E402
+import scisearch_klijent  # noqa: E402
 import udzbenik  # noqa: E402
 from postgres_service import get_postgres_connection  # noqa: E402
 
@@ -922,6 +924,293 @@ class IlustracijeTest(_Osnova):
         self.addCleanup(os.unlink, putanja)
         kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
         self.assertEqual(kod, 0, err)
+
+
+# ---------------------------------------------------------------------------
+# 10. Литература из SciSearch-а (уговор LITERATURA.md §2) — лажни SciSearch
+# ---------------------------------------------------------------------------
+
+SCISEARCH_ENV = {'SCISEARCH_URL': 'https://192.168.144.194/nauka/', 'SCISEARCH_SVC_TOKEN': 'test-token'}
+BEZ_SCISEARCH_ENV = {'SCISEARCH_URL': '', 'SCISEARCH_SVC_TOKEN': ''}
+REZULTAT_SCISEARCH = {
+    'doc_id': 812, 'naslov': 'Минерали Србије', 'autor': 'Петровић', 'godina': 1987, 'vrsta': 'book',
+    'izvor': 'geolosko', 'poglavlje': {'naslov': 'Сулфиди', 'autori': 'Петровић', 'strana_od': 12, 'strana_do': 30},
+    'strana': 47, 'isecak': 'Кристали <mark>пирита</mark> су <b>кубични</b><script>alert(1)</script>.',
+    'url': '/nauka/doc/812?page=47&q=пирит',
+}
+
+
+class _Odgovor:
+    def __init__(self, status_code=200, telo=None, tekst='nije json'):
+        self.status_code = status_code
+        self._telo = telo
+        self._tekst = tekst
+
+    def json(self):
+        if self._telo is None:
+            raise ValueError(self._tekst)
+        return self._telo
+
+
+def _scisearch_odgovor(rezultati, status=200):
+    return _Odgovor(status, {'upit': 'пирит', 'ukupno': len(rezultati), 'ms': 12, 'rezultati': rezultati})
+
+
+class LiteraturaKlijentTest(unittest.TestCase):
+    """scisearch_klijent без мреже: env, timeout, кеш, чишћење исечка."""
+
+    def setUp(self):
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+
+    def test_bez_env_nije_podesen(self):
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            self.assertFalse(scisearch_klijent.podesen())
+            with self.assertRaises(scisearch_klijent.SciSearchNijePodesen) as cm:
+                scisearch_klijent.pretrazi('пирит', 3)
+            self.assertEqual(cm.exception.razlog, 'biblioteka nije povezana')
+            self.assertIsInstance(cm.exception, scisearch_klijent.SciSearchGreska)
+            get.assert_not_called()
+
+    def test_poziv_sa_tokenom_as_user_i_timeoutom(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get',
+                                  return_value=_scisearch_odgovor([REZULTAT_SCISEARCH])) as get:
+            rezultati = scisearch_klijent.pretrazi('  пирит   Бор ', 20, as_user=EMAIL)
+        get.assert_called_once_with(
+            'https://192.168.144.194/nauka/svc/search',
+            params={'q': 'пирит Бор', 'n': 8, 'mode': 'hybrid', 'as_user': EMAIL},
+            headers={'X-Svc-Token': 'test-token'}, timeout=4)
+        self.assertEqual(len(rezultati), 1)
+        r = rezultati[0]
+        self.assertEqual(r['isecak'], 'Кристали <mark>пирита</mark> су кубичниalert(1).',
+                         '<mark> остаје, други тагови не')
+        self.assertEqual(r['url'], '/nauka/doc/812?page=47&q=пирит', 'url остаје релативан — исти хост')
+        self.assertEqual((r['doc_id'], r['naslov'], r['autor'], r['godina'], r['strana']),
+                         (812, 'Минерали Србије', 'Петровић', 1987, 47))
+        self.assertEqual(r['poglavlje']['strana_do'], 30)
+        self.assertEqual(set(r), {'doc_id', 'naslov', 'autor', 'godina', 'vrsta', 'izvor', 'poglavlje',
+                                  'strana', 'isecak', 'url'})
+
+    def test_timeout_i_los_odgovor_dizu_gresku_sa_razlogom(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV):
+            with mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.pretrazi('пирит')
+                self.assertIn('timeout', cm.exception.razlog)
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(401, {'greska': 'x'})):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.pretrazi('пирит')
+                self.assertEqual(cm.exception.razlog, 'HTTP 401')
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(200, None)):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                    scisearch_klijent.pretrazi('пирит')
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(200, {'nema': 1})):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                    scisearch_klijent.pretrazi('пирит')
+            with mock.patch.object(scisearch_klijent.requests, 'get',
+                                   side_effect=requests.ConnectionError('odbijeno')):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.pretrazi('пирит')
+                self.assertIn('odbijeno', cm.exception.razlog)
+
+    def test_kes_10_minuta_po_upitu_i_broju(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get',
+                                  return_value=_scisearch_odgovor([REZULTAT_SCISEARCH])) as get:
+            prvi = scisearch_klijent.pretrazi('пирит', 3)
+            drugi = scisearch_klijent.pretrazi('пирит', 3, as_user='drugi@example.invalid')
+            self.assertEqual(get.call_count, 1, 'други позив из кеша')
+            self.assertEqual(prvi, drugi)
+            drugi[0]['naslov'] = 'измењено'
+            self.assertEqual(scisearch_klijent.pretrazi('пирит', 3)[0]['naslov'], 'Минерали Србије',
+                             'кеш враћа копије')
+            scisearch_klijent.pretrazi('пирит', 5)
+            self.assertEqual(get.call_count, 2, 'други broj = други кључ')
+            with mock.patch.object(scisearch_klijent.time, 'monotonic',
+                                   return_value=scisearch_klijent.time.monotonic() + 601):
+                scisearch_klijent.pretrazi('пирит', 3)
+            self.assertEqual(get.call_count, 3, 'после 10 минута поново пита')
+            get.side_effect = requests.Timeout()
+            with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                scisearch_klijent.pretrazi('нови упит', 3)
+            self.assertEqual(get.call_count, 4)
+            with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                scisearch_klijent.pretrazi('нови упит', 3)
+            self.assertEqual(get.call_count, 5, 'грешка се не кешира')
+
+    def test_prazan_upit_ne_zove_servis(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            self.assertEqual(scisearch_klijent.pretrazi('   ', 3), [])
+            get.assert_not_called()
+
+    def test_ocisti_isecak(self):
+        self.assertEqual(scisearch_klijent.ocisti_isecak('a <MARK>b</MARK> <img src=x onerror=1> <mark x="y">c'),
+                         'a <mark>b</mark>  c')
+        self.assertEqual(scisearch_klijent.ocisti_isecak(None), '')
+        self.assertEqual(len(scisearch_klijent.ocisti_isecak('x' * 1000)), 400)
+
+
+class LiteraturaApiTest(_Osnova):
+    def setUp(self):
+        super().setUp()
+        _uvezi_primer()
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+        self.lekcija_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
+        self.blok = {'id': 'lit-1', 'tip': 'literatura', 'upit': 'пирит', 'naslov': 'Из библиотеке',
+                     'napomena': 'Опис кристала пирита у старијој литератури'}
+        sadrzaj = {'verzija': 1, 'blokovi': [
+            {'id': 'uvod', 'tip': 'tekst', 'markdown': 'Пирит.'}, dict(self.blok),
+            {'id': 'lit-2', 'tip': 'literatura', 'upit': 'нема ничега', 'broj': 2},
+        ]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), self.lekcija_id))
+
+    URL = '/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi'
+
+    def _blokovi(self):
+        r = self.get(self.URL)
+        self.assertEqual(r.status_code, 200, 'лекција се увек враћа')
+        return r.get_json()['lekcija']['blokovi']
+
+    def test_rezultati_prolaze_isecak_samo_mark(self):
+        self._prijava()
+
+        def lazni_get(url, params, headers, timeout):
+            if params['q'] == 'пирит':
+                return _scisearch_odgovor([REZULTAT_SCISEARCH])
+            return _scisearch_odgovor([])
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', side_effect=lazni_get) as get:
+            tekst, lit, prazan = self._blokovi()
+        self.assertEqual(tekst['tip'], 'tekst')
+        self.assertEqual([c.kwargs['params'] for c in get.call_args_list],
+                         [{'q': 'пирит', 'n': 3, 'mode': 'hybrid', 'as_user': EMAIL},
+                          {'q': 'нема ничега', 'n': 2, 'mode': 'hybrid', 'as_user': EMAIL}],
+                         'подразумевани broj 3, as_user = пријављени')
+        self.assertEqual({k: lit[k] for k in self.blok}, self.blok, 'ауторова поља остају')
+        self.assertNotIn('nedostupan', lit)
+        self.assertEqual(len(lit['rezultati']), 1)
+        r = lit['rezultati'][0]
+        self.assertEqual(r['isecak'], 'Кристали <mark>пирита</mark> су кубичниalert(1).')
+        self.assertEqual(r['url'], '/nauka/doc/812?page=47&q=пирит')
+        self.assertEqual(r['naslov'], 'Минерали Србије')
+        self.assertEqual(prazan, {'id': 'lit-2', 'tip': 'literatura', 'upit': 'нема ничега', 'broj': 2,
+                                  'nedostupan': True, 'razlog': 'nema rezultata'})
+        self.assertNotIn('<script', self.get(self.URL).get_data(as_text=True))
+
+    def test_izuzetak_klijenta_ne_obara_lekciju(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'pretrazi', side_effect=RuntimeError('пукло')):
+            _, lit, lit2 = self._blokovi()
+        self.assertEqual({k: lit[k] for k in ('nedostupan', 'razlog')},
+                         {'nedostupan': True, 'razlog': 'biblioteka trenutno nije dostupna'})
+        self.assertEqual(lit['napomena'], self.blok['napomena'])
+        self.assertNotIn('rezultati', lit)
+        self.assertTrue(lit2['nedostupan'])
+
+    def test_timeout_i_http_greska_nedostupan(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+            _, lit, _ = self._blokovi()
+        self.assertEqual(lit['razlog'], 'biblioteka trenutno nije dostupna')
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(504, {'greska': 't'})):
+            _, lit, _ = self._blokovi()
+        self.assertTrue(lit['nedostupan'])
+        self.assertEqual(lit['razlog'], 'biblioteka trenutno nije dostupna')
+
+    def test_nepodesen_env_biblioteka_nije_povezana(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            _, lit, _ = self._blokovi()
+        get.assert_not_called()
+        self.assertEqual((lit['nedostupan'], lit['razlog']), (True, 'biblioteka nije povezana'))
+
+    def test_anonimni_samo_za_prijavljene(self):
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = 'minerali'")
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen'")
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            tekst, lit, lit2 = self._blokovi()
+        get.assert_not_called()
+        self.assertEqual(tekst['markdown'], 'Пирит.')
+        for b in (lit, lit2):
+            self.assertEqual((b['nedostupan'], b['razlog']), (True, 'samo za prijavljene korisnike'))
+            self.assertNotIn('rezultati', b)
+
+    def test_uvoz_validira_blok_literatura(self):
+        def pokvari(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'lit-a', 'tip': 'literatura'},
+                {'id': 'lit-b', 'tip': 'literatura', 'upit': 'x' * 201, 'broj': 9},
+                {'id': 'lit-c', 'tip': 'literatura', 'upit': 'пирит', 'url': '/nauka/doc/1'},
+            ])
+        putanja = _primer_sa_izmenom(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre)
+        n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
+        koren = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        self.assertIn(f"{koren}[{n}]: 'upit' is a required property", err)
+        self.assertIn(f'{koren}[{n + 1}].broj: 9 is greater than the maximum of 8', err)
+        self.assertIn(f'{koren}[{n + 1}].upit:', err)
+        self.assertIn(f"{koren}[{n + 2}]: Additional properties are not allowed ('url' was unexpected)", err)
+
+    def _primer_sa_literaturom(self):
+        def dodaj(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'lit-a', 'tip': 'literatura', 'upit': 'пирит'},
+                {'id': 'lit-b', 'tip': 'literatura', 'upit': 'нема ничега', 'broj': 2},
+            ])
+        putanja = _primer_sa_izmenom(dodaj)
+        self.addCleanup(os.unlink, putanja)
+        return putanja
+
+    def test_uvoz_proveri_literaturu_upozorava_na_0_rezultata(self):
+        putanja = self._primer_sa_literaturom()
+
+        def lazni(upit, broj=3, as_user=None):
+            return [dict(REZULTAT_SCISEARCH)] if upit == 'пирит' else []
+        pre = _brojevi()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'pretrazi', lazni):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--dry-run', '--proveri-literaturu')
+        self.assertEqual(kod, 0, err)
+        self.assertEqual(_brojevi(), pre)
+        self.assertIn("! упозорење: poglavlja[0].lekcije[0].sadrzaj.blokovi[6].upit: 'нема ничега' даје 0 резултата", out)
+        self.assertNotIn("'пирит' даје 0", out)
+        self.assertIn('1 упозорења', out)
+        # без заставице SciSearch се не пита
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'pretrazi', side_effect=AssertionError('не сме')):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+        self.assertIn('0 упозорења', out)
+
+    def test_uvoz_proveri_literaturu_bez_servisa_je_greska(self):
+        putanja = self._primer_sa_literaturom()
+        pre = _brojevi()
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV):
+            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+        self.assertEqual(kod, 1)
+        self.assertIn('SciSearch није подешен', err)
+        self.assertEqual(_brojevi(), pre, 'ништа није уписано')
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'pretrazi',
+                                  side_effect=scisearch_klijent.SciSearchGreska('timeout после 4 s')):
+            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+        self.assertEqual(kod, 1)
+        self.assertIn('blokovi[5]: SciSearch није одговорио (timeout после 4 s)', err)
+        self.assertEqual(_brojevi(), pre)
 
 
 if __name__ == '__main__':

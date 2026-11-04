@@ -10,7 +10,9 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 - склапа одговоре API-ја (структура, лекција са РАЗРЕШЕНИМ блоковима слике и
   примерка, претходна/следећа преко границе поглавља);
 - упис напретка са валидацијом до базе;
-- CIF структуре минерала из локалног RRUFF скупа, под правом ``udzbenik``.
+- CIF структуре минерала из локалног RRUFF скупа, под правом ``udzbenik``;
+- блок ``literatura`` разрешава преко scisearch_klijent (само за пријављене;
+  пад SciSearch-а не обара лекцију — блок добија ``nedostupan`` + ``razlog``).
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
@@ -23,6 +25,7 @@ from pathlib import Path
 from flask import session, url_for
 
 import museum_qr
+import scisearch_klijent
 from postgres_service import get_postgres_connection
 
 logger = logging.getLogger(__name__)
@@ -35,6 +38,10 @@ NAJVISE_FOTOGRAFIJA_PRIMERKA = 4
 SEMA_PUTANJA = Path(__file__).resolve().parent / 'udzbenik' / 'schema' / 'lekcija.schema.json'
 DERIVAT_VELIKI = 'jpg'
 DERIVAT_MALI = 'thumb'
+LITERATURA_PODRAZUMEVANI_BROJ = 3
+RAZLOG_LITERATURA_PRIJAVA = 'samo za prijavljene korisnike'
+RAZLOG_LITERATURA_NEDOSTUPNA = 'biblioteka trenutno nije dostupna'
+RAZLOG_LITERATURA_PRAZNO = 'nema rezultata'
 
 
 def ucitaj_semu():
@@ -271,6 +278,8 @@ def razresi_blokove(cur, blokovi):
             izlaz.append(_razresi_sliku(cur, blok))
         elif tip == 'primerak':
             izlaz.append(_razresi_primerak(cur, blok))
+        elif tip == 'literatura':
+            izlaz.append(_razresi_literaturu(blok))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -363,6 +372,28 @@ def _razresi_primerak(cur, blok):
     if not sme_fototeku():
         razresen['fotografije_razlog'] = RAZLOG_BEZ_FOTOTEKE
     return razresen
+
+
+def _razresi_literaturu(blok):
+    """Пасуси из SciSearch-а (уговор LITERATURA.md §2). Анонимни читалац не
+    добија резултате; неподешен клијент, timeout или грешка сервиса дају
+    ``nedostupan`` са разлогом — лекција се увек враћа."""
+    if not prijavljen():
+        return _nedostupan(blok, RAZLOG_LITERATURA_PRIJAVA)
+    broj = blok.get('broj')
+    if not isinstance(broj, int) or isinstance(broj, bool):
+        broj = LITERATURA_PODRAZUMEVANI_BROJ
+    try:
+        rezultati = scisearch_klijent.pretrazi(blok.get('upit'), broj, as_user=korisnik_email())
+    except scisearch_klijent.SciSearchNijePodesen:
+        return _nedostupan(blok, scisearch_klijent.RAZLOG_NIJE_PODESEN)
+    except Exception as exc:  # noqa: BLE001 - библиотека не сме да сруши лекцију
+        logger.warning('Уџбеник: SciSearch за блок %s (%r) није успео: %s',
+                       blok.get('id'), blok.get('upit'), exc)
+        return _nedostupan(blok, RAZLOG_LITERATURA_NEDOSTUPNA)
+    if not rezultati:
+        return _nedostupan(blok, RAZLOG_LITERATURA_PRAZNO)
+    return dict(blok, rezultati=rezultati)
 
 
 # --------------------------------------------------------------------------
