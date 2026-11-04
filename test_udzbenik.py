@@ -36,7 +36,8 @@ KOREN = Path(__file__).resolve().parent
 PRIMER = KOREN / 'udzbenik' / 'primer-minerali.json'
 PRIMERI_ILUSTRACIJA = KOREN / 'udzbenik' / 'primeri-ilustracija.json'
 ZBIRKA_ILUSTRACIJE = 'udztest-ilustracije'
-BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik-three.js', 'udzbenik.css', 'VERZIJA.txt')
+BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik-three.js', 'udzbenik-dijagrami.js', 'udzbenik.css',
+                  'VERZIJA.txt')
 if not PRIMER.exists():
     PRIMER = Path('/tmp/udzbenik/primer-minerali.json')
 BAZA = 'https://localhost'
@@ -791,12 +792,17 @@ class LjuskaTest(_Osnova):
         readme = (KOREN / 'static' / 'udzbenik' / 'README.md').read_text(encoding='utf-8')
         iz_readme = sorted(set(re.findall(r'`([\w-]+\.(?:js|css|txt))`', readme)))
         self.assertIn('udzbenik-three.js', iz_readme)
+        self.assertIn('udzbenik-dijagrami.js', iz_readme)
         sema = json.loads((KOREN / 'udzbenik' / 'schema' / 'lekcija.schema.json').read_text(encoding='utf-8'))
         scene = sema['$defs']['scena']['properties']['scena']['enum']
         self.assertGreaterEqual(len(scene), 5)
+        # Фаза 2: мотор за сваки дијаграм тражи rezerve/dijagram-<dijagram>.png
+        dijagrami = sema['$defs']['dijagram']['properties']['dijagram']['enum']
+        self.assertGreaterEqual(len(dijagrami), 5)
+        scene = scene + ['dijagram-' + d for d in dijagrami]
         rezerve = sorted(p.name for p in (KOREN / 'static' / 'udzbenik' / 'rezerve').glob('*.png'))
         self.assertGreaterEqual(len(rezerve), 5)
-        self.assertEqual([r for r in rezerve if r[:-4] not in scene], [], 'резерва за сцену које нема у шеми')
+        self.assertEqual([r for r in rezerve if r[:-4] not in scene], [], 'резерва за сцену/дијаграм којих нема у шеми')
         ocekivani = ['static/udzbenik/' + ime for ime in iz_readme]
         ocekivani += ['static/udzbenik/rezerve/' + ime for ime in rezerve]
         praceni = set(subprocess.run(['git', 'ls-files', '--', 'static/udzbenik'], cwd=KOREN, check=True,

@@ -474,11 +474,12 @@
                       "432",
                       "4/mmm",
                       "6/mmm",
+                      "6/m",
                       "-3m",
                       "32",
                       "mmm"
                     ],
-                    "description": "Hermann–Mauguin; podrazumevano holoedrija sistema (m-3m, 4/mmm, 6/mmm, -3m, mmm). m-3 daje piritoedar {210}; 32 je kvarc (trapezoedri); -43m tetraedar."
+                    "description": "Hermann–Mauguin; podrazumevano holoedrija sistema (m-3m, 4/mmm, 6/mmm, -3m, mmm). m-3 daje piritoedar {210}; 32 je kvarc (trapezoedri); -43m tetraedar. 6/m: apatit (P6₃/m)."
                   },
                   "celija": {
                     "type": "object",
