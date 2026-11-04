@@ -34,6 +34,8 @@ from postgres_service import get_postgres_connection  # noqa: E402
 
 KOREN = Path(__file__).resolve().parent
 PRIMER = KOREN / 'udzbenik' / 'primer-minerali.json'
+PRIMERI_ILUSTRACIJA = KOREN / 'udzbenik' / 'primeri-ilustracija.json'
+ZBIRKA_ILUSTRACIJE = 'udztest-ilustracije'
 BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik-three.js', 'udzbenik.css', 'VERZIJA.txt')
 if not PRIMER.exists():
     PRIMER = Path('/tmp/udzbenik/primer-minerali.json')
@@ -781,21 +783,27 @@ class LjuskaTest(_Osnova):
         self.assertRegex(verzija, r'^(nema|mis-udzbenik [0-9a-f]{7,40})$', verzija)
 
     def test_bundle_motora_je_u_gitu(self):
-        """Bundle (README списак + rezerve/<scena>.png за сваку сцену из шеме)
-        мора бити праћен у git-у — глобално *.png је 2026-10-29 тихо
-        прогутало резервне слике, па свеж клон/прод не би имао пад без WebGL-a."""
+        """Bundle (README списак + све rezerve/*.png које мотор испоручује) мора
+        бити праћен у git-у — глобално *.png је 2026-10-29 тихо прогутало
+        резервне слике, па свеж клон/прод не би имао пад без WebGL-a. Шема сме
+        да предњачи мотору (фаза 2: нове сцене пре bundle-а), па се тражене
+        слике читају са диска, а .gitignore се проверава за СВЕ сцене из шеме."""
         readme = (KOREN / 'static' / 'udzbenik' / 'README.md').read_text(encoding='utf-8')
         iz_readme = sorted(set(re.findall(r'`([\w-]+\.(?:js|css|txt))`', readme)))
         self.assertIn('udzbenik-three.js', iz_readme)
         sema = json.loads((KOREN / 'udzbenik' / 'schema' / 'lekcija.schema.json').read_text(encoding='utf-8'))
         scene = sema['$defs']['scena']['properties']['scena']['enum']
         self.assertGreaterEqual(len(scene), 5)
+        rezerve = sorted(p.name for p in (KOREN / 'static' / 'udzbenik' / 'rezerve').glob('*.png'))
+        self.assertGreaterEqual(len(rezerve), 5)
+        self.assertEqual([r for r in rezerve if r[:-4] not in scene], [], 'резерва за сцену које нема у шеми')
         ocekivani = ['static/udzbenik/' + ime for ime in iz_readme]
-        ocekivani += ['static/udzbenik/rezerve/%s.png' % scena for scena in scene]
+        ocekivani += ['static/udzbenik/rezerve/' + ime for ime in rezerve]
         praceni = set(subprocess.run(['git', 'ls-files', '--', 'static/udzbenik'], cwd=KOREN, check=True,
                                      capture_output=True, text=True).stdout.split())
         self.assertEqual([f for f in ocekivani if f not in praceni], [], 'нису у git-у')
-        ignorisani = subprocess.run(['git', 'check-ignore', '--no-index', '--', *ocekivani], cwd=KOREN,
+        za_ignore = ocekivani + ['static/udzbenik/rezerve/%s.png' % scena for scena in scene]
+        ignorisani = subprocess.run(['git', 'check-ignore', '--no-index', '--', *za_ignore], cwd=KOREN,
                                     capture_output=True, text=True).stdout.split()
         self.assertEqual(ignorisani, [], '.gitignore их искључује')
 
@@ -827,6 +835,87 @@ class PretragaTest(_Osnova):
             r = self.get('/api/pretraga?q=Mohsova')
         self.assertNotIn('udzbenik', {g['kljuc'] for g in r.get_json()['grupe']})
         self.assertIn('udzbenik', dict((i[0], i) for i in pretraga.IZVORI))
+
+
+# ---------------------------------------------------------------------------
+# 10. Илустрације (фаза 2): блок dijagram + нове сцене
+# ---------------------------------------------------------------------------
+
+def _lekcija_ilustracija(izmeni=None):
+    """primeri-ilustracija.json као једна лекција уџбеника udztest-ilustracije;
+    ``izmeni(blokovi_po_id)`` квари садржај пре уписа у привремени фајл."""
+    sadrzaj = json.loads(PRIMERI_ILUSTRACIJA.read_text(encoding='utf-8'))
+    if izmeni is not None:
+        izmeni({b['id']: b for b in sadrzaj['blokovi']})
+    podaci = {
+        'udzbenik': {'zbirka': ZBIRKA_ILUSTRACIJE, 'naslov': 'Ilustracije', 'status': 'nacrt', 'javno': False},
+        'poglavlja': [{'slug': 'ilustracije', 'naslov': 'Ilustracije', 'redosled': 1, 'lekcije': [
+            {'slug': 'sve', 'naslov': 'Sve ilustracije', 'redosled': 1, 'status': 'nacrt', 'sadrzaj': sadrzaj}]}],
+    }
+    f = tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8')
+    json.dump(podaci, f, ensure_ascii=False)
+    f.close()
+    return f.name, sadrzaj
+
+
+class IlustracijeTest(_Osnova):
+    def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
+        putanja, sadrzaj = _lekcija_ilustracija()
+        self.addCleanup(os.unlink, putanja)
+        self.assertEqual(len(sadrzaj['blokovi']), 29)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--autor', EMAIL)
+        self.assertEqual(kod, 0, err + out)
+
+        self._prijava()
+        r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
+        self.assertEqual(r.status_code, 200)
+        blokovi = r.get_json()['lekcija']['blokovi']
+        self.assertEqual(len(blokovi), 29)
+        self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
+        self.assertEqual(blokovi, sadrzaj['blokovi'])
+
+        sema = udzbenik.ucitaj_semu()
+        self.assertEqual({b['dijagram'] for b in blokovi if b['tip'] == 'dijagram'},
+                         set(sema['$defs']['dijagram']['properties']['dijagram']['enum']))
+        self.assertLessEqual({'bravaisova-resetka', 'opticka-indikatrisa', 'blizanac', 'koordinacioni-poliedar',
+                              'silikatna-struktura', 'habitus'},
+                             {b['scena'] for b in blokovi if b['tip'] == 'scena'})
+        self.assertIn('dijagram', udzbenik.POZNATI_TIPOVI)
+
+    def test_los_dijagram_pada_sa_putanjom_i_nista_se_ne_upisuje(self):
+        def pokvari(b):
+            b['d-bowen']['dijagram'] = 'nepostojeci'                       # непозната врста
+            b['d-sio2']['parametri']['sistem'] = 'H2O'                     # лош систем
+            b['d-karta']['parametri']['lokaliteti'][1]['lat'] = 48.2       # тачка ван Србије
+            b['d-par']['parametri']['minerali'][1].update(od=2, do=1)      # od > do
+            b['d-par']['parametri']['minerali'][2]['do'] = 7               # do ≥ број фаза
+            b['s-kvarc']['parametri']['forme'][0]['hkl'] = [1, 0, -2, 0]   # i ≠ −(h+k)
+        putanja, sadrzaj = _lekcija_ilustracija(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        indeks = {b['id']: i for i, b in enumerate(sadrzaj['blokovi'])}
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--autor', EMAIL)
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre)
+        self.assertEqual(_upit('SELECT 1 FROM udzbenik WHERE zbirka = %s', (ZBIRKA_ILUSTRACIJE,)), [])
+        koren = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        for deo in (f"{koren}[{indeks['d-bowen']}].dijagram: 'nepostojeci'",
+                    f"{koren}[{indeks['d-sio2']}].parametri.sistem: 'H2O'",
+                    f"{koren}[{indeks['d-karta']}].parametri.lokaliteti[1].lat: 48.2",
+                    f"{koren}[{indeks['d-par']}].parametri.minerali[1]: od=2",
+                    f"{koren}[{indeks['d-par']}].parametri.minerali[2].do: 7",
+                    f"{koren}[{indeks['s-kvarc']}].parametri.forme[0].hkl: i=-2"):
+            self.assertIn(deo, err)
+
+    def test_karta_van_srbije_dozvoljena_za_drugu_oblast(self):
+        def izmeni(b):
+            b['d-karta']['parametri']['oblast'] = 'evropa'
+            b['d-karta']['parametri']['lokaliteti'][1]['lat'] = 48.2
+            del b['d-karta']['parametri']['prikazi_jedinice']
+        putanja, _ = _lekcija_ilustracija(izmeni)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
 
 
 if __name__ == '__main__':

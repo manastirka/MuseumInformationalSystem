@@ -18,6 +18,7 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 """
 import json
 import logging
+from pathlib import Path
 
 from flask import session, url_for
 
@@ -31,9 +32,23 @@ STATUS_NACRT = 'nacrt'
 STATUS_OBJAVLJEN = 'objavljen'
 STATUSI = (STATUS_NACRT, STATUS_OBJAVLJEN)
 NAJVISE_FOTOGRAFIJA_PRIMERKA = 4
-POZNATI_TIPOVI = ('tekst', 'slika', 'scena', 'primerak', 'pitanje', 'napomena')
+SEMA_PUTANJA = Path(__file__).resolve().parent / 'udzbenik' / 'schema' / 'lekcija.schema.json'
 DERIVAT_VELIKI = 'jpg'
 DERIVAT_MALI = 'thumb'
+
+
+def ucitaj_semu():
+    with open(SEMA_PUTANJA, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def tipovi_blokova(sema):
+    """Дозвољени ``tip`` блока — enum из шеме, да спискови познатих типова не
+    живе на два места (увоз и читање користе исти)."""
+    return tuple(sema['$defs']['blok']['properties']['tip']['enum'])
+
+
+POZNATI_TIPOVI = tipovi_blokova(ucitaj_semu())
 
 
 class GreskaZahteva(Exception):

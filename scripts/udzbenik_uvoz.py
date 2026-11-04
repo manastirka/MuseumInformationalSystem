@@ -7,7 +7,10 @@
 Правила:
 - цео фајл се ПРВО валидира (структура, ``sadrzaj`` свake лекције по
   udzbenik/schema/lekcija.schema.json, јединствени ``id`` блокова, постојање
-  фотографија у Фототеци и примерака у збирци); све грешке се испишу одједном,
+  фотографија у Фототеци и примерака у збирци, правила која шема не изражава:
+  ``karta-lokaliteta`` са oblast=srbija има све тачке у оквиру Србије,
+  ``paragenetska-sekvenca`` има ``od <= do < broj faza``, ``habitus`` са четири
+  индекса има ``i = -(h+k)``); све грешке се испишу одједном,
   са путањом (``poglavlja[1].lekcije[0].blokovi[3]``), и ништа се не упише;
 - upsert по ``zbirka`` → ``slug`` поглавља → ``slug`` лекције; лекција чији се
   ``sadrzaj`` променио добија ``verzija + 1`` и нов ред у
@@ -28,20 +31,19 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-SEMA_PUTANJA = REPO / 'udzbenik' / 'schema' / 'lekcija.schema.json'
+from udzbenik import tipovi_blokova, ucitaj_semu  # noqa: E402
+
 POTVRDA = 'mis_db'
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
-TIPOVI = ('tekst', 'slika', 'scena', 'primerak', 'pitanje', 'napomena')
+# Оквир Србије (са Косовом и Метохијом) за karta-lokaliteta, oblast=srbija.
+SRBIJA_LAT = (41.8, 46.2)
+SRBIJA_LON = (18.8, 23.1)
 
 
 # --------------------------------------------------------------------------
 # Валидација
 # --------------------------------------------------------------------------
-
-def ucitaj_semu():
-    with open(SEMA_PUTANJA, encoding='utf-8') as f:
-        return json.load(f)
 
 
 def _tekst(vrednost, putanja, greske, obavezno=True, najvise=None):
@@ -110,8 +112,8 @@ def validiraj_sadrzaj(sadrzaj, putanja, sema, validatori, greske):
             greske.append(f'{p}: блок мора бити објекат')
             continue
         tip = blok.get('tip')
-        if tip not in TIPOVI:
-            greske.append(f'{p}.tip: непознат тип блока {tip!r}; дозвољено {list(TIPOVI)}')
+        if tip not in validatori:
+            greske.append(f'{p}.tip: непознат тип блока {tip!r}; дозвољено {list(validatori)}')
             continue
         for g in sorted(validatori[tip].iter_errors(blok), key=lambda e: (str(e.json_path), e.message)):
             greske.append(f'{p}{_json_putanja(g)}: {g.message}')
@@ -127,7 +129,7 @@ def _validatori(sema):
     import jsonschema
 
     return {tip: jsonschema.Draft202012Validator({'$ref': f'#/$defs/{tip}', '$defs': sema['$defs']})
-            for tip in TIPOVI}
+            for tip in tipovi_blokova(sema)}
 
 
 def validiraj(podaci, cur):
@@ -186,6 +188,7 @@ def validiraj(podaci, cur):
                 continue
             validiraj_sadrzaj(sadrzaj, f'{lp}.sadrzaj', sema, validatori, greske)
             if isinstance(sadrzaj.get('blokovi'), list):
+                _proveri_pravila(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_reference(sadrzaj['blokovi'], f'{lp}.sadrzaj', cur, greske)
     return greske
 
@@ -208,6 +211,69 @@ def _proveri_reference(blokovi, putanja, cur, greske):
 
 def _ceo(vrednost):
     return isinstance(vrednost, int) and not isinstance(vrednost, bool) and vrednost >= 1
+
+
+def _broj(vrednost):
+    return isinstance(vrednost, (int, float)) and not isinstance(vrednost, bool)
+
+
+def _proveri_pravila(blokovi, putanja, greske):
+    """Правила која JSON шема не изражава (односи међу пољима); све одједном,
+    отпорно на погрешан облик јер је шема такве блокове већ пријавила."""
+    for i, blok in enumerate(blokovi):
+        if not isinstance(blok, dict) or not isinstance(blok.get('parametri'), dict):
+            continue
+        par = blok['parametri']
+        p = f'{putanja}.blokovi[{i}].parametri'
+        if blok.get('tip') == 'dijagram' and blok.get('dijagram') == 'karta-lokaliteta':
+            _karta_u_okviru_srbije(par, p, greske)
+        elif blok.get('tip') == 'dijagram' and blok.get('dijagram') == 'paragenetska-sekvenca':
+            _sekvenca_u_fazama(par, p, greske)
+        elif blok.get('tip') == 'scena' and blok.get('scena') == 'habitus':
+            _bravais_miller(par, p, greske)
+
+
+def _karta_u_okviru_srbije(par, p, greske):
+    """Шема подразумева oblast=srbija кад поље недостаје."""
+    if par.get('oblast', 'srbija') != 'srbija' or not isinstance(par.get('lokaliteti'), list):
+        return
+    for j, lok in enumerate(par['lokaliteti']):
+        if not isinstance(lok, dict):
+            continue
+        for polje, (najmanje, najvise) in (('lat', SRBIJA_LAT), ('lon', SRBIJA_LON)):
+            v = lok.get(polje)
+            if _broj(v) and not najmanje <= v <= najvise:
+                greske.append(f'{p}.lokaliteti[{j}].{polje}: {v} је ван оквира Србије '
+                              f'({najmanje}–{najvise}) за oblast=srbija')
+
+
+def _sekvenca_u_fazama(par, p, greske):
+    if not isinstance(par.get('faze'), list) or not isinstance(par.get('minerali'), list):
+        return
+    broj_faza = len(par['faze'])
+    for j, m in enumerate(par['minerali']):
+        if not isinstance(m, dict):
+            continue
+        od, do = m.get('od'), m.get('do')
+        if not (_broj(od) and _broj(do)):
+            continue
+        if od > do:
+            greske.append(f'{p}.minerali[{j}]: od={od} је веће од do={do}')
+        if do >= broj_faza:
+            greske.append(f'{p}.minerali[{j}].do: {do} је ван низа faze (0–{broj_faza - 1})')
+
+
+def _bravais_miller(par, p, greske):
+    """Четири индекса (hkil): i = −(h+k)."""
+    if not isinstance(par.get('forme'), list):
+        return
+    for j, forma in enumerate(par['forme']):
+        hkl = forma.get('hkl') if isinstance(forma, dict) else None
+        if not (isinstance(hkl, list) and len(hkl) == 4 and all(_broj(x) for x in hkl)):
+            continue
+        h, k, i = hkl[0], hkl[1], hkl[2]
+        if i != -(h + k):
+            greske.append(f'{p}.forme[{j}].hkl: i={i} а мора бити −(h+k)={-(h + k)} за (hkil)={hkl}')
 
 
 def primerak_postoji(zbirka, objekat_id):
