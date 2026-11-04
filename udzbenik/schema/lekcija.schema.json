@@ -51,7 +51,8 @@
             "primerak",
             "pitanje",
             "napomena",
-            "dijagram"
+            "dijagram",
+            "literatura"
           ]
         }
       },
@@ -76,6 +77,9 @@
         },
         {
           "$ref": "#/$defs/dijagram"
+        },
+        {
+          "$ref": "#/$defs/literatura"
         }
       ]
     },
@@ -1790,6 +1794,46 @@
           }
         }
       ]
+    },
+    "literatura": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "upit"
+      ],
+      "additionalProperties": false,
+      "description": "Пасуси из научне библиотеке (SciSearch): сервер при читању додаје `rezultati` (облик из LITERATURA.md §1, url релативан /nauka/...) или `nedostupan: true` + `razlog`. Ауторова поља остају.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "literatura"
+        },
+        "upit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Упит за SciSearch, проверен на стварном индексу."
+        },
+        "broj": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 3,
+          "description": "Највише резултата (један по документу)."
+        },
+        "naslov": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "napomena": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Зашто баш ова литература — шта у њој да се тражи."
+        }
+      }
     }
   }
 }

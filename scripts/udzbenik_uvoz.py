@@ -18,7 +18,11 @@
   лекција се не дира; поглавља/лекције којих има у бази а нема у фајлу се НЕ
   бришу — испише се упозорење;
 - подразумевано је dry-run (испис плана, нула измена); ``--execute mis_db``
-  (дословно) ради све у ЈЕДНОЈ трансакцији.
+  (дословно) ради све у ЈЕДНОЈ трансакцији;
+- ``--proveri-literaturu`` (опционо) за сваки блок ``literatura`` пита
+  SciSearch: 0 резултата је УПОЗОРЕЊЕ (увоз иде даље); неподешен клијент или
+  пад сервиса је грешка — тражена провера се није могла обавити, ништа се
+  не упише.
 """
 import argparse
 import json
@@ -231,6 +235,36 @@ def _proveri_pravila(blokovi, putanja, greske):
             _sekvenca_u_fazama(par, p, greske)
         elif blok.get('tip') == 'scena' and blok.get('scena') == 'habitus':
             _bravais_miller(par, p, greske)
+
+
+def _blokovi_literature(podaci):
+    """(путања, блок) за сваки блок ``literatura`` у исправно обликованом фајлу."""
+    for i, p in enumerate(podaci.get('poglavlja') or []):
+        for j, lek in enumerate(p.get('lekcije') or []):
+            blokovi = (lek.get('sadrzaj') or {}).get('blokovi') or []
+            for k, blok in enumerate(blokovi):
+                if isinstance(blok, dict) and blok.get('tip') == 'literatura':
+                    yield f'poglavlja[{i}].lekcije[{j}].sadrzaj.blokovi[{k}]', blok
+
+
+def proveri_literaturu(podaci):
+    """(упозорења, грешке) — упозорење за блок без резултата, грешка када
+    SciSearch није подешен или не одговара."""
+    import scisearch_klijent
+
+    upozorenja, greske = [], []
+    if not scisearch_klijent.podesen():
+        return upozorenja, ['SciSearch није подешен (SCISEARCH_URL / SCISEARCH_SVC_TOKEN) — '
+                            '--proveri-literaturu се не може обавити']
+    for putanja, blok in _blokovi_literature(podaci):
+        try:
+            rezultati = scisearch_klijent.pretrazi(blok['upit'], blok.get('broj', 3))
+        except scisearch_klijent.SciSearchGreska as exc:
+            greske.append(f'{putanja}: SciSearch није одговорио ({exc.razlog})')
+            continue
+        if not rezultati:
+            upozorenja.append(f'{putanja}.upit: {blok["upit"]!r} даје 0 резултата у SciSearch-у')
+    return upozorenja, greske
 
 
 def _karta_u_okviru_srbije(par, p, greske):
@@ -481,6 +515,8 @@ def _argumenti(argv):
     p.add_argument('--dry-run', action='store_true', help='само испиши шта би било урађено (подразумевано)')
     p.add_argument('--execute', metavar='POTVRDA', help=f'стварно упиши; потврда мора бити дословно „{POTVRDA}“')
     p.add_argument('--autor', default=None, help='e-mail аутора за udzbenik.autor_email / verzija.autor_email')
+    p.add_argument('--proveri-literaturu', action='store_true',
+                   help='за сваки блок literatura питај SciSearch; 0 резултата = упозорење')
     return p.parse_args(argv)
 
 
@@ -513,6 +549,15 @@ def main(argv=None):
                     conn.rollback()
                     return 1
                 plan = napravi_plan(cur, podaci)
+                if arg.proveri_literaturu:
+                    upozorenja, greske = proveri_literaturu(podaci)
+                    if greske:
+                        print(f'ГРЕШКЕ ПРОВЕРЕ ЛИТЕРАТУРЕ ({len(greske)}) — ништа није уписано:', file=sys.stderr)
+                        for g in greske:
+                            print(f'  - {g}', file=sys.stderr)
+                        conn.rollback()
+                        return 1
+                    plan['upozorenja'].extend(upozorenja)
                 if plan['greske']:
                     print(f'ГРЕШКЕ У ПЛАНУ ({len(plan["greske"])}) — колизија redosled-а са базом, '
                           'ништа није уписано:', file=sys.stderr)
