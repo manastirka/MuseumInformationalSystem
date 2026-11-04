@@ -1,0 +1,156 @@
+[
+ {
+  "slika": "magmatska-diferencijacija",
+  "lekcija": "01-magmatski-i-pegmatitski-procesi",
+  "posle_bloka": "kristalizacija-iz-magme",
+  "potpis": "Gravitaciona diferencijacija u magmatskoj komori: rani kristali olivina i piroksena tonu i grade kumulat na dnu, ostatak magme postaje bogatiji silicijumom. (AI ilustracija, šematski)",
+  "alt": "Presek magmatske komore ispod vulkana; tamnozeleni i crni kristali gomilaju se na dnu."
+ },
+ {
+  "slika": "test-pegmatit",
+  "lekcija": "01-magmatski-i-pegmatitski-procesi",
+  "posle_bloka": "pegmatiti-proces",
+  "potpis": "Pegmatitska žica: krupnozrni kvarc, feldspat i liskun sa kristalima berila i turmalina. (AI ilustracija, šematski)",
+  "alt": "Presek pegmatitske žice sa krupnim kristalima u okolnoj steni."
+ },
+ {
+  "slika": "hidrotermalne-zile",
+  "lekcija": "02-hidrotermalni-procesi",
+  "posle_bloka": "fluidi-i-metali",
+  "potpis": "Hidrotermalne žile iznad granitne intruzije: pukotine ispunjene kvarcom sa galenitom, sfaleritom i piritom. (AI ilustracija, šematski)",
+  "alt": "Presek stene ispresecane žilama sa kvarcom i metalnim sulfidima iznad ružičaste intruzije."
+ },
+ {
+  "slika": "skarn-kontakt",
+  "lekcija": "02-hidrotermalni-procesi",
+  "posle_bloka": "oblici-lezista",
+  "potpis": "Skarn na kontaktu granitoida i krečnjaka: granat i piroksen na kontaktu, dalje u krečnjaku zamene sulfidima. (AI ilustracija, šematski)",
+  "alt": "Kontakt zrnaste intruzije i slojevitog mermera sa crvenim granatima i zelenim piroksenom."
+ },
+ {
+  "slika": "porfirski-sistem",
+  "lekcija": "02-hidrotermalni-procesi",
+  "posle_bloka": "oblici-lezista",
+  "potpis": "Porfirsko ležište bakra: štokverk tankih kvarcnih žilica sa halkopiritom i piritom u kupastoj intruziji, iznad izbeljena alterisana stena. (AI ilustracija, šematski)",
+  "alt": "Blok-dijagram sa kupastom intruzijom prošaranom gustom mrežom žilica."
+ },
+ {
+  "slika": "crni-pusac",
+  "lekcija": "02-hidrotermalni-procesi",
+  "posle_bloka": "temperaturni-razredi",
+  "potpis": "Crni pušač: podmorski hidrotermalni izvor taloži sulfide u dimnjacima; oko njih fauna koja živi od hemosinteze. (AI ilustracija, šematski)",
+  "alt": "Sulfidni dimnjaci na okeanskom dnu izbacuju crne oblake; oko njih crvi i školjke na jastučastim lavama."
+ },
+ {
+  "slika": "zona-oksidacije",
+  "lekcija": "03-sedimentni-i-povrsinski-procesi",
+  "posle_bloka": "zona-oksidacije",
+  "potpis": "Profil zone oksidacije: gvozdeni šešir, zona malahita i azurita, nivo podzemne vode, zona cementacije sa halkozinom i neizmenjena primarna ruda. (AI ilustracija, šematski)",
+  "alt": "Vertikalni presek rudnog tela od rđastog šešira na površini do žutih sulfida u dubini."
+ },
+ {
+  "slika": "evaporitna-laguna",
+  "lekcija": "03-sedimentni-i-povrsinski-procesi",
+  "posle_bloka": "evaporiti",
+  "potpis": "Evaporitna laguna u sušnoj klimi: kore soli na obali, u dnu slojevi gipsa i halita. (AI ilustracija, šematski)",
+  "alt": "Plitka tirkizna laguna odvojena sprudom od mora; u preseku dna slojevi soli."
+ },
+ {
+  "slika": "rečni-placer",
+  "lekcija": "03-sedimentni-i-povrsinski-procesi",
+  "posle_bloka": "hemijski-sedimenti",
+  "potpis": "Rečni sipin (plaser): teška zrna zlata, magnetita i granata talože se u udubljenjima stenovite podloge ispod šljunka. (AI ilustracija, šematski)",
+  "alt": "Blok-dijagram rečnog korita; žuta zrna zlata skupljena u pukotinama dna."
+ },
+ {
+  "slika": "lateritsko-trosenje",
+  "lekcija": "03-sedimentni-i-povrsinski-procesi",
+  "posle_bloka": "hemijski-sedimenti",
+  "potpis": "Lateritski profil u tropskoj klimi: crvena gvožđevita kora iznad svetlog saprolita, u dnu sveža stena. (AI ilustracija, šematski)",
+  "alt": "Profil tla ispod tropske šume: crvena kora, svetli izmenjeni sloj, tamna sveža stena."
+ },
+ {
+  "slika": "regionalni-metamorfizam",
+  "lekcija": "04-metamorfni-procesi",
+  "posle_bloka": "regionalni-i-visoki-pritisak",
+  "potpis": "Regionalni metamorfizam u planinskom vencu: stene su sa dubinom sve jače naborane i rekristalisale; uvećano — porfiroblasti granata u liskunskom škriljcu. (AI ilustracija, šematski)",
+  "alt": "Presek naboranih slojeva ispod planine i uvećan detalj sa crvenim kristalima granata."
+ },
+ {
+  "slika": "subdukcija",
+  "lekcija": "04-metamorfni-procesi",
+  "posle_bloka": "regionalni-i-visoki-pritisak",
+  "potpis": "Subdukcija okeanske ploče: ploča tone u plašt, prelazi u eklogit, a fluidi iz nje izazivaju topljenje i vulkanizam iznad. (AI ilustracija, šematski)",
+  "alt": "Blok-dijagram okeanske ploče koja tone pod kontinent, sa vulkanima na površini."
+ },
+ {
+  "slika": "kontaktna-aureola",
+  "lekcija": "04-metamorfni-procesi",
+  "posle_bloka": "kontaktni-i-skarnovi",
+  "potpis": "Kontaktna aureola oko intruzije: najjače izmenjen pojas uz kontakt, dalje pegavi škriljci. (AI ilustracija, šematski)",
+  "alt": "Kupasta zrnasta intruzija u slojevima; oko nje tamni pojas i tačkasta zona."
+ },
+ {
+  "slika": "rast-u-supljini",
+  "lekcija": "08-rast-kristala-i-agregati",
+  "posle_bloka": "rast-i-habitus",
+  "potpis": "Druza: kristali kvarca i kalcita rastu sa zidova šupljine ka slobodnom prostoru. (AI ilustracija, šematski)",
+  "alt": "Šupljina u steni obložena kristalima okrenutim ka centru."
+ },
+ {
+  "slika": "dendriti",
+  "lekcija": "08-rast-kristala-i-agregati",
+  "posle_bloka": "zonarnost-skeletni",
+  "potpis": "Dendriti manganskih oksida na pukotini krečnjaka — granaste prevlake, a ne fosili biljaka. (AI ilustracija, šematski)",
+  "alt": "Ploča svetle stene sa crnim granastim šarama."
+ },
+ {
+  "slika": "pecinski-nakit",
+  "lekcija": "06-karbonati-nitrati-borati",
+  "posle_bloka": "kalcit-aragonit",
+  "potpis": "Pećinski nakit od kalcita: stalaktiti, stalagmiti, saliva i pećinski biseri u jezercetu. (AI ilustracija, šematski)",
+  "alt": "Unutrašnjost krečnjačke pećine sa stubovima i jezercetom sa okruglim biserima."
+ },
+ {
+  "slika": "serpentinit-azbest",
+  "lekcija": "04-filosilikati",
+  "posle_bloka": "serpentin",
+  "potpis": "Serpentinit sa žilicama hrizotila: vlakna su upravna na zidove žice (unakrsna vlaknavost). (AI ilustracija, šematski)",
+  "alt": "Komad tamnozelene stene sa svetlim vlaknastim žilicama."
+ },
+ {
+  "slika": "geoda-ahat",
+  "lekcija": "05-tektosilikati",
+  "posle_bloka": "kriptokristalni",
+  "potpis": "Dve geode: levo trake ahata (kalcedona) sa ametistom u središtu, desno šupljina obložena krupnim kristalima kvarca. (AI ilustracija, šematski)",
+  "alt": "Dve prepolovljene geode, jedna trakasta, druga sa prozirnim kristalima."
+ },
+ {
+  "slika": "zeoliti-u-bazaltu",
+  "lekcija": "05-tektosilikati",
+  "posle_bloka": "zeoliti-skapolit",
+  "potpis": "Zeoliti u mehurastom bazaltu: šupljine (amigdale) ispunjene radijalnim i prizmatičnim kristalima. (AI ilustracija, šematski)",
+  "alt": "Komad tamnog bazalta sa šupljinama punim belih kristala."
+ },
+ {
+  "slika": "biseri-sedef",
+  "lekcija": "06-organski-minerali-i-mineraloidi",
+  "posle_bloka": "biominerali",
+  "potpis": "Biser i sedef: koncentrični slojevi aragonita i konhiolina; uvećano — pločice aragonita poređane kao opeke. (AI ilustracija, šematski)",
+  "alt": "Otvorena školjka sa biserom i uvećan detalj slojevite građe sedefa."
+ },
+ {
+  "slika": "pirit-raspad",
+  "lekcija": "03-cuvanje-osetljivih-minerala",
+  "posle_bloka": "pirit",
+  "potpis": "Levo: pirit u raspadanju sa belim sulfatnim cvetanjem i mrvljenjem. Desno: isti mineral čuvan u zatvorenoj kutiji sa silika-gelom. (AI ilustracija, šematski)",
+  "alt": "Raspadnut sivi primerak u otvorenoj kutiji pored sjajnog pirita u providnoj kutiji sa kuglicama sušača."
+ },
+ {
+  "slika": "vitrina",
+  "lekcija": "06-izlaganje-minerala",
+  "posle_bloka": "vitrina",
+  "potpis": "Izložbena vitrina: primerci na postoljima na dve visine, bez zaklanjanja i sa razmakom. (AI ilustracija, šematski)",
+  "alt": "Staklena vitrina sa šest mineralnih primeraka na providnim postoljima."
+ }
+]
