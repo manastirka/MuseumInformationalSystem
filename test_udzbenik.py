@@ -11,9 +11,11 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
+import uuid
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -57,6 +59,16 @@ def _ucitaj_uvoz():
 uvoz = _ucitaj_uvoz()
 
 
+def _ucitaj_ai_slike():
+    spec = importlib.util.spec_from_file_location('udzbenik_ai_slike', KOREN / 'scripts' / 'udzbenik_ai_slike.py')
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+ai_slike = _ucitaj_ai_slike()
+
+
 def _osiguraj_semu():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
@@ -70,7 +82,8 @@ def _ocisti():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM udzbenik WHERE zbirka = 'minerali' OR zbirka LIKE 'udztest-%%'")
-            cur.execute("DELETE FROM fotografije WHERE raw_putanja LIKE 'udztest/%%'")
+            cur.execute("DELETE FROM fotografije WHERE raw_putanja LIKE 'udztest/%%' OR original_ime LIKE 'udztest-ai-%%'")
+            cur.execute("DELETE FROM fototeka_intake_pending WHERE original_ime LIKE 'udztest-ai-%%'")
             cur.execute("DELETE FROM minerals WHERE inventory_number LIKE 'UDZTEST-%%'")
         conn.commit()
 
@@ -1211,6 +1224,239 @@ class LiteraturaApiTest(_Osnova):
         self.assertEqual(kod, 1)
         self.assertIn('blokovi[5]: SciSearch није одговорио (timeout после 4 s)', err)
         self.assertEqual(_brojevi(), pre)
+
+
+# ---------------------------------------------------------------------------
+# AI илустрације → Фототека → лекције (scripts/udzbenik_ai_slike.py)
+# ---------------------------------------------------------------------------
+
+AI_MAPA = [
+    {'slika': 'udztest-ai-komora', 'lekcija': '01-kristalni-sistemi', 'posle_bloka': 'uvod',
+     'potpis': 'Магматска комора. (AI ilustracija, šematski)', 'alt': 'Пресек магматске коморе.'},
+    {'slika': 'udztest-ai-rečni', 'lekcija': 'kristalni-sistemi', 'posle_bloka': 'tabela',
+     'potpis': 'Речни плацер. (AI ilustracija, šematski)', 'alt': 'Речно корито са златом.'},
+    {'slika': 'udztest-ai-laguna', 'lekcija': 'kristalni-sistemi', 'posle_bloka': 'tabela',
+     'potpis': 'Евапоритна лагуна. (AI ilustracija, šematski)', 'alt': 'Плитка лагуна са кристалима соли.'},
+    {'slika': 'udztest-ai-komora', 'lekcija': 'mohsova-skala', 'posle_bloka': 'uvod',
+     'potpis': 'Иста слика у другој лекцији.', 'alt': 'Пресек магматске коморе.'},
+]
+AI_IDS_SISTEMI = ['uvod', 'ai-udztest-ai-komora', 'scena-sistemi', 'tabela', 'ai-udztest-ai-recni',
+                  'ai-udztest-ai-laguna', 'napomena-simetrija', 'pitanje-1']
+
+
+def _pokreni_ai_slike(*argv):
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        kod = ai_slike.main(list(argv))
+    return kod, out.getvalue(), err.getvalue()
+
+
+def _broj_fotografija():
+    return _upit("SELECT COUNT(*) FROM fotografije WHERE original_ime LIKE 'udztest-ai-%%'")[0][0]
+
+
+class AiSlikeTest(_Osnova):
+    """До базе и до диска (привремени FOTOTEKA_ARHIVA_PATH / FOTOTEKA_MEDIA_PATH)."""
+
+    def setUp(self):
+        super().setUp()
+        _uvezi_primer()
+        from PIL import Image
+        self.tmp = Path(tempfile.mkdtemp(prefix='udztest-ai-'))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.slike = self.tmp / 'slike'
+        self.slike.mkdir()
+        for ime, boja in (('udztest-ai-komora', (120, 40, 20)), ('udztest-ai-rečni', (20, 80, 140)),
+                          ('udztest-ai-laguna', (200, 190, 90))):
+            Image.new('RGB', (600, 448), boja).save(self.slike / f'{ime}.png', format='PNG')
+        self.arhiva, self.media = self.tmp / 'arhiva', self.tmp / 'media'
+        env = mock.patch.dict(os.environ, {'FOTOTEKA_ARHIVA_PATH': str(self.arhiva),
+                                           'FOTOTEKA_MEDIA_PATH': str(self.media)})
+        env.start()
+        self.addCleanup(env.stop)
+        self.mapa = self._mapa(AI_MAPA)
+        self.baza = _upit('SELECT current_database()')[0][0]
+
+    def _mapa(self, stavke):
+        putanja = self.tmp / f'mapa-{uuid.uuid4().hex[:6]}.json'
+        putanja.write_text(json.dumps(stavke, ensure_ascii=False), encoding='utf-8')
+        return str(putanja)
+
+    def _izvrsi(self, mapa=None):
+        return _pokreni_ai_slike('--mapa', mapa or self.mapa, '--slike', str(self.slike),
+                                 '--execute', self.baza, '--autor', EMAIL)
+
+    def _lekcija(self, slug):
+        red = _upit('SELECT id, verzija, sadrzaj FROM udzbenik_lekcija WHERE slug = %s', (slug,))[0]
+        sadrzaj = json.loads(red[2]) if isinstance(red[2], str) else red[2]
+        return red[0], red[1], sadrzaj
+
+    def _raw_fajlovi(self):
+        return sorted(p.name for p in self.arhiva.rglob('*') if p.is_file()) if self.arhiva.exists() else []
+
+    def test_id_bloka_je_ascii(self):
+        self.assertEqual(ai_slike.id_bloka('rečni-placer'), 'ai-recni-placer')
+        self.assertEqual(ai_slike.id_bloka('Đerdap-šljunak-žica-ćup'), 'ai-djerdap-sljunak-zica-cup')
+
+    def test_dry_run_ne_menja_nista(self):
+        pre, pre_foto = _brojevi(), _broj_fotografija()
+        kod, out, err = _pokreni_ai_slike('--mapa', self.mapa, '--slike', str(self.slike), '--dry-run',
+                                          '--autor', EMAIL)
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), pre)
+        self.assertEqual(_broj_fotografija(), pre_foto)
+        self.assertEqual(self._raw_fajlovi(), [], 'dry-run не пише на диск')
+        self.assertFalse(self.media.exists())
+        self.assertIn('dry-run', out)
+        self.assertIn('+ udztest-ai-komora (udztest-ai-komora.png', out)
+        self.assertIn('~ kristalografija/kristalni-sistemi (мапа: 01-kristalni-sistemi): verzija 1 → 2, +3 блок(ова)',
+                      out)
+        self.assertIn('+ ai-udztest-ai-recni после tabela (нова фотографија)', out)
+        self.assertIn('3 слика (3 нових), 2 лекција (2 нових верзија), 0 грешака', out)
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 1)
+
+    def test_execute_trazi_ime_baze(self):
+        kod, _, err = _pokreni_ai_slike('--mapa', self.mapa, '--slike', str(self.slike),
+                                        '--execute', 'mis_db', '--autor', EMAIL)
+        self.assertEqual(kod, 2)
+        self.assertIn(f'дословно име базе „{self.baza}“', err)
+        self.assertEqual(_broj_fotografija(), 0)
+
+    def test_execute_pravi_fotografije_i_nove_verzije(self):
+        pre = _brojevi()
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        self.assertIn('Урађено', out)
+        # Фототека: 3 фотографије кроз intake (RAW на диску, ред за деривате, тагови, порекло у опису)
+        foto = _upit("""SELECT id, original_ime, opis, poreklo, status, raw_putanja, u_prijemnom_redu,
+                               sklonjena_sa_reda, autor_email, width, height
+                        FROM fotografije WHERE original_ime LIKE 'udztest-ai-%%' ORDER BY id""")
+        self.assertEqual([f[1] for f in foto],
+                         ['udztest-ai-komora.png', 'udztest-ai-rečni.png', 'udztest-ai-laguna.png'])
+        for f in foto:
+            self.assertIn('Poreklo: AI ilustracija, šematski. Alat: Gemini (Antigravity).', f[2])
+            self.assertEqual((f[3], f[4], f[6], f[7], f[8], f[9], f[10]),
+                             ('import', 'primljena', False, True, EMAIL, 600, 448))
+            self.assertTrue((self.arhiva / f[5]).is_file(), f[5])
+            self.assertEqual(_upit("SELECT COUNT(*) FROM foto_poslovi WHERE fotografija_id = %s AND tip = 'derivati'",
+                                   (f[0],))[0][0], 1)
+            self.assertEqual(sorted(t[0] for t in _upit('SELECT tag FROM fotografija_tagovi WHERE fotografija_id = %s',
+                                                        (f[0],))), ['ai-ilustracija', 'udzbenik'])
+        self.assertTrue(foto[0][2].startswith('Пресек магматске коморе.'))
+        ids = {f[1]: f[0] for f in foto}
+        # Лекција: једна нова верзија, блокови одмах после posle_bloka, редослед из мапе
+        lekcija_id, verzija, sadrzaj = self._lekcija('kristalni-sistemi')
+        self.assertEqual(verzija, 2)
+        self.assertEqual([b['id'] for b in sadrzaj['blokovi']], AI_IDS_SISTEMI)
+        blok = sadrzaj['blokovi'][4]
+        self.assertEqual(blok, {'id': 'ai-udztest-ai-recni', 'tip': 'slika',
+                                'fotografija_id': ids['udztest-ai-rečni.png'],
+                                'potpis': 'Речни плацер. (AI ilustracija, šematski)', 'alt': 'Речно корито са златом.',
+                                'poreklo': 'ai-ilustracija', 'sirina': 'puna'})
+        verzije = _upit("""SELECT verzija, autor_email, napomena FROM udzbenik_lekcija_verzija
+                           WHERE lekcija_id = %s ORDER BY verzija""", (lekcija_id,))
+        self.assertEqual(verzije[-1], (2, EMAIL, 'ai-slike: ' + os.path.basename(self.mapa)))
+        self.assertEqual(len(verzije), 2)
+        # иста слика у другој лекцији = исти fotografije.id, без дупликата
+        _, verzija_mohs, sadrzaj_mohs = self._lekcija('mohsova-skala')
+        self.assertEqual(verzija_mohs, 2)
+        self.assertEqual(sadrzaj_mohs['blokovi'][1]['fotografija_id'], ids['udztest-ai-komora.png'])
+        self.assertEqual(self._lekcija('kristalni-oblici')[1], 1, 'лекција ван мапе нетакнута')
+        posle = _brojevi()
+        self.assertEqual(posle['udzbenik_lekcija_verzija'], pre['udzbenik_lekcija_verzija'] + 2)
+        self.assertEqual(posle['udzbenik_lekcija'], pre['udzbenik_lekcija'])
+
+    def test_drugo_pokretanje_ne_pravi_nista_novo(self):
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        pre, pre_foto, pre_raw = _brojevi(), _broj_fotografija(), self._raw_fajlovi()
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), pre)
+        self.assertEqual(_broj_fotografija(), pre_foto)
+        self.assertEqual(self._raw_fajlovi(), pre_raw)
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 2)
+        self.assertIn('већ у Фототеци као fotografija #', out)
+        self.assertIn('= kristalografija/kristalni-sistemi (мапа: 01-kristalni-sistemi): сви блокови већ постоје',
+                      out)
+        self.assertIn('3 слика (0 нових), 2 лекција (0 нових верзија), 0 грешака', out)
+        # нова слика у већ обрађеној лекцији → само она се додаје, остале прескочене
+        mapa = self._mapa(AI_MAPA + [{'slika': 'udztest-ai-laguna', 'lekcija': 'mohsova-skala', 'posle_bloka': 'uvod',
+                                      'potpis': 'Лагуна.', 'alt': 'Лагуна.'}])
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_broj_fotografija(), pre_foto)
+        _, verzija, sadrzaj = self._lekcija('mohsova-skala')
+        self.assertEqual(verzija, 3)
+        self.assertEqual([b['id'] for b in sadrzaj['blokovi']][:3],
+                         ['uvod', 'ai-udztest-ai-komora', 'ai-udztest-ai-laguna'])
+        self.assertIn('= ai-udztest-ai-komora већ постоји — прескочен', out)
+
+    def test_nepostojeci_posle_bloka_je_greska_i_nista_se_ne_menja(self):
+        mapa = self._mapa(AI_MAPA + [{'slika': 'udztest-ai-laguna', 'lekcija': 'mohsova-skala',
+                                      'posle_bloka': 'nema-takvog', 'potpis': 'x', 'alt': 'x'}])
+        pre = _brojevi()
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 1)
+        self.assertIn("блок 'nema-takvog' (posle_bloka за 'udztest-ai-laguna') не постоји у лекцији "
+                      'fizicke-osobine/mohsova-skala', out)
+        self.assertIn('! fizicke-osobine/mohsova-skala: ГРЕШКА — остаје нетакнута', out)
+        self.assertIn('ништа није уписано', err)
+        self.assertEqual(_brojevi(), pre)
+        self.assertEqual(_broj_fotografija(), 0)
+        self.assertEqual(self._raw_fajlovi(), [])
+        self.assertEqual(self._lekcija('mohsova-skala')[1], 1)
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 1)
+        # непостојећа лекција и погрешан префикс редоследа су исто грешке
+        mapa = self._mapa([dict(AI_MAPA[0], lekcija='02-kristalni-sistemi'), dict(AI_MAPA[0], lekcija='nema-lekcije')])
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 1)
+        self.assertIn("slug 'kristalni-sistemi' постоји, али му redosled није 2", out)
+        self.assertIn("лекција 'nema-lekcije' не постоји", out)
+        self.assertEqual(_broj_fotografija(), 0)
+        # фајл који недостаје се пријави пре него што се база и дира
+        mapa = self._mapa([dict(AI_MAPA[0], slika='udztest-ai-nema')])
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 1)
+        self.assertIn('нема фајла udztest-ai-nema.png', err)
+
+    def test_api_vraca_blok_slika_sa_poreklom_i_slika_se_sluzi(self):
+        import fototeka_jobs
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        self._prijava()
+        with mock.patch.object(museum_app, 'user_has_module_access', lambda *a, **k: True), \
+                mock.patch.object(museum_app.app, 'user_has_module_access', lambda *a, **k: True):
+            r = self.get('/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi')
+            self.assertEqual(r.status_code, 200)
+            lek = r.get_json()['lekcija']
+            self.assertEqual(lek['verzija'], 2)
+            self.assertEqual([b['id'] for b in lek['blokovi']], AI_IDS_SISTEMI)
+            blok = lek['blokovi'][1]
+            self.assertEqual(blok['tip'], 'slika')
+            self.assertEqual(blok['poreklo'], 'ai-ilustracija')
+            self.assertEqual(blok['sirina'], 'puna')
+            self.assertEqual(blok['potpis'], 'Магматска комора. (AI ilustracija, šematski)')
+            self.assertNotIn('nedostupan', blok)
+            self.assertEqual((blok['sirina_px'], blok['visina_px']), (600, 448))
+            # пре обраде: слика стиже као placeholder (image/*, 200)
+            r = self.get(blok['url'])
+            self.assertEqual(r.status_code, 200)
+            self.assertTrue(r.mimetype.startswith('image/'), r.mimetype)
+            # worker направи деривате → права слика (image/jpeg) из FOTOTEKA_MEDIA_PATH
+            for _ in range(50):
+                posao = fototeka_jobs.claim_next_job()
+                if posao is None:
+                    break
+                fototeka_jobs.process_job(posao)
+            self.assertEqual(_upit('SELECT status FROM fotografije WHERE id = %s', (blok['fotografija_id'],))[0][0],
+                             'spremna')
+            r = self.get(blok['url'])
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.mimetype, 'image/jpeg')
+            self.assertGreater(len(r.data), 1000)
+            r = self.get(blok['url_mala'])
+            self.assertEqual((r.status_code, r.mimetype), (200, 'image/jpeg'))
 
 
 if __name__ == '__main__':
