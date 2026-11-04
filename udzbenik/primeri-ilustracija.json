@@ -1,0 +1,504 @@
+{
+  "verzija": 1,
+  "blokovi": [
+    {
+      "id": "d-bowen",
+      "tip": "dijagram",
+      "dijagram": "bowenov-niz",
+      "parametri": {
+        "istaknuti": [
+          "olivin",
+          "kvarc"
+        ]
+      },
+      "opis_za_citac": "Bowenov reakcioni niz: diskontinuirana grana olivin–piroksen–amfibol–biotit i kontinuirana grana plagioklasa od anortita ka albitu, spajaju se u K-feldspat, muskovit i kvarc.",
+      "potpis": "Bowenov niz"
+    },
+    {
+      "id": "d-sio2",
+      "tip": "dijagram",
+      "dijagram": "fazni-dijagram",
+      "parametri": {
+        "sistem": "SiO2",
+        "tacka": {
+          "T_C": 600,
+          "P_GPa": 0.1,
+          "oznaka": "granitni pegmatit"
+        }
+      },
+      "opis_za_citac": "P–T dijagram faza SiO₂: α- i β-kvarc, tridimit, kristobalit, koesit i stišovit."
+    },
+    {
+      "id": "d-al2sio5",
+      "tip": "dijagram",
+      "dijagram": "fazni-dijagram",
+      "parametri": {
+        "sistem": "Al2SiO5",
+        "tacka": {
+          "T_C": 500,
+          "P_GPa": 0.38,
+          "oznaka": "trojna tačka (Holdaway 1971)"
+        }
+      },
+      "opis_za_citac": "P–T dijagram polja stabilnosti kijanita, andaluzita i silimanita sa trojnom tačkom."
+    },
+    {
+      "id": "d-ol",
+      "tip": "dijagram",
+      "dijagram": "cvrsti-rastvor",
+      "parametri": {
+        "sistem": "olivin",
+        "sastav": 90
+      },
+      "opis_za_citac": "Dijagram topljenja olivina forsterit–fajalit sa likvidusom i solidusom; istaknut sastav Fo₉₀."
+    },
+    {
+      "id": "d-pl",
+      "tip": "dijagram",
+      "dijagram": "cvrsti-rastvor",
+      "parametri": {
+        "sistem": "plagioklas",
+        "sastav": 50
+      },
+      "opis_za_citac": "Dijagram plagioklasa albit–anortit sa likvidusom i solidusom; istaknut An₅₀."
+    },
+    {
+      "id": "d-afs",
+      "tip": "dijagram",
+      "dijagram": "cvrsti-rastvor",
+      "parametri": {
+        "sistem": "alkalni-feldspati"
+      },
+      "opis_za_citac": "T–X dijagram alkalnih feldspata sa solvusom; ispod solvusa nastaje pertit."
+    },
+    {
+      "id": "d-facije",
+      "tip": "dijagram",
+      "dijagram": "metamorfne-facije",
+      "parametri": {
+        "istaknute": [
+          "amfibolitska"
+        ],
+        "putanja": [
+          [
+            350,
+            0.3
+          ],
+          [
+            550,
+            0.6
+          ],
+          [
+            650,
+            0.8
+          ]
+        ],
+        "prikazi_al2sio5": true
+      },
+      "opis_za_citac": "P–T dijagram metamorfnih facija sa putanjom regionalnog metamorfizma i poljima Al₂SiO₅."
+    },
+    {
+      "id": "d-barrow",
+      "tip": "dijagram",
+      "dijagram": "barrowove-zone",
+      "parametri": {
+        "istaknuta": "granat"
+      },
+      "opis_za_citac": "Barrowove zone od hlorita do silimanita sa porastom temperature."
+    },
+    {
+      "id": "d-ml",
+      "tip": "dijagram",
+      "dijagram": "michel-levy",
+      "parametri": {
+        "debljina_um": 30,
+        "istaknuti": [
+          "kvarc",
+          "kalcit",
+          "olivin",
+          "muskovit"
+        ]
+      },
+      "opis_za_citac": "Michel-Lévyjeva tabela interferentnih boja: retardacija u funkciji debljine i dvojnog prelamanja, sa pravcima za izabrane minerale."
+    },
+    {
+      "id": "d-snell",
+      "tip": "dijagram",
+      "dijagram": "snellov-zakon",
+      "parametri": {
+        "n1": 1.0,
+        "n2": 2.417,
+        "ugao": 30
+      },
+      "opis_za_citac": "Prelamanje svetlosti iz vazduha u dijamant po Snellovom zakonu; kritični ugao pri izlasku iz dijamanta."
+    },
+    {
+      "id": "d-bragg",
+      "tip": "dijagram",
+      "dijagram": "braggov-zakon",
+      "parametri": {
+        "d_A": 3.343,
+        "lambda_A": 1.5406
+      },
+      "opis_za_citac": "Braggov zakon: odbijanje sa dve paralelne ravni rastojanja d, razlika puteva 2d sin θ; za kvarc d = 3,343 Å i Cu Kα daje 2θ ≈ 26,6°."
+    },
+    {
+      "id": "d-kono1",
+      "tip": "dijagram",
+      "dijagram": "konoskopska-figura",
+      "parametri": {
+        "tip": "jednoosna",
+        "znak": "+",
+        "kompenzator": "gips-530nm"
+      },
+      "opis_za_citac": "Konoskopska figura jednoosnog pozitivnog minerala presečenog upravno na optičku osu, sa gipsnom pločicom."
+    },
+    {
+      "id": "d-kono2",
+      "tip": "dijagram",
+      "dijagram": "konoskopska-figura",
+      "parametri": {
+        "tip": "dvoosna",
+        "znak": "-",
+        "ugao_2V": 40,
+        "presek": "bisektrisa"
+      },
+      "opis_za_citac": "Konoskopska figura dvoosnog negativnog minerala na oštroj bisektrisi, 2V = 40°."
+    },
+    {
+      "id": "d-stereo",
+      "tip": "dijagram",
+      "dijagram": "stereogram",
+      "parametri": {
+        "klasa": "m-3m",
+        "forme": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            0
+          ]
+        ],
+        "prikazi_elemente_simetrije": true
+      },
+      "opis_za_citac": "Stereografska projekcija polova kocke, oktaedra i rombododekaedra sa elementima simetrije klase m-3m."
+    },
+    {
+      "id": "d-sil",
+      "tip": "dijagram",
+      "dijagram": "silikatne-klase",
+      "parametri": {
+        "istaknuta": "ino-dvostruki"
+      },
+      "opis_za_citac": "Pregled strukturnih klasa silikata od izolovanih tetraedara do trodimenzionalne mreže, sa odnosom Si:O."
+    },
+    {
+      "id": "d-rr",
+      "tip": "dijagram",
+      "dijagram": "odnos-radijusa",
+      "parametri": {
+        "istaknuti_kb": [
+          4,
+          6
+        ],
+        "joni": [
+          {
+            "katjon": "Si⁴⁺",
+            "anjon": "O²⁻"
+          },
+          {
+            "katjon": "Mg²⁺",
+            "anjon": "O²⁻"
+          },
+          {
+            "katjon": "Na⁺",
+            "anjon": "Cl⁻"
+          }
+        ]
+      },
+      "opis_za_citac": "Skala odnosa jonskih radijusa sa granicama koordinacionih brojeva i položajima parova jona."
+    },
+    {
+      "id": "d-ox",
+      "tip": "dijagram",
+      "dijagram": "zona-oksidacije",
+      "parametri": {
+        "istaknuta": "cementaciona"
+      },
+      "opis_za_citac": "Profil sulfidnog ležišta: gvozdeni šešir, oksidaciona zona, nivo podzemne vode, cementaciona zona i primarna ruda, sa tipičnim mineralima."
+    },
+    {
+      "id": "d-evap",
+      "tip": "dijagram",
+      "dijagram": "evaporitna-sukcesija",
+      "parametri": {
+        "istaknuti": [
+          "gips",
+          "halit"
+        ]
+      },
+      "opis_za_citac": "Redosled izdvajanja minerala pri isparavanju morske vode: kalcit, gips/anhidrit, halit, kalijumove i magnezijumove soli."
+    },
+    {
+      "id": "d-par",
+      "tip": "dijagram",
+      "dijagram": "paragenetska-sekvenca",
+      "parametri": {
+        "faze": [
+          "skarnovska",
+          "rana sulfidna",
+          "glavna sulfidna",
+          "kasna karbonatna"
+        ],
+        "minerali": [
+          {
+            "naziv": "hedenbergit",
+            "od": 0,
+            "do": 0
+          },
+          {
+            "naziv": "pirotin",
+            "od": 1,
+            "do": 2
+          },
+          {
+            "naziv": "pirit",
+            "od": 1,
+            "do": 3
+          },
+          {
+            "naziv": "sfalerit",
+            "od": 2,
+            "do": 2
+          },
+          {
+            "naziv": "galenit",
+            "od": 2,
+            "do": 2
+          },
+          {
+            "naziv": "kalcit",
+            "od": 3,
+            "do": 3
+          },
+          {
+            "naziv": "rodohrozit",
+            "od": 3,
+            "do": 3,
+            "intenzitet": "sporedni"
+          }
+        ],
+        "izvor": "pojednostavljeno"
+      },
+      "opis_za_citac": "Pojednostavljena paragenetska sekvenca Pb–Zn skarnovskog ležišta po fazama."
+    },
+    {
+      "id": "d-tl",
+      "tip": "dijagram",
+      "dijagram": "vremenska-linija",
+      "parametri": {
+        "stavke": [
+          {
+            "godina": 1669,
+            "naslov": "Steno — stalnost uglova"
+          },
+          {
+            "godina": 1784,
+            "naslov": "Haüy — racionalni indeksi"
+          },
+          {
+            "godina": 1812,
+            "naslov": "Mohs — skala tvrdoće"
+          },
+          {
+            "godina": 1912,
+            "naslov": "Laue — difrakcija X-zraka"
+          },
+          {
+            "godina": 1958,
+            "naslov": "Osnovana IMA"
+          }
+        ]
+      },
+      "opis_za_citac": "Vremenska linija ključnih otkrića u mineralogiji od 1669. do 1958."
+    },
+    {
+      "id": "d-karta",
+      "tip": "dijagram",
+      "dijagram": "karta-lokaliteta",
+      "parametri": {
+        "oblast": "srbija",
+        "lokaliteti": [
+          {
+            "naziv": "Trepča (Stari Trg)",
+            "lat": 42.93,
+            "lon": 20.86,
+            "broj_primeraka": 697
+          },
+          {
+            "naziv": "Bor",
+            "lat": 44.07,
+            "lon": 22.1
+          },
+          {
+            "naziv": "Majdanpek",
+            "lat": 44.42,
+            "lon": 21.93
+          }
+        ],
+        "prikazi_jedinice": true
+      },
+      "opis_za_citac": "Karta Srbije sa lokalitetima Trepča, Bor i Majdanpek i brojem primeraka u zbirci."
+    },
+    {
+      "id": "d-strunz",
+      "tip": "dijagram",
+      "dijagram": "strunz-klase",
+      "parametri": {
+        "istaknuta": 2
+      },
+      "opis_za_citac": "Deset klasa minerala po Nickel–Strunz sistematici; istaknuta klasa sulfida."
+    },
+    {
+      "id": "s-bravais",
+      "tip": "scena",
+      "scena": "bravaisova-resetka",
+      "parametri": {
+        "resetka": "sve"
+      },
+      "opis_za_citac": "Četrnaest Bravaisovih rešetki po kristalnim sistemima; centriranja P, I, F, C i R.",
+      "potpis": "14 Bravaisovih rešetki"
+    },
+    {
+      "id": "s-ind",
+      "tip": "scena",
+      "scena": "opticka-indikatrisa",
+      "parametri": {
+        "tip": "jednoosna",
+        "znak": "-",
+        "n": [
+          1.658,
+          1.486
+        ],
+        "mineral": "kalcit"
+      },
+      "opis_za_citac": "Jednoosna negativna indikatrisa kalcita: spljošteni elipsoid rotacije sa optičkom osom duž c.",
+      "potpis": "Indikatrisa kalcita"
+    },
+    {
+      "id": "s-bliz",
+      "tip": "scena",
+      "scena": "blizanac",
+      "parametri": {
+        "zakon": "karlsbadski",
+        "primer": "ortoklas"
+      },
+      "opis_za_citac": "Karlsbadski blizanac ortoklasa: dve jedinke zarotirane 180° oko ose c.",
+      "potpis": "Karlsbadski blizanac"
+    },
+    {
+      "id": "s-kp",
+      "tip": "scena",
+      "scena": "koordinacioni-poliedar",
+      "parametri": {
+        "kb": 4,
+        "katjon": "Si⁴⁺",
+        "anjon": "O²⁻"
+      },
+      "opis_za_citac": "SiO₄ tetraedar: silicijum u središtu, četiri kiseonika u rogljevima.",
+      "potpis": "SiO₄ tetraedar"
+    },
+    {
+      "id": "s-silstr",
+      "tip": "scena",
+      "scena": "silikatna-struktura",
+      "parametri": {
+        "klasa": "sve",
+        "animacija": "polimerizacija"
+      },
+      "opis_za_citac": "Polimerizacija SiO₄ tetraedara od izolovanih do trodimenzionalne mreže.",
+      "potpis": "Polimerizacija silikata"
+    },
+    {
+      "id": "s-kvarc",
+      "tip": "scena",
+      "scena": "habitus",
+      "parametri": {
+        "sistem": "trigonalni",
+        "klasa": "32",
+        "celija": {
+          "a": 4.913,
+          "c": 5.405
+        },
+        "forme": [
+          {
+            "hkl": [
+              1,
+              0,
+              -1,
+              0
+            ],
+            "d": 1.0,
+            "naziv": "prizma m {10-10}"
+          },
+          {
+            "hkl": [
+              1,
+              0,
+              -1,
+              1
+            ],
+            "d": 1.35,
+            "naziv": "romboedar r {10-11}"
+          },
+          {
+            "hkl": [
+              0,
+              1,
+              -1,
+              1
+            ],
+            "d": 1.45,
+            "naziv": "romboedar z {01-11}"
+          }
+        ],
+        "animacija": "rotacija",
+        "primer": "kvarc"
+      },
+      "opis_za_citac": "Kristal kvarca: heksagonalna prizma završena pozitivnim i negativnim romboedrom.",
+      "potpis": "Habitus kvarca"
+    },
+    {
+      "id": "s-pirit",
+      "tip": "scena",
+      "scena": "habitus",
+      "parametri": {
+        "sistem": "kubni",
+        "klasa": "m-3",
+        "forme": [
+          {
+            "hkl": [
+              2,
+              1,
+              0
+            ],
+            "d": 1.0,
+            "naziv": "piritoedar {210}"
+          }
+        ],
+        "primer": "pirit"
+      },
+      "opis_za_citac": "Pentagondodekaedar (piritoedar) {210} klase m-3 sa dvanaest petougaonih pljosni.",
+      "potpis": "Piritoedar"
+    }
+  ]
+}

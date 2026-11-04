@@ -4,14 +4,21 @@
   "title": "Sadržaj lekcije interaktivnog udžbenika (udzbenik_lekcija.sadrzaj)",
   "description": "Izvor istine za ovu šemu je repo MuseumInfoSystem (udzbenik/schema/lekcija.schema.json). Repo mis-udzbenik nosi kopiju.",
   "type": "object",
-  "required": ["verzija", "blokovi"],
+  "required": [
+    "verzija",
+    "blokovi"
+  ],
   "additionalProperties": false,
   "properties": {
-    "verzija": { "const": 1 },
+    "verzija": {
+      "const": 1
+    },
     "blokovi": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/blok" }
+      "items": {
+        "$ref": "#/$defs/blok"
+      }
     }
   },
   "$defs": {
@@ -28,168 +35,752 @@
     },
     "blok": {
       "type": "object",
-      "required": ["id", "tip"],
+      "required": [
+        "id",
+        "tip"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "enum": ["tekst", "slika", "scena", "primerak", "pitanje", "napomena"] }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "enum": [
+            "tekst",
+            "slika",
+            "scena",
+            "primerak",
+            "pitanje",
+            "napomena",
+            "dijagram"
+          ]
+        }
       },
       "oneOf": [
-        { "$ref": "#/$defs/tekst" },
-        { "$ref": "#/$defs/slika" },
-        { "$ref": "#/$defs/scena" },
-        { "$ref": "#/$defs/primerak" },
-        { "$ref": "#/$defs/pitanje" },
-        { "$ref": "#/$defs/napomena" }
+        {
+          "$ref": "#/$defs/tekst"
+        },
+        {
+          "$ref": "#/$defs/slika"
+        },
+        {
+          "$ref": "#/$defs/scena"
+        },
+        {
+          "$ref": "#/$defs/primerak"
+        },
+        {
+          "$ref": "#/$defs/pitanje"
+        },
+        {
+          "$ref": "#/$defs/napomena"
+        },
+        {
+          "$ref": "#/$defs/dijagram"
+        }
       ]
     },
     "tekst": {
       "type": "object",
-      "required": ["id", "tip", "markdown"],
+      "required": [
+        "id",
+        "tip",
+        "markdown"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "tekst" },
-        "markdown": { "$ref": "#/$defs/markdown" }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "tekst"
+        },
+        "markdown": {
+          "$ref": "#/$defs/markdown"
+        }
       }
     },
     "slika": {
       "type": "object",
-      "required": ["id", "tip", "fotografija_id"],
+      "required": [
+        "id",
+        "tip",
+        "fotografija_id"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "slika" },
-        "fotografija_id": { "type": "integer", "minimum": 1, "description": "fotografije.id u Fototeci" },
-        "potpis": { "type": "string", "maxLength": 500 },
-        "alt": { "type": "string", "maxLength": 300, "description": "Tekstualna zamena; ako nema, motor koristi potpis." },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "slika"
+        },
+        "fotografija_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "fotografije.id u Fototeci"
+        },
+        "potpis": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "alt": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Tekstualna zamena; ako nema, motor koristi potpis."
+        },
         "poreklo": {
-          "enum": ["fotografija", "crtez", "ai-ilustracija", "dijagram"],
+          "enum": [
+            "fotografija",
+            "crtez",
+            "ai-ilustracija",
+            "dijagram"
+          ],
           "default": "fotografija",
           "description": "Vidljivo u potpisu — muzej ne meša fotografiju primerka i generisanu ilustraciju bez oznake."
         },
-        "sirina": { "enum": ["puna", "pola", "mala"], "default": "puna" }
+        "sirina": {
+          "enum": [
+            "puna",
+            "pola",
+            "mala"
+          ],
+          "default": "puna"
+        }
       }
     },
     "scena": {
       "type": "object",
-      "required": ["id", "tip", "scena", "parametri"],
+      "required": [
+        "id",
+        "tip",
+        "scena",
+        "parametri"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "scena" },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "scena"
+        },
         "scena": {
-          "enum": ["kristalni-sistem", "kristalna-struktura", "mohsova-skala", "cepljivost", "habitus"],
+          "enum": [
+            "kristalni-sistem",
+            "kristalna-struktura",
+            "mohsova-skala",
+            "cepljivost",
+            "habitus",
+            "bravaisova-resetka",
+            "opticka-indikatrisa",
+            "blizanac",
+            "koordinacioni-poliedar",
+            "silikatna-struktura"
+          ],
           "description": "Tip scene = modul u motoru (src/scene/<ime>.ts). Nov tip = nov kod + dopuna ovog enuma."
         },
-        "parametri": { "type": "object" },
-        "potpis": { "type": "string", "maxLength": 500 },
+        "parametri": {
+          "type": "object"
+        },
+        "potpis": {
+          "type": "string",
+          "maxLength": 500
+        },
         "opis_za_citac": {
           "type": "string",
           "maxLength": 1000,
           "description": "Šta scena pokazuje, za čitače ekrana i rezervni prikaz bez WebGL-a. Obavezno kad je scena jedini nosilac informacije."
         },
-        "visina": { "enum": ["niska", "srednja", "visoka"], "default": "srednja" }
+        "visina": {
+          "enum": [
+            "niska",
+            "srednja",
+            "visoka"
+          ],
+          "default": "srednja"
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "scena": { "const": "kristalni-sistem" } } },
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "kristalni-sistem"
+              }
+            }
+          },
           "then": {
             "properties": {
               "parametri": {
                 "type": "object",
-                "required": ["sistem"],
+                "required": [
+                  "sistem"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "sistem": { "enum": ["kubni", "tetragonalni", "ortorombicni", "heksagonalni", "trigonalni", "monoklinicni", "triklinicni", "svi"] },
-                  "prikazi_ose": { "type": "boolean", "default": true },
-                  "prikazi_celiju": { "type": "boolean", "default": true },
-                  "animacija": { "enum": ["rotacija", "uporedi", "nema"], "default": "rotacija" }
+                  "sistem": {
+                    "enum": [
+                      "kubni",
+                      "tetragonalni",
+                      "ortorombicni",
+                      "heksagonalni",
+                      "trigonalni",
+                      "monoklinicni",
+                      "triklinicni",
+                      "svi"
+                    ]
+                  },
+                  "prikazi_ose": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "prikazi_celiju": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "animacija": {
+                    "enum": [
+                      "rotacija",
+                      "uporedi",
+                      "nema"
+                    ],
+                    "default": "rotacija"
+                  }
                 }
               }
             }
           }
         },
         {
-          "if": { "properties": { "scena": { "const": "kristalna-struktura" } } },
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "kristalna-struktura"
+              }
+            }
+          },
           "then": {
             "properties": {
               "parametri": {
                 "type": "object",
-                "required": ["mineral"],
+                "required": [
+                  "mineral"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "mineral": { "type": "string", "minLength": 2, "description": "Ime minerala kako ga zna RRUFF/mineral_translator (srpski ili engleski), npr. 'halit', 'kvarc', 'pirit'." },
-                  "prikaz": { "enum": ["celija", "supercelija"], "default": "celija" },
-                  "poluprecnici": { "enum": ["jonski", "kovalentni"], "default": "jonski", "description": "Koji skup atomskih poluprečnika motor koristi za kugle (API daje samo P1 ćeliju, poluprečnike i superćeliju gradi motor)." },
-                  "stil": { "enum": ["kugle", "kugle-stapici"], "default": "kugle-stapici" },
-                  "prikazi_celiju": { "type": "boolean", "default": true },
-                  "oznake_atoma": { "type": "boolean", "default": true }
+                  "mineral": {
+                    "type": "string",
+                    "minLength": 2,
+                    "description": "Ime minerala kako ga zna RRUFF/mineral_translator (srpski ili engleski), npr. 'halit', 'kvarc', 'pirit'."
+                  },
+                  "prikaz": {
+                    "enum": [
+                      "celija",
+                      "supercelija"
+                    ],
+                    "default": "celija",
+                    "description": "Superćelija 2×2×2 se gradi u motoru nad P1 ćelijom sa servera; server ne prima parametar prikaz."
+                  },
+                  "stil": {
+                    "enum": [
+                      "kugle",
+                      "kugle-stapici"
+                    ],
+                    "default": "kugle-stapici"
+                  },
+                  "prikazi_celiju": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "oznake_atoma": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "poluprecnici": {
+                    "enum": [
+                      "jonski",
+                      "kovalentni"
+                    ],
+                    "default": "jonski",
+                    "description": "Veličina sfera: jonski (Shannon, za jonske kristale — podrazumevano) ili kovalentni. Detekcija veza uvek po kovalentnim poluprečnicima."
+                  }
                 }
               }
             }
           }
         },
         {
-          "if": { "properties": { "scena": { "const": "mohsova-skala" } } },
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "mohsova-skala"
+              }
+            }
+          },
           "then": {
             "properties": {
               "parametri": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                  "istaknuti": { "type": "array", "items": { "type": "string" }, "description": "Imena referentnih minerala koje scena naglašava (talk, gips, kalcit, fluorit, apatit, ortoklas, kvarc, topaz, korund, dijamant)." },
-                  "prikazi_apsolutnu": { "type": "boolean", "default": false, "description": "Prikaz uporedne apsolutne tvrdoće (motor nosi tabelu sa poljem izvor)." },
-                  "prikazi_terenske_probe": { "type": "boolean", "default": true, "description": "Nokat, bakar, nož/staklo, turpija." }
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Imena referentnih minerala koje scena naglašava (talk, gips, kalcit, fluorit, apatit, ortoklas, kvarc, topaz, korund, dijamant)."
+                  },
+                  "prikazi_apsolutnu": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Prikaz uporedne apsolutne tvrdoće (motor nosi tabelu sa poljem izvor)."
+                  },
+                  "prikazi_terenske_probe": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Nokat, bakar, nož/staklo, turpija."
+                  }
                 }
               }
             }
           }
         },
         {
-          "if": { "properties": { "scena": { "const": "cepljivost" } } },
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "cepljivost"
+              }
+            }
+          },
           "then": {
             "properties": {
               "parametri": {
                 "type": "object",
-                "required": ["vrsta"],
+                "required": [
+                  "vrsta"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "vrsta": { "enum": ["kubna", "oktaedarska", "dodekaedarska", "romboedarska", "bazalna", "prizmatska", "nema"] },
-                  "primer": { "type": "string", "description": "Mineral-primer za natpis, npr. 'halit', 'fluorit', 'kalcit', 'muskovit', 'amfibol', 'kvarc'." },
-                  "ugao": { "type": "number", "minimum": 0, "maximum": 180, "description": "Za prizmatsku: ugao između pravaca cepljivosti u stepenima (amfibol ~56/124, piroksen ~87/93)." },
-                  "prikazi_prelom": { "type": "boolean", "default": false, "description": "Za 'nema': školjkast prelom umesto ravni." }
+                  "vrsta": {
+                    "enum": [
+                      "kubna",
+                      "oktaedarska",
+                      "dodekaedarska",
+                      "romboedarska",
+                      "bazalna",
+                      "prizmatska",
+                      "nema"
+                    ]
+                  },
+                  "primer": {
+                    "type": "string",
+                    "description": "Mineral-primer za natpis, npr. 'halit', 'fluorit', 'kalcit', 'muskovit', 'amfibol', 'kvarc'."
+                  },
+                  "ugao": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 180,
+                    "description": "Za prizmatsku: ugao između pravaca cepljivosti u stepenima (amfibol ~56/124, piroksen ~87/93)."
+                  },
+                  "prikazi_prelom": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Za 'nema': školjkast prelom umesto ravni."
+                  }
                 }
               }
             }
           }
         },
         {
-          "if": { "properties": { "scena": { "const": "habitus" } } },
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "habitus"
+              }
+            }
+          },
           "then": {
             "properties": {
               "parametri": {
                 "type": "object",
-                "required": ["sistem", "forme"],
+                "required": [
+                  "sistem",
+                  "forme"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "sistem": { "enum": ["kubni"], "description": "v1: samo kubni sistem, holoedrija m-3m. Ostali sistemi u v2." },
+                  "sistem": {
+                    "enum": [
+                      "kubni",
+                      "tetragonalni",
+                      "heksagonalni",
+                      "trigonalni",
+                      "ortorombicni"
+                    ],
+                    "description": "Sistem; klasa simetrije se bira parametrom klasa."
+                  },
                   "forme": {
                     "type": "array",
                     "minItems": 1,
-                    "maxItems": 4,
+                    "maxItems": 6,
                     "items": {
                       "type": "object",
-                      "required": ["hkl", "d"],
+                      "required": [
+                        "hkl",
+                        "d"
+                      ],
                       "additionalProperties": false,
                       "properties": {
-                        "hkl": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3, "description": "Milerovi indeksi jedne pljosni; motor generiše simetrijski ekvivalentne." },
-                        "d": { "type": "number", "exclusiveMinimum": 0, "description": "Rastojanje ravni od centra (relativno); menja koji oblik dominira." },
-                        "naziv": { "type": "string" }
+                        "hkl": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          },
+                          "minItems": 3,
+                          "maxItems": 4,
+                          "description": "(hkl) ili Bravais–Miller (hkil) za heksagonalni/trigonalni; motor proverava i = −(h+k)."
+                        },
+                        "d": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "description": "Rastojanje ravni od centra (relativno); menja koji oblik dominira."
+                        },
+                        "naziv": {
+                          "type": "string"
+                        }
                       }
                     }
                   },
-                  "animacija": { "enum": ["prelaz", "rotacija", "nema"], "default": "prelaz", "description": "'prelaz' animira d vrednosti od prve do poslednje forme (kocka → oktaedar)." },
-                  "primer": { "type": "string", "description": "Mineral-primer za natpis, npr. 'pirit', 'fluorit', 'galenit', 'magnetit', 'granat'." }
+                  "animacija": {
+                    "enum": [
+                      "prelaz",
+                      "rotacija",
+                      "nema"
+                    ],
+                    "default": "prelaz",
+                    "description": "'prelaz' animira d vrednosti od prve do poslednje forme (kocka → oktaedar)."
+                  },
+                  "primer": {
+                    "type": "string",
+                    "description": "Mineral-primer za natpis, npr. 'pirit', 'fluorit', 'galenit', 'magnetit', 'granat'."
+                  },
+                  "klasa": {
+                    "enum": [
+                      "m-3m",
+                      "m-3",
+                      "-43m",
+                      "432",
+                      "4/mmm",
+                      "6/mmm",
+                      "-3m",
+                      "32",
+                      "mmm"
+                    ],
+                    "description": "Hermann–Mauguin; podrazumevano holoedrija sistema (m-3m, 4/mmm, 6/mmm, -3m, mmm). m-3 daje piritoedar {210}; 32 je kvarc (trapezoedri); -43m tetraedar."
+                  },
+                  "celija": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "a": {
+                        "type": "number",
+                        "minimum": 0.1
+                      },
+                      "c": {
+                        "type": "number",
+                        "minimum": 0.1
+                      },
+                      "b": {
+                        "type": "number",
+                        "minimum": 0.1
+                      }
+                    },
+                    "description": "Za nekubne sisteme: odnos osa (npr. kvarc a=4.913, c=5.405; kalcit a=4.99, c=17.06; cirkon a=6.60, c=5.98)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "bravaisova-resetka"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "resetka"
+                ],
+                "properties": {
+                  "resetka": {
+                    "enum": [
+                      "sve",
+                      "kubna-P",
+                      "kubna-I",
+                      "kubna-F",
+                      "tetragonalna-P",
+                      "tetragonalna-I",
+                      "ortorombicna-P",
+                      "ortorombicna-C",
+                      "ortorombicna-I",
+                      "ortorombicna-F",
+                      "heksagonalna-P",
+                      "romboedarska-R",
+                      "monoklinicna-P",
+                      "monoklinicna-C",
+                      "triklinicna-P"
+                    ]
+                  },
+                  "prikazi_susedne_celije": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "prikazi_primitivnu_celiju": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Za centrirane rešetke: dodatno nacrtati primitivnu ćeliju unutar konvencionalne."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "opticka-indikatrisa"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tip"
+                ],
+                "properties": {
+                  "tip": {
+                    "enum": [
+                      "izotropna",
+                      "jednoosna",
+                      "dvoosna"
+                    ]
+                  },
+                  "znak": {
+                    "enum": [
+                      "+",
+                      "-"
+                    ],
+                    "default": "+"
+                  },
+                  "n": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 1.0,
+                      "maximum": 3.5
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "description": "izotropna [n]; jednoosna [nω, nε]; dvoosna [nα, nβ, nγ]. Motor preuveličava razlike radi vidljivosti i to kaže u legendi."
+                  },
+                  "mineral": {
+                    "type": "string"
+                  },
+                  "prikazi_presek": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Ravan preseka upravna na pravac svetlosti, sa elipsom preseka (dva indeksa koja svetlost vidi); pravac se menja mišem/tastaturom."
+                  },
+                  "prikazi_opticke_ose": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "blizanac"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "zakon"
+                ],
+                "properties": {
+                  "zakon": {
+                    "enum": [
+                      "spinelov",
+                      "karlsbadski",
+                      "baveno",
+                      "manebah",
+                      "albitski-polisintetski",
+                      "japanski",
+                      "dofinejski",
+                      "brazilski",
+                      "lastin-rep",
+                      "staurolit-90",
+                      "staurolit-60",
+                      "kolenasti-rutil",
+                      "trilinga-aragonit",
+                      "gvozdeni-krst-pirit"
+                    ]
+                  },
+                  "animacija": {
+                    "enum": [
+                      "razdvoji-spoji",
+                      "rotacija",
+                      "nema"
+                    ],
+                    "default": "razdvoji-spoji",
+                    "description": "razdvoji-spoji: jedinka se izvodi iz druge operacijom blizanjenja (ravan/osa) koja se vidi."
+                  },
+                  "prikazi_element": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Prikaži ravan ili osu blizanjenja."
+                  },
+                  "primer": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "koordinacioni-poliedar"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kb"
+                ],
+                "properties": {
+                  "kb": {
+                    "enum": [
+                      2,
+                      3,
+                      4,
+                      6,
+                      8,
+                      12
+                    ],
+                    "description": "Koordinacioni broj."
+                  },
+                  "oblik": {
+                    "enum": [
+                      "auto",
+                      "linearni",
+                      "trougao",
+                      "tetraedar",
+                      "oktaedar",
+                      "kocka",
+                      "kubooktaedar",
+                      "antikubooktaedar"
+                    ],
+                    "default": "auto"
+                  },
+                  "katjon": {
+                    "type": "string",
+                    "description": "npr. Si⁴⁺"
+                  },
+                  "anjon": {
+                    "type": "string",
+                    "description": "npr. O²⁻"
+                  },
+                  "prikazi_odnos_radijusa": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Prikaži granični odnos RA/RX i animaciju 'zvečke' (katjon premali za šupljinu)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "silikatna-struktura"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "klasa"
+                ],
+                "properties": {
+                  "klasa": {
+                    "enum": [
+                      "nezo",
+                      "soro",
+                      "ciklo-3",
+                      "ciklo-6",
+                      "ino-jednostruki",
+                      "ino-dvostruki",
+                      "filo",
+                      "tekto",
+                      "sve"
+                    ]
+                  },
+                  "prikaz": {
+                    "enum": [
+                      "tetraedri",
+                      "kugle",
+                      "oba"
+                    ],
+                    "default": "tetraedri"
+                  },
+                  "animacija": {
+                    "enum": [
+                      "polimerizacija",
+                      "rotacija",
+                      "nema"
+                    ],
+                    "default": "rotacija",
+                    "description": "polimerizacija: tetraedri se spajaju zajedničkim kiseonicima od nezo do tekto."
+                  },
+                  "prikazi_si_o": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Natpis odnosa Si:O i broja zajedničkih kiseonika po tetraedru."
+                  }
                 }
               }
             }
@@ -199,53 +790,1005 @@
     },
     "primerak": {
       "type": "object",
-      "required": ["id", "tip", "zbirka", "objekat_id"],
+      "required": [
+        "id",
+        "tip",
+        "zbirka",
+        "objekat_id"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "primerak" },
-        "zbirka": { "type": "string", "minLength": 2, "description": "Kanonski ključ zbirke kao u QR sistemu (museum_qr.normalizuj_zbirku): 'minerali', 'meteoriti', ..." },
-        "objekat_id": { "type": "integer", "minimum": 1 },
-        "napomena": { "type": "string", "maxLength": 1000, "description": "Zašto baš ovaj primerak — šta na njemu da se vidi." }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "primerak"
+        },
+        "zbirka": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Kanonski ključ zbirke kao u QR sistemu (museum_qr.normalizuj_zbirku): 'minerali', 'meteoriti', ..."
+        },
+        "objekat_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "napomena": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Zašto baš ovaj primerak — šta na njemu da se vidi."
+        }
       }
     },
     "pitanje": {
       "type": "object",
-      "required": ["id", "tip", "pitanje", "odgovori"],
+      "required": [
+        "id",
+        "tip",
+        "pitanje",
+        "odgovori"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "pitanje" },
-        "pitanje": { "type": "string", "minLength": 3, "maxLength": 1000 },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "pitanje"
+        },
+        "pitanje": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
+        },
         "odgovori": {
           "type": "array",
           "minItems": 2,
           "maxItems": 8,
           "items": {
             "type": "object",
-            "required": ["tekst", "tacan"],
+            "required": [
+              "tekst",
+              "tacan"
+            ],
             "additionalProperties": false,
             "properties": {
-              "tekst": { "type": "string", "minLength": 1, "maxLength": 500 },
-              "tacan": { "type": "boolean" }
+              "tekst": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "tacan": {
+                "type": "boolean"
+              }
             }
           }
         },
-        "vise_tacnih": { "type": "boolean", "default": false },
-        "objasnjenje": { "$ref": "#/$defs/markdown", "description": "Prikazuje se posle odgovora, tačnog ili pogrešnog." }
+        "vise_tacnih": {
+          "type": "boolean",
+          "default": false
+        },
+        "objasnjenje": {
+          "$ref": "#/$defs/markdown",
+          "description": "Prikazuje se posle odgovora, tačnog ili pogrešnog."
+        }
       }
     },
     "napomena": {
       "type": "object",
-      "required": ["id", "tip", "markdown"],
+      "required": [
+        "id",
+        "tip",
+        "markdown"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "tip": { "const": "napomena" },
-        "vrsta": { "enum": ["info", "pazi", "zanimljivost"], "default": "info" },
-        "naslov": { "type": "string", "maxLength": 120 },
-        "markdown": { "$ref": "#/$defs/markdown" }
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "napomena"
+        },
+        "vrsta": {
+          "enum": [
+            "info",
+            "pazi",
+            "zanimljivost"
+          ],
+          "default": "info"
+        },
+        "naslov": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "markdown": {
+          "$ref": "#/$defs/markdown"
+        }
       }
+    },
+    "dijagram": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "dijagram",
+        "parametri",
+        "opis_za_citac"
+      ],
+      "additionalProperties": false,
+      "description": "2D ilustracija (SVG) koju motor crta iz parametara; boje iz tokena teme; tačne vrednosti dolaze iz tabela u motoru sa poljem izvor.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "dijagram"
+        },
+        "dijagram": {
+          "enum": [
+            "bowenov-niz",
+            "fazni-dijagram",
+            "cvrsti-rastvor",
+            "metamorfne-facije",
+            "barrowove-zone",
+            "michel-levy",
+            "snellov-zakon",
+            "braggov-zakon",
+            "konoskopska-figura",
+            "stereogram",
+            "silikatne-klase",
+            "odnos-radijusa",
+            "zona-oksidacije",
+            "evaporitna-sukcesija",
+            "paragenetska-sekvenca",
+            "vremenska-linija",
+            "karta-lokaliteta",
+            "strunz-klase"
+          ]
+        },
+        "parametri": {
+          "type": "object"
+        },
+        "potpis": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "opis_za_citac": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 1500
+        },
+        "sirina": {
+          "enum": [
+            "puna",
+            "pola"
+          ],
+          "default": "puna"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "bowenov-niz"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 20
+                  },
+                  "prikazi_temperature": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "fazni-dijagram"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sistem"
+                ],
+                "properties": {
+                  "sistem": {
+                    "enum": [
+                      "SiO2",
+                      "Al2SiO5",
+                      "CaCO3",
+                      "C"
+                    ]
+                  },
+                  "tacka": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "T_C",
+                      "P_GPa"
+                    ],
+                    "properties": {
+                      "T_C": {
+                        "type": "number"
+                      },
+                      "P_GPa": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "oznaka": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Pomeranjem tačke čitalac vidi stabilnu fazu."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "cvrsti-rastvor"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sistem"
+                ],
+                "properties": {
+                  "sistem": {
+                    "enum": [
+                      "olivin",
+                      "plagioklas",
+                      "alkalni-feldspati"
+                    ]
+                  },
+                  "sastav": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Npr. Fo%, An%, Or% — istaknuta vertikala."
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "metamorfne-facije"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknute": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 20
+                  },
+                  "putanja": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "description": "P–T putanja kao [[T_C, P_GPa], ...]."
+                  },
+                  "prikazi_al2sio5": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "barrowove-zone"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuta": {
+                    "enum": [
+                      "hlorit",
+                      "biotit",
+                      "granat",
+                      "staurolit",
+                      "kijanit",
+                      "silimanit"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "michel-levy"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "debljina_um": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 30
+                  },
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 20,
+                    "description": "Imena minerala iz tabele dvojnih prelamanja u motoru (sa izvorom)."
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "snellov-zakon"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "n2"
+                ],
+                "properties": {
+                  "n1": {
+                    "type": "number",
+                    "minimum": 1.0,
+                    "maximum": 3.5,
+                    "default": 1.0
+                  },
+                  "n2": {
+                    "type": "number",
+                    "minimum": 1.0,
+                    "maximum": 3.5
+                  },
+                  "ugao": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 89.9,
+                    "default": 30
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "prikazi_totalnu_refleksiju": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "braggov-zakon"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "d_A"
+                ],
+                "properties": {
+                  "d_A": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 30
+                  },
+                  "lambda_A": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 3,
+                    "default": 1.5406
+                  },
+                  "red": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4,
+                    "default": 1
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "konoskopska-figura"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tip",
+                  "znak"
+                ],
+                "properties": {
+                  "tip": {
+                    "enum": [
+                      "jednoosna",
+                      "dvoosna"
+                    ]
+                  },
+                  "znak": {
+                    "enum": [
+                      "+",
+                      "-"
+                    ]
+                  },
+                  "ugao_2V": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "presek": {
+                    "enum": [
+                      "upravno-na-osu",
+                      "koso",
+                      "bisektrisa"
+                    ],
+                    "default": "upravno-na-osu"
+                  },
+                  "kompenzator": {
+                    "enum": [
+                      "nema",
+                      "gips-530nm",
+                      "liskun-lambda4",
+                      "kvarcni-klin"
+                    ],
+                    "default": "nema"
+                  },
+                  "interaktivno": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Rotacija stočića; uključivanje kompenzatora."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "stereogram"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "klasa": {
+                    "enum": [
+                      "m-3m",
+                      "m-3",
+                      "4/mmm",
+                      "6/mmm",
+                      "-3m",
+                      "mmm",
+                      "2/m"
+                    ],
+                    "default": "m-3m"
+                  },
+                  "forme": {
+                    "type": "array",
+                    "maxItems": 6,
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "minItems": 3,
+                      "maxItems": 4
+                    }
+                  },
+                  "prikazi_elemente_simetrije": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "prikazi_wulffovu_mrezu": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "silikatne-klase"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuta": {
+                    "enum": [
+                      "nezo",
+                      "soro",
+                      "ciklo",
+                      "ino-jednostruki",
+                      "ino-dvostruki",
+                      "filo",
+                      "tekto"
+                    ]
+                  },
+                  "prikazi_cepljivost": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Za ino: preseci lanaca i uglovi cepljivosti 87°/56°."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "odnos-radijusa"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuti_kb": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        2,
+                        3,
+                        4,
+                        6,
+                        8,
+                        12
+                      ]
+                    },
+                    "maxItems": 6
+                  },
+                  "joni": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "katjon",
+                        "anjon"
+                      ],
+                      "properties": {
+                        "katjon": {
+                          "type": "string"
+                        },
+                        "anjon": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "description": "Parovi jona koje motor računa iz svoje tabele Shannon radijusa i postavlja na skalu."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "zona-oksidacije"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuta": {
+                    "enum": [
+                      "gvozdeni-sesir",
+                      "oksidaciona",
+                      "cementaciona",
+                      "primarna"
+                    ]
+                  },
+                  "prikazi_minerale": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "evaporitna-sukcesija"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "maxItems": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "paragenetska-sekvenca"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "faze",
+                  "minerali"
+                ],
+                "properties": {
+                  "faze": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "minerali": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "naziv",
+                        "od",
+                        "do"
+                      ],
+                      "properties": {
+                        "naziv": {
+                          "type": "string"
+                        },
+                        "od": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "do": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "intenzitet": {
+                          "enum": [
+                            "glavni",
+                            "sporedni",
+                            "redak"
+                          ],
+                          "default": "glavni"
+                        }
+                      }
+                    },
+                    "description": "od/do su indeksi u nizu faze (0-zasnovano, uključivo)."
+                  },
+                  "izvor": {
+                    "type": "string",
+                    "description": "Odakle je sekvenca (literatura) ili 'pojednostavljeno'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "vremenska-linija"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "stavke"
+                ],
+                "properties": {
+                  "stavke": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 40,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "godina",
+                        "naslov"
+                      ],
+                      "properties": {
+                        "godina": {
+                          "type": "integer",
+                          "minimum": -500,
+                          "maximum": 2100
+                        },
+                        "naslov": {
+                          "type": "string",
+                          "maxLength": 80
+                        },
+                        "opis": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "grupa": {
+                          "type": "string",
+                          "maxLength": 30
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "karta-lokaliteta"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "lokaliteti"
+                ],
+                "properties": {
+                  "oblast": {
+                    "enum": [
+                      "srbija",
+                      "balkan",
+                      "evropa",
+                      "svet"
+                    ],
+                    "default": "srbija"
+                  },
+                  "lokaliteti": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 40,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "naziv",
+                        "lat",
+                        "lon"
+                      ],
+                      "properties": {
+                        "naziv": {
+                          "type": "string"
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "opis": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "broj_primeraka": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "grupa": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "prikazi_jedinice": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Šematske geotektonske jedinice Srbije (Dinaridi, Vardarska zona, SMM, Karpato-balkanidi) — samo uz oblast srbija."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "strunz-klase"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "istaknuta": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
