@@ -1227,6 +1227,378 @@ class LiteraturaApiTest(_Osnova):
 
 
 # ---------------------------------------------------------------------------
+# 11. Слике из литературе (MIS-UGOVOR-SLIKE.md §2) — лажни SciSearch
+# ---------------------------------------------------------------------------
+
+FIGURA_SCISEARCH = {
+    'id': 5175, 'doc_id': 442, 'strana': 12, 'sirina': 800, 'visina': 600, 'vrsta': 'thin_section',
+    'potpis': 'Figure 17 <b>Backscattered</b> electron image<script>x</script> of pyrite',
+    'naslov': 'Ore Microscopy', 'autor': 'Craig & Vaughan', 'godina': 1999,
+    'slika': '/svc/figure/5175.jpg', 'sicicka': '/svc/figure/5175/thumb.jpg',
+}
+JPEG_BAJTOVI = b'\xff\xd8\xff\xe0' + b'J' * 300 + b'\xff\xd9'
+PNG_BAJTOVI = b'\x89PNG\r\n\x1a\n' + b'P' * 100
+
+
+class _SlikaOdgovor:
+    """Стримовани одговор requests-а: iter_content, headers, close."""
+
+    def __init__(self, status_code=200, bajtovi=JPEG_BAJTOVI, tip='image/jpeg', duzina=None, komad=None):
+        self.status_code = status_code
+        self.headers = {'Content-Type': tip}
+        if duzina is not None:
+            self.headers['Content-Length'] = str(duzina)
+        self._bajtovi = bajtovi
+        self._komad = komad
+        self.zatvoren = False
+        self.procitano = 0
+
+    def iter_content(self, velicina):
+        velicina = self._komad or velicina
+        for i in range(0, len(self._bajtovi), velicina):
+            deo = self._bajtovi[i:i + velicina]
+            self.procitano += len(deo)
+            yield deo
+
+    def close(self):
+        self.zatvoren = True
+
+
+def _lazni_scisearch(figura=None, slika=None):
+    """requests.get по URL-у: /svc/figure/<id> → JSON, .jpg/thumb.jpg → слика."""
+    figura = FIGURA_SCISEARCH if figura is None else figura
+    pozivi = []
+
+    def get(url, **k):
+        pozivi.append((url, k))
+        if url.endswith('.jpg'):
+            if slika is None:
+                return _SlikaOdgovor(bajtovi=PNG_BAJTOVI if 'thumb' in url else JPEG_BAJTOVI,
+                                     tip='image/png' if 'thumb' in url else 'image/jpeg')
+            return slika() if callable(slika) else slika
+        if figura == 404:
+            return _Odgovor(404, {'greska': 'nema'})
+        return _Odgovor(200, dict(figura))
+    get.pozivi = pozivi
+    return get
+
+
+class SlikaLiteraturaKlijentTest(unittest.TestCase):
+    """scisearch_klijent.figura / preuzmi_sliku без мреже."""
+
+    def setUp(self):
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+
+    def test_bez_env_nije_podesen(self):
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            with self.assertRaises(scisearch_klijent.SciSearchNijePodesen):
+                scisearch_klijent.figura(5175)
+            with self.assertRaises(scisearch_klijent.SciSearchNijePodesen):
+                scisearch_klijent.preuzmi_sliku(5175)
+            get.assert_not_called()
+
+    def test_figura_oblik_potpis_cist_i_kes(self):
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            fig = scisearch_klijent.figura(5175)
+            self.assertEqual(get.pozivi, [('https://192.168.144.194/nauka/svc/figure/5175',
+                                           {'headers': {'X-Svc-Token': 'test-token'}, 'timeout': 4})])
+            self.assertEqual(fig, {
+                'id': 5175, 'doc_id': 442, 'strana': 12, 'sirina': 800, 'visina': 600, 'vrsta': 'thin_section',
+                'potpis': 'Figure 17 Backscattered electron imagex of pyrite',
+                'naslov': 'Ore Microscopy', 'autor': 'Craig & Vaughan', 'godina': 1999,
+            }, 'само позната поља; потпис без тагова; без slika/sicicka SciSearch-а')
+            fig['naslov'] = 'измењено'
+            self.assertEqual(scisearch_klijent.figura(5175)['naslov'], 'Ore Microscopy', 'кеш враћа копије')
+            self.assertEqual(len(get.pozivi), 1, 'други позив из кеша')
+            with mock.patch.object(scisearch_klijent.time, 'monotonic',
+                                   return_value=scisearch_klijent.time.monotonic() + 601):
+                scisearch_klijent.figura(5175)
+            self.assertEqual(len(get.pozivi), 2, 'после 10 минута поново пита')
+
+    def test_figura_404_timeout_los_id(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV):
+            with mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch(figura=404)):
+                with self.assertRaises(scisearch_klijent.SciSearchNemaFigure) as cm:
+                    scisearch_klijent.figura(5175)
+                self.assertIsInstance(cm.exception, scisearch_klijent.SciSearchGreska)
+                self.assertEqual(cm.exception.razlog, 'figura 5175 ne postoji')
+            with mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.figura(5175)
+                self.assertIn('timeout', cm.exception.razlog)
+                self.assertNotIn('test-token', str(cm.exception))
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(200, {'nema': 1})):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                    scisearch_klijent.figura(5175)
+            with mock.patch.object(scisearch_klijent.requests, 'get') as get:
+                for los in (0, -1, '5175', True, None):
+                    with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                        scisearch_klijent.figura(los)
+                get.assert_not_called()
+
+    def test_preuzmi_sliku_stream_timeout_8_tip_i_lru_kes(self):
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            bajtovi, tip = scisearch_klijent.preuzmi_sliku(5175)
+            self.assertEqual((bajtovi, tip), (JPEG_BAJTOVI, 'image/jpeg'))
+            self.assertEqual(get.pozivi[-1], ('https://192.168.144.194/nauka/svc/figure/5175.jpg',
+                                              {'headers': {'X-Svc-Token': 'test-token'}, 'timeout': 8, 'stream': True}))
+            mala, tip_male = scisearch_klijent.preuzmi_sliku(5175, mala=True)
+            self.assertEqual((mala, tip_male), (PNG_BAJTOVI, 'image/png'))
+            self.assertEqual(get.pozivi[-1][0], 'https://192.168.144.194/nauka/svc/figure/5175/thumb.jpg')
+            self.assertEqual(len(get.pozivi), 2)
+            scisearch_klijent.preuzmi_sliku(5175)
+            scisearch_klijent.preuzmi_sliku(5175, mala=True)
+            self.assertEqual(len(get.pozivi), 2, 'друго читање из LRU кеша, SciSearch се не зове')
+            self.assertEqual(scisearch_klijent.velicina_kesa_slika(), len(JPEG_BAJTOVI) + len(PNG_BAJTOVI))
+
+    def test_preuzmi_sliku_odbija_tip_velicinu_i_404(self):
+        with mock.patch.dict(os.environ, SCISEARCH_ENV):
+            html = _SlikaOdgovor(tip='text/html; charset=utf-8', bajtovi=b'<html>')
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=html):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.preuzmi_sliku(5175)
+                self.assertIn('text/html', cm.exception.razlog)
+                self.assertTrue(html.zatvoren)
+            prevelika = _SlikaOdgovor(duzina=16 * 1024 * 1024)
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=prevelika):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.preuzmi_sliku(5175)
+                self.assertIn('15 MB', cm.exception.razlog)
+                self.assertEqual(prevelika.procitano, 0, 'прекид пре читања тела')
+            # без Content-Length: прекид чим стрим пређе 15 MB, не чита се до краја
+            lazljiva = _SlikaOdgovor(bajtovi=b'x' * (16 * 1024 * 1024), komad=1024 * 1024)
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=lazljiva):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                    scisearch_klijent.preuzmi_sliku(5175)
+                self.assertEqual(lazljiva.procitano, 16 * 1024 * 1024, 'стаје на првом комаду преко границе')
+                self.assertTrue(lazljiva.zatvoren)
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_SlikaOdgovor(404)):
+                with self.assertRaises(scisearch_klijent.SciSearchNemaFigure):
+                    scisearch_klijent.preuzmi_sliku(5175)
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_SlikaOdgovor(bajtovi=b'')):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska):
+                    scisearch_klijent.preuzmi_sliku(5175)
+            with mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+                with self.assertRaises(scisearch_klijent.SciSearchGreska) as cm:
+                    scisearch_klijent.preuzmi_sliku(5175)
+                self.assertEqual(cm.exception.razlog, 'timeout после 8 s')
+            self.assertEqual(scisearch_klijent.velicina_kesa_slika(), 0, 'грешка се не кешира')
+
+    def test_lru_kes_izbacuje_najstarije(self):
+        get = _lazni_scisearch(slika=lambda: _SlikaOdgovor(bajtovi=b'j' * 100))
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'SLIKA_KES_NAJVISE_BAJTOVA', 250), \
+                mock.patch.object(scisearch_klijent.requests, 'get', get):
+            scisearch_klijent.preuzmi_sliku(1)
+            scisearch_klijent.preuzmi_sliku(2)
+            scisearch_klijent.preuzmi_sliku(1)  # 1 је сад „свежија“ од 2
+            scisearch_klijent.preuzmi_sliku(3)  # 300 > 250 → избацује 2
+            self.assertEqual(len(get.pozivi), 3)
+            self.assertEqual(scisearch_klijent.velicina_kesa_slika(), 200)
+            scisearch_klijent.preuzmi_sliku(1)
+            scisearch_klijent.preuzmi_sliku(3)
+            self.assertEqual(len(get.pozivi), 3, '1 и 3 су у кешу')
+            scisearch_klijent.preuzmi_sliku(2)
+            self.assertEqual(len(get.pozivi), 4, '2 је избачена')
+
+
+class SlikaLiteraturaApiTest(_Osnova):
+    URL = '/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi'
+    SLIKA = '/api/udzbenik/literatura-slika/5175'
+    MALA = '/api/udzbenik/literatura-slika/5175/thumb'
+
+    def setUp(self):
+        super().setUp()
+        _uvezi_primer()
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+        self.lekcija_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
+        self.blok = {'id': 'fig-1', 'tip': 'slika-literatura', 'figura_id': 5175, 'sirina': 'pola',
+                     'potpis': 'Пирит у одбијеној светлости.', 'napomena': 'Зашто је слика ту.'}
+        sadrzaj = {'verzija': 1, 'blokovi': [
+            {'id': 'uvod', 'tip': 'tekst', 'markdown': 'Пирит.'}, dict(self.blok),
+            {'id': 'kraj', 'tip': 'tekst', 'markdown': 'Крај.'},
+        ]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), self.lekcija_id))
+
+    def _objavi_javno(self):
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = 'minerali'")
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen'")
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+    def _blokovi(self):
+        r = self.get(self.URL)
+        self.assertEqual(r.status_code, 200, 'лекција се увек враћа')
+        return r.get_json()['lekcija']['blokovi']
+
+    def test_prijavljen_izvor_i_proxy_slika(self):
+        self._prijava()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            uvod, fig, kraj = self._blokovi()
+            self.assertEqual((uvod['id'], kraj['id']), ('uvod', 'kraj'))
+            self.assertEqual({k: fig[k] for k in self.blok}, self.blok, 'ауторова поља остају')
+            self.assertNotIn('nedostupan', fig)
+            self.assertEqual(fig['izvor'], {
+                'naslov': 'Ore Microscopy', 'autor': 'Craig & Vaughan', 'godina': 1999, 'strana': 12,
+                'potpis_izvora': 'Figure 17 Backscattered electron imagex of pyrite'})
+            self.assertEqual((fig['slika'], fig['sicicka']), (self.SLIKA, self.MALA), 'МИС-ове руте, не SciSearch')
+            self.assertEqual((fig['sirina_px'], fig['visina_px']), (800, 600))
+            self.assertEqual([u for u, _ in get.pozivi], ['https://192.168.144.194/nauka/svc/figure/5175'])
+            telo = self.get(self.URL).get_data(as_text=True)
+            self.assertNotIn('test-token', telo)
+            self.assertNotIn('/svc/', telo, 'клијент не сазнаје SciSearch путање')
+
+            r = self.get(self.SLIKA)
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.mimetype, 'image/jpeg')
+            self.assertEqual(r.data, JPEG_BAJTOVI)
+            self.assertEqual(r.headers['Cache-Control'], 'private, max-age=604800')
+            self.assertEqual(get.pozivi[-1], ('https://192.168.144.194/nauka/svc/figure/5175.jpg',
+                                              {'headers': {'X-Svc-Token': 'test-token'}, 'timeout': 8, 'stream': True}))
+            r = self.get(self.MALA)
+            self.assertEqual((r.status_code, r.mimetype, r.data), (200, 'image/png', PNG_BAJTOVI))
+            self.assertNotIn('test-token', str(r.headers) + str(r.data))
+            n = len(get.pozivi)
+            self.assertEqual(self.get(self.SLIKA).status_code, 200)
+            self.assertEqual(len(get.pozivi), n, 'други приказ из кеша, SciSearch се не зове')
+
+    def test_anonimni_blok_izostavljen_ruta_404(self):
+        self._objavi_javno()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            blokovi = self._blokovi()
+            self.assertEqual([b['id'] for b in blokovi], ['uvod', 'kraj'], 'блок потпуно изостављен')
+            telo = self.get(self.URL).get_data(as_text=True)
+            for trag in ('slika-literatura', '5175', 'Ore Microscopy', 'Пирит у одбијеној'):
+                self.assertNotIn(trag, telo, 'ни слика ни навод за анонимног')
+            for url in (self.SLIKA, self.MALA):
+                r = self.get(url)
+                self.assertEqual(r.status_code, 404, url)
+                self.assertIn('greska', r.get_json())
+            self.assertEqual(get.pozivi, [], 'SciSearch се за анонимног не зове')
+
+    def test_prijavljen_bez_modula_403(self):
+        self._prijava('user')
+        get = _lazni_scisearch()
+        with mock.patch.dict(museum_app.MODULE_ACCESS['udzbenik'], {'default_access': False}), \
+                mock.patch.dict(museum_app.MODULE_ACCESS_DEFAULTS['udzbenik'], {'default_access': False}), \
+                mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            for url in (self.SLIKA, self.MALA):
+                self.assertEqual(self.get(url).status_code, 403, url)
+            self.assertEqual(get.pozivi, [])
+
+    def test_admin_i_direktor_isto_kao_korisnik(self):
+        for role in ('user', 'admin', 'direktor'):
+            self._prijava(role, email='%s@example.invalid' % role)
+            scisearch_klijent.ocisti_kes()
+            get = _lazni_scisearch()
+            with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+                _, fig, _ = self._blokovi()
+                self.assertEqual(fig['izvor']['naslov'], 'Ore Microscopy', role)
+                self.assertEqual(self.get(self.SLIKA).status_code, 200, role)
+
+    def test_scisearch_pao_nedostupan_lekcija_zivi(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+            uvod, fig, kraj = self._blokovi()
+            self.assertEqual({k: fig[k] for k in self.blok}, self.blok)
+            self.assertEqual((fig['nedostupan'], fig['razlog']), (True, 'biblioteka trenutno nije dostupna'))
+            for polje in ('izvor', 'slika', 'sicicka'):
+                self.assertNotIn(polje, fig)
+            r = self.get(self.SLIKA)
+            self.assertEqual(r.status_code, 503)
+            self.assertIn('greska', r.get_json())
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', return_value=_Odgovor(500, {'greska': 'x'})):
+            _, fig, _ = self._blokovi()
+            self.assertEqual(fig['razlog'], 'biblioteka trenutno nije dostupna')
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'figura', side_effect=RuntimeError('пукло')):
+            _, fig, _ = self._blokovi()
+            self.assertTrue(fig['nedostupan'])
+
+    def test_figura_ne_postoji_i_nepodesen_env(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch(figura=404)):
+            _, fig, _ = self._blokovi()
+            self.assertEqual((fig['nedostupan'], fig['razlog']), (True, 'slika ne postoji u biblioteci'))
+            with mock.patch.object(scisearch_klijent.requests, 'get', return_value=_SlikaOdgovor(404)):
+                self.assertEqual(self.get(self.SLIKA).status_code, 404)
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            _, fig, _ = self._blokovi()
+            self.assertEqual((fig['nedostupan'], fig['razlog']), (True, 'biblioteka nije povezana'))
+            self.assertEqual(self.get(self.SLIKA).status_code, 503)
+            get.assert_not_called()
+
+    def test_uvoz_validira_blok_slika_literatura(self):
+        def pokvari(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'fig-a', 'tip': 'slika-literatura'},
+                {'id': 'fig-b', 'tip': 'slika-literatura', 'figura_id': 0, 'sirina': 'mala'},
+                {'id': 'fig-c', 'tip': 'slika-literatura', 'figura_id': 5175, 'slika': '/svc/figure/5175.jpg'},
+                {'id': 'fig-d', 'tip': 'slika-literatura', 'figura_id': 5175, 'potpis': 'x' * 501},
+            ])
+        putanja = _primer_sa_izmenom(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre)
+        n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
+        koren = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        self.assertIn(f"{koren}[{n}]: 'figura_id' is a required property", err)
+        self.assertIn(f'{koren}[{n + 1}].figura_id: 0 is less than the minimum of 1', err)
+        self.assertIn(f"{koren}[{n + 1}].sirina: 'mala' is not one of ['puna', 'pola']", err)
+        self.assertIn(f"{koren}[{n + 2}]: Additional properties are not allowed ('slika' was unexpected)", err)
+        self.assertIn(f'{koren}[{n + 3}].potpis:', err)
+
+    def test_uvoz_ispravan_blok_prolazi_i_proveri_figuru(self):
+        def dodaj(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'fig-a', 'tip': 'slika-literatura', 'figura_id': 5175, 'potpis': 'Пирит.'},
+                {'id': 'fig-b', 'tip': 'slika-literatura', 'figura_id': 999999, 'sirina': 'pola'},
+            ])
+        putanja = _primer_sa_izmenom(dodaj)
+        self.addCleanup(os.unlink, putanja)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+
+        def lazna_figura(figura_id):
+            if figura_id == 5175:
+                return dict(FIGURA_SCISEARCH)
+            raise scisearch_klijent.SciSearchNemaFigure(figura_id)
+        pre = _brojevi()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', lazna_figura), \
+                mock.patch.object(scisearch_klijent, 'pretrazi', side_effect=AssertionError('нема literatura блока')):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+        self.assertEqual(kod, 1)
+        self.assertIn('blokovi[6].figura_id: фигура 999999 не постоји у SciSearch-у', err)
+        self.assertNotIn('blokovi[5]', err)
+        self.assertEqual(_brojevi(), pre, 'ништа није уписано')
+
+        def sve_postoje(figura_id):
+            return dict(FIGURA_SCISEARCH, id=figura_id)
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', sve_postoje):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+        self.assertEqual(kod, 0, err)
+        self.assertIn('0 упозорења', out)
+        sadrzaj = _upit("SELECT sadrzaj FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
+        if isinstance(sadrzaj, str):
+            sadrzaj = json.loads(sadrzaj)
+        self.assertEqual([b['figura_id'] for b in sadrzaj['blokovi'] if b['tip'] == 'slika-literatura'],
+                         [5175, 999999])
+
+
+# ---------------------------------------------------------------------------
 # AI илустрације → Фототека → лекције (scripts/udzbenik_ai_slike.py)
 # ---------------------------------------------------------------------------
 

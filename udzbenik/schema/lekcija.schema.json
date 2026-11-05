@@ -52,7 +52,8 @@
             "pitanje",
             "napomena",
             "dijagram",
-            "literatura"
+            "literatura",
+            "slika-literatura"
           ]
         }
       },
@@ -80,6 +81,9 @@
         },
         {
           "$ref": "#/$defs/literatura"
+        },
+        {
+          "$ref": "#/$defs/slika-literatura"
         }
       ]
     },
@@ -1832,6 +1836,46 @@
           "type": "string",
           "maxLength": 1000,
           "description": "Зашто баш ова литература — шта у њој да се тражи."
+        }
+      }
+    },
+    "slika-literatura": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "figura_id"
+      ],
+      "additionalProperties": false,
+      "description": "Слика из научне библиотеке (SciSearch figura) — САМО ИНТЕРНО: сервер при читању за пријављеног додаје `izvor` {naslov, autor, godina, strana, potpis_izvora} и `slika`/`sicicka` (MIS proxy руте /api/udzbenik/literatura-slika/<id>[/thumb]) или `nedostupan: true` + `razlog`; за анонимног читаоца блок се ПОТПУНО изоставља из одговора. Слика се не копира у МИС.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "slika-literatura"
+        },
+        "figura_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "figures.id у SciSearch-у (/svc/figure/<id>)."
+        },
+        "potpis": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Наш потпис на српском; пун навод извора мотор додаје сам из `izvor`."
+        },
+        "napomena": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Зашто је слика овде — шта у њој да се гледа."
+        },
+        "sirina": {
+          "enum": [
+            "puna",
+            "pola"
+          ],
+          "default": "puna"
         }
       }
     }

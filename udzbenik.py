@@ -12,7 +12,10 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 - упис напретка са валидацијом до базе;
 - CIF структуре минерала из локалног RRUFF скупа, под правом ``udzbenik``;
 - блок ``literatura`` разрешава преко scisearch_klijent (само за пријављене;
-  пад SciSearch-а не обара лекцију — блок добија ``nedostupan`` + ``razlog``).
+  пад SciSearch-а не обара лекцију — блок добија ``nedostupan`` + ``razlog``);
+- блок ``slika-literatura`` (MIS-UGOVOR-SLIKE.md §2) исто, али САМО ИНТЕРНО:
+  анонимном читаоцу се блок потпуно изоставља из одговора; слика се не
+  копира, служи је proxy рута ``/api/udzbenik/literatura-slika/<id>``.
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
@@ -42,6 +45,7 @@ LITERATURA_PODRAZUMEVANI_BROJ = 3
 RAZLOG_LITERATURA_PRIJAVA = 'samo za prijavljene korisnike'
 RAZLOG_LITERATURA_NEDOSTUPNA = 'biblioteka trenutno nije dostupna'
 RAZLOG_LITERATURA_PRAZNO = 'nema rezultata'
+RAZLOG_FIGURA_NE_POSTOJI = 'slika ne postoji u biblioteci'
 
 
 def ucitaj_semu():
@@ -280,6 +284,10 @@ def razresi_blokove(cur, blokovi):
             izlaz.append(_razresi_primerak(cur, blok))
         elif tip == 'literatura':
             izlaz.append(_razresi_literaturu(blok))
+        elif tip == 'slika-literatura':
+            razresen = _razresi_sliku_literature(blok)
+            if razresen is not None:
+                izlaz.append(razresen)
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -394,6 +402,39 @@ def _razresi_literaturu(blok):
     if not rezultati:
         return _nedostupan(blok, RAZLOG_LITERATURA_PRAZNO)
     return dict(blok, rezultati=rezultati)
+
+
+def sme_sliku_literature():
+    """Proxy слике из литературе: пријава + модул уџбеника (админ/директор
+    кроз исту проверу). Анонимни читалац не сме ни да сазна да рута постоји."""
+    return prijavljen() and ima_modul()
+
+
+def _razresi_sliku_literature(blok):
+    """Слика из SciSearch-а (MIS-UGOVOR-SLIKE.md §2). Анонимни → None (блок се
+    изоставља); пријављен добија ``izvor`` + ``slika``/``sicicka`` (МИС-ове
+    proxy руте), а грешка сервиса ``nedostupan`` + ``razlog``."""
+    if not prijavljen():
+        return None
+    figura_id = blok.get('figura_id')
+    try:
+        fig = scisearch_klijent.figura(figura_id)
+    except scisearch_klijent.SciSearchNijePodesen:
+        return _nedostupan(blok, scisearch_klijent.RAZLOG_NIJE_PODESEN)
+    except scisearch_klijent.SciSearchNemaFigure:
+        return _nedostupan(blok, RAZLOG_FIGURA_NE_POSTOJI)
+    except Exception as exc:  # noqa: BLE001 - библиотека не сме да сруши лекцију
+        logger.warning('Уџбеник: SciSearch фигура %r за блок %s није успела: %s',
+                       figura_id, blok.get('id'), exc)
+        return _nedostupan(blok, RAZLOG_LITERATURA_NEDOSTUPNA)
+    return dict(
+        blok,
+        izvor={'naslov': fig['naslov'], 'autor': fig['autor'], 'godina': fig['godina'],
+               'strana': fig['strana'], 'potpis_izvora': fig['potpis']},
+        slika=url_for('udzbenik.api_literatura_slika', figura_id=figura_id),
+        sicicka=url_for('udzbenik.api_literatura_slika_mala', figura_id=figura_id),
+        sirina_px=fig['sirina'], visina_px=fig['visina'],
+    )
 
 
 # --------------------------------------------------------------------------
