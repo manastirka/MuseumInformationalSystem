@@ -2,7 +2,7 @@
 """Увоз садржаја интерактивног уџбеника из JSON фајла у базу.
 
     python scripts/udzbenik_uvoz.py --fajl primer-minerali.json --dry-run
-    python scripts/udzbenik_uvoz.py --fajl primer-minerali.json --execute mis_db --autor ko@nhmbeo.rs
+    python scripts/udzbenik_uvoz.py --fajl primer-minerali.json --execute museum_system --autor ko@nhmbeo.rs
 
 Правила:
 - цео фајл се ПРВО валидира (структура, ``sadrzaj`` свake лекције по
@@ -17,8 +17,9 @@
   udzbenik_lekcija_verzija (``napomena = 'uvoz: <ime fajla>'``); непромењена
   лекција се не дира; поглавља/лекције којих има у бази а нема у фајлу се НЕ
   бришу — испише се упозорење;
-- подразумевано је dry-run (испис плана, нула измена); ``--execute mis_db``
-  (дословно) ради све у ЈЕДНОЈ трансакцији;
+- подразумевано је dry-run (испис плана, нула измена); ``--execute <ime baze>``
+  (дословно име базе на коју је скрипта стварно повезана, ``current_database()``,
+  као у udzbenik_ai_slike.py) ради све у ЈЕДНОЈ трансакцији;
 - ``--proveri-literaturu`` (опционо) за сваки блок ``literatura`` пита
   SciSearch: 0 резултата је УПОЗОРЕЊЕ (увоз иде даље); за сваки блок
   ``slika-literatura`` проверава да ``figura_id`` постоји — непостојећа
@@ -39,7 +40,6 @@ if str(REPO) not in sys.path:
 
 from udzbenik import tipovi_blokova, ucitaj_semu  # noqa: E402
 
-POTVRDA = 'mis_db'
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
 # Оквир Србије (са Косовом и Метохијом) за karta-lokaliteta, oblast=srbija.
@@ -527,7 +527,7 @@ def _argumenti(argv):
     p = argparse.ArgumentParser(description='Увоз садржаја уџбеника из JSON фајла (подразумевано dry-run).')
     p.add_argument('--fajl', required=True, help='JSON фајл са уџбеником, поглављима и лекцијама')
     p.add_argument('--dry-run', action='store_true', help='само испиши шта би било урађено (подразумевано)')
-    p.add_argument('--execute', metavar='POTVRDA', help=f'стварно упиши; потврда мора бити дословно „{POTVRDA}“')
+    p.add_argument('--execute', metavar='IME_BAZE', help='стварно упиши; потврда = име базе на коју је повезано')
     p.add_argument('--autor', default=None, help='e-mail аутора за udzbenik.autor_email / verzija.autor_email')
     p.add_argument('--proveri-literaturu', action='store_true',
                    help='за сваки блок literatura питај SciSearch (0 резултата = упозорење); '
@@ -537,10 +537,7 @@ def _argumenti(argv):
 
 def main(argv=None):
     arg = _argumenti(argv)
-    if arg.execute is not None and arg.execute != POTVRDA:
-        print(f'ГРЕШКА: --execute тражи дословно „{POTVRDA}“ (добијено {arg.execute!r}).', file=sys.stderr)
-        return 2
-    izvrsavanje = arg.execute == POTVRDA
+    izvrsavanje = arg.execute is not None
     try:
         with open(arg.fajl, encoding='utf-8') as f:
             podaci = json.load(f)
@@ -555,7 +552,13 @@ def main(argv=None):
         try:
             with conn.cursor() as cur:
                 cur.execute('SELECT current_database()')
-                print(f'База: {cur.fetchone()[0]}  фајл: {arg.fajl}  режим: {"EXECUTE" if izvrsavanje else "dry-run"}')
+                baza = cur.fetchone()[0]
+                print(f'База: {baza}  фајл: {arg.fajl}  режим: {"EXECUTE" if izvrsavanje else "dry-run"}')
+                if izvrsavanje and arg.execute != baza:
+                    print(f'ГРЕШКА: --execute тражи дословно име базе „{baza}“ (добијено {arg.execute!r}).',
+                          file=sys.stderr)
+                    conn.rollback()
+                    return 2
                 greske = validiraj(podaci, cur)
                 if greske:
                     print(f'ГРЕШКЕ У ФАЈЛУ ({len(greske)}) — ништа није уписано:', file=sys.stderr)
