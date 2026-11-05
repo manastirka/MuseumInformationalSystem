@@ -1390,7 +1390,7 @@ class AiSlikeTest(_Osnova):
         self.assertEqual(verzija, 3)
         self.assertEqual([b['id'] for b in sadrzaj['blokovi']][:3],
                          ['uvod', 'ai-udztest-ai-komora', 'ai-udztest-ai-laguna'])
-        self.assertIn('= ai-udztest-ai-komora већ постоји — прескочен', out)
+        self.assertIn('= ai-udztest-ai-komora већ постоји, исти — прескочен', out)
 
     def test_nepostojeci_posle_bloka_je_greska_i_nista_se_ne_menja(self):
         mapa = self._mapa(AI_MAPA + [{'slika': 'udztest-ai-laguna', 'lekcija': 'mohsova-skala',
@@ -1419,6 +1419,119 @@ class AiSlikeTest(_Osnova):
         kod, out, err = self._izvrsi(mapa)
         self.assertEqual(kod, 1)
         self.assertIn('нема фајла udztest-ai-nema.png', err)
+
+    # --- замена слике/текста у постојећем блоку (поље ``fajl``) ---
+
+    def _mapa_v2(self, **izmene):
+        """Иста мапа, али прва ставка (udztest-ai-komora у kristalni-sistemi) са изменама."""
+        return self._mapa([dict(AI_MAPA[0], **izmene)] + AI_MAPA[1:])
+
+    def _verzije(self, lekcija_id):
+        return _upit("""SELECT verzija, sadrzaj FROM udzbenik_lekcija_verzija WHERE lekcija_id = %s
+                        ORDER BY verzija""", (lekcija_id,))
+
+    def _blok(self, sadrzaj, bid):
+        sadrzaj = json.loads(sadrzaj) if isinstance(sadrzaj, str) else sadrzaj
+        return next(b for b in sadrzaj['blokovi'] if b.get('id') == bid)
+
+    def test_fajl_menja_sliku_u_novoj_verziji_a_stara_ostaje(self):
+        from PIL import Image
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        lekcija_id, _, sadrzaj = self._lekcija('kristalni-sistemi')
+        stari_blok = self._blok(sadrzaj, 'ai-udztest-ai-komora')
+        stara_foto = stari_blok['fotografija_id']
+        (self.slike / 'v2').mkdir()
+        Image.new('RGB', (600, 448), (10, 200, 60)).save(self.slike / 'v2' / 'udztest-ai-komora-v2.png', format='PNG')
+        mapa = self._mapa_v2(fajl='v2/udztest-ai-komora-v2.png')
+        # dry-run каже шта би било и ништа не мења
+        pre, pre_foto = _brojevi(), _broj_fotografija()
+        kod, out, err = _pokreni_ai_slike('--mapa', mapa, '--slike', str(self.slike), '--dry-run', '--autor', EMAIL)
+        self.assertEqual(kod, 0, err + out)
+        self.assertIn('+ udztest-ai-komora (udztest-ai-komora-v2.png', out)
+        self.assertIn('~ kristalografija/kristalni-sistemi (мапа: 01-kristalni-sistemi): verzija 2 → 3, '
+                      '+0 блок(ова), ~1 измењен(их)', out)
+        self.assertIn(f'~ ai-udztest-ai-komora на истом месту: замена слике (fotografija #{stara_foto} → '
+                      'нова фотографија)', out)
+        self.assertIn('= ai-udztest-ai-recni већ постоји, исти — прескочен', out)
+        self.assertIn('= fizicke-osobine/mohsova-skala: сви блокови већ постоје (ai-udztest-ai-komora) и исти су',
+                      out)
+        self.assertIn('4 слика (1 нових), 2 лекција (1 нових верзија), 0 грешака', out)
+        self.assertEqual((_brojevi(), _broj_fotografija()), (pre, pre_foto))
+        # execute: нова фотографија, нова верзија са истим id блока на истом месту
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_broj_fotografija(), pre_foto + 1)
+        nova_foto = _upit("SELECT id, opis FROM fotografije WHERE original_ime = 'udztest-ai-komora-v2.png'")[0]
+        self.assertNotEqual(nova_foto[0], stara_foto)
+        self.assertIn('Poreklo: AI ilustracija, šematski. Alat: Gemini (Antigravity).', nova_foto[1])
+        self.assertEqual(sorted(t[0] for t in _upit('SELECT tag FROM fotografija_tagovi WHERE fotografija_id = %s',
+                                                    (nova_foto[0],))), ['ai-ilustracija', 'udzbenik'])
+        _, verzija, sadrzaj = self._lekcija('kristalni-sistemi')
+        self.assertEqual(verzija, 3)
+        self.assertEqual([b['id'] for b in sadrzaj['blokovi']], AI_IDS_SISTEMI, 'исти id и исто место')
+        self.assertEqual(self._blok(sadrzaj, 'ai-udztest-ai-komora'), dict(stari_blok, fotografija_id=nova_foto[0]))
+        verzije = self._verzije(lekcija_id)
+        self.assertEqual([v[0] for v in verzije], [1, 2, 3])
+        self.assertEqual(self._blok(verzije[1][1], 'ai-udztest-ai-komora')['fotografija_id'], stara_foto,
+                         'стара верзија нетакнута')
+        self.assertEqual(self._blok(verzije[2][1], 'ai-udztest-ai-komora')['fotografija_id'], nova_foto[0])
+        # стара фотографија остаје у Фототеци; mohsova-skala (исти кључ, стари фајл) нетакнута
+        self.assertEqual(_upit('SELECT obrisana FROM fotografije WHERE id = %s', (stara_foto,))[0][0], False)
+        self.assertEqual(self._lekcija('mohsova-skala')[1], 2)
+        # друго покретање исте мапе: ништа ново
+        pre, pre_foto = _brojevi(), _broj_fotografija()
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual((_brojevi(), _broj_fotografija()), (pre, pre_foto))
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 3)
+        self.assertIn('4 слика (0 нових), 2 лекција (0 нових верзија), 0 грешака', out)
+
+    def test_promena_samo_potpisa_pravi_novu_verziju_bez_nove_fotografije(self):
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        lekcija_id, _, sadrzaj = self._lekcija('kristalni-sistemi')
+        stari_blok = self._blok(sadrzaj, 'ai-udztest-ai-komora')
+        mapa = self._mapa_v2(potpis='Магматска комора, зонирана. (AI ilustracija, šematski)')
+        pre, pre_foto = _brojevi(), _broj_fotografija()
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 0, err + out)
+        self.assertIn('~ ai-udztest-ai-komora на истом месту: промена текста (potpis)', out)
+        self.assertEqual(_broj_fotografija(), pre_foto)
+        posle = _brojevi()
+        self.assertEqual(posle['udzbenik_lekcija_verzija'], pre['udzbenik_lekcija_verzija'] + 1)
+        _, verzija, sadrzaj = self._lekcija('kristalni-sistemi')
+        self.assertEqual(verzija, 3)
+        self.assertEqual(self._blok(sadrzaj, 'ai-udztest-ai-komora'),
+                         dict(stari_blok, potpis='Магматска комора, зонирана. (AI ilustracija, šematski)'))
+        self.assertEqual(self._blok(self._verzije(lekcija_id)[1][1], 'ai-udztest-ai-komora'), stari_blok)
+        # поново иста мапа → идемпотентно
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), posle)
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 3)
+
+    def test_nepostojeci_fajl_je_greska_bez_delimicnog_upisa(self):
+        from PIL import Image
+        kod, out, err = self._izvrsi()
+        self.assertEqual(kod, 0, err + out)
+        (self.slike / 'v2').mkdir()
+        Image.new('RGB', (600, 448), (10, 200, 60)).save(self.slike / 'v2' / 'udztest-ai-recni-v2.png', format='PNG')
+        # у истој лекцији: једна исправна замена (rečni) + једна са непостојећим фајлом (komora)
+        mapa = self._mapa([dict(AI_MAPA[0], fajl='v2/udztest-ai-nema.png'), dict(AI_MAPA[1], fajl='v2/udztest-ai-recni-v2.png')] + AI_MAPA[2:])
+        pre, pre_foto, pre_raw = _brojevi(), _broj_fotografija(), self._raw_fajlovi()
+        kod, out, err = self._izvrsi(mapa)
+        self.assertEqual(kod, 1)
+        self.assertIn(f'mapa[0].fajl: нема фајла v2/udztest-ai-nema.png у {self.slike}', err)
+        self.assertIn('ништа није уписано', err)
+        self.assertEqual((_brojevi(), _broj_fotografija(), self._raw_fajlovi()), (pre, pre_foto, pre_raw))
+        self.assertEqual(self._lekcija('kristalni-sistemi')[1], 2)
+        # fajl ван --slike и празан fajl су такође грешке
+        for los in ('../udztest-ai-recni-v2.png', '/etc/passwd', ''):
+            kod, out, err = self._izvrsi(self._mapa_v2(fajl=los))
+            self.assertEqual(kod, 1, los)
+            self.assertIn('mapa[0].fajl', err)
+        self.assertEqual(_broj_fotografija(), pre_foto)
 
     def test_api_vraca_blok_slika_sa_poreklom_i_slika_se_sluzi(self):
         import fototeka_jobs
