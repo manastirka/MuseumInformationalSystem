@@ -5,8 +5,10 @@
     python scripts/udzbenik_ai_slike.py --mapa ai-slike-mapa.json --slike DIR \\
         --execute museum_system --autor ko@nhmbeo.rs
 
-Мапа је JSON листа ``{slika, lekcija, posle_bloka, potpis, alt}``; ``slika`` је
-име фајла без наставка у директоријуму ``--slike``. Правила:
+Мапа је JSON листа ``{slika, lekcija, posle_bloka, potpis, alt[, fajl]}``; ``slika``
+је кључ слике (id блока = ``ai-<slika ascii>``) и, кад нема ``fajl``, име фајла без
+наставка у директоријуму ``--slike``; опционо ``fajl`` је путања релативна на
+``--slike`` (нпр. ``v2/pegmatit.png``) — промена фајла НЕ мења id блока. Правила:
 
 - **Фототека**: свака слика улази кроз исти пут као упload/batch увоз
   (``fototeka_views._intake_photo_from_path``: провера слике, RAW write-once,
@@ -22,7 +24,10 @@
   udzbenik_lekcija_verzija, ``napomena = 'ai-slike: <мапа>'``); блок
   ``{"id": "ai-<slika ascii>", "tip": "slika", ...}`` иде одмах после блока
   ``posle_bloka`` (више слика на истом месту — редослед из мапе); блок чији
-  ``id`` већ постоји се прескаче; лекција без иједног новог блока се не дира;
+  ``id`` већ постоји остаје на свом месту: ако му се разликује ``fotografija_id``
+  (нова слика има други sha256), ``potpis`` или ``alt``, ажурира се у новој
+  верзији, иначе се не дира (идемпотентно); стара фотографија остаје у Фототеци;
+  лекција без иједног новог или измењеног блока се не дира;
 - ``posle_bloka`` који не постоји је ГРЕШКА за ту лекцију; све грешке се
   испишу одједном и ништа се не упише (ни у базу ни на диск);
 - ``lekcija`` у мапи сме да носи префикс редоследа (``03-sedimentni-...`` за
@@ -116,8 +121,16 @@ def validiraj_mapu(mapa, slike_dir):
                 greske.append(f'{p}.{polje}: обавезан непразан текст')
         if not isinstance(stavka.get('slika'), str) or not stavka['slika'].strip():
             continue
-        if nadji_fajl(slike_dir, stavka['slika']) is None:
-            greske.append(f'{p}.slika: нема фајла {stavka["slika"]}{NASTAVCI[0]} у {slike_dir}')
+        fajl = stavka.get('fajl')
+        if fajl is not None and (not isinstance(fajl, str) or not fajl.strip()):
+            greske.append(f'{p}.fajl: ако постоји, мора бити непразан текст (путања релативна на --slike)')
+        elif fajl and (Path(fajl).is_absolute() or '..' in Path(fajl).parts):
+            greske.append(f'{p}.fajl: {fajl!r} мора бити релативна путања унутар {slike_dir}')
+        elif nadji_fajl(slike_dir, stavka) is None:
+            if fajl:
+                greske.append(f'{p}.fajl: нема фајла {fajl} у {slike_dir}')
+            else:
+                greske.append(f'{p}.slika: нема фајла {stavka["slika"]}{NASTAVCI[0]} у {slike_dir}')
         bid = id_bloka(stavka['slika'])
         if not re.match(r'^[a-z0-9][a-z0-9-]{1,39}$', bid):
             greske.append(f'{p}.slika: id блока {bid!r} није по шеми (^[a-z0-9][a-z0-9-]{{1,39}}$)')
@@ -130,9 +143,13 @@ def validiraj_mapu(mapa, slike_dir):
     return greske
 
 
-def nadji_fajl(slike_dir, slika):
+def nadji_fajl(slike_dir, stavka):
+    """``fajl`` (релативно на --slike) ако је задат, иначе ``<slika>.<наставак>``."""
+    if stavka.get('fajl'):
+        kandidat = Path(slike_dir) / stavka['fajl']
+        return kandidat if kandidat.is_file() else None
     for nastavak in NASTAVCI:
-        kandidat = Path(slike_dir) / f'{slika}{nastavak}'
+        kandidat = Path(slike_dir) / f'{stavka["slika"]}{nastavak}'
         if kandidat.is_file():
             return kandidat
     return None
@@ -188,7 +205,7 @@ def napravi_plan(cur, mapa, slike_dir, zbirka):
     # 1. слике: sha256 → постојећи id или нова (иста датотека на два места = једна слика)
     po_sha = {}
     for i, stavka in enumerate(mapa):
-        fajl = nadji_fajl(slike_dir, stavka['slika'])
+        fajl = nadji_fajl(slike_dir, stavka)
         sha256 = fototeka_jobs.sha256_of_file(fajl)
         slika = po_sha.get(sha256)
         if slika is None:
@@ -228,9 +245,23 @@ def napravi_plan(cur, mapa, slike_dir, zbirka):
     return plan
 
 
+def _razlike_bloka(stari, stavka):
+    """Шта се у постојећем блоку разликује од мапе: 'slika' (други
+    fotografija_id — нова фотографија још нема id, па је увек различита),
+    'potpis', 'alt'. Празно = идентично."""
+    razlike = []
+    if stari.get('fotografija_id') != stavka['_slika']['fotografija_id']:
+        razlike.append('slika')
+    for polje in ('potpis', 'alt'):
+        if stari.get(polje) != stavka[polje]:
+            razlike.append(polje)
+    return razlike
+
+
 def _plan_lekcije(lek, trazeni, stavke, greske, uvoz, sema, validatori):
     blokovi = lek['sadrzaj'].get('blokovi') or []
-    ids = [b.get('id') for b in blokovi if isinstance(b, dict)]
+    postojeci = {b['id']: b for b in blokovi if isinstance(b, dict) and b.get('id')}
+    ids = list(postojeci)
     stavka_plana = {'trazeni': trazeni, 'id': lek['id'], 'slug': lek['slug'], 'poglavlje': lek['poglavlje'],
                     'verzija': lek['verzija'], 'nova_verzija': None, 'blokovi': [], 'preskoceni': [],
                     'greske': []}
@@ -238,13 +269,23 @@ def _plan_lekcije(lek, trazeni, stavke, greske, uvoz, sema, validatori):
     # прати редослед из мапе и при поновном покретању (слика која већ постоји
     # у лекцији постаје сидро за следећу из мапе, па исход не зависи од тога
     # да ли је мапа примењена одједном или у два наврата).
-    novi_po_mestu, poslednji_postojeci = {}, {}
+    # Постојећи блок остаје на свом месту; мења се само ако се разликује
+    # слика (sha256 → fotografija_id), potpis или alt.
+    novi_po_mestu, poslednji_postojeci, zamene = {}, {}, {}
     for stavka in stavke:
         bid = id_bloka(stavka['slika'])
         mesto = stavka['posle_bloka']
         if bid in ids:
-            stavka_plana['preskoceni'].append(bid)
             poslednji_postojeci[mesto] = bid
+            razlike = _razlike_bloka(postojeci[bid], stavka)
+            if not razlike:
+                stavka_plana['preskoceni'].append(bid)
+                continue
+            blok = dict(postojeci[bid], fotografija_id=stavka['_slika']['fotografija_id'],
+                        potpis=stavka['potpis'], alt=stavka['alt'])
+            zamene[bid] = blok
+            stavka_plana['blokovi'].append({'id': bid, 'posle_bloka': mesto, 'slika': stavka['_slika'],
+                                            'blok': blok, 'razlike': razlike, 'stari': postojeci[bid]})
             continue
         if mesto not in ids:
             stavka_plana['greske'].append(f'блок {mesto!r} (posle_bloka за {stavka["slika"]!r}) '
@@ -255,7 +296,7 @@ def _plan_lekcije(lek, trazeni, stavke, greske, uvoz, sema, validatori):
                 'poreklo': POREKLO_BLOKA, 'sirina': SIRINA_BLOKA}
         novi_po_mestu.setdefault(poslednji_postojeci.get(mesto, mesto), []).append(blok)
         stavka_plana['blokovi'].append({'id': bid, 'posle_bloka': stavka['posle_bloka'], 'slika': stavka['_slika'],
-                                        'blok': blok})
+                                        'blok': blok, 'razlike': []})
     if stavka_plana['greske']:
         greske.extend(stavka_plana['greske'])
         return stavka_plana
@@ -264,8 +305,9 @@ def _plan_lekcije(lek, trazeni, stavke, greske, uvoz, sema, validatori):
         return stavka_plana
     novi_blokovi = []
     for blok in blokovi:
-        novi_blokovi.append(blok)
-        novi_blokovi.extend(novi_po_mestu.get(blok.get('id') if isinstance(blok, dict) else None, []))
+        bid = blok.get('id') if isinstance(blok, dict) else None
+        novi_blokovi.append(zamene.get(bid, blok))
+        novi_blokovi.extend(novi_po_mestu.get(bid, []))
     stavka_plana['sadrzaj'] = dict(lek['sadrzaj'], blokovi=novi_blokovi)
     stavka_plana['akcija'] = 'menja sadrzaj'
     stavka_plana['nova_verzija'] = lek['verzija'] + 1
@@ -360,15 +402,29 @@ def ispisi_plan(plan, izvrsavanje):
                 print(f'      - {g}')
             continue
         if lek['akcija'] == 'isto':
-            print(f'  = {ime}: сви блокови већ постоје ({", ".join(lek["preskoceni"])}) — без нове верзије')
+            print(f'  = {ime}: сви блокови већ постоје ({", ".join(lek["preskoceni"])}) и исти су — без нове верзије')
             continue
-        print(f'  ~ {ime}: verzija {lek["verzija"]} → {lek["nova_verzija"]}, +{len(lek["blokovi"])} блок(ова)')
+        dodati = [b for b in lek['blokovi'] if not b['razlike']]
+        izmenjeni = [b for b in lek['blokovi'] if b['razlike']]
+        red = f'  ~ {ime}: verzija {lek["verzija"]} → {lek["nova_verzija"]}, +{len(dodati)} блок(ова)'
+        if izmenjeni:
+            red += f', ~{len(izmenjeni)} измењен(их)'
+        print(red)
         for b in lek['blokovi']:
             foto_id = b['slika']['fotografija_id']
             foto = f'fotografija #{foto_id}' if foto_id else 'нова фотографија'
-            print(f'      + {b["id"]} после {b["posle_bloka"]} ({foto})')
+            if not b['razlike']:
+                print(f'      + {b["id"]} после {b["posle_bloka"]} ({foto})')
+                continue
+            opis = []
+            if 'slika' in b['razlike']:
+                opis.append(f'замена слике (fotografija #{b["stari"].get("fotografija_id")} → {foto})')
+            tekst = [r for r in b['razlike'] if r != 'slika']
+            if tekst:
+                opis.append(f'промена текста ({", ".join(tekst)})')
+            print(f'      ~ {b["id"]} на истом месту: {"; ".join(opis)}')
         for bid in lek['preskoceni']:
-            print(f'      = {bid} већ постоји — прескочен')
+            print(f'      = {bid} већ постоји, исти — прескочен')
     for g in plan['greske']:
         if not any(g in lek['greske'] for lek in plan['lekcije']):
             print(f'  ! {g}')
@@ -384,8 +440,8 @@ def ispisi_plan(plan, izvrsavanje):
 
 def _argumenti(argv):
     p = argparse.ArgumentParser(description='AI илустрације → Фототека → лекције уџбеника (подразумевано dry-run).')
-    p.add_argument('--mapa', required=True, help='JSON листа {slika, lekcija, posle_bloka, potpis, alt}')
-    p.add_argument('--slike', required=True, help='директоријум са <slika>.png')
+    p.add_argument('--mapa', required=True, help='JSON листа {slika, lekcija, posle_bloka, potpis, alt[, fajl]}')
+    p.add_argument('--slike', required=True, help='директоријум са <slika>.png (или fajl релативно на њега)')
     rezim = p.add_mutually_exclusive_group()
     rezim.add_argument('--dry-run', action='store_true', help='само испиши шта би било урађено (подразумевано)')
     rezim.add_argument('--execute', metavar='IME_BAZE', help='стварно упиши; потврда = име базе на коју је повезано')
