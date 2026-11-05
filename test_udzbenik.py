@@ -112,6 +112,16 @@ def _izvrsi(sql, params=()):
         conn.commit()
 
 
+_IME_BAZE = []
+
+
+def _ime_baze():
+    """Потврда за ``--execute`` = име базе на коју је свита стварно повезана (тест база)."""
+    if not _IME_BAZE:
+        _IME_BAZE.append(_upit('SELECT current_database()')[0][0])
+    return _IME_BAZE[0]
+
+
 def _pokreni_uvoz(*argv):
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
@@ -120,7 +130,7 @@ def _pokreni_uvoz(*argv):
 
 
 def _uvezi_primer():
-    kod, out, err = _pokreni_uvoz('--fajl', str(PRIMER), '--execute', 'mis_db', '--autor', EMAIL)
+    kod, out, err = _pokreni_uvoz('--fajl', str(PRIMER), '--execute', _ime_baze(), '--autor', EMAIL)
     assert kod == 0, err + out
     return out
 
@@ -211,12 +221,21 @@ class UvozTest(_Osnova):
         self.assertIn('+ lekcija kristalografija/kristalni-sistemi (dodaje → verzija 1)', out)
         self.assertIn('2 поглавља, 4 лекција, 4 нових верзија', out)
 
-    def test_execute_zahteva_potvrdu(self):
+    def test_execute_trazi_ime_baze(self):
+        # Потврда је име базе на коју је скрипта стварно повезана (као udzbenik_ai_slike.py),
+        # а не дословно „mis_db“ — на dev-у је база museum_system, на тестовима *_test.
         pre = _brojevi()
-        kod, _, err = _pokreni_uvoz('--fajl', str(PRIMER), '--execute', 'da')
-        self.assertEqual(kod, 2)
-        self.assertIn('mis_db', err)
-        self.assertEqual(_brojevi(), pre)
+        baza = _ime_baze()
+        self.assertTrue(baza.endswith('_test'), baza)
+        for pogresno in ('da', 'mis_db'):
+            kod, _, err = _pokreni_uvoz('--fajl', str(PRIMER), '--execute', pogresno)
+            self.assertEqual(kod, 2, err)
+            self.assertIn(f'дословно име базе „{baza}“', err)
+            self.assertIn(repr(pogresno), err)
+            self.assertEqual(_brojevi(), pre)
+        kod, out, err = _pokreni_uvoz('--fajl', str(PRIMER), '--execute', baza)
+        self.assertEqual(kod, 0, err + out)
+        self.assertNotEqual(_brojevi(), pre)
 
     def test_execute_upisuje_i_ponovni_uvoz_je_idempotentan(self):
         pre = _brojevi()
@@ -243,7 +262,7 @@ class UvozTest(_Osnova):
             p['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'][0]['markdown'] = 'Измењен уводни текст.'
         putanja = _primer_sa_izmenom(izmeni)
         self.addCleanup(os.unlink, putanja)
-        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 0, err)
         posle = _brojevi()
         self.assertEqual(posle['udzbenik_lekcija'], pre['udzbenik_lekcija'])
@@ -261,7 +280,7 @@ class UvozTest(_Osnova):
             p['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'][1]['scena'] = 'nepostojeca'
         putanja = _primer_sa_izmenom(izmeni)
         self.addCleanup(os.unlink, putanja)
-        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 1)
         self.assertEqual(_brojevi(), pre)
         self.assertIn('poglavlja[0].lekcije[0].sadrzaj.blokovi[1].scena', err)
@@ -287,7 +306,7 @@ class UvozTest(_Osnova):
         putanja = _primer_sa_izmenom(pogresno)
         self.addCleanup(os.unlink, putanja)
         pre = _brojevi()
-        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 1)
         self.assertEqual(_brojevi(), pre)
         self.assertIn('poglavlja[1].lekcije[1].sadrzaj.blokovi[3].parametri.poluprecnici', err)
@@ -319,7 +338,7 @@ class UvozTest(_Osnova):
             p['poglavlja'][1]['lekcije'][0]['slug'] = 'nova-lekcija'  # redosled 1 држи mohsova-skala
         putanja = _primer_sa_izmenom(izmeni)
         self.addCleanup(os.unlink, putanja)
-        for rezim in (('--dry-run',), ('--execute', 'mis_db')):
+        for rezim in (('--dry-run',), ('--execute', _ime_baze())):
             kod, out, err = _pokreni_uvoz('--fajl', putanja, *rezim)
             self.assertEqual(kod, 1, rezim)
             self.assertIn('poglavlja[0].redosled: redosled 1', err)
@@ -337,7 +356,7 @@ class UvozTest(_Osnova):
         putanja = _primer_sa_izmenom(izmeni)
         self.addCleanup(os.unlink, putanja)
         pre = _brojevi()
-        kod, out, _ = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, out, _ = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 0)
         self.assertEqual(_brojevi(), pre, 'лекција која није у фајлу се НЕ брише')
         self.assertIn('упозорење: лекција fizicke-osobine/cepljivost-i-prelom', out)
@@ -884,7 +903,7 @@ class IlustracijeTest(_Osnova):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
         self.assertEqual(len(sadrzaj['blokovi']), 29)
-        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--autor', EMAIL)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
         self._prijava()
@@ -915,7 +934,7 @@ class IlustracijeTest(_Osnova):
         self.addCleanup(os.unlink, putanja)
         indeks = {b['id']: i for i, b in enumerate(sadrzaj['blokovi'])}
         pre = _brojevi()
-        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--autor', EMAIL)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 1)
         self.assertEqual(_brojevi(), pre)
         self.assertEqual(_upit('SELECT 1 FROM udzbenik WHERE zbirka = %s', (ZBIRKA_ILUSTRACIJE,)), [])
@@ -1169,7 +1188,7 @@ class LiteraturaApiTest(_Osnova):
         putanja = _primer_sa_izmenom(pokvari)
         self.addCleanup(os.unlink, putanja)
         pre = _brojevi()
-        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 1)
         self.assertEqual(_brojevi(), pre)
         n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
@@ -1213,14 +1232,14 @@ class LiteraturaApiTest(_Osnova):
         putanja = self._primer_sa_literaturom()
         pre = _brojevi()
         with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV):
-            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
         self.assertEqual(kod, 1)
         self.assertIn('SciSearch није подешен', err)
         self.assertEqual(_brojevi(), pre, 'ништа није уписано')
         with mock.patch.dict(os.environ, SCISEARCH_ENV), \
                 mock.patch.object(scisearch_klijent, 'pretrazi',
                                   side_effect=scisearch_klijent.SciSearchGreska('timeout после 4 s')):
-            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
         self.assertEqual(kod, 1)
         self.assertIn('blokovi[5]: SciSearch није одговорио (timeout после 4 s)', err)
         self.assertEqual(_brojevi(), pre)
@@ -1550,7 +1569,7 @@ class SlikaLiteraturaApiTest(_Osnova):
         putanja = _primer_sa_izmenom(pokvari)
         self.addCleanup(os.unlink, putanja)
         pre = _brojevi()
-        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db')
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
         self.assertEqual(kod, 1)
         self.assertEqual(_brojevi(), pre)
         n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
@@ -1579,7 +1598,7 @@ class SlikaLiteraturaApiTest(_Osnova):
         pre = _brojevi()
         with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', lazna_figura), \
                 mock.patch.object(scisearch_klijent, 'pretrazi', side_effect=AssertionError('нема literatura блока')):
-            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
         self.assertEqual(kod, 1)
         self.assertIn('blokovi[6].figura_id: фигура 999999 не постоји у SciSearch-у', err)
         self.assertNotIn('blokovi[5]', err)
@@ -1588,7 +1607,7 @@ class SlikaLiteraturaApiTest(_Osnova):
         def sve_postoje(figura_id):
             return dict(FIGURA_SCISEARCH, id=figura_id)
         with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', sve_postoje):
-            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', 'mis_db', '--proveri-literaturu')
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
         self.assertEqual(kod, 0, err)
         self.assertIn('0 упозорења', out)
         sadrzaj = _upit("SELECT sadrzaj FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
