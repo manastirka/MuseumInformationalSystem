@@ -15,12 +15,20 @@ SciSearch је самосталан сервис са својом базом; �
 Кеш у меморији процеса, 10 минута по (upit, n); кешира се само успех.
 ``isecak`` сме да садржи само ``<mark>`` — све друге тагове клијент уклања
 без обзира на то шта сервис обећава.
+
+Фаза 2 (MIS-UGOVOR-SLIKE.md): ``figura(id)`` чита ``GET /svc/figure/<id>``
+(исти кеш 10 минута, кључ ``('figura', id)``), а ``preuzmi_sliku(id, mala)``
+стримује ``/svc/figure/<id>.jpg`` или ``/svc/figure/<id>/thumb.jpg``:
+timeout 8 s, највише 15 MB, само ``image/jpeg``/``image/png``. Бајтови
+слике иду у LRU кеш до 200 MB да се SciSearch не зове за сваки приказ.
+Токен никад не напушта клијент (ни у лог, ни у изузетак).
 """
 import logging
 import os
 import re
 import threading
 import time
+from collections import OrderedDict
 
 import requests
 
@@ -30,12 +38,21 @@ TIMEOUT_S = 4
 KES_TRAJANJE_S = 10 * 60
 NAJVISE_REZULTATA = 8
 NAJVISE_ZNAKOVA_ISECKA = 400
+NAJVISE_ZNAKOVA_POTPISA = 500
 RAZLOG_NIJE_PODESEN = 'biblioteka nije povezana'
+SLIKA_TIMEOUT_S = 8
+SLIKA_NAJVISE_BAJTOVA = 15 * 1024 * 1024
+SLIKA_KES_NAJVISE_BAJTOVA = 200 * 1024 * 1024
+SLIKA_DOZVOLJENI_TIPOVI = ('image/jpeg', 'image/png')
+_SLIKA_KOMAD = 64 * 1024
 
 _TAG_RE = re.compile(r'<[^>]*>')
 _MARK_RE = re.compile(r'^</?mark>$', re.IGNORECASE)
 _kes = {}
 _kes_brava = threading.Lock()
+_slika_kes = OrderedDict()
+_slika_kes_bajtova = 0
+_slika_kes_brava = threading.Lock()
 
 
 class SciSearchGreska(Exception):
@@ -51,6 +68,14 @@ class SciSearchNijePodesen(SciSearchGreska):
         super().__init__(RAZLOG_NIJE_PODESEN)
 
 
+class SciSearchNemaFigure(SciSearchGreska):
+    """Сервис је одговорио 404: фигура не постоји, скривена је или је ван
+    дозвољених извора — то није пад сервиса."""
+
+    def __init__(self, figura_id):
+        super().__init__(f'figura {figura_id} ne postoji')
+
+
 def _podesavanja():
     url = (os.environ.get('SCISEARCH_URL') or '').strip().rstrip('/')
     token = (os.environ.get('SCISEARCH_SVC_TOKEN') or '').strip()
@@ -63,8 +88,12 @@ def podesen():
 
 
 def ocisti_kes():
+    global _slika_kes_bajtova
     with _kes_brava:
         _kes.clear()
+    with _slika_kes_brava:
+        _slika_kes.clear()
+        _slika_kes_bajtova = 0
 
 
 def ocisti_isecak(isecak):
@@ -171,3 +200,147 @@ def zdravlje():
         return odgovor.json()
     except ValueError as exc:
         raise SciSearchGreska('одговор није JSON') from exc
+
+
+# --------------------------------------------------------------------------
+# Фаза 2: фигуре (слике из литературе) — само метаподаци и проксирани бајтови
+# --------------------------------------------------------------------------
+
+def _figura_id(figura_id):
+    if isinstance(figura_id, bool) or not isinstance(figura_id, int) or figura_id < 1:
+        raise SciSearchGreska('figura_id mora biti ceo broj >= 1')
+    return figura_id
+
+
+def _figura(stavka):
+    """Облик из уговора §1 (/svc/figure/<id>) — само позната поља; ``potpis``
+    је чист текст (тагове уклањамо као и код исечка)."""
+    potpis = _TAG_RE.sub('', str(stavka.get('potpis') or ''))
+    return {
+        'id': _ceo(stavka.get('id')),
+        'doc_id': _ceo(stavka.get('doc_id')),
+        'strana': _ceo(stavka.get('strana')),
+        'sirina': _ceo(stavka.get('sirina')),
+        'visina': _ceo(stavka.get('visina')),
+        'vrsta': str(stavka.get('vrsta') or ''),
+        'potpis': potpis[:NAJVISE_ZNAKOVA_POTPISA],
+        'naslov': str(stavka.get('naslov') or ''),
+        'autor': str(stavka.get('autor') or ''),
+        'godina': _ceo(stavka.get('godina')),
+    }
+
+
+def figura(figura_id):
+    """Метаподаци једне фигуре (``GET /svc/figure/<id>``); кеш 10 минута.
+    Диже SciSearchNijePodesen / SciSearchNemaFigure (404) / SciSearchGreska."""
+    url, token = _podesavanja()
+    if not (url and token):
+        raise SciSearchNijePodesen()
+    figura_id = _figura_id(figura_id)
+    kljuc = ('figura', figura_id)
+    sada = time.monotonic()
+    with _kes_brava:
+        pogodak = _kes.get(kljuc)
+        if pogodak and pogodak[0] > sada:
+            return dict(pogodak[1])
+    try:
+        odgovor = requests.get(f'{url}/svc/figure/{figura_id}', headers={'X-Svc-Token': token},
+                               timeout=TIMEOUT_S)
+    except requests.Timeout as exc:
+        raise SciSearchGreska(f'timeout после {TIMEOUT_S} s') from exc
+    except requests.RequestException as exc:
+        raise SciSearchGreska(f'мрежна грешка: {exc}') from exc
+    if odgovor.status_code == 404:
+        raise SciSearchNemaFigure(figura_id)
+    if odgovor.status_code != 200:
+        raise SciSearchGreska(f'HTTP {odgovor.status_code}')
+    try:
+        telo = odgovor.json()
+    except ValueError as exc:
+        raise SciSearchGreska('одговор није JSON') from exc
+    if not isinstance(telo, dict) or _ceo(telo.get('id')) is None:
+        raise SciSearchGreska('одговор без поља id')
+    podaci = _figura(telo)
+    with _kes_brava:
+        _kes[kljuc] = (sada + KES_TRAJANJE_S, podaci)
+    return dict(podaci)
+
+
+def _slika_iz_kesa(kljuc):
+    with _slika_kes_brava:
+        pogodak = _slika_kes.get(kljuc)
+        if pogodak is not None:
+            _slika_kes.move_to_end(kljuc)
+        return pogodak
+
+
+def _slika_u_kes(kljuc, bajtovi, tip):
+    global _slika_kes_bajtova
+    if len(bajtovi) > SLIKA_KES_NAJVISE_BAJTOVA:
+        return
+    with _slika_kes_brava:
+        staro = _slika_kes.pop(kljuc, None)
+        if staro is not None:
+            _slika_kes_bajtova -= len(staro[0])
+        _slika_kes[kljuc] = (bajtovi, tip)
+        _slika_kes_bajtova += len(bajtovi)
+        while _slika_kes_bajtova > SLIKA_KES_NAJVISE_BAJTOVA and _slika_kes:
+            _, (izbaceno, _tip) = _slika_kes.popitem(last=False)
+            _slika_kes_bajtova -= len(izbaceno)
+
+
+def velicina_kesa_slika():
+    with _slika_kes_brava:
+        return _slika_kes_bajtova
+
+
+def preuzmi_sliku(figura_id, mala=False):
+    """(бајтови, content-type) слике фигуре — ``/svc/figure/<id>.jpg`` или
+    ``/svc/figure/<id>/thumb.jpg``. Стрим са timeout-ом 8 s, прекид изнад
+    15 MB, одбијање свега што није image/jpeg|png. LRU кеш до 200 MB.
+    Диже SciSearchNijePodesen / SciSearchNemaFigure (404) / SciSearchGreska."""
+    url, token = _podesavanja()
+    if not (url and token):
+        raise SciSearchNijePodesen()
+    figura_id = _figura_id(figura_id)
+    kljuc = (figura_id, bool(mala))
+    pogodak = _slika_iz_kesa(kljuc)
+    if pogodak is not None:
+        return pogodak
+    putanja = f'/svc/figure/{figura_id}/thumb.jpg' if mala else f'/svc/figure/{figura_id}.jpg'
+    try:
+        odgovor = requests.get(url + putanja, headers={'X-Svc-Token': token},
+                               timeout=SLIKA_TIMEOUT_S, stream=True)
+    except requests.Timeout as exc:
+        raise SciSearchGreska(f'timeout после {SLIKA_TIMEOUT_S} s') from exc
+    except requests.RequestException as exc:
+        raise SciSearchGreska(f'мрежна грешка: {exc}') from exc
+    try:
+        if odgovor.status_code == 404:
+            raise SciSearchNemaFigure(figura_id)
+        if odgovor.status_code != 200:
+            raise SciSearchGreska(f'HTTP {odgovor.status_code}')
+        tip = (odgovor.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        if tip not in SLIKA_DOZVOLJENI_TIPOVI:
+            raise SciSearchGreska(f'nedozvoljen tip sadržaja: {tip or "?"}')
+        duzina = odgovor.headers.get('Content-Length')
+        if duzina and duzina.isdigit() and int(duzina) > SLIKA_NAJVISE_BAJTOVA:
+            raise SciSearchGreska(f'slika veća od {SLIKA_NAJVISE_BAJTOVA // (1024 * 1024)} MB')
+        delovi, ukupno = [], 0
+        try:
+            for deo in odgovor.iter_content(_SLIKA_KOMAD):
+                if not deo:
+                    continue
+                ukupno += len(deo)
+                if ukupno > SLIKA_NAJVISE_BAJTOVA:
+                    raise SciSearchGreska(f'slika veća od {SLIKA_NAJVISE_BAJTOVA // (1024 * 1024)} MB')
+                delovi.append(deo)
+        except requests.RequestException as exc:
+            raise SciSearchGreska(f'prekinut prenos: {exc}') from exc
+    finally:
+        odgovor.close()
+    bajtovi = b''.join(delovi)
+    if not bajtovi:
+        raise SciSearchGreska('prazna slika')
+    _slika_u_kes(kljuc, bajtovi, tip)
+    return bajtovi, tip

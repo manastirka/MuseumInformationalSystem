@@ -3,12 +3,14 @@
 HTML: листа уџбеника и ЈЕДНА љуска (``udzbenik.html``) за уџбеник и дубоки
 линк на лекцију — мотор из static/udzbenik/ црта садржај. API по брифу §4:
 структура, лекција са разрешеним блоковима, напредак (POST, CSRF), CIF
-структуре минерала. Грешке API-ја су увек JSON ``{"greska": ...}`` са
-правим статусом (401/403/404/503), никад 200.
+структуре минерала, proxy слике из литературе (SciSearch, само интерно).
+Грешке API-ја су увек JSON ``{"greska": ...}`` са правим статусом
+(401/403/404/503), никад 200.
 """
 from flask import (Blueprint, Response, abort, flash, jsonify, redirect, render_template,
                    request, session, url_for)
 
+import scisearch_klijent
 import udzbenik
 from rate_limit_ext import limiter
 
@@ -145,4 +147,39 @@ def api_struktura_minerala(mineral):
     odgovor = Response(cif, mimetype='text/plain')
     odgovor.headers['Content-Type'] = 'text/plain; charset=utf-8'
     odgovor.headers['Cache-Control'] = 'private, max-age=3600'
+    return odgovor
+
+
+@udzbenik_bp.route(API_KOREN + '/literatura-slika/<int:figura_id>')
+@limiter.limit("120 per minute")
+def api_literatura_slika(figura_id):
+    return _literatura_slika(figura_id, mala=False)
+
+
+@udzbenik_bp.route(API_KOREN + '/literatura-slika/<int:figura_id>/thumb')
+@limiter.limit("120 per minute")
+def api_literatura_slika_mala(figura_id):
+    return _literatura_slika(figura_id, mala=True)
+
+
+def _literatura_slika(figura_id, mala):
+    """Proxy слике из SciSearch-а (MIS-UGOVOR-SLIKE.md §2): само пријављени са
+    модулом уџбеника; анонимном 404 (рута му „не постоји“). Токен иде само
+    ка SciSearch-у, клијенту никад; одговор је ``private`` за кеш прегледача."""
+    if not udzbenik.prijavljen():
+        return _greska(404, 'Не постоји')
+    if not udzbenik.ima_modul():
+        return _greska(403, 'Немате дозволу за модул уџбеника')
+    try:
+        bajtovi, tip = scisearch_klijent.preuzmi_sliku(figura_id, mala=mala)
+    except scisearch_klijent.SciSearchNemaFigure:
+        return _greska(404, 'Слика не постоји у библиотеци')
+    except scisearch_klijent.SciSearchNijePodesen:
+        return _greska(503, 'Библиотека није повезана')
+    except scisearch_klijent.SciSearchGreska as exc:
+        udzbenik.logger.warning('Уџбеник: слика из литературе %s није преузета: %s', figura_id, exc.razlog)
+        return _greska(503, 'Библиотека тренутно није доступна')
+    odgovor = Response(bajtovi, mimetype=tip)
+    odgovor.headers['Cache-Control'] = 'private, max-age=604800'
+    odgovor.headers['Content-Length'] = str(len(bajtovi))
     return odgovor

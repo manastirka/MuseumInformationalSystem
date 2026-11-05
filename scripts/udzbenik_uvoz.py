@@ -20,8 +20,10 @@
 - подразумевано је dry-run (испис плана, нула измена); ``--execute mis_db``
   (дословно) ради све у ЈЕДНОЈ трансакцији;
 - ``--proveri-literaturu`` (опционо) за сваки блок ``literatura`` пита
-  SciSearch: 0 резултата је УПОЗОРЕЊЕ (увоз иде даље); неподешен клијент или
-  пад сервиса је грешка — тражена провера се није могла обавити, ништа се
+  SciSearch: 0 резултата је УПОЗОРЕЊЕ (увоз иде даље); за сваки блок
+  ``slika-literatura`` проверава да ``figura_id`` постоји — непостојећа
+  (скривена, ван извора) фигура је ГРЕШКА; неподешен клијент или пад
+  сервиса је грешка — тражена провера се није могла обавити, ништа се
   не упише.
 """
 import argparse
@@ -237,19 +239,23 @@ def _proveri_pravila(blokovi, putanja, greske):
             _bravais_miller(par, p, greske)
 
 
+TIPOVI_LITERATURE = ('literatura', 'slika-literatura')
+
+
 def _blokovi_literature(podaci):
-    """(путања, блок) за сваки блок ``literatura`` у исправно обликованом фајлу."""
+    """(путања, блок) за сваки блок ``literatura``/``slika-literatura`` у
+    исправно обликованом фајлу."""
     for i, p in enumerate(podaci.get('poglavlja') or []):
         for j, lek in enumerate(p.get('lekcije') or []):
             blokovi = (lek.get('sadrzaj') or {}).get('blokovi') or []
             for k, blok in enumerate(blokovi):
-                if isinstance(blok, dict) and blok.get('tip') == 'literatura':
+                if isinstance(blok, dict) and blok.get('tip') in TIPOVI_LITERATURE:
                     yield f'poglavlja[{i}].lekcije[{j}].sadrzaj.blokovi[{k}]', blok
 
 
 def proveri_literaturu(podaci):
-    """(упозорења, грешке) — упозорење за блок без резултата, грешка када
-    SciSearch није подешен или не одговара."""
+    """(упозорења, грешке) — упозорење за блок без резултата, грешка за
+    непостојећу фигуру и када SciSearch није подешен или не одговара."""
     import scisearch_klijent
 
     upozorenja, greske = [], []
@@ -257,6 +263,14 @@ def proveri_literaturu(podaci):
         return upozorenja, ['SciSearch није подешен (SCISEARCH_URL / SCISEARCH_SVC_TOKEN) — '
                             '--proveri-literaturu се не може обавити']
     for putanja, blok in _blokovi_literature(podaci):
+        if blok.get('tip') == 'slika-literatura':
+            try:
+                scisearch_klijent.figura(blok['figura_id'])
+            except scisearch_klijent.SciSearchNemaFigure:
+                greske.append(f'{putanja}.figura_id: фигура {blok["figura_id"]} не постоји у SciSearch-у')
+            except scisearch_klijent.SciSearchGreska as exc:
+                greske.append(f'{putanja}: SciSearch није одговорио ({exc.razlog})')
+            continue
         try:
             rezultati = scisearch_klijent.pretrazi(blok['upit'], blok.get('broj', 3))
         except scisearch_klijent.SciSearchGreska as exc:
@@ -516,7 +530,8 @@ def _argumenti(argv):
     p.add_argument('--execute', metavar='POTVRDA', help=f'стварно упиши; потврда мора бити дословно „{POTVRDA}“')
     p.add_argument('--autor', default=None, help='e-mail аутора за udzbenik.autor_email / verzija.autor_email')
     p.add_argument('--proveri-literaturu', action='store_true',
-                   help='за сваки блок literatura питај SciSearch; 0 резултата = упозорење')
+                   help='за сваки блок literatura питај SciSearch (0 резултата = упозорење); '
+                        'за slika-literatura провери да figura_id постоји')
     return p.parse_args(argv)
 
 
