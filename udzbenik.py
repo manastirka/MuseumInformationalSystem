@@ -15,14 +15,21 @@ static/udzbenik/) чита искључиво API описан у брифу (§
   пад SciSearch-а не обара лекцију — блок добија ``nedostupan`` + ``razlog``);
 - блок ``slika-literatura`` (MIS-UGOVOR-SLIKE.md §2) исто, али САМО ИНТЕРНО:
   анонимном читаоцу се блок потпуно изоставља из одговора; слика се не
-  копира, служи је proxy рута ``/api/udzbenik/literatura-slika/<id>``.
+  копира, служи је proxy рута ``/api/udzbenik/literatura-slika/<id>``;
+- блок ``infografika`` (INFOGRAFIKA-UGOVOR.md §2): сваки ``<Slika>`` у блоку
+  (glavna, glavna.lupa, primeri[], mikroskop, proces, srbija.stavke[]) се
+  разрешава истим правилима као ``slika`` / ``primerak`` / ``slika-literatura``;
+  недоступна слика добија ``nedostupna`` + ``razlog`` НА ТОМ МЕСТУ, блок се
+  никад не обара; анонимном читаоцу се ``figura_id`` слике уклањају.
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
 ``tip``-а пролази са ``nepoznat: true``.
 """
+import copy
 import json
 import logging
+from collections import namedtuple
 from pathlib import Path
 
 from flask import session, url_for
@@ -46,6 +53,10 @@ RAZLOG_LITERATURA_PRIJAVA = 'samo za prijavljene korisnike'
 RAZLOG_LITERATURA_NEDOSTUPNA = 'biblioteka trenutno nije dostupna'
 RAZLOG_LITERATURA_PRAZNO = 'nema rezultata'
 RAZLOG_FIGURA_NE_POSTOJI = 'slika ne postoji u biblioteci'
+RAZLOG_PRIMERAK_BEZ_FOTOGRAFIJE = 'primerak nema fotografiju'
+RAZLOG_NEPOZNAT_OBLIK_SLIKE = 'nepoznat oblik slike'
+TAG_AI_ILUSTRACIJA = 'ai-ilustracija'
+POREKLO_AI = 'ai-ilustracija'
 
 
 def ucitaj_semu():
@@ -288,6 +299,8 @@ def razresi_blokove(cur, blokovi):
             razresen = _razresi_sliku_literature(blok)
             if razresen is not None:
                 izlaz.append(razresen)
+        elif tip == 'infografika':
+            izlaz.append(_razresi_infografiku(cur, blok))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -307,25 +320,40 @@ def _ime_autora(cur, email):
     return (red[0] if red and red[0] else email)
 
 
-def _razresi_sliku(cur, blok):
+def _nadji_fotografiju(cur, fotografija_id):
+    """(поља за одговор, None) или (None, разлог) — иста правила видљивости
+    за блок ``slika`` и за ``<Slika>`` инфографике."""
     import fototeka_views
 
     if not sme_fototeku():
-        return _nedostupan(blok, RAZLOG_BEZ_FOTOTEKE)
+        return None, RAZLOG_BEZ_FOTOTEKE
     cur.execute("""SELECT id, width, height, autor_email, vidljivost, obrisana, status
-                   FROM fotografije WHERE id = %s""", (blok.get('fotografija_id'),))
+                   FROM fotografije WHERE id = %s""", (fotografija_id,))
     foto = _red(cur)
     if foto is None or foto['obrisana']:
-        return _nedostupan(blok, 'фотографија не постоји')
+        return None, 'фотографија не постоји'
     if not fototeka_views.can_view_photo(session, foto):
-        return _nedostupan(blok, 'приватна фотографија')
-    return dict(
-        blok,
-        url=url_for('fototeka.fototeka_media', fotografija_id=foto['id'], kind=DERIVAT_VELIKI),
-        url_mala=url_for('fototeka.fototeka_media', fotografija_id=foto['id'], kind=DERIVAT_MALI),
-        sirina_px=foto['width'], visina_px=foto['height'],
-        autor=_ime_autora(cur, foto['autor_email']),
-    )
+        return None, 'приватна фотографија'
+    return {
+        'url': url_for('fototeka.fototeka_media', fotografija_id=foto['id'], kind=DERIVAT_VELIKI),
+        'url_mala': url_for('fototeka.fototeka_media', fotografija_id=foto['id'], kind=DERIVAT_MALI),
+        'sirina_px': foto['width'], 'visina_px': foto['height'],
+        'autor': _ime_autora(cur, foto['autor_email']),
+    }, None
+
+
+def _razresi_sliku(cur, blok):
+    podaci, razlog = _nadji_fotografiju(cur, blok.get('fotografija_id'))
+    if podaci is None:
+        return _nedostupan(blok, razlog)
+    return dict(blok, **podaci)
+
+
+def _ai_ilustracija(cur, fotografija_id):
+    """Ознака AI на фотографији = таг ``ai-ilustracija`` (udzbenik_ai_slike.py)."""
+    cur.execute('SELECT 1 FROM fotografija_tagovi WHERE fotografija_id = %s AND lower(tag) = %s',
+                (fotografija_id, TAG_AI_ILUSTRACIJA))
+    return cur.fetchone() is not None
 
 
 def _fotografije_primerka(cur, zbirka, zapis, katalog):
@@ -339,7 +367,7 @@ def _fotografije_primerka(cur, zbirka, zapis, katalog):
     else:
         uslov = "(v.database_name = %s AND v.inventarni_broj = %s)"
         parametri = [zbirka, str(katalog or '')]
-    sql = f"""SELECT DISTINCT f.id FROM foto_veza_predmet v
+    sql = f"""SELECT DISTINCT f.id, f.width, f.height FROM foto_veza_predmet v
               JOIN fotografije f ON f.id = v.fotografija_id
               WHERE {uslov} AND f.obrisana = FALSE"""
     vidljivost, vid_parametri = fototeka_views._visibility_filter(session, 'f')
@@ -353,21 +381,29 @@ def _fotografije_primerka(cur, zbirka, zapis, katalog):
         'id': red[0],
         'url': url_for('fototeka.fototeka_media', fotografija_id=red[0], kind=DERIVAT_VELIKI),
         'url_mala': url_for('fototeka.fototeka_media', fotografija_id=red[0], kind=DERIVAT_MALI),
+        'sirina_px': red[1], 'visina_px': red[2],
     } for red in cur.fetchall()]
 
 
-def _razresi_primerak(cur, blok):
-    zbirka = museum_qr.normalizuj_zbirku(blok.get('zbirka'))
+def _nadji_primerak(zbirka_sirovo, objekat_id):
+    """(zbirka, zapis, opis, None) или (zbirka, None, None, разлог)."""
+    zbirka = museum_qr.normalizuj_zbirku(zbirka_sirovo)
     if not museum_qr.korisnik_ima_pristup(zbirka):
-        return _nedostupan(blok, 'nema prava na zbirku')
+        return zbirka, None, None, 'nema prava na zbirku'
     try:
-        zapis = museum_qr.dohvati_zapis(zbirka, blok.get('objekat_id'))
+        zapis = museum_qr.dohvati_zapis(zbirka, objekat_id)
     except Exception as exc:  # noqa: BLE001 - примерак не сме да сруши лекцију
-        logger.warning('Уџбеник: примерак %s/%s није дохваћен: %s', zbirka, blok.get('objekat_id'), exc)
+        logger.warning('Уџбеник: примерак %s/%s није дохваћен: %s', zbirka, objekat_id, exc)
         zapis = None
     if zapis is None:
-        return _nedostupan(blok, 'примерак не постоји')
-    opis = museum_qr.opis_zapisa(zbirka, zapis)
+        return zbirka, None, None, 'примерак не постоји'
+    return zbirka, zapis, museum_qr.opis_zapisa(zbirka, zapis), None
+
+
+def _razresi_primerak(cur, blok):
+    zbirka, zapis, opis, razlog = _nadji_primerak(blok.get('zbirka'), blok.get('objekat_id'))
+    if zapis is None:
+        return _nedostupan(blok, razlog)
     katalog = opis.get('katalog') or ''
     razresen = dict(
         blok,
@@ -410,6 +446,24 @@ def sme_sliku_literature():
     return prijavljen() and ima_modul()
 
 
+def _nadji_figuru(figura_id, blok_id):
+    """(фигура из SciSearch-а, None) или (None, разлог); за пријављеног."""
+    try:
+        return scisearch_klijent.figura(figura_id), None
+    except scisearch_klijent.SciSearchNijePodesen:
+        return None, scisearch_klijent.RAZLOG_NIJE_PODESEN
+    except scisearch_klijent.SciSearchNemaFigure:
+        return None, RAZLOG_FIGURA_NE_POSTOJI
+    except Exception as exc:  # noqa: BLE001 - библиотека не сме да сруши лекцију
+        logger.warning('Уџбеник: SciSearch фигура %r за блок %s није успела: %s', figura_id, blok_id, exc)
+        return None, RAZLOG_LITERATURA_NEDOSTUPNA
+
+
+def _izvor_figure(fig):
+    return {'naslov': fig['naslov'], 'autor': fig['autor'], 'godina': fig['godina'],
+            'strana': fig['strana'], 'potpis_izvora': fig['potpis']}
+
+
 def _razresi_sliku_literature(blok):
     """Слика из SciSearch-а (MIS-UGOVOR-SLIKE.md §2). Анонимни → None (блок се
     изоставља); пријављен добија ``izvor`` + ``slika``/``sicicka`` (МИС-ове
@@ -417,24 +471,118 @@ def _razresi_sliku_literature(blok):
     if not prijavljen():
         return None
     figura_id = blok.get('figura_id')
-    try:
-        fig = scisearch_klijent.figura(figura_id)
-    except scisearch_klijent.SciSearchNijePodesen:
-        return _nedostupan(blok, scisearch_klijent.RAZLOG_NIJE_PODESEN)
-    except scisearch_klijent.SciSearchNemaFigure:
-        return _nedostupan(blok, RAZLOG_FIGURA_NE_POSTOJI)
-    except Exception as exc:  # noqa: BLE001 - библиотека не сме да сруши лекцију
-        logger.warning('Уџбеник: SciSearch фигура %r за блок %s није успела: %s',
-                       figura_id, blok.get('id'), exc)
-        return _nedostupan(blok, RAZLOG_LITERATURA_NEDOSTUPNA)
+    fig, razlog = _nadji_figuru(figura_id, blok.get('id'))
+    if fig is None:
+        return _nedostupan(blok, razlog)
     return dict(
         blok,
-        izvor={'naslov': fig['naslov'], 'autor': fig['autor'], 'godina': fig['godina'],
-               'strana': fig['strana'], 'potpis_izvora': fig['potpis']},
+        izvor=_izvor_figure(fig),
         slika=url_for('udzbenik.api_literatura_slika', figura_id=figura_id),
         sicicka=url_for('udzbenik.api_literatura_slika_mala', figura_id=figura_id),
         sirina_px=fig['sirina'], visina_px=fig['visina'],
     )
+
+
+# --------------------------------------------------------------------------
+# Инфографика (INFOGRAFIKA-UGOVOR.md §2)
+# --------------------------------------------------------------------------
+
+MestoSlike = namedtuple('MestoSlike', 'putanja kontejner kljuc opciono')
+"""Једно место ``<Slika>`` у блоку: ``kontejner[kljuc]`` је слика; ``opciono``
+је (речник, кључ) који се брише кад слика сме да изостане (lupa, primeri[].slika,
+srbija.stavke[].slika), иначе None (glavna, mikroskop, proces — место остаје и
+добија ``nedostupna``)."""
+
+
+def mesta_slika(blok):
+    """Сва места ``<Slika>`` у блоку ``infografika``, у редоследу уговора;
+    користе га и API (разрешавање) и увоз (провера референци). Отпорно на
+    погрешан облик — шема такве блокове већ пријави."""
+    glavna = blok.get('glavna')
+    if isinstance(glavna, dict):
+        yield MestoSlike('glavna.slika', glavna, 'slika', None)
+        if isinstance(glavna.get('lupa'), dict):
+            yield MestoSlike('glavna.lupa.slika', glavna['lupa'], 'slika', (glavna, 'lupa'))
+    if isinstance(blok.get('primeri'), list):
+        for i, primer in enumerate(blok['primeri']):
+            if isinstance(primer, dict) and 'slika' in primer:
+                yield MestoSlike(f'primeri[{i}].slika', primer, 'slika', (primer, 'slika'))
+    for deo in ('mikroskop', 'proces'):
+        if isinstance(blok.get(deo), dict):
+            yield MestoSlike(f'{deo}.slika', blok[deo], 'slika', None)
+    srbija = blok.get('srbija')
+    if isinstance(srbija, dict) and isinstance(srbija.get('stavke'), list):
+        for i, stavka in enumerate(srbija['stavke']):
+            if isinstance(stavka, dict) and 'slika' in stavka:
+                yield MestoSlike(f'srbija.stavke[{i}].slika', stavka, 'slika', (stavka, 'slika'))
+
+
+def _nedostupna(slika, razlog):
+    return dict(slika, nedostupna=True, razlog=razlog)
+
+
+def _razresi_sliku_infografike(cur, slika, blok_id):
+    """Један ``<Slika>``: ``url``, ``url_mala``, ``sirina_px``, ``visina_px``
+    (+ ``izvor`` за фигуру, + ``poreklo`` за AI фотографију) или
+    ``nedostupna`` + ``razlog``. Ауторова поља (alt, референца) остају."""
+    if 'fotografija_id' in slika:
+        podaci, razlog = _nadji_fotografiju(cur, slika['fotografija_id'])
+        fotografija_id = slika['fotografija_id']
+    elif 'primerak' in slika:
+        podaci, razlog = _prva_fotografija_primerka(cur, slika['primerak'])
+        fotografija_id = None if podaci is None else podaci['fotografija_id']
+    elif 'figura_id' in slika:
+        fig, razlog = _nadji_figuru(slika['figura_id'], blok_id)
+        podaci = None if fig is None else {
+            'url': url_for('udzbenik.api_literatura_slika', figura_id=slika['figura_id']),
+            'url_mala': url_for('udzbenik.api_literatura_slika_mala', figura_id=slika['figura_id']),
+            'sirina_px': fig['sirina'], 'visina_px': fig['visina'], 'izvor': _izvor_figure(fig),
+        }
+        fotografija_id = None
+    else:
+        podaci, razlog, fotografija_id = None, RAZLOG_NEPOZNAT_OBLIK_SLIKE, None
+    if podaci is None:
+        return _nedostupna(slika, razlog)
+    if fotografija_id is not None and _ai_ilustracija(cur, fotografija_id):
+        podaci['poreklo'] = POREKLO_AI
+    return dict(slika, **podaci)
+
+
+def _prva_fotografija_primerka(cur, primerak):
+    if not isinstance(primerak, dict):
+        return None, RAZLOG_NEPOZNAT_OBLIK_SLIKE
+    zbirka, zapis, opis, razlog = _nadji_primerak(primerak.get('zbirka'), primerak.get('objekat_id'))
+    if zapis is None:
+        return None, razlog
+    if not sme_fototeku():
+        return None, RAZLOG_BEZ_FOTOTEKE
+    fotografije = _fotografije_primerka(cur, zbirka, zapis, opis.get('katalog') or '')
+    if not fotografije:
+        return None, RAZLOG_PRIMERAK_BEZ_FOTOGRAFIJE
+    prva = fotografije[0]
+    return {'fotografija_id': prva['id'], 'url': prva['url'], 'url_mala': prva['url_mala'],
+            'sirina_px': prva['sirina_px'], 'visina_px': prva['visina_px']}, None
+
+
+def _razresi_infografiku(cur, blok):
+    """Блок се враћа цео, са сваком сликом разрешеном на свом месту; анонимном
+    читаоцу се ``figura_id`` слике уклањају (опционо место нестаје, обавезно
+    добија ``nedostupna`` без ``figura_id``)."""
+    izlaz = copy.deepcopy(blok)
+    for mesto in list(mesta_slika(izlaz)):
+        slika = mesto.kontejner.get(mesto.kljuc)
+        if not isinstance(slika, dict):
+            continue
+        if 'figura_id' in slika and not prijavljen():
+            if mesto.opciono is not None:
+                roditelj, kljuc = mesto.opciono
+                del roditelj[kljuc]
+            else:
+                bez_figure = {k: v for k, v in slika.items() if k != 'figura_id'}
+                mesto.kontejner[mesto.kljuc] = _nedostupna(bez_figure, RAZLOG_LITERATURA_PRIJAVA)
+            continue
+        mesto.kontejner[mesto.kljuc] = _razresi_sliku_infografike(cur, slika, blok.get('id'))
+    return izlaz
 
 
 # --------------------------------------------------------------------------
