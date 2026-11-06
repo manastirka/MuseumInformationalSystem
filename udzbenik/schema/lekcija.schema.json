@@ -53,7 +53,8 @@
             "napomena",
             "dijagram",
             "literatura",
-            "slika-literatura"
+            "slika-literatura",
+            "infografika"
           ]
         }
       },
@@ -84,6 +85,9 @@
         },
         {
           "$ref": "#/$defs/slika-literatura"
+        },
+        {
+          "$ref": "#/$defs/infografika"
         }
       ]
     },
@@ -1876,6 +1880,393 @@
             "pola"
           ],
           "default": "puna"
+        }
+      }
+    },
+    "infografika-slika": {
+      "description": "<Slika> infografike — tačno jedan od tri oblika, plus opciono alt. Server pri čitanju dodaje url, url_mala, sirina_px, visina_px (+ izvor za figura_id, + poreklo \"ai-ilustracija\" ako fotografija u Fototeci nosi tu oznaku) ili nedostupna: true + razlog NA TOM MESTU — blok se nikad ne obara zbog jedne slike. Pravila vidljivosti kao za blokove slika / primerak / slika-literatura. Anonimni čitalac: figura_id slike se uklanjaju (opciono mesto nestaje, obavezno mesto dobija nedostupna + razlog bez figura_id).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fotografija_id"
+          ],
+          "properties": {
+            "fotografija_id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "fotografije.id u Fototeci"
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Tekstualna zamena; obavezna ako je slika jedini nosilac informacije."
+            }
+          },
+          "description": "Fotografija iz Fototeke (prava fotografija ili AI vizual sa oznakom porekla)."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "primerak"
+          ],
+          "properties": {
+            "primerak": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "zbirka",
+                "objekat_id"
+              ],
+              "properties": {
+                "zbirka": {
+                  "type": "string",
+                  "minLength": 2,
+                  "description": "Kanonski ključ zbirke kao u bloku primerak."
+                },
+                "objekat_id": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Tekstualna zamena; obavezna ako je slika jedini nosilac informacije."
+            }
+          },
+          "description": "Prva fotografija primerka iz zbirke."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "figura_id"
+          ],
+          "properties": {
+            "figura_id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "figures.id u SciSearch-u (/svc/figure/<id>)."
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Tekstualna zamena; obavezna ako je slika jedini nosilac informacije."
+            }
+          },
+          "description": "Slika iz SciSearch-a — samo prijavljeni; anonimnom čitaocu se izostavlja."
+        }
+      ]
+    },
+    "ikona": {
+      "enum": [
+        "sastav",
+        "sistem",
+        "tvrdoca",
+        "gustina",
+        "boja",
+        "sjaj",
+        "ogreb",
+        "cepljivost",
+        "temperatura",
+        "pritisak",
+        "voda",
+        "struktura",
+        "optika",
+        "simetrija",
+        "lokalitet",
+        "vreme",
+        "mera",
+        "opasnost",
+        "cuvanje",
+        "alat"
+      ],
+      "description": "IkonaEnum — motor crta inline SVG ikonu, bez fontova sa strane."
+    },
+    "infografika": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "naslov",
+        "podnaslov",
+        "glavna",
+        "osobine",
+        "poruka"
+      ],
+      "additionalProperties": false,
+      "description": "Infografika na početku lekcije (INFOGRAFIKA-UGOVOR.md): AI/prave slike bez teksta + pravi tekst. PRAVILO UVOZA (van šeme, proverava scripts/udzbenik_uvoz.py): najviše jedan blok infografika po lekciji i mora biti PRVI blok (blokovi[0]). Svaki <Slika> se razrešava na serveru (vidi $defs/infografika-slika).",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "infografika"
+        },
+        "naslov": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "podnaslov": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Definicija iz lekcije."
+        },
+        "glavna": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "slika"
+          ],
+          "properties": {
+            "slika": {
+              "$ref": "#/$defs/infografika-slika"
+            },
+            "lupa": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "slika"
+              ],
+              "properties": {
+                "slika": {
+                  "$ref": "#/$defs/infografika-slika"
+                },
+                "natpis": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                }
+              },
+              "description": "Krug-lupa: detalj glavne slike sa natpisom."
+            }
+          }
+        },
+        "osobine": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ikona",
+              "naziv",
+              "vrednost"
+            ],
+            "properties": {
+              "ikona": {
+                "$ref": "#/$defs/ikona"
+              },
+              "naziv": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "vrednost": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          },
+          "description": "Tabela osobina sa ikonama (3–8)."
+        },
+        "primeri": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "naziv",
+              "formula"
+            ],
+            "properties": {
+              "naziv": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "formula": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "napomena": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "slika": {
+                "$ref": "#/$defs/infografika-slika"
+              }
+            }
+          }
+        },
+        "mikroskop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "slika",
+            "oznake"
+          ],
+          "properties": {
+            "naslov": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "slika": {
+              "$ref": "#/$defs/infografika-slika"
+            },
+            "oznake": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y",
+                  "tekst"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "tekst": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                }
+              },
+              "description": "Pozicije u % širine/visine slike; motor crta pokazne linije."
+            }
+          }
+        },
+        "proces": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "naslov",
+            "slika",
+            "koraci"
+          ],
+          "properties": {
+            "naslov": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "slika": {
+              "$ref": "#/$defs/infografika-slika"
+            },
+            "koraci": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 5,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "description": "Na slici su samo brojevi 1–n u krugovima; tekst koraka je ovde."
+            }
+          }
+        },
+        "srbija": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stavke"
+          ],
+          "properties": {
+            "naslov": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "stavke": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 6,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "naziv"
+                ],
+                "properties": {
+                  "naziv": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "napomena": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "slika": {
+                    "$ref": "#/$defs/infografika-slika"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "par": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "naslov",
+            "levo",
+            "desno"
+          ],
+          "properties": {
+            "naslov": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "levo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "desno": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "description": "Npr. polimorfni par."
+        },
+        "poruka": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "description": "Ključna poruka u 1–2 rečenice."
         }
       }
     }

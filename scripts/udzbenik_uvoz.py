@@ -10,7 +10,9 @@
   фотографија у Фототеци и примерака у збирци, правила која шема не изражава:
   ``karta-lokaliteta`` са oblast=srbija има све тачке у оквиру Србије,
   ``paragenetska-sekvenca`` има ``od <= do < broj faza``, ``habitus`` са четири
-  индекса има ``i = -(h+k)``); све грешке се испишу одједном,
+  индекса има ``i = -(h+k)``, ``infografika`` највише једна по лекцији и
+  обавезно први блок, а свака њена ``<Slika>`` референца постоји); све
+  грешке се испишу одједном,
   са путањом (``poglavlja[1].lekcije[0].blokovi[3]``), и ништа се не упише;
 - upsert по ``zbirka`` → ``slug`` поглавља → ``slug`` лекције; лекција чији се
   ``sadrzaj`` променио добија ``verzija + 1`` и нов ред у
@@ -22,7 +24,8 @@
   као у udzbenik_ai_slike.py) ради све у ЈЕДНОЈ трансакцији;
 - ``--proveri-literaturu`` (опционо) за сваки блок ``literatura`` пита
   SciSearch: 0 резултата је УПОЗОРЕЊЕ (увоз иде даље); за сваки блок
-  ``slika-literatura`` проверава да ``figura_id`` постоји — непостојећа
+  ``slika-literatura`` (и сваку ``figura_id`` слику у ``infografika``)
+  проверава да ``figura_id`` постоји — непостојећа
   (скривена, ван извора) фигура је ГРЕШКА; неподешен клијент или пад
   сервиса је грешка — тражена провера се није могла обавити, ништа се
   не упише.
@@ -38,7 +41,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from udzbenik import tipovi_blokova, ucitaj_semu  # noqa: E402
+from udzbenik import mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
 
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
@@ -194,6 +197,7 @@ def validiraj(podaci, cur):
                 continue
             validiraj_sadrzaj(sadrzaj, f'{lp}.sadrzaj', sema, validatori, greske)
             if isinstance(sadrzaj.get('blokovi'), list):
+                _proveri_infografiku(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_pravila(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_reference(sadrzaj['blokovi'], f'{lp}.sadrzaj', cur, greske)
     return greske
@@ -213,6 +217,38 @@ def _proveri_reference(blokovi, putanja, cur, greske):
         elif blok.get('tip') == 'primerak' and _ceo(blok.get('objekat_id')) and isinstance(blok.get('zbirka'), str):
             if not primerak_postoji(blok['zbirka'], blok['objekat_id']):
                 greske.append(f'{p}.objekat_id: примерак {blok["zbirka"]}/{blok["objekat_id"]} не постоји')
+        elif blok.get('tip') == 'infografika':
+            for mesto in mesta_slika(blok):
+                slika = mesto.kontejner.get(mesto.kljuc)
+                if not isinstance(slika, dict):
+                    continue
+                if _ceo(slika.get('fotografija_id')):
+                    cur.execute('SELECT 1 FROM fotografije WHERE id = %s AND obrisana = FALSE',
+                                (slika['fotografija_id'],))
+                    if cur.fetchone() is None:
+                        greske.append(f'{p}.{mesto.putanja}.fotografija_id: фотографија {slika["fotografija_id"]} '
+                                      f'не постоји у Фототеци')
+                primerak = slika.get('primerak')
+                if isinstance(primerak, dict) and _ceo(primerak.get('objekat_id')) \
+                        and isinstance(primerak.get('zbirka'), str) \
+                        and not primerak_postoji(primerak['zbirka'], primerak['objekat_id']):
+                    greske.append(f'{p}.{mesto.putanja}.primerak: примерак {primerak["zbirka"]}/'
+                                  f'{primerak["objekat_id"]} не постоји')
+
+
+def _proveri_infografiku(blokovi, putanja, greske):
+    """Правило уговора које шема не изражава: највише један блок
+    ``infografika`` по лекцији и мора бити први блок."""
+    for i, blok in enumerate(blokovi):
+        if not isinstance(blok, dict) or blok.get('tip') != 'infografika':
+            continue
+        p = f'{putanja}.blokovi[{i}]'
+        if i == 0:
+            continue
+        if isinstance(blokovi[0], dict) and blokovi[0].get('tip') == 'infografika':
+            greske.append(f'{p}: највише један блок infografika по лекцији (први је у {putanja}.blokovi[0])')
+        else:
+            greske.append(f'{p}: блок infografika мора бити први блок лекције ({putanja}.blokovi[0])')
 
 
 def _ceo(vrednost):
@@ -239,18 +275,30 @@ def _proveri_pravila(blokovi, putanja, greske):
             _bravais_miller(par, p, greske)
 
 
-TIPOVI_LITERATURE = ('literatura', 'slika-literatura')
+TIPOVI_LITERATURE = ('literatura', 'slika-literatura', 'infografika')
 
 
 def _blokovi_literature(podaci):
-    """(путања, блок) за сваки блок ``literatura``/``slika-literatura`` у
-    исправно обликованом фајлу."""
+    """(путања, блок) за сваки блок ``literatura``/``slika-literatura``/
+    ``infografika`` у исправно обликованом фајлу."""
     for i, p in enumerate(podaci.get('poglavlja') or []):
         for j, lek in enumerate(p.get('lekcije') or []):
             blokovi = (lek.get('sadrzaj') or {}).get('blokovi') or []
             for k, blok in enumerate(blokovi):
                 if isinstance(blok, dict) and blok.get('tip') in TIPOVI_LITERATURE:
                     yield f'poglavlja[{i}].lekcije[{j}].sadrzaj.blokovi[{k}]', blok
+
+
+def _figure(putanja, blok):
+    """(путања, figura_id) — блок ``slika-literatura`` има једну, ``infografika``
+    по једну на сваком ``<Slika>`` месту са ``figura_id``."""
+    if blok.get('tip') == 'slika-literatura':
+        yield f'{putanja}.figura_id', blok['figura_id']
+        return
+    for mesto in mesta_slika(blok):
+        slika = mesto.kontejner.get(mesto.kljuc)
+        if isinstance(slika, dict) and 'figura_id' in slika:
+            yield f'{putanja}.{mesto.putanja}.figura_id', slika['figura_id']
 
 
 def proveri_literaturu(podaci):
@@ -263,13 +311,14 @@ def proveri_literaturu(podaci):
         return upozorenja, ['SciSearch није подешен (SCISEARCH_URL / SCISEARCH_SVC_TOKEN) — '
                             '--proveri-literaturu се не може обавити']
     for putanja, blok in _blokovi_literature(podaci):
-        if blok.get('tip') == 'slika-literatura':
-            try:
-                scisearch_klijent.figura(blok['figura_id'])
-            except scisearch_klijent.SciSearchNemaFigure:
-                greske.append(f'{putanja}.figura_id: фигура {blok["figura_id"]} не постоји у SciSearch-у')
-            except scisearch_klijent.SciSearchGreska as exc:
-                greske.append(f'{putanja}: SciSearch није одговорио ({exc.razlog})')
+        if blok.get('tip') != 'literatura':
+            for putanja_figure, figura_id in _figure(putanja, blok):
+                try:
+                    scisearch_klijent.figura(figura_id)
+                except scisearch_klijent.SciSearchNemaFigure:
+                    greske.append(f'{putanja_figure}: фигура {figura_id} не постоји у SciSearch-у')
+                except scisearch_klijent.SciSearchGreska as exc:
+                    greske.append(f'{putanja_figure}: SciSearch није одговорио ({exc.razlog})')
             continue
         try:
             rezultati = scisearch_klijent.pretrazi(blok['upit'], blok.get('broj', 3))

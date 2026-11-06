@@ -1618,6 +1618,331 @@ class SlikaLiteraturaApiTest(_Osnova):
 
 
 # ---------------------------------------------------------------------------
+# Блок infografika (INFOGRAFIKA-UGOVOR.md §1–2)
+# ---------------------------------------------------------------------------
+
+def _infografika(glavna, lupa, primer_figura, mikroskop, proces_figura, srbija):
+    """Блок са свих шест врста места ``<Slika>``; текстуална поља су стварни
+    садржај који сервер не сме да дира."""
+    return {
+        'id': 'info', 'tip': 'infografika', 'naslov': 'Сулфиди',
+        'podnaslov': 'Једињења метала са сумпором.',
+        'glavna': {'slika': {'fotografija_id': glavna, 'alt': 'Пирит на тамној подлози'},
+                   'lupa': {'slika': {'primerak': {'zbirka': 'minerali', 'objekat_id': lupa}}, 'natpis': 'Коцка пирита'}},
+        'osobine': [{'ikona': 'sastav', 'naziv': 'Класа', 'vrednost': '2 (Nickel–Strunz)'},
+                    {'ikona': 'tvrdoca', 'naziv': 'Тврдоћа', 'vrednost': '6–6,5'},
+                    {'ikona': 'sjaj', 'naziv': 'Сјај', 'vrednost': 'метални'}],
+        'primeri': [{'naziv': 'Пирит', 'formula': 'FeS₂', 'napomena': 'кубни',
+                     'slika': {'figura_id': primer_figura, 'alt': 'Пирит под микроскопом'}},
+                    {'naziv': 'Галенит', 'formula': 'PbS'}],
+        'mikroskop': {'naslov': 'У одбијеној светлости', 'slika': {'fotografija_id': mikroskop},
+                      'oznake': [{'x': 10, 'y': 20.5, 'tekst': 'пирит'}, {'x': 80, 'y': 60, 'tekst': 'халкопирит'}]},
+        'proces': {'naslov': 'Постанак', 'slika': {'figura_id': proces_figura},
+                   'koraci': ['Хидротермални раствор', 'Таложење сулфида']},
+        'srbija': {'naslov': 'Локалитети у Србији', 'stavke': [
+            {'naziv': 'Трепча', 'napomena': 'галенит, сфалерит',
+             'slika': {'primerak': {'zbirka': 'minerali', 'objekat_id': srbija}}},
+            {'naziv': 'Бор'}]},
+        'par': {'naslov': 'Полиморфни пар', 'levo': 'Пирит (кубни)', 'desno': 'Маркасит (ромбични)'},
+        'poruka': 'Сулфиди су главни рудни минерали метала.',
+    }
+
+
+TEKST_INFOGRAFIKE = ('naslov', 'podnaslov', 'osobine', 'par', 'poruka')
+
+
+class InfografikaApiTest(_Osnova):
+    URL = '/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi'
+    PROXY = '/api/udzbenik/literatura-slika/5175'
+
+    def setUp(self):
+        super().setUp()
+        _uvezi_primer()
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+        self.lekcija_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
+        self.mineral_id = _ubaci_mineral()
+        self.foto_glavna = _ubaci_fotografiju('h')
+        _izvrsi("INSERT INTO fotografija_tagovi (fotografija_id, tag) VALUES (%s, 'ai-ilustracija')", (self.foto_glavna,))
+        self.foto_mikro = _ubaci_fotografiju('i')
+        self.foto_primerka = _ubaci_fotografiju('j')
+        _izvrsi("INSERT INTO foto_veza_predmet (fotografija_id, database_name, inventarni_broj, mineral_id) "
+                "VALUES (%s, 'mineral', 'UDZTEST-1', %s)", (self.foto_primerka, self.mineral_id))
+
+    def _upisi(self, blok):
+        self.blok = blok
+        sadrzaj = {'verzija': 1, 'blokovi': [dict(blok), {'id': 'uvod', 'tip': 'tekst', 'markdown': 'Пирит.'}]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s",
+                (json.dumps(sadrzaj, ensure_ascii=False), self.lekcija_id))
+
+    def _standardni(self, **izmene):
+        polja = dict(glavna=self.foto_glavna, lupa=self.mineral_id, primer_figura=5175, mikroskop=self.foto_mikro,
+                     proces_figura=5175, srbija=self.mineral_id)
+        polja.update(izmene)
+        self._upisi(_infografika(**polja))
+
+    def _objavi_javno(self):
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = 'minerali'")
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen'")
+        with self.client.session_transaction() as sess:
+            sess.clear()
+
+    def _info(self):
+        with mock.patch.object(museum_app, 'user_has_module_access', lambda *a: True):
+            r = self.get(self.URL)
+        self.assertEqual(r.status_code, 200, 'лекција се увек враћа')
+        blokovi = r.get_json()['lekcija']['blokovi']
+        self.assertEqual([b['id'] for b in blokovi], ['info', 'uvod'], 'блок остаје први и цео')
+        info = blokovi[0]
+        for polje in TEKST_INFOGRAFIKE:
+            self.assertEqual(info[polje], self.blok[polje], 'текст инфографике сервер не дира')
+        self.assertNotIn('nedostupan', info)
+        return info, r.get_data(as_text=True)
+
+    def test_prijavljen_svih_sest_mesta_razreseno(self):
+        self._standardni()
+        self._prijava()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            info, telo = self._info()
+        glavna = info['glavna']['slika']
+        self.assertEqual(glavna, {
+            'fotografija_id': self.foto_glavna, 'alt': 'Пирит на тамној подлози',
+            'url': '/fototeka/media/%d/jpg' % self.foto_glavna, 'url_mala': '/fototeka/media/%d/thumb' % self.foto_glavna,
+            'sirina_px': 2400, 'visina_px': 1600, 'autor': glavna['autor'], 'poreklo': 'ai-ilustracija'})
+        lupa = info['glavna']['lupa']
+        self.assertEqual(lupa['natpis'], 'Коцка пирита')
+        self.assertEqual(lupa['slika'], {
+            'primerak': {'zbirka': 'minerali', 'objekat_id': self.mineral_id}, 'fotografija_id': self.foto_primerka,
+            'url': '/fototeka/media/%d/jpg' % self.foto_primerka,
+            'url_mala': '/fototeka/media/%d/thumb' % self.foto_primerka, 'sirina_px': 2400, 'visina_px': 1600},
+            'прва фотографија примерка; без AI ознаке нема poreklo')
+        primer = info['primeri'][0]
+        self.assertEqual((primer['naziv'], primer['formula'], primer['napomena']), ('Пирит', 'FeS₂', 'кубни'))
+        self.assertEqual(primer['slika'], {
+            'figura_id': 5175, 'alt': 'Пирит под микроскопом', 'url': self.PROXY, 'url_mala': self.PROXY + '/thumb',
+            'sirina_px': 800, 'visina_px': 600,
+            'izvor': {'naslov': 'Ore Microscopy', 'autor': 'Craig & Vaughan', 'godina': 1999, 'strana': 12,
+                      'potpis_izvora': 'Figure 17 Backscattered electron imagex of pyrite'}},
+            'фигура кроз МИС-ове proxy руте, са пуним изворем')
+        self.assertEqual(info['primeri'][1], {'naziv': 'Галенит', 'formula': 'PbS'}, 'пример без слике нетакнут')
+        mikro = info['mikroskop']
+        self.assertEqual(mikro['oznake'], self.blok['mikroskop']['oznake'])
+        self.assertEqual(mikro['slika']['url'], '/fototeka/media/%d/jpg' % self.foto_mikro)
+        self.assertNotIn('poreklo', mikro['slika'])
+        self.assertEqual(info['proces']['koraci'], ['Хидротермални раствор', 'Таложење сулфида'])
+        self.assertEqual(info['proces']['slika']['izvor']['naslov'], 'Ore Microscopy')
+        self.assertEqual(info['srbija']['stavke'][0]['slika']['fotografija_id'], self.foto_primerka)
+        self.assertEqual(info['srbija']['stavke'][1], {'naziv': 'Бор'})
+        self.assertNotIn('nedostupna', telo)
+        self.assertNotIn('test-token', telo)
+        self.assertNotIn('/svc/', telo, 'клијент не сазнаје SciSearch путање')
+        self.assertEqual({u for u, _ in get.pozivi}, {'https://192.168.144.194/nauka/svc/figure/5175'},
+                         'иста фигура на два места — из кеша')
+        sadrzaj = _upit('SELECT sadrzaj FROM udzbenik_lekcija WHERE id = %s', (self.lekcija_id,))[0][0]
+        self.assertNotIn('url', json.dumps(sadrzaj), 'разрешење не пише у базу')
+
+    def test_anonimni_figure_uklonjene_ostalo_nedostupno(self):
+        self._standardni()
+        self._objavi_javno()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            r = self.get(self.URL)
+            self.assertEqual(r.status_code, 200)
+            info = r.get_json()['lekcija']['blokovi'][0]
+            telo = r.get_data(as_text=True)
+        self.assertEqual(info['tip'], 'infografika')
+        for polje in TEKST_INFOGRAFIKE:
+            self.assertEqual(info[polje], self.blok[polje])
+        self.assertEqual(info['glavna']['slika'], {'fotografija_id': self.foto_glavna, 'alt': 'Пирит на тамној подлози',
+                                                   'nedostupna': True, 'razlog': 'nema prava na Фототеку'})
+        self.assertEqual(info['glavna']['lupa']['slika'],
+                         {'primerak': {'zbirka': 'minerali', 'objekat_id': self.mineral_id},
+                          'nedostupna': True, 'razlog': 'nema prava na zbirku'})
+        self.assertEqual(info['primeri'][0], {'naziv': 'Пирит', 'formula': 'FeS₂', 'napomena': 'кубни'},
+                         'опционо место са фигуром се уклања')
+        self.assertEqual(info['proces']['slika'], {'nedostupna': True, 'razlog': 'samo za prijavljene korisnike'},
+                         'обавезно место остаје, без figura_id')
+        self.assertEqual(info['proces']['koraci'], self.blok['proces']['koraci'])
+        self.assertTrue(info['mikroskop']['slika']['nedostupna'])
+        self.assertTrue(info['srbija']['stavke'][0]['slika']['nedostupna'])
+        for trag in ('5175', 'figura_id', '/fototeka/media', 'Ore Microscopy', '/svc/', 'url'):
+            self.assertNotIn(trag, telo, trag)
+        self.assertEqual(get.pozivi, [], 'SciSearch се за анонимног не зове')
+
+    def test_nedostupna_fotografija_ne_obara_blok(self):
+        privatna = _ubaci_fotografiju('k', vidljivost='privatno', autor='neko-drugi@example.invalid')
+        self._standardni(glavna=999999999, mikroskop=privatna)
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            info, _ = self._info()
+        self.assertEqual(info['glavna']['slika'], {'fotografija_id': 999999999, 'alt': 'Пирит на тамној подлози',
+                                                   'nedostupna': True, 'razlog': 'фотографија не постоји'})
+        self.assertEqual(info['mikroskop']['slika'], {'fotografija_id': privatna, 'nedostupna': True,
+                                                      'razlog': 'приватна фотографија'})
+        self.assertEqual(info['mikroskop']['oznake'], self.blok['mikroskop']['oznake'])
+        self.assertEqual(info['glavna']['lupa']['slika']['fotografija_id'], self.foto_primerka, 'остала места живе')
+        self.assertEqual(info['primeri'][0]['slika']['url'], self.PROXY)
+
+    def test_primerak_bez_fotografije_nepostojeci_i_bez_fototeke(self):
+        bez_slike = _ubaci_mineral('UDZTEST-2')
+        self._standardni(lupa=bez_slike, srbija=999999999)
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            info, _ = self._info()
+        self.assertEqual(info['glavna']['lupa']['slika'],
+                         {'primerak': {'zbirka': 'minerali', 'objekat_id': bez_slike},
+                          'nedostupna': True, 'razlog': 'primerak nema fotografiju'})
+        self.assertEqual(info['glavna']['lupa']['natpis'], 'Коцка пирита')
+        self.assertEqual(info['srbija']['stavke'][0]['slika']['razlog'], 'примерак не постоји')
+        self.assertEqual(info['glavna']['slika']['poreklo'], 'ai-ilustracija', 'остала места живе')
+        # са збирком али без модула Фототеке — иста порука као за блок slika/primerak
+        self._standardni()
+        bez_fototeke = lambda email, role, modul: modul != 'fototeka'  # noqa: E731
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()), \
+                mock.patch.object(museum_app, 'user_has_module_access', bez_fototeke):
+            r = self.get(self.URL)
+        info = r.get_json()['lekcija']['blokovi'][0]
+        self.assertEqual(info['glavna']['lupa']['slika']['razlog'], 'nema prava na Фототеку')
+        self.assertEqual(info['glavna']['slika']['razlog'], 'nema prava na Фототеку')
+        self.assertEqual(info['primeri'][0]['slika']['url'], self.PROXY, 'фигура не зависи од Фототеке')
+        self.assertNotIn('/fototeka/media', r.get_data(as_text=True))
+
+    def test_figura_lazni_scisearch_pao_nema_nepodesen(self):
+        self._standardni()
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch(figura=404)):
+            info, _ = self._info()
+            for slika in (info['primeri'][0]['slika'], info['proces']['slika']):
+                self.assertEqual((slika['nedostupna'], slika['razlog']), (True, 'slika ne postoji u biblioteci'))
+                for polje in ('url', 'url_mala', 'izvor'):
+                    self.assertNotIn(polje, slika)
+            self.assertEqual(info['primeri'][0]['slika']['figura_id'], 5175, 'ауторова референца остаје')
+            self.assertEqual(info['glavna']['slika']['poreklo'], 'ai-ilustracija', 'фотографије живе и кад SciSearch пада')
+        scisearch_klijent.ocisti_kes()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+            info, _ = self._info()
+            self.assertEqual(info['proces']['slika']['razlog'], 'biblioteka trenutno nije dostupna')
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent, 'figura', side_effect=RuntimeError('пукло')):
+            info, _ = self._info()
+            self.assertEqual(info['proces']['slika']['razlog'], 'biblioteka trenutno nije dostupna')
+        with mock.patch.dict(os.environ, BEZ_SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get') as get:
+            info, _ = self._info()
+            self.assertEqual(info['proces']['slika']['razlog'], 'biblioteka nije povezana')
+            get.assert_not_called()
+
+    def test_uvoz_validira_granice_i_oblik_slike(self):
+        def pokvari(podaci):
+            los = _infografika(self.foto_glavna, self.mineral_id, 5175, self.foto_mikro, 5175, self.mineral_id)
+            del los['poruka']
+            los['osobine'] = los['osobine'][:2]
+            los['par']['levo'] = 'x' * 81
+            los['primeri'][0]['slika'] = {'fotografija_id': self.foto_glavna, 'figura_id': 5175}
+            los['mikroskop']['slika'] = {'alt': 'без референце'}
+            los['mikroskop']['oznake'][0]['x'] = 150
+            los['proces']['koraci'] = ['само један']
+            los['srbija']['stavke'][0]['slika'] = {'primerak': {'zbirka': 'minerali'}}
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].insert(0, los)
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].insert(1, {
+                'id': 'info-2', 'tip': 'infografika', 'naslov': 'Други', 'podnaslov': 'x', 'poruka': 'x',
+                'glavna': {'slika': {'fotografija_id': self.foto_glavna}},
+                'osobine': [{'ikona': 'kompas', 'naziv': 'a', 'vrednost': 'b'}] * 3})
+        putanja = _primer_sa_izmenom(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre, 'ништа није уписано')
+        k = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        for ocekivano in (
+            f"{k}[0]: 'poruka' is a required property",
+            f'{k}[0].osobine: [',  # too short
+            f'{k}[0].par.levo:',
+            f'{k}[0].primeri[0].slika: ',  # два облика одједном — ниједан oneOf (additionalProperties)
+            f'{k}[0].mikroskop.slika: ',  # без референце — ниједан oneOf
+            f'{k}[0].mikroskop.oznake[0].x: 150 is greater than the maximum of 100',
+            f'{k}[0].proces.koraci: [',
+            f"{k}[0].srbija.stavke[0].slika: ",
+            f"{k}[1].osobine[0].ikona: 'kompas' is not one of [",
+            f'{k}[1]: највише један блок infografika по лекцији (први је у {k}[0])',
+        ):
+            self.assertIn(ocekivano, err, ocekivano)
+        self.assertEqual(err.count('is not valid under any of the given schemas'), 3)
+        self.assertIn('is too short', err)
+
+    def test_uvoz_infografika_mora_biti_prva(self):
+        def pomeri(podaci):
+            blok = _infografika(self.foto_glavna, self.mineral_id, 5175, self.foto_mikro, 5175, self.mineral_id)
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].insert(1, blok)
+        putanja = _primer_sa_izmenom(pomeri)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 1)
+        self.assertIn('poglavlja[0].lekcije[0].sadrzaj.blokovi[1]: блок infografika мора бити први блок лекције '
+                      '(poglavlja[0].lekcije[0].sadrzaj.blokovi[0])', err)
+        self.assertEqual(err.count('infografika'), 1, 'једина грешка')
+        self.assertEqual(_brojevi(), pre)
+
+    def test_uvoz_reference_figure_pa_upis_i_api(self):
+        def dodaj(podaci):
+            blok = _infografika(999999999, self.mineral_id, 5175, self.foto_mikro, 999999, 999999999)
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].insert(0, blok)
+        putanja = _primer_sa_izmenom(dodaj)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 1)
+        k = 'poglavlja[0].lekcije[0].sadrzaj.blokovi[0]'
+        self.assertIn(f'{k}.glavna.slika.fotografija_id: фотографија 999999999 не постоји у Фототеци', err)
+        self.assertIn(f'{k}.srbija.stavke[0].slika.primerak: примерак minerali/999999999 не постоји', err)
+        self.assertNotIn('mikroskop', err)
+        self.assertNotIn('lupa', err)
+        self.assertEqual(_brojevi(), pre)
+
+        def ispravi(podaci):
+            blok = _infografika(self.foto_glavna, self.mineral_id, 5175, self.foto_mikro, 999999, self.mineral_id)
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].insert(0, blok)
+        putanja = _primer_sa_izmenom(ispravi)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+
+        def lazna_figura(figura_id):
+            if figura_id == 5175:
+                return dict(FIGURA_SCISEARCH)
+            raise scisearch_klijent.SciSearchNemaFigure(figura_id)
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', lazna_figura):
+            kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
+        self.assertEqual(kod, 1)
+        self.assertIn(f'{k}.proces.slika.figura_id: фигура 999999 не постоји у SciSearch-у', err)
+        self.assertNotIn('primeri[0]', err)
+        self.assertEqual(_brojevi(), pre)
+
+        def sve_postoje(figura_id):
+            return dict(FIGURA_SCISEARCH, id=figura_id)
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent, 'figura', sve_postoje):
+            kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--proveri-literaturu')
+        self.assertEqual(kod, 0, err)
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()), \
+                mock.patch.object(museum_app, 'user_has_module_access', lambda *a: True):
+            lek = self.get(self.URL).get_json()['lekcija']
+        self.assertEqual(lek['verzija'], 2)
+        self.assertEqual(lek['blokovi'][0]['tip'], 'infografika')
+        self.assertEqual(lek['blokovi'][0]['glavna']['slika']['poreklo'], 'ai-ilustracija')
+        self.assertEqual(lek['blokovi'][0]['proces']['slika']['izvor']['strana'], 12)
+        self.assertEqual(lek['blokovi'][1]['id'], 'uvod')
+
+
+# ---------------------------------------------------------------------------
 # AI илустрације → Фототека → лекције (scripts/udzbenik_ai_slike.py)
 # ---------------------------------------------------------------------------
 
