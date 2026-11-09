@@ -680,24 +680,53 @@ def upisi_napredak(telo):
 # Структура минерала (CIF) из локалног RRUFF скупа
 # --------------------------------------------------------------------------
 
+RAZLOG_STRUKTURA_NEMA = 'Структура није доступна за овај минерал'
+
+
 def cif_strukture(mineral):
     """CIF јединичне ћелије проширен у P1 за ``mineral`` (српски или
-    енглески назив). Само ћелија — суперћелију гради мотор на клијенту."""
+    енглески назив). Само ћелија — суперћелију гради мотор на клијенту.
+    Извор истине је табела udzbenik_struktura (migracija 061, пуни је
+    scripts/udzbenik_strukture_cod.py); локални RRUFF скуп је само резерва
+    кад постоји. Нема записа → 404, никад 503 због фајлова којих нема."""
     import local_rruff_data
     from mineral_translator import get_all_translations
 
     ime = ' '.join(str(mineral or '').split())
     if len(ime) < 2:
         raise GreskaZahteva(400, 'Назив минерала је прекратак')
+    kandidati = _kandidati_imena(ime)
+    engleska = [prevod['english'] for kandidat in kandidati for prevod in get_all_translations(kandidat)]
+    cif = _struktura_iz_baze(kandidati + engleska)
+    if cif:
+        return cif
     rruff = local_rruff_data.LocalRRUFFData()
-    if not getattr(rruff, 'available', False):
-        raise GreskaZahteva(503, 'Локални RRUFF подаци нису доступни на овом серверу')
-    for kandidat in _kandidati_imena(ime):
-        for prevod in get_all_translations(kandidat):
-            cif = rruff.generate_cif_from_dif(prevod['english'], expand_unitcell=True)
-            if cif:
-                return cif
-    raise GreskaZahteva(404, 'Структура није доступна за овај минерал')
+    if getattr(rruff, 'available', False):
+        for kandidat in kandidati:
+            for prevod in get_all_translations(kandidat):
+                cif = rruff.generate_cif_from_dif(prevod['english'], expand_unitcell=True)
+                if cif:
+                    return cif
+    raise GreskaZahteva(404, RAZLOG_STRUKTURA_NEMA)
+
+
+def _struktura_iz_baze(imena):
+    """cif_p1 из udzbenik_struktura по slug-у (mineral) или енглеском називу,
+    без обзира на велика/мала слова; None кад нема записа (или табеле)."""
+    kljucevi = sorted({str(i).strip().lower() for i in imena if i and str(i).strip()})
+    if not kljucevi:
+        return None
+    try:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT cif_p1 FROM udzbenik_struktura
+                               WHERE lower(mineral) = ANY(%s) OR lower(naziv_en) = ANY(%s)
+                               ORDER BY mineral LIMIT 1""", (kljucevi, kljucevi))
+                red = cur.fetchone()
+    except Exception as exc:  # noqa: BLE001 - табела још није мигрирана: иди на резерву, не руши API
+        logger.warning('Уџбеник: читање udzbenik_struktura за %r није успело: %s', kljucevi, exc)
+        return None
+    return red[0] if red else None
 
 
 def _kandidati_imena(ime):

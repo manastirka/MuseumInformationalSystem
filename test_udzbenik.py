@@ -30,6 +30,7 @@ import psycopg  # noqa: E402
 import requests  # noqa: E402
 
 import app as museum_app  # noqa: E402
+import kristalografija  # noqa: E402
 import local_rruff_data  # noqa: E402
 import pretraga  # noqa: E402
 import scisearch_klijent  # noqa: E402
@@ -70,12 +71,27 @@ def _ucitaj_ai_slike():
 ai_slike = _ucitaj_ai_slike()
 
 
+def _ucitaj_strukture():
+    spec = importlib.util.spec_from_file_location('udzbenik_strukture_cod',
+                                                  KOREN / 'scripts' / 'udzbenik_strukture_cod.py')
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+strukture = _ucitaj_strukture()
+FIKSTURE_COD = KOREN / 'tests' / 'fixtures' / 'cod'
+
+
 def _osiguraj_semu():
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT to_regclass('public.udzbenik')")
             if cur.fetchone()[0] is None:
                 cur.execute((KOREN / 'migration' / '060_udzbenik.sql').read_text(encoding='utf-8'))
+            cur.execute("SELECT to_regclass('public.udzbenik_struktura')")
+            if cur.fetchone()[0] is None:
+                cur.execute((KOREN / 'migration' / '061_udzbenik_struktura.sql').read_text(encoding='utf-8'))
         conn.commit()
 
 
@@ -86,6 +102,7 @@ def _ocisti():
             cur.execute("DELETE FROM fotografije WHERE raw_putanja LIKE 'udztest/%%' OR original_ime LIKE 'udztest-ai-%%'")
             cur.execute("DELETE FROM fototeka_intake_pending WHERE original_ime LIKE 'udztest-ai-%%'")
             cur.execute("DELETE FROM minerals WHERE inventory_number LIKE 'UDZTEST-%%'")
+            cur.execute("DELETE FROM udzbenik_struktura WHERE uvezao = %s OR mineral LIKE 'udztest-%%'", (EMAIL,))
         conn.commit()
 
 
@@ -746,17 +763,134 @@ class StrukturaTest(_Osnova):
         with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
             self.assertEqual(self.get('/api/udzbenik/struktura/h').status_code, 400, 'прекратак назив')
 
-    def test_rruff_nedostupan_503(self):
+    def test_bez_zapisa_u_bazi_i_bez_rruff_404_nikad_503(self):
+        """RRUFF_data/ нема ни на DEV-у ни на PROD-у — то не сме бити 503."""
         with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _NemaRruff):
             r = self.get('/api/udzbenik/struktura/halit')
-        self.assertEqual(r.status_code, 503)
-        self.assertIn('RRUFF', r.get_json()['greska'])
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.get_json()['greska'], 'Структура није доступна за овај минерал')
+
+    def _upisi_halit(self):
+        cif_p1, podaci = kristalografija.struktura_p1((FIKSTURE_COD / '9003308.cif').read_text(encoding='utf-8'), 'halit')
+        _izvrsi("""INSERT INTO udzbenik_struktura (mineral, naziv_en, cod_id, cif_izvorni, cif_p1, citat, uslovi, uvezao)
+                   VALUES ('halit', 'Halite', 9003308, 'x', %s, %s::jsonb, %s::jsonb, %s)""",
+                (cif_p1, json.dumps(podaci['citat']), json.dumps(podaci['uslovi']), EMAIL))
+        return cif_p1
+
+    def test_baza_pre_rruff_cirilica_latinica_engleski(self):
+        cif_p1 = self._upisi_halit()
+        with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _NemaRruff):
+            for ime in ('halit', 'Halit', 'HALIT', 'Халит', 'халит', 'halite', 'Halite'):
+                r = self.get('/api/udzbenik/struktura/' + ime)
+                self.assertEqual(r.status_code, 200, ime)
+                self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
+                self.assertEqual(r.headers['Cache-Control'], 'private, max-age=3600')
+                self.assertEqual(r.get_data(as_text=True), cif_p1, ime)
+            telo = r.get_data(as_text=True)
+            self.assertIn("'P 1'", telo)
+            self.assertEqual(len([x for x in telo.splitlines() if re.match(r'^(Na|Cl)\d+ ', x)]), 8, 'халит: 8 атома')
+            self.assertEqual(self.get('/api/udzbenik/struktura/kvarc').status_code, 404, 'нема записа, нема RRUFF-а')
+        with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
+            self.assertEqual(self.get('/api/udzbenik/struktura/halit').get_data(as_text=True), cif_p1)
+            self.assertEqual(_LazniRruff.pozivi, [], 'база је први извор — RRUFF се не пита')
+            self.assertEqual(self.get('/api/udzbenik/struktura/halite').status_code, 200)
 
     def test_pravo_je_modul_udzbenik_ne_mineral_database(self):
         samo_udzbenik = lambda email, role, modul: modul == 'udzbenik'  # noqa: E731
         with mock.patch.object(museum_app, 'user_has_module_access', samo_udzbenik), \
                 mock.patch.object(local_rruff_data, 'LocalRRUFFData', _LazniRruff):
             self.assertEqual(self.get('/api/udzbenik/struktura/halit').status_code, 200)
+
+
+class StruktureCodTest(_Osnova):
+    """scripts/udzbenik_strukture_cod.py над кешом tests/fixtures/cod (без мреже)."""
+
+    def setUp(self):
+        super().setUp()
+        self._prijava()
+
+    def _pokreni(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            kod = strukture.main(list(argv))
+        return kod, out.getvalue(), err.getvalue()
+
+    def _red(self):
+        return _upit("SELECT cod_id, naziv_en, cif_p1, citat, uslovi, uvezeno_at, uvezao FROM udzbenik_struktura "
+                     "WHERE mineral = 'halit'")
+
+    def test_izbor_zapisa_sobna_temperatura_formula_celija(self):
+        zapisi = json.loads((FIKSTURE_COD / 'halite.json').read_text(encoding='utf-8'))
+        spec = strukture.MINERALI['halit']
+        izbor = strukture.izaberi_kandidate(spec, zapisi)
+        self.assertTrue(izbor)
+        self.assertEqual(izbor[0]['file'], '9003308', 'AMCSD, најновији, 298 K, 0 kPa')
+        self.assertTrue(all(str(z['file']).startswith('9') for z in izbor[:len([z for z in izbor if str(z['file']).startswith('9')])]))
+        odbijeni = {z['file']: strukture.razlog_odbijanja(z, spec) for z in zapisi if z not in izbor}
+        self.assertTrue(any(r and r.startswith('T=') for r in odbijeni.values()), 'загрејане ћелије (373–873 K) одбијене')
+        for z in izbor:
+            self.assertIsNone(strukture.razlog_odbijanja(z, spec))
+            self.assertTrue(strukture.celija_odgovara(z, spec['celija']))
+        vruc = dict(zapisi[0], file='1', celltemp=None, diffrtemp=None, a='5.79', b='5.79', c='5.79')
+        self.assertIn('ћелија', strukture.razlog_odbijanja(vruc, spec), 'загрејана ћелија без T у CIF-у пада на референтну ћелију')
+        hidrat = dict(zapisi[0], formula='- Cl H4 Na O2 -')
+        self.assertIn('формула', strukture.razlog_odbijanja(hidrat, spec))
+        druga_grupa = dict(zapisi[0], sg='P 1')
+        self.assertIn('просторна група', strukture.razlog_odbijanja(druga_grupa, spec))
+        self.assertIn('назив', strukture.razlog_odbijanja(dict(zapisi[0], mineral='Hydrohalite'), spec))
+        self.assertEqual(strukture.normalizuj_grupu('R -3 c :H'), 'R-3c:H')
+        self.assertTrue(strukture.celija_odgovara({'a': '10.20', 'b': '5.98', 'c': '4.755'}, (4.755, 10.20, 5.98)),
+                        'Pnma/Pbnm пермутација форстерита')
+
+    def test_dry_run_execute_idempotentno_i_api(self):
+        kod, out, err = self._pokreni('--kes', str(FIKSTURE_COD), '--mineral', 'halit')
+        self.assertEqual(kod, 0, err)
+        self.assertIn('9003308', out)
+        self.assertIn('F m -3 m', out)
+        self.assertIn('Walker, D.', out)
+        self.assertIn('American Mineralogist', out)
+        self.assertIn('dodaje/menja', out)
+        self.assertIn('ништа није уписано', out)
+        self.assertEqual(self._red(), [], 'dry-run не пише')
+
+        kod, out, err = self._pokreni('--kes', str(FIKSTURE_COD), '--mineral', 'halit', '--execute', '--baza', 'pogresna')
+        self.assertEqual(kod, 2)
+        self.assertIn('дословно име базе', err)
+        self.assertEqual(self._red(), [])
+        self.assertEqual(self._pokreni('--kes', str(FIKSTURE_COD), '--execute')[0], 2, '--execute без --baza')
+        self.assertEqual(self._pokreni('--mineral', 'nema-ga')[0], 2)
+
+        kod, out, err = self._pokreni('--kes', str(FIKSTURE_COD), '--mineral', 'halit', '--execute', '--baza', _ime_baze(),
+                                      '--uvezao', EMAIL)
+        self.assertEqual(kod, 0, err)
+        self.assertIn(' dodaje ', out)
+        (cod_id, naziv_en, cif_p1, citat, uslovi, uvezeno, uvezao), = self._red()
+        self.assertEqual((cod_id, naziv_en, uvezao), (9003308, 'Halite', EMAIL))
+        self.assertEqual(len([x for x in cif_p1.splitlines() if re.match(r'^(Na|Cl)\d+ ', x)]), 8)
+        self.assertEqual((citat['godina'], citat['casopis'], citat['autori'][0]), (2004, 'American Mineralogist', 'Walker, D.'))
+        self.assertEqual(uslovi, {'temperatura_k': 298.15, 'pritisak_kpa': 0.0})
+
+        kod, out, err = self._pokreni('--kes', str(FIKSTURE_COD), '--mineral', 'halit', '--execute', '--baza', _ime_baze(),
+                                      '--uvezao', EMAIL)
+        self.assertEqual(kod, 0, err)
+        self.assertIn(' isto ', out)
+        self.assertEqual(self._red()[0][5], uvezeno, 'идемпотентно: исти запис, uvezeno_at нетакнут')
+
+        with mock.patch.object(local_rruff_data, 'LocalRRUFFData', _NemaRruff):
+            r = self.get('/api/udzbenik/struktura/Халит')
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.get_data(as_text=True), cif_p1)
+
+    def test_svi_minerali_imaju_potpunu_specifikaciju(self):
+        trazeni = {'bakar', 'beril', 'dijamant', 'fluorit', 'forsterit', 'galenit', 'grafit', 'halit', 'halkopirit',
+                   'kalcit', 'kvarc', 'magnetit', 'olivin', 'pirit', 'rutil', 'sfalerit', 'talk', 'muskovit'}
+        self.assertEqual(set(strukture.MINERALI), trazeni)
+        for slug, spec in strukture.MINERALI.items():
+            self.assertRegex(slug, r'^[a-z0-9][a-z0-9-]{1,59}$')
+            self.assertEqual(set(spec['formula']), set(spec['elementi']), slug)
+            self.assertEqual(len(spec['celija']), 3, slug)
+            self.assertTrue(spec['grupe'] and spec['en'], slug)
+        self.assertEqual(strukture.MINERALI['olivin']['upit'], 'Forsterite', 'оливин → форстерит Mg2SiO4')
 
 
 # ---------------------------------------------------------------------------
