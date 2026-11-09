@@ -781,8 +781,14 @@ class LjuskaTest(_Osnova):
         self.assertIn('data-pismo="cyrl"', app_deo)
         self.assertIn('data-moze-uredjuje="false"', app_deo)
         self.assertIn('Учитавање уџбеника', app_deo)
+        self.assertIn('data-straza-ms="8000"', app_deo)
         self.assertIn('udzbenik/udzbenik.js?v=', html)
         self.assertIn('udzbenik/udzbenik.css?v=', html)
+        self.assertIn('js/udzbenik_straza.js?v=', html)
+        self.assertLess(html.index('udzbenik_straza.js'), html.index('<script type="module"'),
+                        'стража је класичан скрипт ПРЕ модула — хвата и грешку повезивања модула')
+        self.assertIn('<template id="udzbenik-straza">', html)
+        self.assertIn('Поново учитај', html)
         self.assertIn("css/strane/udzbenik.css", html)
         self.assertIn('class="zaglavlje page-hero"', html)
         self.assertNotIn('Kristal je čvrsto telo', html, 'љуска не носи садржај лекције')
@@ -809,8 +815,12 @@ class LjuskaTest(_Osnova):
 
     def test_sablon_bez_inline_js_i_statika_pracena(self):
         t = (KOREN / 'templates' / 'udzbenik.html').read_text(encoding='utf-8')
-        self.assertEqual(t.count('<script'), 1)
+        skripte = re.findall(r'<script([^>]*)>(.*?)</script>', t, re.S)
+        self.assertEqual(len(skripte), 2, 'стража + модул мотора')
+        self.assertEqual([telo.strip() for _, telo in skripte], ['', ''], 'без inline JS-а')
+        self.assertTrue(all('src=' in atributi for atributi, _ in skripte))
         self.assertIn('type="module"', t)
+        self.assertTrue((KOREN / 'static' / 'js' / 'udzbenik_straza.js').exists())
         for ime in BUNDLE_FAJLOVI:
             self.assertTrue((KOREN / 'static' / 'udzbenik' / ime).exists(), ime)
         self.assertIn('!static/udzbenik/', (KOREN / '.gitignore').read_text(encoding='utf-8'))
