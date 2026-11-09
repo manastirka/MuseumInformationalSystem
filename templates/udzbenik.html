@@ -2,7 +2,11 @@
 {% from '_zaglavlje_strane.html' import zaglavlje %}
 {# Љуска читача: ИСТА за /udzbenik/<zbirka> и дубоки линк на лекцију. Садржај
    црта мотор из static/udzbenik/ (репо mis-udzbenik) — овде нема садржаја
-   лекције ни JS-а осим data-* атрибута (бриф §3). #}
+   лекције ни JS-а осим data-* атрибута (бриф §3). Chunk-ови мотора носе хеш
+   садржаја у имену (udzbenik-{jezgro,three,dijagrami}-<heš>.js), па их стари
+   кеш не може заменити; улаз udzbenik.js иде са ?v=.
+   Стража (static/js/udzbenik_straza.js): ако мотор после data-straza-ms не
+   замени „Учитавање…“, прикаже се <template id="udzbenik-straza">. #}
 
 {% block title %}{{ udzbenik.naslov }}{% endblock %}
 
@@ -20,12 +24,21 @@
          data-poglavlje="{{ poglavlje }}"
          data-lekcija="{{ lekcija }}"
          data-pismo="{{ pismo }}"
-         data-moze-uredjuje="false">
+         data-moze-uredjuje="false"
+         data-straza-ms="8000">
         <div class="udzbenik-ucitavanje" role="status">Учитавање уџбеника…</div>
     </div>
+    <template id="udzbenik-straza">
+        <div class="udzbenik-greska" role="alert">
+            <p class="udzbenik-greska__naslov">Уџбеник се није учитао.</p>
+            <p class="udzbenik-greska__detalj" data-razlog></p>
+            <button type="button" class="btn btn-primary"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Поново учитај</button>
+        </div>
+    </template>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/udzbenik_straza.js') }}?v={{ v_statike('js/udzbenik_straza.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='udzbenik/udzbenik.js') }}?v={{ v_statike('udzbenik/udzbenik.js') }}"></script>
 {% endblock %}

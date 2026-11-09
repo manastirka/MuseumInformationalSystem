@@ -87,6 +87,23 @@
     text-align: center;
     color: var(--text-secondary);
 }
+/* Стража: мотор се није покренуо (static/js/udzbenik_straza.js). */
+.udzbenik-greska {
+    padding: var(--space-6);
+    text-align: center;
+    color: var(--text-primary);
+}
+.udzbenik-greska__naslov {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+.udzbenik-greska__detalj {
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
 /* Мобилни: пуна ширина, без бочних маргина испод 992 px. */
 @media (max-width: 991.98px) {
     .udzbenik-citac {
