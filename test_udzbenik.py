@@ -40,8 +40,9 @@ KOREN = Path(__file__).resolve().parent
 PRIMER = KOREN / 'udzbenik' / 'primer-minerali.json'
 PRIMERI_ILUSTRACIJA = KOREN / 'udzbenik' / 'primeri-ilustracija.json'
 ZBIRKA_ILUSTRACIJE = 'udztest-ilustracije'
-BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik-three.js', 'udzbenik-dijagrami.js', 'udzbenik.css',
-                  'VERZIJA.txt')
+BUNDLE_FAJLOVI = ('README.md', 'udzbenik.js', 'udzbenik.css', 'VERZIJA.txt')
+# Chunk-ови носе хеш садржаја у имену (мотор 07dc3ea, 2026-11-09): тачно по један.
+BUNDLE_CHUNKOVI = ('jezgro', 'three', 'dijagrami')
 if not PRIMER.exists():
     PRIMER = Path('/tmp/udzbenik/primer-minerali.json')
 BAZA = 'https://localhost'
@@ -762,6 +763,19 @@ class StrukturaTest(_Osnova):
 # 8. Љуска
 # ---------------------------------------------------------------------------
 
+def _chunkovi_motora():
+    """Имена chunk-ова са диска: тачно један udzbenik-{jezgro,three,dijagrami}-<хеш>.js,
+    ниједан са фиксним именом (стари кеш би га заменио) и ниједан непознат."""
+    svi = sorted(p.name for p in (KOREN / 'static' / 'udzbenik').glob('udzbenik-*.js'))
+    nadjeni = []
+    for vrsta in BUNDLE_CHUNKOVI:
+        kandidati = [ime for ime in svi if re.fullmatch(rf'udzbenik-{vrsta}-[A-Za-z0-9_-]{{6,}}\.js', ime)]
+        assert len(kandidati) == 1, f'{vrsta}: {kandidati}'
+        nadjeni.append(kandidati[0])
+    assert sorted(nadjeni) == svi, f'chunk са фиксним/непознатим именом: {sorted(set(svi) - set(nadjeni))}'
+    return nadjeni
+
+
 class LjuskaTest(_Osnova):
     def setUp(self):
         super().setUp()
@@ -823,9 +837,25 @@ class LjuskaTest(_Osnova):
         self.assertTrue((KOREN / 'static' / 'js' / 'udzbenik_straza.js').exists())
         for ime in BUNDLE_FAJLOVI:
             self.assertTrue((KOREN / 'static' / 'udzbenik' / ime).exists(), ime)
+        self.assertEqual(len(_chunkovi_motora()), 3)
         self.assertIn('!static/udzbenik/', (KOREN / '.gitignore').read_text(encoding='utf-8'))
         verzija = (KOREN / 'static' / 'udzbenik' / 'VERZIJA.txt').read_text(encoding='utf-8').splitlines()[0]
         self.assertRegex(verzija, r'^(nema|mis-udzbenik [0-9a-f]{7,40})$', verzija)
+
+    def test_chunkovi_motora_hesirani_i_uvezeni(self):
+        """Улаз и језгро увозе chunk-ове релативно, без ?v= — зато им је хеш у
+        имену; свако увезено име мора да постоји на диску (кеш не може да
+        подметне стари chunk), а фиксна имена не смеју да постоје."""
+        chunkovi = _chunkovi_motora()
+        motor = KOREN / 'static' / 'udzbenik'
+        for ime in ('udzbenik-three.js', 'udzbenik-dijagrami.js', 'udzbenik-jezgro.js'):
+            self.assertFalse((motor / ime).exists(), ime)
+        uvezeni = set()
+        for ime in ['udzbenik.js'] + chunkovi:
+            uvezeni.update(re.findall(r'["\']\./(udzbenik-[\w-]+\.js)["\']', (motor / ime).read_text(encoding='utf-8')))
+        self.assertTrue(uvezeni)
+        self.assertEqual(sorted(uvezeni - set(chunkovi)), [], 'увоз chunk-а којег нема на диску')
+        self.assertIn('udzbenik-jezgro', (motor / 'udzbenik.js').read_text(encoding='utf-8'), 'улаз је танак омотач')
 
     def test_bundle_motora_je_u_gitu(self):
         """Bundle (README списак + све rezerve/*.png које мотор испоручује) мора
@@ -835,8 +865,8 @@ class LjuskaTest(_Osnova):
         слике читају са диска, а .gitignore се проверава за СВЕ сцене из шеме."""
         readme = (KOREN / 'static' / 'udzbenik' / 'README.md').read_text(encoding='utf-8')
         iz_readme = sorted(set(re.findall(r'`([\w-]+\.(?:js|css|txt))`', readme)))
-        self.assertIn('udzbenik-three.js', iz_readme)
-        self.assertIn('udzbenik-dijagrami.js', iz_readme)
+        self.assertEqual(iz_readme, ['VERZIJA.txt', 'udzbenik.css', 'udzbenik.js'])
+        iz_readme += _chunkovi_motora()
         sema = json.loads((KOREN / 'udzbenik' / 'schema' / 'lekcija.schema.json').read_text(encoding='utf-8'))
         scene = sema['$defs']['scena']['properties']['scena']['enum']
         self.assertGreaterEqual(len(scene), 5)
