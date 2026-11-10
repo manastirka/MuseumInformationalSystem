@@ -1874,6 +1874,45 @@
           "maxLength": 1000,
           "description": "Зашто је слика овде — шта у њој да се гледа."
         },
+        "paneli": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Objašnjenje svakog dela slike (a, b, c… ili 1, 2, 3…), redom kako se prikazuje.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "oznaka",
+              "tekst"
+            ],
+            "properties": {
+              "oznaka": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16,
+                "description": "Oznaka dela: „a“, „A–B“, „1–4“, „gore“…"
+              },
+              "tekst": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            }
+          }
+        },
+        "referenca": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "description": "Puna bibliografska referenca rada, ručno upisana; motor je prikazuje UMESTO automatskog navoda iz `izvor`."
+        },
+        "foto": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Autor fotografije ili poreklo slike, kako piše u literaturi."
+        },
         "sirina": {
           "enum": [
             "puna",

@@ -1790,6 +1790,91 @@ class SlikaLiteraturaApiTest(_Osnova):
         self.assertEqual([b['figura_id'] for b in sadrzaj['blokovi'] if b['tip'] == 'slika-literatura'],
                          [5175, 999999])
 
+    # Панели, референца и аутор фотографије (опциона поља, 2026-11-10)
+    PANELI = [{'oznaka': 'a', 'tekst': 'Пирит у одбијеној светлости.'},
+              {'oznaka': 'A–B', 'tekst': 'Зонарни раст, BSE.'},
+              {'oznaka': '1–4', 'tekst': 'Редослед кристализације.'}]
+    REFERENCA = 'Craig, J. R. & Vaughan, D. J. (1994). Ore Microscopy and Ore Petrography. Wiley, New York.'
+    FOTO = 'Foto: J. R. Craig'
+
+    def _blok_sa_panelima(self):
+        blok = dict(self.blok, paneli=self.PANELI, referenca=self.REFERENCA, foto=self.FOTO)
+        sadrzaj = {'verzija': 1, 'blokovi': [
+            {'id': 'uvod', 'tip': 'tekst', 'markdown': 'Пирит.'}, blok,
+            {'id': 'kraj', 'tip': 'tekst', 'markdown': 'Крај.'},
+        ]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), self.lekcija_id))
+        return blok
+
+    def test_paneli_referenca_foto_stizu_neizmenjeni(self):
+        blok = self._blok_sa_panelima()
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            _, fig, _ = self._blokovi()
+        self.assertEqual({k: fig[k] for k in blok}, blok, 'ауторова поља остају, редослед панела очуван')
+        self.assertEqual([p['oznaka'] for p in fig['paneli']], ['a', 'A–B', '1–4'])
+        self.assertEqual(fig['izvor']['naslov'], 'Ore Microscopy', 'izvor се и даље додаје')
+
+    def test_paneli_anonimni_blok_izostavljen(self):
+        self._blok_sa_panelima()
+        self._objavi_javno()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            self.assertEqual([b['id'] for b in self._blokovi()], ['uvod', 'kraj'])
+            telo = self.get(self.URL).get_data(as_text=True)
+        for trag in ('Зонарни раст', 'Ore Petrography', 'J. R. Craig'):
+            self.assertNotIn(trag, telo)
+
+    def test_stari_blok_bez_novih_polja(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            _, fig, _ = self._blokovi()
+        for polje in ('paneli', 'referenca', 'foto'):
+            self.assertNotIn(polje, fig)
+
+    def test_uvoz_validira_panele_referencu_foto(self):
+        panel = {'oznaka': 'a', 'tekst': 'Пирит.'}
+
+        def pokvari(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'fig-a', 'tip': 'slika-literatura', 'figura_id': 5175, 'paneli': [panel] * 17},
+                {'id': 'fig-b', 'tip': 'slika-literatura', 'figura_id': 5175, 'paneli': [{'oznaka': 'b', 'tekst': ''}]},
+                {'id': 'fig-c', 'tip': 'slika-literatura', 'figura_id': 5175, 'referenca': 'x' * 601},
+                {'id': 'fig-d', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': ''},
+                {'id': 'fig-e', 'tip': 'slika-literatura', 'figura_id': 5175, 'paneli': []},
+                {'id': 'fig-f', 'tip': 'slika-literatura', 'figura_id': 5175,
+                 'paneli': [{'oznaka': 'x' * 17, 'tekst': 'т', 'boja': 'crvena'}]},
+            ])
+        putanja = _primer_sa_izmenom(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        pre = _brojevi()
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 1)
+        self.assertEqual(_brojevi(), pre)
+        n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
+        koren = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        self.assertIn(f'{koren}[{n}].paneli: ', err)
+        self.assertIn('is too long', err)
+        self.assertIn(f"{koren}[{n + 1}].paneli[0].tekst: '' should be non-empty", err)
+        self.assertIn(f'{koren}[{n + 2}].referenca: ', err)
+        self.assertIn(f"{koren}[{n + 3}].foto: '' should be non-empty", err)
+        self.assertIn(f'{koren}[{n + 4}].paneli: [] should be non-empty', err)
+        self.assertIn(f'{koren}[{n + 5}].paneli[0].oznaka: ', err)
+        self.assertIn(f"{koren}[{n + 5}].paneli[0]: Additional properties are not allowed ('boja' was unexpected)", err)
+
+    def test_uvoz_ispravni_paneli_prolaze(self):
+        def dodaj(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].append(
+                {'id': 'fig-a', 'tip': 'slika-literatura', 'figura_id': 5175, 'potpis': 'Пирит.',
+                 'paneli': [{'oznaka': str(i), 'tekst': 'т' * 500} for i in range(1, 17)],
+                 'referenca': 'р' * 600, 'foto': 'ф' * 300})
+        putanja = _primer_sa_izmenom(dodaj)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+
 
 # ---------------------------------------------------------------------------
 # Блок infografika (INFOGRAFIKA-UGOVOR.md §1–2)
