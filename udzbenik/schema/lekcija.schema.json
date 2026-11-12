@@ -452,7 +452,7 @@
                           },
                           "minItems": 3,
                           "maxItems": 4,
-                          "description": "(hkl) ili Bravais–Miller (hkil) za heksagonalni/trigonalni; motor proverava i = −(h+k)."
+                          "description": "(hkl) ili Brave–Miler (hkil) za heksagonalni/trigonalni; motor proverava i = −(h+k)."
                         },
                         "d": {
                           "type": "number",
@@ -668,12 +668,12 @@
                       "nema"
                     ],
                     "default": "razdvoji-spoji",
-                    "description": "razdvoji-spoji: jedinka se izvodi iz druge operacijom blizanjenja (ravan/osa) koja se vidi."
+                    "description": "razdvoji-spoji: jedinka se izvodi iz druge operacijom bližnjenja (ravan/osa) koja se vidi."
                   },
                   "prikazi_element": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Prikaži ravan ili osu blizanjenja."
+                    "description": "Prikaži ravan ili osu bližnjenja."
                   },
                   "primer": {
                     "type": "string"
