@@ -1145,6 +1145,11 @@
                   "prikazi_al2sio5": {
                     "type": "boolean",
                     "default": true
+                  },
+                  "prikazi_geoterme": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Tipični P–T tokovi (subdukcija ~10 °C/km, kolizija/Barrow ~25 °C/km, kontaktni) kao tanke strelice; šematski."
                   }
                 }
               }
