@@ -1076,7 +1076,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 29)
+        self.assertEqual(len(sadrzaj['blokovi']), 33)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1084,7 +1084,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 29)
+        self.assertEqual(len(blokovi), 33)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         self.assertEqual(blokovi, sadrzaj['blokovi'])
 
@@ -1092,7 +1092,7 @@ class IlustracijeTest(_Osnova):
         self.assertEqual({b['dijagram'] for b in blokovi if b['tip'] == 'dijagram'},
                          set(sema['$defs']['dijagram']['properties']['dijagram']['enum']))
         self.assertLessEqual({'bravaisova-resetka', 'opticka-indikatrisa', 'blizanac', 'koordinacioni-poliedar',
-                              'silikatna-struktura', 'habitus'},
+                              'silikatna-struktura', 'habitus', 'tenzor-drugog-ranga'},
                              {b['scena'] for b in blokovi if b['tip'] == 'scena'})
         self.assertIn('dijagram', udzbenik.POZNATI_TIPOVI)
 

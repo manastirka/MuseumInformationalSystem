@@ -187,7 +187,8 @@
             "opticka-indikatrisa",
             "blizanac",
             "koordinacioni-poliedar",
-            "silikatna-struktura"
+            "silikatna-struktura",
+            "tenzor-drugog-ranga"
           ],
           "description": "Tip scene = modul u motoru (src/scene/<ime>.ts). Nov tip = nov kod + dopuna ovog enuma."
         },
@@ -798,6 +799,55 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "scena": {
+                "const": "tenzor-drugog-ranga"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "sistem": {
+                    "enum": [
+                      "kubni",
+                      "tetragonalni",
+                      "ortorombicni",
+                      "heksagonalni",
+                      "trigonalni",
+                      "monoklinicni",
+                      "triklinicni",
+                      "svi"
+                    ],
+                    "default": "ortorombicni"
+                  },
+                  "poluose": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0.6,
+                      "maximum": 1.8
+                    }
+                  },
+                  "ugao_phi": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 180,
+                    "default": 25
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -956,7 +1006,10 @@
             "paragenetska-sekvenca",
             "vremenska-linija",
             "karta-lokaliteta",
-            "strunz-klase"
+            "strunz-klase",
+            "hod-zraka-mikroskopa",
+            "sem-eds",
+            "sema-uredjaja"
           ]
         },
         "parametri": {
@@ -1800,6 +1853,131 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "hod-zraka-mikroskopa"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "rezim": {
+                    "enum": [
+                      "propustena",
+                      "odbijena"
+                    ],
+                    "default": "propustena"
+                  },
+                  "analizator": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "bertrand": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "sem-eds"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "signal": {
+                    "enum": [
+                      "se",
+                      "bse",
+                      "x"
+                    ],
+                    "default": "bse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "sema-uredjaja"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "uredjaj"
+                ],
+                "properties": {
+                  "uredjaj": {
+                    "enum": [
+                      "mosova-proba",
+                      "vikersov-utiskivac",
+                      "ogreb-na-plocici",
+                      "hidrostaticka-vaga",
+                      "dzolijeva-vaga",
+                      "piknometar",
+                      "teske-tecnosti",
+                      "kontaktni-goniometar",
+                      "refleksioni-goniometar",
+                      "refraktometar",
+                      "bekeova-linija",
+                      "uv-lampa",
+                      "merac-susceptibilnosti",
+                      "piezoelektricni-efekat",
+                      "gajger-milerov-brojac",
+                      "plamena-proba",
+                      "dihroskop",
+                      "mikrotermometrija",
+                      "laueova-metoda",
+                      "debaj-sererova-kamera",
+                      "difraktometar-prah",
+                      "difraktometar-monokristal",
+                      "katodoluminescencija",
+                      "epma-wds",
+                      "tem",
+                      "ebsd",
+                      "raman",
+                      "ftir",
+                      "uv-vis-nir",
+                      "mesbauer",
+                      "nmr-mas",
+                      "xrf",
+                      "icp-oes",
+                      "icp-ms",
+                      "la-icp-ms",
+                      "termicka-analiza"
+                    ]
                   }
                 }
               }
