@@ -375,8 +375,8 @@
       "parametri": {
         "resetka": "sve"
       },
-      "opis_za_citac": "Četrnaest Bravaisovih rešetki po kristalnim sistemima; centriranja P, I, F, C i R.",
-      "potpis": "14 Bravaisovih rešetki"
+      "opis_za_citac": "Četrnaest Braveovih rešetki po kristalnim sistemima; centriranja P, I, F, C i R.",
+      "potpis": "14 Braveovih rešetki"
     },
     {
       "id": "s-ind",
@@ -499,6 +499,45 @@
       },
       "opis_za_citac": "Pentagondodekaedar (piritoedar) {210} klase m-3 sa dvanaest petougaonih pljosni.",
       "potpis": "Piritoedar"
+    },
+    {
+      "id": "d-hod-zraka",
+      "tip": "dijagram",
+      "dijagram": "hod-zraka-mikroskopa",
+      "parametri": {
+        "rezim": "propustena",
+        "analizator": true,
+        "bertrand": false
+      },
+      "opis_za_citac": "Šematski hod zraka kroz polarizacioni mikroskop: u propuštenoj svetlosti od izvora kroz polarizator, kondenzor i tanki preparat do objektiva, analizatora i okulara; u odbijenoj svetlosti kroz vertikalni iluminator i reflektor na polirani preparat i nazad kroz objektiv."
+    },
+    {
+      "id": "d-sem-eds",
+      "tip": "dijagram",
+      "dijagram": "sem-eds",
+      "parametri": {
+        "signal": "bse"
+      },
+      "opis_za_citac": "Šema skenirajućeg elektronskog mikroskopa: elektronski top, kondenzorska sočiva, blenda, kalemovi za skeniranje i završno sočivo; uzorak sa zapreminom interakcije i detektori sekundarnih elektrona, povratno rasejanih elektrona i X-zračenja (EDS)."
+    },
+    {
+      "id": "s-tenzor",
+      "tip": "scena",
+      "scena": "tenzor-drugog-ranga",
+      "parametri": {
+        "sistem": "svi"
+      },
+      "opis_za_citac": "Reprezentativni elipsoid simetričnog tenzora drugog ranga u odnosu na kristalografske ose: u teseralnom sistemu sfera, u tetragonalnom, heksagonalnom i trigonalnom obrtni elipsoid sa osom obrtanja paralelnom c, u ortorombičnom troosni elipsoid sa osama paralelnim a, b, c, u monokliničnom jedna osa paralelna b, u trikliničnom bez veze sa kristalografskim osama.",
+      "potpis": "Tenzor drugog ranga i simetrija kristala"
+    },
+    {
+      "id": "d-sema-uredjaja",
+      "tip": "dijagram",
+      "dijagram": "sema-uredjaja",
+      "parametri": {
+        "uredjaj": "difraktometar-prah"
+      },
+      "opis_za_citac": "Šema difraktometra za prah u Bragg–Brentano geometriji: rendgenska cev i detektor na krugu goniometra, ravan uzorak u središtu i upadni i difraktovani snop pod uglovima θ i 2θ."
     }
   ]
 }
