@@ -41,7 +41,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from udzbenik import mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
+from udzbenik import mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
 
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
@@ -285,7 +285,8 @@ def _blokovi_literature(podaci):
         for j, lek in enumerate(p.get('lekcije') or []):
             blokovi = (lek.get('sadrzaj') or {}).get('blokovi') or []
             for k, blok in enumerate(blokovi):
-                if isinstance(blok, dict) and blok.get('tip') in TIPOVI_LITERATURE:
+                if isinstance(blok, dict) and (blok.get('tip') in TIPOVI_LITERATURE or (
+                        blok.get('tip') == 'dijagram' and blok.get('dijagram') == 'proces')):
                     yield f'poglavlja[{i}].lekcije[{j}].sadrzaj.blokovi[{k}]', blok
 
 
@@ -294,6 +295,10 @@ def _figure(putanja, blok):
     по једну на сваком ``<Slika>`` месту са ``figura_id``."""
     if blok.get('tip') == 'slika-literatura':
         yield f'{putanja}.figura_id', blok['figura_id']
+        return
+    if blok.get('tip') == 'dijagram':
+        for i, mesto in mesta_procesa(blok):
+            yield f'{putanja}.parametri.mesta[{i}].figura_id', mesto['figura_id']
         return
     for mesto in mesta_slika(blok):
         slika = mesto.kontejner.get(mesto.kljuc)
@@ -409,6 +414,25 @@ def napravi_plan(cur, podaci):
         cur.execute('SELECT id, slug, naslov, opis, redosled FROM udzbenik_poglavlje WHERE udzbenik_id = %s', (red[0],))
         postojeca_poglavlja = {r[1]: {'id': r[0], 'naslov': r[2], 'opis': r[3], 'redosled': r[4]} for r in cur.fetchall()}
 
+    # Лекција коју фајл наводи у другом поглављу него база премешта се (исти id,
+    # историја верзија и напредак читалаца остају), уместо да настане дупликат.
+    premestene = {}
+    if red is not None:
+        u_fajlu = {(p['slug'], lek['slug']) for p in podaci['poglavlja'] for lek in p['lekcije']}
+        cur.execute("""SELECT l.id, l.slug, l.naslov, l.sazetak, l.redosled, l.status, l.verzija, l.sadrzaj, p.slug
+                       FROM udzbenik_lekcija l JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+                       WHERE p.udzbenik_id = %s""", (red[0],))
+        u_bazi = cur.fetchall()
+        stari_par = {(r[8], r[1]) for r in u_bazi}
+        for r in u_bazi:
+            if (r[8], r[1]) in u_fajlu:
+                continue
+            novo = [ps for ps, ls in u_fajlu if ls == r[1] and (ps, ls) not in stari_par]
+            if len(novo) == 1:
+                premestene[r[1]] = {'id': r[0], 'naslov': r[2], 'sazetak': r[3], 'redosled': r[4], 'status': r[5],
+                                    'verzija': r[6], 'sadrzaj': _json(r[7]), 'iz': r[8], 'u': novo[0]}
+    plan['premestene'] = {slug: (v['iz'], v['u']) for slug, v in premestene.items()}
+
     slugovi_u_fajlu = {p['slug'] for p in podaci['poglavlja']}
     zauzeti = {v['redosled']: slug for slug, v in postojeca_poglavlja.items() if slug not in slugovi_u_fajlu}
     for i, p in enumerate(podaci['poglavlja']):
@@ -433,9 +457,13 @@ def napravi_plan(cur, podaci):
                                         'status': r[5], 'verzija': r[6], 'sadrzaj': _json(r[7])}
                                  for r in cur.fetchall()}
         slugovi_lekcija = {lek['slug'] for lek in p['lekcije']}
-        zauzete = {v['redosled']: slug for slug, v in postojece_lekcije.items() if slug not in slugovi_lekcija}
+        zauzete = {v['redosled']: slug for slug, v in postojece_lekcije.items()
+                   if slug not in slugovi_lekcija and slug not in premestene}
         for j, lek in enumerate(p['lekcije']):
             stara = postojece_lekcije.get(lek['slug'])
+            premestena = premestene.get(lek['slug']) if stara is None and premestene.get(lek['slug'], {}).get('u') == p['slug'] else None
+            if premestena is not None:
+                stara = premestena
             if lek['redosled'] in zauzete:
                 plan['greske'].append(
                     f'poglavlja[{i}].lekcije[{j}].redosled: redosled {lek["redosled"]} већ држи лекција '
@@ -453,12 +481,14 @@ def napravi_plan(cur, podaci):
                 if not sadrzaj_isti:
                     l_stavka['akcija'] = 'menja sadrzaj'
                     l_stavka['nova_verzija'] = stara['verzija'] + 1
-                elif not podaci_isti:
+                elif not podaci_isti or premestena is not None:
                     l_stavka['akcija'] = 'menja podatke'
                 else:
                     l_stavka['akcija'] = 'isto'
+                if premestena is not None:
+                    l_stavka['iz_poglavlja'] = premestena['iz']
             stavka['lekcije'].append(l_stavka)
-        for slug in sorted(set(postojece_lekcije) - {lek['slug'] for lek in p['lekcije']}):
+        for slug in sorted(set(postojece_lekcije) - {lek['slug'] for lek in p['lekcije']} - set(premestene)):
             plan['upozorenja'].append(f'лекција {p["slug"]}/{slug} је у бази, а нема је у фајлу — остаје нетакнута')
         plan['poglavlja'].append(stavka)
     for slug in sorted(set(postojeca_poglavlja) - {p['slug'] for p in podaci['poglavlja']}):
@@ -491,6 +521,9 @@ def primeni_plan(cur, podaci, plan, autor, napomena):
     postojeca = [s['id'] for s in plan['poglavlja'] if s['id'] is not None]
     if postojeca:
         cur.execute('UPDATE udzbenik_poglavlje SET redosled = -id WHERE id = ANY(%s)', (postojeca,))
+    premestene = [lek['id'] for s in plan['poglavlja'] for lek in s['lekcije'] if lek.get('iz_poglavlja')]
+    if premestene:
+        cur.execute('UPDATE udzbenik_lekcija SET redosled = -id WHERE id = ANY(%s)', (premestene,))
 
     for p, stavka in zip(podaci['poglavlja'], plan['poglavlja']):
         if stavka['akcija'] == 'dodaje':
@@ -517,6 +550,8 @@ def primeni_plan(cur, podaci, plan, autor, napomena):
                 _upisi_verziju(cur, lekcija_id, 1, sadrzaj, autor, napomena)
                 continue
             lekcija_id = l_stavka['id']
+            if l_stavka.get('iz_poglavlja'):
+                cur.execute('UPDATE udzbenik_lekcija SET poglavlje_id = %s WHERE id = %s', (poglavlje_id, lekcija_id))
             if l_stavka['akcija'] == 'menja sadrzaj':
                 cur.execute("""UPDATE udzbenik_lekcija SET redosled = %s, naslov = %s, sazetak = %s,
                                    status = COALESCE(%s, status), sadrzaj = %s, verzija = %s,
@@ -558,6 +593,8 @@ def ispisi_plan(plan, izvrsavanje):
         for lek in p['lekcije']:
             brojac['lekcije'] += 1
             dodatak = f' → verzija {lek["nova_verzija"]}' if lek['nova_verzija'] else ''
+            if lek.get('iz_poglavlja'):
+                dodatak += f'; премешта се из поглавља {lek["iz_poglavlja"]}'
             if lek['nova_verzija']:
                 brojac['nove_verzije'] += 1
             print(f'      {ZNAK[lek["akcija"]]} lekcija {p["slug"]}/{lek["slug"]} ({lek["akcija"]}{dodatak})')
