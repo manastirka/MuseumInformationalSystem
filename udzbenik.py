@@ -244,6 +244,23 @@ def nadji_lekciju(udzbenik_red, poglavlje_slug, lekcija_slug):
     return None
 
 
+def nadji_alias(udzbenik_red, poglavlje_slug, lekcija_slug):
+    """(поглавље, лекција) садашње адресе за стару адресу премештене или
+    преименоване лекције (udzbenik_lekcija_alias) или None — и када садашња
+    лекција кориснику није видљива."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""SELECT p.slug, l.slug FROM udzbenik_lekcija_alias a
+                           JOIN udzbenik_lekcija l ON l.id = a.lekcija_id
+                           JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+                           WHERE p.udzbenik_id = %s AND a.poglavlje_slug = %s AND a.slug = %s
+                           ORDER BY a.id DESC LIMIT 1""", (udzbenik_red['id'], poglavlje_slug, lekcija_slug))
+            red = cur.fetchone()
+    if red is None or nadji_lekciju(udzbenik_red, red[0], red[1]) is None:
+        return None
+    return red[0], red[1]
+
+
 def poglavlje_postoji(udzbenik_red, poglavlje_slug):
     with get_postgres_connection() as conn:
         with conn.cursor() as cur:
