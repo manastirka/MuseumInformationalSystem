@@ -538,6 +538,57 @@
         "uredjaj": "difraktometar-prah"
       },
       "opis_za_citac": "Šema difraktometra za prah u Bragg–Brentano geometriji: rendgenska cev i detektor na krugu goniometra, ravan uzorak u središtu i upadni i difraktovani snop pod uglovima θ i 2θ."
+    },
+    {
+      "id": "d-proces",
+      "tip": "dijagram",
+      "dijagram": "proces",
+      "parametri": {
+        "proces": "magmatski",
+        "animacija": true,
+        "mesta": [
+          {
+            "mesto": "sulfidna-likvacija",
+            "opis": "Kapi sulfidnog rastopa tonu i skupljaju se pri dnu intruzije; hlađenjem nastaju pirotin, pentlandit i halkopirit.",
+            "figura_id": 5175,
+            "potpis": "Pentlandit u pirotinu, odbijena svetlost",
+            "paneli": [
+              {
+                "oznaka": "a",
+                "tekst": "Paralelni nikoli."
+              },
+              {
+                "oznaka": "b",
+                "tekst": "Ukršteni nikoli."
+              }
+            ],
+            "referenca": "Craig, J. R. & Vaughan, D. J. (1994) Ore Microscopy and Ore Petrography, 2. izd. Wiley, New York.",
+            "foto": "J. R. Craig"
+          },
+          {
+            "mesto": "hromitit",
+            "opis": "Hromit kristališe rano i taloži se u gotovo monomineralan sloj — hromitit."
+          },
+          {
+            "mesto": "frakciona-kristalizacija",
+            "opis": "Rani kristali tonu, a ostatak rastopa menja sastav.",
+            "figura_id": 5176
+          },
+          {
+            "mesto": "pegmatit",
+            "opis": "Iz ostatka granitne magme bogatog vodom i fluksima kristališe pegmatit.",
+            "figura_id": 5177,
+            "potpis": "Grafička proraslica kvarca i K-feldspata",
+            "referenca": "London, D. (2008) Pegmatites. The Canadian Mineralogist Special Publication 10."
+          },
+          {
+            "mesto": "grajzen",
+            "opis": "Fluidi bogati F i B menjaju granit u apikalnom delu kupole u grajzen."
+          }
+        ]
+      },
+      "potpis": "Magmatski i pegmatitski procesi na idealizovanom preseku",
+      "opis_za_citac": "Šematski presek: levo slojevita bazična intruzija sa sulfidnim rastopom na dnu, hromititom u kumulatima i ostatkom rastopa gore; desno granitni pluton sa pegmatitskim žicama, grajzenom u kupoli i hidrotermalnim žicama."
     }
   ]
 }

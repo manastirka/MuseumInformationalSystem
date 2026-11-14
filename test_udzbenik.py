@@ -272,6 +272,35 @@ class UvozTest(_Osnova):
         self.assertIn('(isto)', out2)
         self.assertIn('0 нових верзија', out2)
 
+    def test_premestena_lekcija_zadrzava_id_i_napredak(self):
+        """Лекција коју фајл наводи у другом поглављу премешта се (исти id,
+        верзије и напредак), без дупликата и без упозорења „нема је у фајлу“."""
+        _uvezi_primer()
+        podaci = json.loads(PRIMER.read_text(encoding='utf-8'))
+        lek = podaci['poglavlja'][1]['lekcije'][-1]
+        slug, iz, u = lek['slug'], podaci['poglavlja'][1]['slug'], podaci['poglavlja'][0]['slug']
+        stari_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = %s", (slug,))[0][0]
+        _izvrsi("INSERT INTO udzbenik_napredak (user_email, lekcija_id, zavrseno) VALUES (%s, %s, TRUE)", (EMAIL, stari_id))
+        pre = _brojevi()
+
+        def premesti(p):
+            l = p['poglavlja'][1]['lekcije'].pop()
+            l['redosled'] = len(p['poglavlja'][0]['lekcije']) + 1
+            p['poglavlja'][0]['lekcije'].append(l)
+        putanja = _primer_sa_izmenom(premesti)
+        self.addCleanup(os.unlink, putanja)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+        self.assertIn(f'премешта се из поглавља {iz}', out)
+        self.assertNotIn('нема је у фајлу', out)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), pre, 'ни нова лекција ни нова верзија')
+        red = _upit("""SELECT l.id, p.slug FROM udzbenik_lekcija l JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+                       WHERE l.slug = %s""", (slug,))
+        self.assertEqual(red, [(stari_id, u)])
+        self.assertEqual(_upit("SELECT zavrseno FROM udzbenik_napredak WHERE lekcija_id = %s", (stari_id,)), [(True,)])
+
     def test_izmenjen_markdown_pravi_verziju_2(self):
         _uvezi_primer()
         pre = _brojevi()
@@ -1076,7 +1105,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 33)
+        self.assertEqual(len(sadrzaj['blokovi']), 34)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1084,8 +1113,17 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 33)
+        self.assertEqual(len(blokovi), 34)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
+        # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
+        dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}
+        for b in blokovi:
+            if b.get('dijagram') == 'proces':
+                for m in b['parametri']['mesta']:
+                    if 'figura_id' in m:
+                        self.assertTrue({'slika', 'nedostupan'} & set(m), m)
+                    for k in dopuna:
+                        m.pop(k, None)
         self.assertEqual(blokovi, sadrzaj['blokovi'])
 
         sema = udzbenik.ucitaj_semu()
@@ -1909,6 +1947,77 @@ def _infografika(glavna, lupa, primer_figura, mikroskop, proces_figura, srbija):
 
 TEKST_INFOGRAFIKE = ('naslov', 'podnaslov', 'osobine', 'par', 'poruka')
 
+
+
+class ProcesApiTest(_Osnova):
+    """Дијаграм ``proces``: места пресека са ``figura_id`` разрешавају се по
+    правилима блока ``slika-literatura`` (PEDAGOSKI-OKVIR, пилот Постанак)."""
+    URL = '/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi'
+
+    def setUp(self):
+        super().setUp()
+        _uvezi_primer()
+        scisearch_klijent.ocisti_kes()
+        self.addCleanup(scisearch_klijent.ocisti_kes)
+        self.lekcija_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
+        self.mesta = [
+            {'mesto': 'pegmatit', 'naslov': 'Пегматит', 'opis': 'Графичка структура.', 'figura_id': 5175,
+             'potpis': 'Кварц и фелдспат.', 'referenca': 'Аутор (2000)'},
+            {'mesto': 'grajzen', 'opis': 'Грајзен без слике.'},
+            {'mesto': 'hromitit', 'opis': 'Хромитит.', 'figura_id': 5175},
+        ]
+        blok = {'id': 'proces-1', 'tip': 'dijagram', 'dijagram': 'proces',
+                'parametri': {'proces': 'magmatski', 'mesta': self.mesta}, 'opis_za_citac': 'Пресек.'}
+        sadrzaj = {'verzija': 1, 'blokovi': [blok]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), self.lekcija_id))
+
+    def _mesta(self):
+        r = self.get(self.URL)
+        self.assertEqual(r.status_code, 200)
+        (blok,) = r.get_json()['lekcija']['blokovi']
+        self.assertNotIn('nepoznat', blok)
+        return blok['parametri']['mesta']
+
+    def test_prijavljen_dobija_sliku_i_izvor(self):
+        self._prijava()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            peg, gra, hro = self._mesta()
+            self.assertEqual({k: peg[k] for k in self.mesta[0]}, self.mesta[0], 'ауторова поља остају')
+            self.assertEqual(peg['izvor']['naslov'], 'Ore Microscopy')
+            self.assertEqual((peg['slika'], peg['sicicka']), ('/api/udzbenik/literatura-slika/5175',
+                                                             '/api/udzbenik/literatura-slika/5175/thumb'))
+            self.assertEqual(gra, self.mesta[1], 'место без слике непромењено')
+            self.assertIn('slika', hro)
+
+    def test_anonimni_bez_slike_i_navoda(self):
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = 'minerali'")
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen'")
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            peg, gra, _ = self._mesta()
+            self.assertEqual((peg['nedostupan'], peg['opis'], peg['naslov']), (True, 'Графичка структура.', 'Пегматит'))
+            telo = self.get(self.URL).get_data(as_text=True)
+            for trag in ('5175', 'Аутор (2000)', 'Кварц и фелдспат', 'literatura-slika'):
+                self.assertNotIn(trag, telo)
+            self.assertEqual(get.pozivi, [], 'SciSearch се за анонимног не зове')
+
+    def test_uvoz_proverava_figure_mesta(self):
+        blok = {'id': 'p', 'tip': 'dijagram', 'dijagram': 'proces', 'parametri': {'proces': 'magmatski', 'mesta': self.mesta}}
+        self.assertEqual(list(uvoz._figure('b', blok)), [('b.parametri.mesta[0].figura_id', 5175),
+                                                         ('b.parametri.mesta[2].figura_id', 5175)])
+        podaci = {'poglavlja': [{'lekcije': [{'sadrzaj': {'blokovi': [blok, {'id': 'd', 'tip': 'dijagram', 'dijagram': 'bragg'}]}}]}]}
+        self.assertEqual([b['id'] for _, b in uvoz._blokovi_literature(podaci)], ['p'])
+
+    def test_scisearch_pao_mesto_nedostupno(self):
+        self._prijava()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', side_effect=requests.Timeout()):
+            peg, _, _ = self._mesta()
+            self.assertEqual((peg['nedostupan'], peg['razlog']), (True, 'biblioteka trenutno nije dostupna'))
+            self.assertNotIn('slika', peg)
 
 class InfografikaApiTest(_Osnova):
     URL = '/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi'

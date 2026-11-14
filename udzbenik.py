@@ -301,6 +301,8 @@ def razresi_blokove(cur, blokovi):
                 izlaz.append(razresen)
         elif tip == 'infografika':
             izlaz.append(_razresi_infografiku(cur, blok))
+        elif tip == 'dijagram' and blok.get('dijagram') == 'proces':
+            izlaz.append(_razresi_proces(blok))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -481,6 +483,46 @@ def _razresi_sliku_literature(blok):
         sicicka=url_for('udzbenik.api_literatura_slika_mala', figura_id=figura_id),
         sirina_px=fig['sirina'], visina_px=fig['visina'],
     )
+
+
+POLJA_SLIKE_PROCESA = ('figura_id', 'potpis', 'paneli', 'referenca', 'foto')
+
+
+def mesta_procesa(blok):
+    """Места пресека у дијаграму ``proces`` која носе ``figura_id`` (иста
+    правила као ``slika-literatura``); користе их API и увоз."""
+    parametri = blok.get('parametri')
+    if not isinstance(parametri, dict) or not isinstance(parametri.get('mesta'), list):
+        return
+    for i, mesto in enumerate(parametri['mesta']):
+        if isinstance(mesto, dict) and 'figura_id' in mesto:
+            yield i, mesto
+
+
+def _razresi_proces(blok):
+    """Дијаграм ``proces``: свако место са ``figura_id`` разрешава се као блок
+    ``slika-literatura`` — пријављен добија ``izvor`` + ``slika``/``sicicka``,
+    грешка сервиса ``nedostupan`` + ``razlog``; анонимном се уклањају
+    ``figura_id`` и навод слике (као што се блок ``slika-literatura`` изоставља),
+    а место са насловом и описом остаје уз ``nedostupan``."""
+    izlaz = copy.deepcopy(blok)
+    for _, mesto in mesta_procesa(izlaz):
+        figura_id = mesto['figura_id']
+        if not prijavljen():
+            for polje in POLJA_SLIKE_PROCESA:
+                mesto.pop(polje, None)
+            mesto.update(nedostupan=True, razlog=RAZLOG_LITERATURA_PRIJAVA)
+            continue
+        fig, razlog = _nadji_figuru(figura_id, blok.get('id'))
+        if fig is None:
+            mesto.update(nedostupan=True, razlog=razlog)
+            continue
+        mesto.update(
+            izvor=_izvor_figure(fig),
+            slika=url_for('udzbenik.api_literatura_slika', figura_id=figura_id),
+            sicicka=url_for('udzbenik.api_literatura_slika_mala', figura_id=figura_id),
+        )
+    return izlaz
 
 
 # --------------------------------------------------------------------------

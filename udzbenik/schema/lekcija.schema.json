@@ -54,7 +54,11 @@
             "dijagram",
             "literatura",
             "slika-literatura",
-            "infografika"
+            "infografika",
+            "ishodi",
+            "primer-koraci",
+            "zabluda",
+            "sazetak"
           ]
         }
       },
@@ -88,6 +92,18 @@
         },
         {
           "$ref": "#/$defs/infografika"
+        },
+        {
+          "$ref": "#/$defs/ishodi"
+        },
+        {
+          "$ref": "#/$defs/primer-koraci"
+        },
+        {
+          "$ref": "#/$defs/zabluda"
+        },
+        {
+          "$ref": "#/$defs/sazetak"
         }
       ]
     },
@@ -923,6 +939,12 @@
               },
               "tacan": {
                 "type": "boolean"
+              },
+              "povratna": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "Objašnjenje baš ovog odgovora (PEDAGOSKI-OKVIR §3.2)."
               }
             }
           }
@@ -934,6 +956,50 @@
         "objasnjenje": {
           "$ref": "#/$defs/markdown",
           "description": "Prikazuje se posle odgovora, tačnog ili pogrešnog."
+        },
+        "uloga": {
+          "enum": [
+            "predznanje",
+            "prisecanje",
+            "provera",
+            "zavrsna",
+            "ponavljanje"
+          ],
+          "default": "provera"
+        },
+        "nivo": {
+          "enum": [
+            "pamcenje",
+            "razumevanje",
+            "primena",
+            "analiza",
+            "procena",
+            "stvaranje"
+          ]
+        },
+        "uputi_na": {
+          "type": "object",
+          "required": [
+            "lekcija"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "lekcija": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "blok": {
+              "$ref": "#/$defs/id"
+            },
+            "tekst": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        },
+        "iz_lekcije": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
         }
       }
     },
@@ -956,7 +1022,8 @@
           "enum": [
             "info",
             "pazi",
-            "zanimljivost"
+            "zanimljivost",
+            "problem"
           ],
           "default": "info"
         },
@@ -1009,7 +1076,8 @@
             "strunz-klase",
             "hod-zraka-mikroskopa",
             "sem-eds",
-            "sema-uredjaja"
+            "sema-uredjaja",
+            "proces"
           ]
         },
         "parametri": {
@@ -1983,6 +2051,146 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "proces"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "proces",
+                  "mesta"
+                ],
+                "properties": {
+                  "proces": {
+                    "enum": [
+                      "magmatski"
+                    ]
+                  },
+                  "mesta": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 6,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "mesto",
+                        "opis"
+                      ],
+                      "properties": {
+                        "mesto": {
+                          "enum": [
+                            "fe-ti-oksidi",
+                            "frakciona-kristalizacija",
+                            "grajzen",
+                            "hidrotermalne-zice",
+                            "hromitit",
+                            "pegmatit",
+                            "sulfidna-likvacija"
+                          ],
+                          "description": "Ključ sidra na preseku (src/dijagrami/podaci/procesi)."
+                        },
+                        "naslov": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "opis": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 600,
+                          "description": "Šta se na ovom mestu dešava i šta se vidi na slici (latinica)."
+                        },
+                        "figura_id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "ID figure u SciSearch biblioteci (pravila bloka slika-literatura)."
+                        },
+                        "potpis": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "paneli": {
+                          "$ref": "#/$defs/slika-literatura/properties/paneli"
+                        },
+                        "referenca": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 600
+                        },
+                        "foto": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        },
+                        "izvor": {
+                          "$ref": "#/$defs/slika-literatura/properties/izvor"
+                        },
+                        "slika": {
+                          "type": "string"
+                        },
+                        "sicicka": {
+                          "type": "string"
+                        },
+                        "nedostupan": {
+                          "type": "boolean"
+                        },
+                        "razlog": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "animacija": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Blaga animacija toka fluida; poštuje prefers-reduced-motion."
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "proces": {
+                          "const": "magmatski"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "mesta": {
+                          "items": {
+                            "properties": {
+                              "mesto": {
+                                "enum": [
+                                  "sulfidna-likvacija",
+                                  "hromitit",
+                                  "frakciona-kristalizacija",
+                                  "fe-ti-oksidi",
+                                  "pegmatit",
+                                  "grajzen",
+                                  "hidrotermalne-zice"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -2489,6 +2697,251 @@
           "minLength": 1,
           "maxLength": 240,
           "description": "Ključna poruka u 1–2 rečenice."
+        }
+      }
+    },
+    "ishodi": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "stavke"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "ishodi"
+        },
+        "naslov": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "stavke": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": [
+              "nivo",
+              "tekst"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "nivo": {
+                "enum": [
+                  "pamcenje",
+                  "razumevanje",
+                  "primena",
+                  "analiza",
+                  "procena",
+                  "stvaranje"
+                ]
+              },
+              "tekst": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 240
+              }
+            }
+          }
+        }
+      }
+    },
+    "primer-koraci": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "naslov",
+        "podrska",
+        "zadatak",
+        "koraci"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "primer-koraci"
+        },
+        "naslov": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "podrska": {
+          "enum": [
+            "reseno",
+            "delimicno",
+            "samostalno"
+          ]
+        },
+        "zadatak": {
+          "$ref": "#/$defs/markdown"
+        },
+        "koraci": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": [
+              "markdown"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "naslov": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "markdown": {
+                "$ref": "#/$defs/markdown"
+              },
+              "nagovestaj": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "pitanje": {
+                "type": "object",
+                "required": [
+                  "pitanje",
+                  "odgovori"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "pitanje": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  },
+                  "odgovori": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 6,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "tekst",
+                        "tacan"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "tekst": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "tacan": {
+                          "type": "boolean"
+                        },
+                        "povratna": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500,
+                          "description": "Objašnjenje baš ovog odgovora (PEDAGOSKI-OKVIR §3.2)."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zakljucak": {
+          "$ref": "#/$defs/markdown"
+        }
+      }
+    },
+    "zabluda": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "zabluda",
+        "ispravno"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "zabluda"
+        },
+        "zabluda": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300
+        },
+        "ispravno": {
+          "$ref": "#/$defs/markdown"
+        },
+        "zasto": {
+          "$ref": "#/$defs/markdown"
+        },
+        "proba": {
+          "$ref": "#/$defs/markdown"
+        }
+      }
+    },
+    "sazetak": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "pojmovi"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "sazetak"
+        },
+        "naslov": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "markdown": {
+          "type": "string",
+          "maxLength": 1200
+        },
+        "pojmovi": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 15,
+          "items": {
+            "type": "object",
+            "required": [
+              "pojam",
+              "definicija"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pojam": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "definicija": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 300
+              },
+              "lekcija": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              }
+            }
+          }
         }
       }
     }
