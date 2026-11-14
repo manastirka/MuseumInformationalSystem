@@ -83,7 +83,10 @@ def ljuska_lekcije(zbirka, poglavlje, lekcija):
     if odgovor is not None:
         return odgovor
     if udzbenik.nadji_lekciju(red, poglavlje, lekcija) is None:
-        abort(404)
+        alias = udzbenik.nadji_alias(red, poglavlje, lekcija)
+        if alias is None:
+            abort(404)
+        return redirect(url_for('udzbenik.ljuska_lekcije', zbirka=zbirka, poglavlje=alias[0], lekcija=alias[1]), 301)
     return _ljuska(red, poglavlje, lekcija)
 
 
@@ -115,6 +118,9 @@ def api_lekcija(zbirka, poglavlje, lekcija):
         return odgovor
     podaci = udzbenik.lekcija(red, poglavlje, lekcija)
     if podaci is None:
+        alias = udzbenik.nadji_alias(red, poglavlje, lekcija)
+        if alias is not None:
+            return redirect(url_for('udzbenik.api_lekcija', zbirka=zbirka, poglavlje=alias[0], lekcija=alias[1]), 301)
         return _greska(404, 'Лекција не постоји')
     return jsonify(podaci)
 

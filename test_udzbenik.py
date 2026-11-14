@@ -92,6 +92,9 @@ def _osiguraj_semu():
             cur.execute("SELECT to_regclass('public.udzbenik_struktura')")
             if cur.fetchone()[0] is None:
                 cur.execute((KOREN / 'migration' / '061_udzbenik_struktura.sql').read_text(encoding='utf-8'))
+            cur.execute("SELECT to_regclass('public.udzbenik_lekcija_alias')")
+            if cur.fetchone()[0] is None:
+                cur.execute((KOREN / 'migration' / '062_udzbenik_lekcija_alias.sql').read_text(encoding='utf-8'))
         conn.commit()
 
 
@@ -300,6 +303,54 @@ class UvozTest(_Osnova):
                        WHERE l.slug = %s""", (slug,))
         self.assertEqual(red, [(stari_id, u)])
         self.assertEqual(_upit("SELECT zavrseno FROM udzbenik_napredak WHERE lekcija_id = %s", (stari_id,)), [(True,)])
+        self._prijava()
+        r = self.get(f'/udzbenik/minerali/{iz}/{slug}')
+        self.assertEqual(r.status_code, 301, 'стари URL премештене лекције преусмерава')
+        self.assertTrue(r.headers['Location'].endswith(f'/udzbenik/minerali/{u}/{slug}'))
+
+    def test_preimenovana_lekcija_stari_url_preusmerava(self):
+        """prethodni_slug: лекција добија нов slug (исти id и напредак), стари URL
+        (HTML и API) преусмерава 301 на нови — проверено до базе."""
+        _uvezi_primer()
+        podaci = json.loads(PRIMER.read_text(encoding='utf-8'))
+        pogl, lek = podaci['poglavlja'][0]['slug'], podaci['poglavlja'][0]['lekcije'][0]['slug']
+        stari_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = %s", (lek,))[0][0]
+        _izvrsi("INSERT INTO udzbenik_napredak (user_email, lekcija_id, zavrseno) VALUES (%s, %s, TRUE)", (EMAIL, stari_id))
+        pre = _brojevi()
+
+        def preimenuj(p):
+            p['poglavlja'][0]['lekcije'][0].update(slug='nov-naziv-lekcije', prethodni_slug=lek)
+        putanja = _primer_sa_izmenom(preimenuj)
+        self.addCleanup(os.unlink, putanja)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+        self.assertIn(f'преименује се из {pogl}/{lek}', out)
+        self.assertNotIn('нема је у фајлу', out)
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), pre, 'ни нова лекција ни нова верзија')
+        self.assertEqual(_upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'nov-naziv-lekcije'"), [(stari_id,)])
+        self.assertEqual(_upit("SELECT zavrseno FROM udzbenik_napredak WHERE lekcija_id = %s", (stari_id,)), [(True,)])
+        self.assertEqual(_upit("SELECT poglavlje_slug, slug FROM udzbenik_lekcija_alias WHERE lekcija_id = %s",
+                               (stari_id,)), [(pogl, lek)])
+
+        self._prijava()
+        r = self.get(f'/udzbenik/minerali/{pogl}/{lek}')
+        self.assertEqual(r.status_code, 301)
+        self.assertTrue(r.headers['Location'].endswith(f'/udzbenik/minerali/{pogl}/nov-naziv-lekcije'), r.headers['Location'])
+        self.assertEqual(self.get(f'/udzbenik/minerali/{pogl}/nov-naziv-lekcije').status_code, 200)
+        r = self.get(f'/api/udzbenik/minerali/lekcija/{pogl}/{lek}')
+        self.assertEqual(r.status_code, 301)
+        self.assertTrue(r.headers['Location'].endswith(f'/api/udzbenik/minerali/lekcija/{pogl}/nov-naziv-lekcije'))
+        r = self.get(f'/api/udzbenik/minerali/lekcija/{pogl}/nov-naziv-lekcije')
+        self.assertEqual((r.status_code, r.get_json()['lekcija']['slug']), (200, 'nov-naziv-lekcije'))
+        self.assertEqual(self.get(f'/udzbenik/minerali/{pogl}/nepostojeca-lekcija').status_code, 404)
+        self.assertEqual(self.get(f'/api/udzbenik/minerali/lekcija/{pogl}/nepostojeca-lekcija').status_code, 404)
+
+        kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze())
+        self.assertEqual(kod, 0, err + out)
+        self.assertIn('0 нових верзија', out)
+        self.assertEqual(_brojevi(), pre, 'поновни увоз је идемпотентан')
 
     def test_izmenjen_markdown_pravi_verziju_2(self):
         _uvezi_primer()

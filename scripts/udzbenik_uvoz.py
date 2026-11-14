@@ -187,6 +187,8 @@ def validiraj(podaci, cur):
                 greske.append(f'{lp}: лекција мора бити објекат')
                 continue
             _slug(lek.get('slug'), f'{lp}.slug', greske)
+            if 'prethodni_slug' in lek:
+                _slug(lek.get('prethodni_slug'), f'{lp}.prethodni_slug', greske)
             _tekst(lek.get('naslov'), f'{lp}.naslov', greske)
             _tekst(lek.get('sazetak'), f'{lp}.sazetak', greske, obavezno=False)
             _redosled(lek.get('redosled'), f'{lp}.redosled', greske)
@@ -424,14 +426,23 @@ def napravi_plan(cur, podaci):
                        WHERE p.udzbenik_id = %s""", (red[0],))
         u_bazi = cur.fetchall()
         stari_par = {(r[8], r[1]) for r in u_bazi}
+        prethodni = {lek['prethodni_slug']: (p['slug'], lek['slug']) for p in podaci['poglavlja']
+                     for lek in p['lekcije'] if lek.get('prethodni_slug')}
         for r in u_bazi:
             if (r[8], r[1]) in u_fajlu:
                 continue
-            novo = [ps for ps, ls in u_fajlu if ls == r[1] and (ps, ls) not in stari_par]
-            if len(novo) == 1:
-                premestene[r[1]] = {'id': r[0], 'naslov': r[2], 'sazetak': r[3], 'redosled': r[4], 'status': r[5],
-                                    'verzija': r[6], 'sadrzaj': _json(r[7]), 'iz': r[8], 'u': novo[0]}
+            if r[1] in prethodni and prethodni[r[1]] not in stari_par:     # преименована (и можда премештена)
+                novo_p, novo_s = prethodni[r[1]]
+            else:
+                novo = [ps for ps, ls in u_fajlu if ls == r[1] and (ps, ls) not in stari_par]
+                if len(novo) != 1:
+                    continue
+                novo_p, novo_s = novo[0], r[1]
+            premestene[novo_s] = {'id': r[0], 'naslov': r[2], 'sazetak': r[3], 'redosled': r[4], 'status': r[5],
+                                  'verzija': r[6], 'sadrzaj': _json(r[7]), 'iz': r[8], 'u': novo_p,
+                                  'stari_slug': r[1]}
     plan['premestene'] = {slug: (v['iz'], v['u']) for slug, v in premestene.items()}
+    stari_slugovi = {v['stari_slug'] for v in premestene.values()}
 
     slugovi_u_fajlu = {p['slug'] for p in podaci['poglavlja']}
     zauzeti = {v['redosled']: slug for slug, v in postojeca_poglavlja.items() if slug not in slugovi_u_fajlu}
@@ -458,7 +469,7 @@ def napravi_plan(cur, podaci):
                                  for r in cur.fetchall()}
         slugovi_lekcija = {lek['slug'] for lek in p['lekcije']}
         zauzete = {v['redosled']: slug for slug, v in postojece_lekcije.items()
-                   if slug not in slugovi_lekcija and slug not in premestene}
+                   if slug not in slugovi_lekcija and slug not in stari_slugovi}
         for j, lek in enumerate(p['lekcije']):
             stara = postojece_lekcije.get(lek['slug'])
             premestena = premestene.get(lek['slug']) if stara is None and premestene.get(lek['slug'], {}).get('u') == p['slug'] else None
@@ -487,8 +498,9 @@ def napravi_plan(cur, podaci):
                     l_stavka['akcija'] = 'isto'
                 if premestena is not None:
                     l_stavka['iz_poglavlja'] = premestena['iz']
+                    l_stavka['stari_slug'] = premestena['stari_slug']
             stavka['lekcije'].append(l_stavka)
-        for slug in sorted(set(postojece_lekcije) - {lek['slug'] for lek in p['lekcije']} - set(premestene)):
+        for slug in sorted(set(postojece_lekcije) - {lek['slug'] for lek in p['lekcije']} - stari_slugovi):
             plan['upozorenja'].append(f'лекција {p["slug"]}/{slug} је у бази, а нема је у фајлу — остаје нетакнута')
         plan['poglavlja'].append(stavka)
     for slug in sorted(set(postojeca_poglavlja) - {p['slug'] for p in podaci['poglavlja']}):
@@ -551,7 +563,11 @@ def primeni_plan(cur, podaci, plan, autor, napomena):
                 continue
             lekcija_id = l_stavka['id']
             if l_stavka.get('iz_poglavlja'):
-                cur.execute('UPDATE udzbenik_lekcija SET poglavlje_id = %s WHERE id = %s', (poglavlje_id, lekcija_id))
+                cur.execute('UPDATE udzbenik_lekcija SET poglavlje_id = %s, slug = %s WHERE id = %s',
+                            (poglavlje_id, lek['slug'], lekcija_id))
+                cur.execute("""INSERT INTO udzbenik_lekcija_alias (lekcija_id, poglavlje_slug, slug)
+                               VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
+                            (lekcija_id, l_stavka['iz_poglavlja'], l_stavka['stari_slug']))
             if l_stavka['akcija'] == 'menja sadrzaj':
                 cur.execute("""UPDATE udzbenik_lekcija SET redosled = %s, naslov = %s, sazetak = %s,
                                    status = COALESCE(%s, status), sadrzaj = %s, verzija = %s,
@@ -593,7 +609,9 @@ def ispisi_plan(plan, izvrsavanje):
         for lek in p['lekcije']:
             brojac['lekcije'] += 1
             dodatak = f' → verzija {lek["nova_verzija"]}' if lek['nova_verzija'] else ''
-            if lek.get('iz_poglavlja'):
+            if lek.get('iz_poglavlja') and lek['stari_slug'] != lek['slug']:
+                dodatak += f'; преименује се из {lek["iz_poglavlja"]}/{lek["stari_slug"]}'
+            elif lek.get('iz_poglavlja'):
                 dodatak += f'; премешта се из поглавља {lek["iz_poglavlja"]}'
             if lek['nova_verzija']:
                 brojac['nove_verzije'] += 1
