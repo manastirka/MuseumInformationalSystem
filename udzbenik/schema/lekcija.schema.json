@@ -2086,6 +2086,11 @@
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
+                      "dependentRequired": {
+                        "licenca": [
+                          "foto"
+                        ]
+                      },
                       "required": [
                         "mesto",
                         "opis"
@@ -2160,6 +2165,11 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 300
+                        },
+                        "licenca": {
+                          "type": "string",
+                          "pattern": "^(CC0|PD|CC BY(-SA)? [1-4]\\.[05]( [A-Z]{2})?)$",
+                          "description": "Slobodna licenca fotografije: CC0, PD (javno vlasništvo), CC BY x.y ili CC BY-SA x.y, uz opcionu oznaku jurisdikcije (npr. CC BY-SA 3.0 RS). Motor tada umesto oznake interne upotrebe prikazuje licencu; `foto` (autor) je obavezan."
                         },
                         "izvor": {
                           "$ref": "#/$defs/slika-literatura/properties/izvor"
@@ -2390,6 +2400,11 @@
         "figura_id"
       ],
       "additionalProperties": false,
+      "dependentRequired": {
+        "licenca": [
+          "foto"
+        ]
+      },
       "description": "Слика из научне библиотеке (SciSearch figura) — САМО ИНТЕРНО: сервер при читању за пријављеног додаје `izvor` {naslov, autor, godina, strana, potpis_izvora} и `slika`/`sicicka` (MIS proxy руте /api/udzbenik/literatura-slika/<id>[/thumb]) или `nedostupan: true` + `razlog`; за анонимног читаоца блок се ПОТПУНО изоставља из одговора. Слика се не копира у МИС.",
       "properties": {
         "id": {
@@ -2451,6 +2466,11 @@
           "minLength": 1,
           "maxLength": 300,
           "description": "Autor fotografije ili poreklo slike, kako piše u literaturi."
+        },
+        "licenca": {
+          "type": "string",
+          "pattern": "^(CC0|PD|CC BY(-SA)? [1-4]\\.[05]( [A-Z]{2})?)$",
+          "description": "Slobodna licenca fotografije: CC0, PD (javno vlasništvo), CC BY x.y ili CC BY-SA x.y, uz opcionu oznaku jurisdikcije (npr. CC BY-SA 3.0 RS). Motor tada umesto oznake interne upotrebe prikazuje licencu; `foto` (autor) je obavezan."
         },
         "sirina": {
           "enum": [
