@@ -1970,6 +1970,34 @@ class SlikaLiteraturaApiTest(_Osnova):
         self.assertEqual(kod, 0, err)
 
 
+    def test_uvoz_licenca(self):
+        def dodaj(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'fig-a', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': 'А. Аутор', 'licenca': 'CC0'},
+                {'id': 'fig-b', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': 'А. Аутор', 'licenca': 'PD'},
+                {'id': 'fig-c', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': 'А. Аутор', 'licenca': 'CC BY-SA 3.0 RS'},
+                {'id': 'fig-d', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': 'А. Аутор', 'licenca': 'CC BY-SA 4.0'},
+            ])
+        putanja = _primer_sa_izmenom(dodaj)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 0, err)
+
+        def pokvari(podaci):
+            podaci['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'].extend([
+                {'id': 'fig-e', 'tip': 'slika-literatura', 'figura_id': 5175, 'licenca': 'CC BY 4.0'},
+                {'id': 'fig-f', 'tip': 'slika-literatura', 'figura_id': 5175, 'foto': 'А. Аутор', 'licenca': 'CC BY-NC 4.0'},
+            ])
+        putanja = _primer_sa_izmenom(pokvari)
+        self.addCleanup(os.unlink, putanja)
+        kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
+        self.assertEqual(kod, 1)
+        n = len(json.loads(PRIMER.read_text(encoding='utf-8'))['poglavlja'][0]['lekcije'][0]['sadrzaj']['blokovi'])
+        koren = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        self.assertIn(f"{koren}[{n}]: 'foto' is a dependency of 'licenca'", err)
+        self.assertIn(f"{koren}[{n + 1}].licenca: 'CC BY-NC 4.0' does not match", err)
+
+
 # ---------------------------------------------------------------------------
 # Блок infografika (INFOGRAFIKA-UGOVOR.md §1–2)
 # ---------------------------------------------------------------------------
@@ -2018,7 +2046,8 @@ class ProcesApiTest(_Osnova):
         self.lekcija_id = _upit("SELECT id FROM udzbenik_lekcija WHERE slug = 'kristalni-sistemi'")[0][0]
         self.mesta = [
             {'mesto': 'pegmatit', 'naslov': 'Пегматит', 'opis': 'Графичка структура.', 'figura_id': 5175,
-             'potpis': 'Кварц и фелдспат.', 'referenca': 'Аутор (2000)'},
+             'potpis': 'Кварц и фелдспат.', 'referenca': 'Аутор (2000)', 'foto': 'Ф. Аутор',
+             'licenca': 'CC BY-SA 4.0'},
             {'mesto': 'grajzen', 'opis': 'Грајзен без слике.'},
             {'mesto': 'hromitit', 'opis': 'Хромитит.', 'figura_id': 5175},
         ]
@@ -2056,7 +2085,7 @@ class ProcesApiTest(_Osnova):
             peg, gra, _ = self._mesta()
             self.assertEqual((peg['nedostupan'], peg['opis'], peg['naslov']), (True, 'Графичка структура.', 'Пегматит'))
             telo = self.get(self.URL).get_data(as_text=True)
-            for trag in ('5175', 'Аутор (2000)', 'Кварц и фелдспат', 'literatura-slika'):
+            for trag in ('5175', 'Аутор (2000)', 'Кварц и фелдспат', 'literatura-slika', 'CC BY-SA'):
                 self.assertNotIn(trag, telo)
             self.assertEqual(get.pozivi, [], 'SciSearch се за анонимног не зове')
 

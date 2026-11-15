@@ -502,7 +502,7 @@ def _razresi_sliku_literature(blok):
     )
 
 
-POLJA_SLIKE_PROCESA = ('figura_id', 'potpis', 'paneli', 'referenca', 'foto')
+POLJA_SLIKE_PROCESA = ('figura_id', 'potpis', 'paneli', 'referenca', 'foto', 'licenca')
 
 
 def mesta_procesa(blok):
