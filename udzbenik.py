@@ -14,8 +14,9 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 - блок ``literatura`` разрешава преко scisearch_klijent (само за пријављене;
   пад SciSearch-а не обара лекцију — блок добија ``nedostupan`` + ``razlog``);
 - блок ``slika-literatura`` (MIS-UGOVOR-SLIKE.md §2) исто, али САМО ИНТЕРНО:
-  анонимном читаоцу се блок потпуно изоставља из одговора; слика се не
-  копира, служи је proxy рута ``/api/udzbenik/literatura-slika/<id>``;
+  анонимном читаоцу се блок потпуно изоставља из одговора — осим слике под
+  слободном лиценцом (``licenca``: CC0, PD, CC BY, CC BY-SA), коју види свако;
+  слика се не копира, служи је proxy рута ``/api/udzbenik/literatura-slika/<id>``;
 - блок ``infografika`` (INFOGRAFIKA-UGOVOR.md §2): сваки ``<Slika>`` у блоку
   (glavna, glavna.lupa, primeri[], mikroskop, proces, srbija.stavke[]) се
   разрешава истим правилима као ``slika`` / ``primerak`` / ``slika-literatura``;
@@ -29,6 +30,7 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 import copy
 import json
 import logging
+import re
 from collections import namedtuple
 from pathlib import Path
 
@@ -483,11 +485,40 @@ def _izvor_figure(fig):
             'strana': fig['strana'], 'potpis_izvora': fig['potpis']}
 
 
+SLOBODNA_LICENCA = re.compile(r'^(CC0|PD|CC BY(-SA)? [1-4]\.[05]( [A-Z]{2})?)$')
+
+
+def slobodna_licenca(blok):
+    """Блок слике под слободном лиценцом (исти образац као у шеми) — види га
+    и анонимни читалац."""
+    licenca = blok.get('licenca')
+    return isinstance(licenca, str) and SLOBODNA_LICENCA.match(licenca) is not None
+
+
+def figura_javno_slobodna(figura_id):
+    """Proxy за читаоца без права на литературу: фигура мора бити у блоку
+    ``slika-literatura`` са слободном лиценцом, у објављеној лекцији јавног
+    уџбеника. Остале слике из литературе му и даље „не постоје“."""
+    uzorak = json.dumps([{'tip': 'slika-literatura', 'figura_id': figura_id}])
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""SELECT l.sadrzaj FROM udzbenik_lekcija l
+                           JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+                           JOIN udzbenik u ON u.id = p.udzbenik_id
+                           WHERE u.javno AND u.status = %s AND l.status = %s
+                             AND l.sadrzaj->'blokovi' @> %s::jsonb""",
+                        (STATUS_OBJAVLJEN, STATUS_OBJAVLJEN, uzorak))
+            redovi = cur.fetchall()
+    return any(b.get('tip') == 'slika-literatura' and b.get('figura_id') == figura_id and slobodna_licenca(b)
+               for (sadrzaj,) in redovi for b in (_json(sadrzaj) or {}).get('blokovi') or [])
+
+
 def _razresi_sliku_literature(blok):
     """Слика из SciSearch-а (MIS-UGOVOR-SLIKE.md §2). Анонимни → None (блок се
-    изоставља); пријављен добија ``izvor`` + ``slika``/``sicicka`` (МИС-ове
-    proxy руте), а грешка сервиса ``nedostupan`` + ``razlog``."""
-    if not prijavljen():
+    изоставља), осим под слободном лиценцом; пријављен добија ``izvor`` +
+    ``slika``/``sicicka`` (МИС-ове proxy руте), а грешка сервиса
+    ``nedostupan`` + ``razlog``."""
+    if not prijavljen() and not slobodna_licenca(blok):
         return None
     figura_id = blok.get('figura_id')
     fig, razlog = _nadji_figuru(figura_id, blok.get('id'))

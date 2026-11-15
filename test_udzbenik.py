@@ -1770,6 +1770,58 @@ class SlikaLiteraturaApiTest(_Osnova):
                 self.assertIn('greska', r.get_json())
             self.assertEqual(get.pozivi, [], 'SciSearch се за анонимног не зове')
 
+    def _sadrzaj_cc(self, licenca_druge=None):
+        """fig-cc (5175) под слободном лиценцом и fig-int (5176) без лиценце
+        (или са неслободном ``licenca_druge``)."""
+        cc = {'id': 'fig-cc', 'tip': 'slika-literatura', 'figura_id': 5175, 'potpis': 'Дифрактометар.',
+              'referenca': 'Wikimedia Commons, https://commons.wikimedia.org/wiki/File:Scxrd.jpg',
+              'foto': 'Anjali Merin (Wikimedia Commons)', 'licenca': 'CC BY-SA 4.0'}
+        interna = {'id': 'fig-int', 'tip': 'slika-literatura', 'figura_id': 5176, 'potpis': 'Интерна слика.'}
+        if licenca_druge:
+            interna.update(foto='Аутор', licenca=licenca_druge)
+        sadrzaj = {'verzija': 1, 'blokovi': [
+            {'id': 'uvod', 'tip': 'tekst', 'markdown': 'Пирит.'}, cc, interna,
+            {'id': 'kraj', 'tip': 'tekst', 'markdown': 'Крај.'},
+        ]}
+        _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), self.lekcija_id))
+        return cc
+
+    def test_anonimni_vidi_sliku_slobodne_licence(self):
+        cc = self._sadrzaj_cc()
+        self._objavi_javno()
+        get = _lazni_scisearch()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), mock.patch.object(scisearch_klijent.requests, 'get', get):
+            uvod, fig, kraj = self._blokovi()
+            self.assertEqual([b['id'] for b in (uvod, fig, kraj)], ['uvod', 'fig-cc', 'kraj'],
+                             'CC блок остаје, блок без лиценце изостављен')
+            self.assertEqual({k: fig[k] for k in cc}, cc, 'ауторова поља (и licenca) остају')
+            self.assertEqual((fig['slika'], fig['sicicka']), (self.SLIKA, self.MALA))
+            self.assertEqual(fig['izvor']['naslov'], 'Ore Microscopy')
+            telo = self.get(self.URL).get_data(as_text=True)
+            self.assertNotIn('Интерна слика', telo)
+            self.assertNotIn('5176', telo)
+            self.assertNotIn('test-token', telo)
+            r = self.get(self.SLIKA)
+            self.assertEqual((r.status_code, r.mimetype, r.data), (200, 'image/jpeg', JPEG_BAJTOVI))
+            self.assertEqual(self.get(self.MALA).status_code, 200)
+            for url in ('/api/udzbenik/literatura-slika/5176', '/api/udzbenik/literatura-slika/5176/thumb'):
+                self.assertEqual(self.get(url).status_code, 404, 'слика без лиценце анонимном не постоји')
+            self.assertFalse([u for u, _ in get.pozivi if '5176' in u], 'SciSearch се за 5176 не зове')
+
+    def test_anonimni_neslobodna_licenca_i_neobjavljena_lekcija(self):
+        self._sadrzaj_cc(licenca_druge='CC BY-NC 4.0')
+        self._objavi_javno()
+        with mock.patch.dict(os.environ, SCISEARCH_ENV), \
+                mock.patch.object(scisearch_klijent.requests, 'get', _lazni_scisearch()):
+            self.assertEqual([b['id'] for b in self._blokovi()], ['uvod', 'fig-cc', 'kraj'], 'NC није слободна')
+            self.assertEqual(self.get('/api/udzbenik/literatura-slika/5176').status_code, 404)
+            self.assertEqual(self.get(self.SLIKA).status_code, 200)
+            _izvrsi("UPDATE udzbenik_lekcija SET status = 'nacrt' WHERE id = %s", (self.lekcija_id,))
+            self.assertEqual(self.get(self.SLIKA).status_code, 404, 'CC слика само из објављене лекције')
+            _izvrsi("UPDATE udzbenik_lekcija SET status = 'objavljen' WHERE id = %s", (self.lekcija_id,))
+            _izvrsi("UPDATE udzbenik SET javno = FALSE WHERE zbirka = 'minerali'")
+            self.assertEqual(self.get(self.SLIKA).status_code, 404, 'CC слика само из јавног уџбеника')
+
     def test_prijavljen_bez_modula_403(self):
         self._prijava('user')
         get = _lazni_scisearch()

@@ -169,12 +169,13 @@ def api_literatura_slika_mala(figura_id):
 
 
 def _literatura_slika(figura_id, mala):
-    """Proxy слике из SciSearch-а (MIS-UGOVOR-SLIKE.md §2): само пријављени са
-    модулом уџбеника; анонимном 404 (рута му „не постоји“). Токен иде само
+    """Proxy слике из SciSearch-а (MIS-UGOVOR-SLIKE.md §2): пријављени са
+    модулом уџбеника; остали само слику под слободном лиценцом из јавног
+    уџбеника, иначе анонимном 404 (рута му „не постоји“). Токен иде само
     ка SciSearch-у, клијенту никад; одговор је ``private`` за кеш прегледача."""
-    if not udzbenik.prijavljen():
-        return _greska(404, 'Не постоји')
-    if not udzbenik.ima_modul():
+    if not udzbenik.sme_sliku_literature() and not udzbenik.figura_javno_slobodna(figura_id):
+        if not udzbenik.prijavljen():
+            return _greska(404, 'Не постоји')
         return _greska(403, 'Немате дозволу за модул уџбеника')
     try:
         bajtovi, tip = scisearch_klijent.preuzmi_sliku(figura_id, mala=mala)

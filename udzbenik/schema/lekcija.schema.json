@@ -2405,7 +2405,7 @@
           "foto"
         ]
       },
-      "description": "Слика из научне библиотеке (SciSearch figura) — САМО ИНТЕРНО: сервер при читању за пријављеног додаје `izvor` {naslov, autor, godina, strana, potpis_izvora} и `slika`/`sicicka` (MIS proxy руте /api/udzbenik/literatura-slika/<id>[/thumb]) или `nedostupan: true` + `razlog`; за анонимног читаоца блок се ПОТПУНО изоставља из одговора. Слика се не копира у МИС.",
+      "description": "Слика из научне библиотеке (SciSearch figura) — САМО ИНТЕРНО: сервер при читању за пријављеног додаје `izvor` {naslov, autor, godina, strana, potpis_izvora} и `slika`/`sicicka` (MIS proxy руте /api/udzbenik/literatura-slika/<id>[/thumb]) или `nedostupan: true` + `razlog`; за анонимног читаоца блок се ПОТПУНО изоставља из одговора, осим слике под слободном лиценцом (`licenca`), коју види свако. Слика се не копира у МИС.",
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
