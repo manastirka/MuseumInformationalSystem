@@ -2072,7 +2072,11 @@
                 "properties": {
                   "proces": {
                     "enum": [
-                      "magmatski"
+                      "magmatski",
+                      "hidrotermalni",
+                      "sedimentni",
+                      "metamorfni",
+                      "paragenetski"
                     ]
                   },
                   "mesta": {
@@ -2089,13 +2093,38 @@
                       "properties": {
                         "mesto": {
                           "enum": [
+                            "distalne-zice",
+                            "druza",
+                            "epitermalna-zica",
+                            "evaporiti",
                             "fe-ti-oksidi",
+                            "filicna",
                             "frakciona-kristalizacija",
+                            "gosan",
                             "grajzen",
                             "hidrotermalne-zice",
                             "hromitit",
+                            "izograda-biotit",
+                            "izograda-granat",
+                            "izograda-silimanit",
+                            "izograda-staurolit",
+                            "kontaktni-oreol",
+                            "krustifikacija",
+                            "laterit",
+                            "litokap",
+                            "migmatit",
+                            "omotac-izmene",
                             "pegmatit",
-                            "sulfidna-likvacija"
+                            "placer",
+                            "potasijumska",
+                            "presecanje",
+                            "primarna-ruda",
+                            "propilitska",
+                            "skarn",
+                            "sulfidna-likvacija",
+                            "zamena",
+                            "zona-cementacije",
+                            "zona-oksidacije"
                           ],
                           "description": "Ključ sidra na preseku (src/dijagrami/podaci/procesi)."
                         },
@@ -2179,6 +2208,125 @@
                                   "pegmatit",
                                   "grajzen",
                                   "hidrotermalne-zice"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "proces": {
+                          "const": "hidrotermalni"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "mesta": {
+                          "items": {
+                            "properties": {
+                              "mesto": {
+                                "enum": [
+                                  "potasijumska",
+                                  "filicna",
+                                  "propilitska",
+                                  "litokap",
+                                  "epitermalna-zica",
+                                  "skarn",
+                                  "distalne-zice"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "proces": {
+                          "const": "sedimentni"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "mesta": {
+                          "items": {
+                            "properties": {
+                              "mesto": {
+                                "enum": [
+                                  "gosan",
+                                  "zona-oksidacije",
+                                  "zona-cementacije",
+                                  "primarna-ruda",
+                                  "laterit",
+                                  "placer",
+                                  "evaporiti"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "proces": {
+                          "const": "metamorfni"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "mesta": {
+                          "items": {
+                            "properties": {
+                              "mesto": {
+                                "enum": [
+                                  "kontaktni-oreol",
+                                  "skarn",
+                                  "izograda-biotit",
+                                  "izograda-granat",
+                                  "izograda-staurolit",
+                                  "izograda-silimanit",
+                                  "migmatit"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "proces": {
+                          "const": "paragenetski"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "mesta": {
+                          "items": {
+                            "properties": {
+                              "mesto": {
+                                "enum": [
+                                  "omotac-izmene",
+                                  "krustifikacija",
+                                  "druza",
+                                  "presecanje",
+                                  "zamena",
+                                  "zona-oksidacije"
                                 ]
                               }
                             }

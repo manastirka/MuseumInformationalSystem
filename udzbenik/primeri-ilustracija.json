@@ -589,6 +589,173 @@
       },
       "potpis": "Magmatski i pegmatitski procesi na idealizovanom preseku",
       "opis_za_citac": "Šematski presek: levo slojevita bazična intruzija sa sulfidnim rastopom na dnu, hromititom u kumulatima i ostatkom rastopa gore; desno granitni pluton sa pegmatitskim žicama, grajzenom u kupoli i hidrotermalnim žicama."
+    },
+    {
+      "id": "d-proces-hidrotermalni",
+      "tip": "dijagram",
+      "dijagram": "proces",
+      "parametri": {
+        "proces": "hidrotermalni",
+        "animacija": true,
+        "mesta": [
+          {
+            "mesto": "potasijumska",
+            "naslov": "Kalijska zona u jezgru porfirskog sistema",
+            "opis": "Kalijska izmena razvija se u visokotemperaturnom jezgru porfirskih sistema; karakteristični minerali su K-feldspat i biotit (Pirajno, 2009), a rudni minerali halkopirit ± bornit (Sillitoe, 2010). U porfirskom delu sistema Čukaru Peki kod Bora bogatija mineralizacija javlja se uz kalijsku i hloritsku izmenu (Bugarin i Marinković, 2018, po Velojiću, 2021)."
+          },
+          {
+            "mesto": "filicna",
+            "naslov": "Filična zona: kvarc–sericit–pirit",
+            "opis": "Filičnu (sericitsku) izmenu obeležava asocijacija kvarc–sericit–pirit; sa porastom udela K-feldspata i biotita prelazi u kalijsku izmenu (Pirajno, 2009). Sericitska izmena nastaje na temperaturama iznad 250 °C, pri pH između 4 i 5 (Corbett & Leach, 1998, po Velojiću, 2021), a naviše prelazi u naprednu argilitsku izmenu litokapa (Sillitoe, 2010)."
+          },
+          {
+            "mesto": "propilitska",
+            "naslov": "Propilitska zona na obodu sistema",
+            "opis": "Propilitska izmena zahvata obodne delove sistema, ispod litokapa; čine je hlorit, epidot, albit i karbonat, uz pirit (± sfalerit, galenit) (Sillitoe, 2010). Izmena se obično pruža i nekoliko stotina metara van bakronosne zone (Misra, 2000)."
+          },
+          {
+            "mesto": "litokap",
+            "naslov": "Litokap i ruda visoke sulfidacije",
+            "opis": "Iznad porfirskog ležišta razvija se litokap napredne argilitske izmene (kvarc, delom šupljikav; alunit, pirofilit, dikit, kaolinit), debeo i preko 1 km. U njemu mogu nastati epitermalna ležišta visoke sulfidacije, sa asocijacijom pirit–enargit (Sillitoe, 2010). Enargit može biti jedan od glavnih rudnih minerala i nosilaca bakra (Pačevski, 2018)."
+          },
+          {
+            "mesto": "epitermalna-zica",
+            "naslov": "Epitermalna žica niske sulfidacije",
+            "opis": "U plitkim epitermalnim žicama (50–200 °C po Lindgrenu; Janković, knj. 2) minerali se talože u otvorenom prostoru. Ležišta niske sulfidacije nastaju iz rastvora sa redukovanim sumporom (HS⁻, H₂S) i nazivaju se i adular–sericitskim (Robb, 2005). Lindgren (1933) opisuje pločice kalcita koje se rastvaraju, pa na skeletu od tankih zidova silicije rastu sekundarni kvarc i adular."
+          },
+          {
+            "mesto": "skarn",
+            "naslov": "Skarn u krečnjaku",
+            "opis": "Gde fluidi dođu do krečnjaka, nastaju skarnovi i zamenska tela; porfirski sistem može da sadrži skarn od proksimalnog Cu–Au do distalnog Zn–Pb–Cu–Ag (Sillitoe, 2010). Na Rudniku se skarnovi dele na epidotske, granatsko-vezuvijanske i granatsko-piroksenske (Kostić, 2021), a Janković Rudnik i Trepču navodi među skarnovskim ležištima olova i cinka."
+          }
+        ]
+      },
+      "potpis": "Porfirski sistem na idealizovanom preseku: zone hidrotermalne izmene, litokap, epitermalne žice i skarn. Krugovi sa brojevima otvaraju prave slike iz literature.",
+      "opis_za_citac": "Šematski presek kroz Zemljinu koru. U sredini je porfirski štok koji se diže iz matičnog plutona, prožet mrežom žilica (štokverk Cu–Mo ± Au). Oko njega su koncentrične zone izmene: kalijska u jezgru, filična (kvarc–sericit–pirit, iznad 250 °C) i propilitska spolja. Iznad sistema, ispod površine, je litokap napredne argilitske izmene sa sočivom masivne rude visoke sulfidacije. Desno su epitermalne žice niske i srednje sulfidacije (50–200 °C), a u sloju krečnjaka skarn uz sistem i distalne Pb–Zn žice. Šest označenih mesta vodi do fotografija i mikrofotografija iz literature."
+    },
+    {
+      "id": "d-proces-sedimentni",
+      "tip": "dijagram",
+      "dijagram": "proces",
+      "parametri": {
+        "proces": "sedimentni",
+        "animacija": true,
+        "mesta": [
+          {
+            "mesto": "gosan",
+            "naslov": "Gvozdeni šešir na izdanku",
+            "opis": "Iznad nivoa podzemne vode sulfidi se oksiduju i izlužuju, a gvožđe ostaje na mestu kao mrka, šupljikava masa Fe-hidroksida — gvozdeni šešir. Po Jankoviću (knj. 3), dubina i razmere oksidacione zone zavise od klime, brzine erozije, osobina vode, sastava i građe rudnog tela i poroznosti okolnih stena."
+          },
+          {
+            "mesto": "zona-oksidacije",
+            "naslov": "Sekundarni minerali bakra u zoni oksidacije",
+            "opis": "Bakar koji se ne odnese naniže ostaje u zoni oksidacije kao karbonati i oksidi: malahit, azurit, kuprit. U Jankovićevoj šemi (knj. 3, sl. 347) u ovoj zoni je bakar manje-više potpuno oksidisan, a ispod nje slede podzona izluživanja i podzona oksidnog obogaćivanja."
+          },
+          {
+            "mesto": "zona-cementacije",
+            "naslov": "Zona cementacije: halkozin i kovelin",
+            "opis": "Ispod nivoa podzemne vode bakar iz silaznih rastvora ponovo se taloži kao sulfidi bogatiji bakrom, koji zamenjuju primarne sulfide po obodima i pukotinama. Halkozin se sekundarno javlja u cementacionim zonama (Pačevski, 2018)."
+          },
+          {
+            "mesto": "laterit",
+            "naslov": "Lateritski profil i boksit",
+            "opis": "U toploj i vlažnoj klimi ispiraju se gotovo svi elementi osim Al, Fe i Ti. Al₂O₃ dostiže više od 30 % rezidualnom koncentracijom tek kad se ispere više od oko 65 % mase stene (Ridley, 2013), a rudni boksit sadrži više od 50 % Al₂O₃ (Misra, 2000)."
+          },
+          {
+            "mesto": "evaporiti",
+            "naslov": "Evaporiti u laguni iza praga",
+            "opis": "U basenu sa pragom morska voda ulazi preko praga i isparava ka unutrašnjosti, pa se karbonati talože najbliže pragu, zatim gips, a halit najdalje (Evans, 1993; Nichols, 2009). Gips i anhidrit grade i nodule u sabkama."
+          }
+        ]
+      },
+      "potpis": "Sedimentni i površinski procesi na idealizovanom preseku: krugovi sa brojevima otvaraju prave slike iz literature.",
+      "opis_za_citac": "Šematski presek kroz površinski deo Zemljine kore. Levo je lateritski profil na zaravni: odozgo lateritska kora, pegava zona i saprolit iznad matične stene. U sredini je sulfidno rudno telo: na izdanku gvozdeni šešir, ispod njega zona oksidacije sa malahitom, azuritom i kupritom, zatim nivo podzemne vode, zona cementacije sa halkozinom i kovelinom i primarna ruda sa piritom i halkopiritom. Desno je rečna dolina sa nanosom i placerom na dnu korita, a na kraju laguna odvojena pragom od mora, u kojoj se od praga ka unutrašnjosti talože karbonati, gips i halit. Pet označenih mesta vodi do fotografija i mikrofotografija iz literature."
+    },
+    {
+      "id": "d-proces-metamorfni",
+      "tip": "dijagram",
+      "dijagram": "proces",
+      "parametri": {
+        "proces": "metamorfni",
+        "animacija": true,
+        "mesta": [
+          {
+            "mesto": "kontaktni-oreol",
+            "naslov": "Kontaktni oreol: andaluzit (hijastolit)",
+            "opis": "Oko plitkog intruziva pelitske stene se zagrevaju pri malom pritisku (Bucher, 2005). U spoljnom delu oreola nastaju pegavi škriljci, a bliže kontaktu krupniji kornit sa andaluzitom (Best, 2003). Hijastolit je andaluzit sa tamnim krstom od inkluzija grafita."
+          },
+          {
+            "mesto": "skarn",
+            "naslov": "Skarn na kontaktu intruziva i krečnjaka",
+            "opis": "Gde intruziv dodiruje krečnjak, fluidi donose Si, Fe i Al, pa nastaje skarn (Janković, knj. 2). Metasomatski stadijumi se odvijaju na oko 800–400 °C (Kwak, 1986, po Evansu, 1993); pri hlađenju rani granat zamenjuju hidratisani minerali (Pirajno, 2009). Na Rudniku granat je rastao iznad 560 °C (Kostić, 2021)."
+          },
+          {
+            "mesto": "izograda-granat",
+            "naslov": "Granat u zoni granata",
+            "opis": "Granat (almandin) je indeks-mineral treće Barrowove zone: izograda granata je linija njegovog prvog pojavljivanja u pelitima. U liskunskom škriljcu gradi porfiroblaste, krupnije od osnove."
+          },
+          {
+            "mesto": "izograda-staurolit",
+            "naslov": "Staurolit u zoni staurolita",
+            "opis": "Staurolit se pojavljuje na prelazu u amfibolitsku faciju; na dijagramu Barrowovih zona u ovoj lekciji njegova izograda je na oko 520 °C. Porfiroblasti staurolita često su puni inkluzija osnove (poikiloblasti)."
+          },
+          {
+            "mesto": "izograda-silimanit",
+            "naslov": "Silimanit u zoni silimanita",
+            "opis": "Silimanit je polimorf Al₂SiO₅ najviših temperatura; u Barrowovom nizu zamenjuje kijanit (reakcija Ky = Sil). Snopovi vrlo tankih iglica silimanita nazivaju se fibrolit."
+          },
+          {
+            "mesto": "migmatit",
+            "naslov": "Migmatit: početak topljenja",
+            "opis": "Na najvišem stepenu regionalnog metamorfizma pelit počinje delimično da se topi (anateksis). Rastop se izdvaja u svetle leukosome, a ostatak stene ostaje taman — nastaje mešovita stena, migmatit."
+          }
+        ]
+      },
+      "potpis": "Metamorfni procesi na idealizovanom preseku: levo kontaktni oreol oko intruziva, desno Barrowove zone regionalnog metamorfizma. Krugovi sa brojevima otvaraju prave slike iz literature.",
+      "opis_za_citac": "Šematski presek kroz Zemljinu koru, podeljen na dva dela. Levo je granitoidni intruziv u pelitima sa slojem krečnjaka; oko njega je unutrašnji oreol od kornita i spoljni oreol od pegavih škriljaca. Gde intruziv seče krečnjak, uz kontakt je skarn (oko 800 do 400 °C), a dalje u oreolu mermer; strelice pokazuju fluid koji iz intruziva prodire u krečnjak. Desno su Barrowove zone, od površine naniže: zona hlorita, biotita, granata, staurolita (izograda na oko 520 °C), kijanita (distena), silimanita (oko 680 °C) i migmatiti sa svetlim leukosomima na dnu. Šest označenih mesta vodi do mikrofotografija i fotografija iz literature."
+    },
+    {
+      "id": "d-proces-paragenetski",
+      "tip": "dijagram",
+      "dijagram": "proces",
+      "parametri": {
+        "proces": "paragenetski",
+        "animacija": true,
+        "mesta": [
+          {
+            "mesto": "krustifikacija",
+            "naslov": "Krustifikacija: trake od zida ka sredini",
+            "opis": "Otvoreni prostor se ispunjava od zidova ka unutrašnjosti (Misra, 2000), pa je traka uz zid najstarija, a trake ka sredini sve mlađe. Takve trakaste (krustifikacijske) i češljaste teksture spadaju među najpouzdanije pokazatelje redosleda kristalizacije (Misra, 2000) i češće su u epitermalnim žicama (Pirajno, 2009)."
+          },
+          {
+            "mesto": "druza",
+            "naslov": "Druza u sredini žice",
+            "opis": "Kad se pukotina ne ispuni do kraja, u sredini žice ostaje šupljina u koju slobodno rastu kristali poslednjih minerala. Lindgren (1933) uz krustifikaciju opisuje i druze u žicama. Pošto se prostor puni od zidova ka sredini, kristali u druzi su najmlađi deo žice."
+          },
+          {
+            "mesto": "presecanje",
+            "naslov": "Mlađa žica seče stariju",
+            "opis": "Presecanje je jedan od kriterijuma relativne starosti (Misra, 2000): žica koja seče drugu žicu mlađa je od nje i od svih traka koje seče. Na Boru epitermalna kovelin–pirit žica seče kvarcnu A-žicu porfirske mineralizacije, pa je od nje mlađa."
+          },
+          {
+            "mesto": "zamena",
+            "naslov": "Zamena: galenit potiskuje sfalerit",
+            "opis": "Mlađi mineral može da zameni (potisne) stariji na istom mestu, bez otvorenog prostora. Na Čoka Marinu kod Majdanpeka mlađi galenit intenzivno potiskuje sfalerit, a samorodno zlato cementuje prsline (Radosavljević i dr., 2001). Lindgren (1933) navodi da kasniji minerali mogu zameniti bilo koji raniji i da je zlato obično među najkasnijim."
+          },
+          {
+            "mesto": "omotac-izmene",
+            "naslov": "Omotač hidrotermalne izmene uz žicu",
+            "opis": "Fluid koji teče kroz pukotinu reaguje sa zidovima, pa oko žice nastaje omotač izmenjene stene. Lindgren (1933) za žice San Huana (Kolorado) opisuje sericitizaciju uz samu žicu, a propilitizaciju dalje od nje. Minerali žice talože se u otvorenom prostoru, a minerali omotača nastaju zamenom minerala stene."
+          },
+          {
+            "mesto": "zona-oksidacije",
+            "naslov": "Zona oksidacije: supergena parageneza",
+            "opis": "Iznad nivoa podzemne vode primarni sulfidi žice oksidišu; nastaje supergena parageneza (limonit, ceruzit, kovelin), mlađa od svih hipogenih minerala žice. Na Čoka Marinu kovelin je hipergeni mineral po obodu sulfidnih agregata i u pukotinama pirita, halkopirita, luzonita i sfalerita (Radosavljević i dr., 2001)."
+          }
+        ]
+      },
+      "potpis": "Sukcesija u hidrotermalnoj žici na idealizovanom preseku: krugovi sa brojevima otvaraju prave slike iz literature.",
+      "opis_za_citac": "Šematski presek kroz hidrotermalnu žicu, uvećanu u odnosu na okolinu. Žicu sa obe strane prati omotač izmenjene domaćinske stene. Od svakog zida ka sredini smenjuju se trake: češljasti kvarc, sulfidi (pirit, sfalerit, galenit), pa kalcit i barit, a u sredini je druza sa slobodnim kristalima. U sulfidnoj traci galenit potiskuje sfalerit. Mlađa žica koso seče žicu i omotač. Iznad nivoa podzemne vode žica je oksidisana (limonit, ceruzit). Šest označenih mesta vodi do fotografija i mikrofotografija iz literature."
     }
   ]
 }
