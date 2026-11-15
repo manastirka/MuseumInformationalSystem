@@ -1088,6 +1088,11 @@ class LjuskaTest(_Osnova):
         dijagrami = sema['$defs']['dijagram']['properties']['dijagram']['enum']
         self.assertGreaterEqual(len(dijagrami), 5)
         scene = scene + ['dijagram-' + d for d in dijagrami]
+        # дијаграм proces има посебну резерву за сваку врсту пресека (dijagram-proces-<vrsta>.png)
+        for uslov in sema['$defs']['dijagram'].get('allOf', []):
+            if uslov.get('if', {}).get('properties', {}).get('dijagram', {}).get('const') == 'proces':
+                vrste = uslov['then']['properties']['parametri']['properties']['proces']['enum']
+                scene = scene + ['dijagram-proces-' + v for v in vrste]
         rezerve = sorted(p.name for p in (KOREN / 'static' / 'udzbenik' / 'rezerve').glob('*.png'))
         self.assertGreaterEqual(len(rezerve), 5)
         self.assertEqual([r for r in rezerve if r[:-4] not in scene], [], 'резерва за сцену/дијаграм којих нема у шеми')
@@ -1156,7 +1161,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 34)
+        self.assertEqual(len(sadrzaj['blokovi']), 38)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1164,7 +1169,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 34)
+        self.assertEqual(len(blokovi), 38)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
         dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}
