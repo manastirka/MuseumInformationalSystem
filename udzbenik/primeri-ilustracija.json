@@ -863,6 +863,80 @@
         ]
       },
       "opis_za_citac": "Apsorpcioni spektri cirkona, peridota i žadeita u ručnom spektroskopu, od 700 do 400 nm."
+    },
+    {
+      "id": "d-klinker-pec",
+      "tip": "dijagram",
+      "dijagram": "cementni-klinker",
+      "parametri": {
+        "prikaz": "pec"
+      },
+      "opis_za_citac": "Šema postrojenja za portlandski klinker: predgrejač sa ciklonima, kalcinator, rotaciona peć sa prelaznom zonom i zonom sinterovanja (900, 1338 i 1450 °C) i hladnjak; ispod crteža pet zona sa temperaturama i reakcijama."
+    },
+    {
+      "id": "d-klinker-faze",
+      "tip": "dijagram",
+      "dijagram": "cementni-klinker",
+      "parametri": {
+        "prikaz": "faze"
+      },
+      "opis_za_citac": "Šematski udeo faza pri pečenju klinkera od 200 do 1500 °C: kalcit, glinoviti minerali i kvarc nestaju, CaO raste do oko 1000 °C, zatim nastaju belit, C4AF i C3A, od 1338 °C rastop, a alit raste do 1450 °C; desno sastav klinkera posle hlađenja."
+    },
+    {
+      "id": "d-smektit",
+      "tip": "dijagram",
+      "dijagram": "smektit",
+      "parametri": {
+        "stanje": "poredjenje"
+      },
+      "opis_za_citac": "Tri stanja smektita jedno pored drugog: dehidratisan (d(001) oko 10 Å), sa jednim slojem vode (11,8–12,4 Å) i sa dva sloja vode (14,5–15,5 Å) između 2:1 slojeva."
+    },
+    {
+      "id": "d-smektit-jedan",
+      "tip": "dijagram",
+      "dijagram": "smektit",
+      "parametri": {
+        "stanje": "jedan-sloj"
+      },
+      "opis_za_citac": "Dva 2:1 sloja montmorionita sa tetraedarskim i oktaedarskim mrežama i međuslojem u kojem su katjoni Na⁺ i Ca²⁺ i jedan sloj molekula vode; d(001) 11,8–12,4 Å."
+    },
+    {
+      "id": "d-zeolit-nh4",
+      "tip": "dijagram",
+      "dijagram": "zeolit-izmena",
+      "parametri": {
+        "jon": "NH4"
+      },
+      "opis_za_citac": "Presek kanala klinoptilolita (10-člani prsten 3,1 × 5,5 Å i 8-člani prsten 4,1 × 4,1 Å): Na⁺ i Ca²⁺ izlaze u rastvor, amonijum ulazi; red selektivnosti Cs⁺ > Rb⁺ > K⁺ > NH₄⁺ > Na⁺."
+    },
+    {
+      "id": "d-zeolit-pb",
+      "tip": "dijagram",
+      "dijagram": "zeolit-izmena",
+      "parametri": {
+        "jon": "Pb"
+      },
+      "opis_za_citac": "Presek kanala klinoptilolita: Na⁺ i Ca²⁺ izlaze, olovo Pb²⁺ ulazi; red selektivnosti Pb²⁺ > Ag⁺ > Cd²⁺ > Zn²⁺ > Ca²⁺ > Na⁺."
+    },
+    {
+      "id": "d-pokrivna-moc",
+      "tip": "dijagram",
+      "dijagram": "pokrivna-moc",
+      "parametri": {
+        "istaknuti": [
+          "kalcit",
+          "rutil",
+          "anatas"
+        ]
+      },
+      "opis_za_citac": "Indeksi prelamanja devet minerala na osi od 1,4 do 3,1 sa trakom veziva n ≈ 1,5: kvarc, kaolinit, talk, kalcit i barit su blizu veziva, cirkon dalje, anatas, rutil i hematit daleko; istaknuti su kalcit, anatas i rutil."
+    },
+    {
+      "id": "d-keramicka-masa",
+      "tip": "dijagram",
+      "dijagram": "keramicka-masa",
+      "parametri": {},
+      "opis_za_citac": "Trougao glina – feldspat – kvarc sa šematskim poljima tvrdog i mekog porcelana, kamenine i fajansa i sa tačkama stvarnih masa porcelana i porculanske kamenine."
     }
   ]
 }
