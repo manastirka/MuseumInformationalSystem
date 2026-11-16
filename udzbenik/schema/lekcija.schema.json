@@ -1080,7 +1080,12 @@
             "proces",
             "brusenje",
             "skala-dijamanta",
-            "apsorpcioni-spektar"
+            "apsorpcioni-spektar",
+            "cementni-klinker",
+            "smektit",
+            "zeolit-izmena",
+            "pokrivna-moc",
+            "keramicka-masa"
           ]
         },
         "parametri": {
@@ -2477,6 +2482,146 @@
                     }
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "cementni-klinker"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "prikaz": {
+                    "enum": [
+                      "pec",
+                      "faze"
+                    ],
+                    "default": "pec",
+                    "description": "„pec“ — rotaciona peć sa predgrejačem i kalcinatorom, zone i reakcije; „faze“ — udeo faza u zavisnosti od temperature (oblik krivih šematski)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "smektit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "stanje": {
+                    "enum": [
+                      "suv",
+                      "jedan-sloj",
+                      "dva-sloja",
+                      "poredjenje"
+                    ],
+                    "default": "poredjenje",
+                    "description": "Stanje hidratacije međusloja; „poredjenje“ prikazuje sva tri stanja sa d(001) u Å."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "zeolit-izmena"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "jon": {
+                    "enum": [
+                      "NH4",
+                      "K",
+                      "Cs",
+                      "Pb"
+                    ],
+                    "default": "NH4",
+                    "description": "Jon koji ulazi u kanal klinoptilolita (Na⁺/Ca²⁺ izlaze)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "pokrivna-moc"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 9,
+                    "items": {
+                      "enum": [
+                        "kalcit",
+                        "kaolinit",
+                        "talk",
+                        "barit",
+                        "anatas",
+                        "rutil",
+                        "cirkon",
+                        "hematit",
+                        "kvarc"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "keramicka-masa"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
               }
             }
           }
