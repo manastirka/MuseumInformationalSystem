@@ -1161,7 +1161,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 38)
+        self.assertEqual(len(sadrzaj['blokovi']), 48)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1169,7 +1169,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 38)
+        self.assertEqual(len(blokovi), 48)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
         dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}

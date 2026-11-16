@@ -756,6 +756,113 @@
       },
       "potpis": "Sukcesija u hidrotermalnoj žici na idealizovanom preseku: krugovi sa brojevima otvaraju prave slike iz literature.",
       "opis_za_citac": "Šematski presek kroz hidrotermalnu žicu, uvećanu u odnosu na okolinu. Žicu sa obe strane prati omotač izmenjene domaćinske stene. Od svakog zida ka sredini smenjuju se trake: češljasti kvarc, sulfidi (pirit, sfalerit, galenit), pa kalcit i barit, a u sredini je druza sa slobodnim kristalima. U sulfidnoj traci galenit potiskuje sfalerit. Mlađa žica koso seče žicu i omotač. Iznad nivoa podzemne vode žica je oksidisana (limonit, ceruzit). Šest označenih mesta vodi do fotografija i mikrofotografija iz literature."
+    },
+    {
+      "id": "d-brusenje-brilijant",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "brilijant",
+        "prikaz": "delovi"
+      },
+      "opis_za_citac": "Delovi brilijanta: profil (a) i pogled odozgo (b) sa nazivima delova — tabla, kruna, pojas, paviljon i kalet."
+    },
+    {
+      "id": "d-brusenje-smaragdni",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "smaragdni",
+        "prikaz": "delovi"
+      },
+      "opis_za_citac": "Delovi smaragdnog (stepenastog) brusa: profil (a) i pogled odozgo (b) sa nazivima delova — tabla, kruna, pojas, paviljon i kalet."
+    },
+    {
+      "id": "d-brusenje-ovalni",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "ovalni",
+        "prikaz": "delovi"
+      },
+      "opis_za_citac": "Delovi ovalnog brilijanta: profil (a) i pogled odozgo (b) sa nazivima delova — tabla, kruna, pojas, paviljon i kalet."
+    },
+    {
+      "id": "d-brusenje-princeza",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "princeza",
+        "prikaz": "delovi"
+      },
+      "opis_za_citac": "Delovi brusa princeza: profil (a) i pogled odozgo (b) sa nazivima delova — tabla, kruna, pojas, paviljon i kalet."
+    },
+    {
+      "id": "d-brusenje-kaboson",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "kaboson",
+        "prikaz": "delovi"
+      },
+      "opis_za_citac": "Delovi kabošona: profil (a) i pogled odozgo (b) sa nazivima delova — kupola i osnova."
+    },
+    {
+      "id": "d-brusenje-putanja",
+      "tip": "dijagram",
+      "dijagram": "brusenje",
+      "parametri": {
+        "oblik": "brilijant",
+        "prikaz": "putanja"
+      },
+      "opis_za_citac": "Putanja vertikalnih zraka kroz presek brilijanta: kod idealnog paviljona (40,75°) svetlost se dvaput totalno odbija i izlazi kroz krunu i tablu, kod plitkog (23°) i dubokog (53°) izlazi kroz paviljon."
+    },
+    {
+      "id": "d-skala-boja",
+      "tip": "dijagram",
+      "dijagram": "skala-dijamanta",
+      "parametri": {
+        "skala": "boja"
+      },
+      "opis_za_citac": "Skala boje dijamanta: slova D do Z po GIA sa odgovarajućim CIBJO nazivima, od izuzetno belog (D) do obojenog (M–Z)."
+    },
+    {
+      "id": "d-skala-cistoca",
+      "tip": "dijagram",
+      "dijagram": "skala-dijamanta",
+      "parametri": {
+        "skala": "cistoca"
+      },
+      "opis_za_citac": "Skala čistoće dijamanta po CIBJO: FL/LC, IF, VVS1–2, VS1–2, SI1–2 i I1–I3 (P1–P3), sa opisom pri uvećanju 10×."
+    },
+    {
+      "id": "d-spektar",
+      "tip": "dijagram",
+      "dijagram": "apsorpcioni-spektar",
+      "parametri": {
+        "kamenje": [
+          "rubin",
+          "crveni-spinel",
+          "smaragd",
+          "aleksandrit",
+          "plavi-safir",
+          "almandin"
+        ]
+      },
+      "opis_za_citac": "Apsorpcioni spektri rubina, crvenog spinela, smaragda, aleksandrita, plavog safira i almandina u ručnom spektroskopu, od 700 do 400 nm."
+    },
+    {
+      "id": "d-spektar-2",
+      "tip": "dijagram",
+      "dijagram": "apsorpcioni-spektar",
+      "parametri": {
+        "kamenje": [
+          "cirkon",
+          "peridot",
+          "zadeit"
+        ]
+      },
+      "opis_za_citac": "Apsorpcioni spektri cirkona, peridota i žadeita u ručnom spektroskopu, od 700 do 400 nm."
     }
   ]
 }
