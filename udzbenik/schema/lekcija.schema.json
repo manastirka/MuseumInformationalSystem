@@ -1077,7 +1077,10 @@
             "hod-zraka-mikroskopa",
             "sem-eds",
             "sema-uredjaja",
-            "proces"
+            "proces",
+            "brusenje",
+            "skala-dijamanta",
+            "apsorpcioni-spektar"
           ]
         },
         "parametri": {
@@ -2044,7 +2047,10 @@
                       "icp-oes",
                       "icp-ms",
                       "la-icp-ms",
-                      "termicka-analiza"
+                      "termicka-analiza",
+                      "polariskop",
+                      "rucni-spektroskop",
+                      "gemoloski-mikroskop"
                     ]
                   }
                 }
@@ -2346,6 +2352,131 @@
                     }
                   }
                 ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "brusenje"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "oblik"
+                ],
+                "properties": {
+                  "oblik": {
+                    "enum": [
+                      "brilijant",
+                      "smaragdni",
+                      "ovalni",
+                      "princeza",
+                      "kaboson"
+                    ]
+                  },
+                  "prikaz": {
+                    "enum": [
+                      "delovi",
+                      "putanja"
+                    ],
+                    "default": "delovi",
+                    "description": "„putanja“ (hod zraka kroz idealan, plitak i dubok paviljon) postoji samo za brilijant."
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "prikaz": {
+                      "const": "putanja"
+                    }
+                  },
+                  "required": [
+                    "prikaz"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "oblik": {
+                      "const": "brilijant"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "skala-dijamanta"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "skala"
+                ],
+                "properties": {
+                  "skala": {
+                    "enum": [
+                      "boja",
+                      "cistoca"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "apsorpcioni-spektar"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kamenje"
+                ],
+                "properties": {
+                  "kamenje": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": [
+                        "rubin",
+                        "crveni-spinel",
+                        "smaragd",
+                        "aleksandrit",
+                        "plavi-safir",
+                        "almandin",
+                        "cirkon",
+                        "peridot",
+                        "zadeit"
+                      ]
+                    }
+                  }
+                }
               }
             }
           }
