@@ -25,7 +25,10 @@ static/udzbenik/) чита искључиво API описан у брифу (§
 - референтне табеле (UGOVOR-TABLICE.md §2–4, табела udzbenik_tablica): списак
   у структури, једна табела кроз ``tablica``, блок ``tablica-link`` добија
   ``naslov_tablice`` + ``broj_redova`` или ``nedostupan`` + ``razlog``; исто
-  право као лекције (анонимни виде само ``objavljen``).
+  право као лекције (анонимни виде само ``objavljen``); детаљи редова
+  (UGOVOR-TABLICE-2.md, део 2, табела udzbenik_tablica_detalj): табела носи
+  само ``detalji: {vrsta, kolona}``, једна ставка кроз ``detalj_tablice`` са
+  претходном/следећом по редоследу редова табеле, исто право као табела.
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
@@ -285,12 +288,76 @@ def tablica(udzbenik_red, slug):
                 red = cur.fetchone()
                 if red is not None:
                     poglavlje = {'slug': red[0], 'naslov': red[1]}
-    return {'tablica': {
+    odgovor = {'tablica': {
         'slug': t['slug'], 'naslov': t['naslov'], 'opis': t['opis'], 'poglavlje': poglavlje,
         'redosled': t['redosled'], 'verzija': t['verzija'], 'azurirano': _iso(t['updated_at']),
         'kolone': sadrzaj.get('kolone') or [], 'redovi': sadrzaj.get('redovi') or [],
         'izvori': sadrzaj.get('izvori') or [], 'napomene': sadrzaj.get('napomene') or [],
     }}
+    meta = _meta_detalja(sadrzaj)
+    if meta is not None:
+        odgovor['tablica']['detalji'] = meta
+    return odgovor
+
+
+def _meta_detalja(sadrzaj):
+    """{vrsta, kolona} детаља табеле из ``sadrzaj`` или None."""
+    meta = sadrzaj.get('detalji') if isinstance(sadrzaj, dict) else None
+    if not isinstance(meta, dict) or not meta.get('vrsta') or not meta.get('kolona'):
+        return None
+    return {'vrsta': meta['vrsta'], 'kolona': meta['kolona']}
+
+
+def kljuc_reda(vrednost):
+    """Вредност колоне детаља као кључ ставке (``str``); празно/сложено → None.
+    Исто правило користи и scripts/udzbenik_uvoz.py при провери кључева."""
+    if vrednost is None or isinstance(vrednost, (bool, dict, list)):
+        return None
+    return str(vrednost)
+
+
+def detalj_tablice(udzbenik_red, slug, kljuc):
+    """Одговор за GET /api/udzbenik/<zbirka>/tablica/<slug>/detalj/<kljuc>
+    (UGOVOR-TABLICE-2.md, део 2) или None кад табела није видљива читаоцу,
+    нема детаље или ставка не постоји. Претходни/следећи иду редоследом
+    редова табеле, само међу кључевима који имају ставку."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            nadjene = _tablice(cur, udzbenik_red['id'], slug)
+            if not nadjene:
+                return None
+            t = nadjene[0]
+            cur.execute('SELECT sadrzaj FROM udzbenik_tablica WHERE id = %s', (t['id'],))
+            sadrzaj = _json(cur.fetchone()[0]) or {}
+            meta = _meta_detalja(sadrzaj)
+            if meta is None:
+                return None
+            cur.execute('SELECT kljuc FROM udzbenik_tablica_detalj WHERE tablica_id = %s', (t['id'],))
+            sa_stavkom = {r[0] for r in cur.fetchall()}
+            if kljuc not in sa_stavkom:
+                return None
+            cur.execute('SELECT sadrzaj FROM udzbenik_tablica_detalj WHERE tablica_id = %s AND kljuc = %s',
+                        (t['id'], kljuc))
+            stavka = _json(cur.fetchone()[0])
+    redosled = []
+    for red in sadrzaj.get('redovi') or []:
+        k = kljuc_reda(red.get(meta['kolona'])) if isinstance(red, dict) else None
+        if k in sa_stavkom and k not in redosled:
+            redosled.append(k)
+    if kljuc not in redosled:
+        return None
+    i = redosled.index(kljuc)
+    return {'detalj': {
+        'tablica': {'slug': t['slug'], 'naslov': t['naslov']}, 'kljuc': kljuc, 'vrsta': meta['vrsta'],
+        'sadrzaj': stavka,
+        'prethodni': redosled[i - 1] if i > 0 else None,
+        'sledeci': redosled[i + 1] if i + 1 < len(redosled) else None,
+    }}
+
+
+def detalj_vidljiv(udzbenik_red, slug, kljuc):
+    """Детаљ постоји и читалац га види (за HTML љуску)."""
+    return detalj_tablice(udzbenik_red, slug, kljuc) is not None
 
 
 def nadji_lekciju(udzbenik_red, poglavlje_slug, lekcija_slug):

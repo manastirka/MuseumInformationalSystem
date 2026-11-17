@@ -1,9 +1,10 @@
 """Интерактивни уџбеник — руте (udzbenik.py ради посао).
 
 HTML: листа уџбеника и ЈЕДНА љуска (``udzbenik.html``) за уџбеник, дубоки
-линк на лекцију и референтне табеле (списак и једна табела, UGOVOR-TABLICE.md
-§4) — мотор из static/udzbenik/ црта садржај. API по брифу §4: структура,
-лекција са разрешеним блоковима, табела, напредак (POST, CSRF), CIF
+линк на лекцију и референтне табеле (списак, једна табела, UGOVOR-TABLICE.md
+§4, и детаљ реда табеле, UGOVOR-TABLICE-2.md део 2) — мотор из
+static/udzbenik/ црта садржај. API по брифу §4: структура, лекција са
+разрешеним блоковима, табела, детаљ реда табеле, напредак (POST, CSRF), CIF
 структуре минерала, proxy слике из литературе (SciSearch, само интерно).
 Грешке API-ја су увек JSON ``{"greska": ...}`` са правим статусом
 (401/403/404/503), никад 200.
@@ -110,10 +111,20 @@ def ljuska_tablice(zbirka, slug):
     return _ljuska(red, '', '', tablica=slug, prikaz=PRIKAZ_TABLICE)
 
 
-def _ljuska(red, poglavlje, lekcija, tablica='', prikaz=''):
+@udzbenik_bp.route('/udzbenik/<zbirka>/tablice/<slug>/<kljuc>')
+def ljuska_detalja(zbirka, slug, kljuc):
+    red, odgovor = _udzbenik_za_html(zbirka)
+    if odgovor is not None:
+        return odgovor
+    if not udzbenik.detalj_vidljiv(red, slug, kljuc):
+        abort(404)
+    return _ljuska(red, '', '', tablica=slug, prikaz=PRIKAZ_TABLICE, detalj=kljuc)
+
+
+def _ljuska(red, poglavlje, lekcija, tablica='', prikaz='', detalj=''):
     return render_template(
         'udzbenik.html', udzbenik=red, poglavlje=poglavlje, lekcija=lekcija, pismo=_pismo(),
-        tablica=tablica, prikaz=prikaz,
+        tablica=tablica, prikaz=prikaz, detalj=detalj,
         api=url_for('udzbenik.api_struktura', zbirka=red['zbirka']), api_koren=API_KOREN,
     )
 
@@ -155,6 +166,18 @@ def api_tablica(zbirka, slug):
     podaci = udzbenik.tablica(red, slug)
     if podaci is None:
         return _greska(404, 'Табела не постоји')
+    return jsonify(podaci)
+
+
+@udzbenik_bp.route(API_KOREN + '/<zbirka>/tablica/<slug>/detalj/<kljuc>')
+@limiter.limit("120 per minute")
+def api_detalj_tablice(zbirka, slug, kljuc):
+    red, odgovor = _udzbenik_za_api(zbirka)
+    if odgovor is not None:
+        return odgovor
+    podaci = udzbenik.detalj_tablice(red, slug, kljuc)
+    if podaci is None:
+        return _greska(404, 'Детаљ реда табеле не постоји')
     return jsonify(podaci)
 
 

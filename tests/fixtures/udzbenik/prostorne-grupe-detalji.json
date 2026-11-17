@@ -1,0 +1,563 @@
+{
+ "1": {
+  "br": 1,
+  "hm": "P1",
+  "hm_pun": "P 1",
+  "senflis": "C1^1",
+  "klasa": "1",
+  "sistem": "triklinični",
+  "laue": "-1",
+  "centriranje": "P",
+  "patterson": "P-1",
+  "centrosim": false,
+  "hall": "P 1",
+  "postavka": "standardna postavka",
+  "vektori_centriranja": [
+   "0,0,0"
+  ],
+  "operacije": [
+   {
+    "br": 1,
+    "koordinate": "x,y,z",
+    "simbol": "1",
+    "opis": "identitet"
+   }
+  ],
+  "elementi": [],
+  "vikof": [
+   {
+    "visestrukost": 1,
+    "slovo": "a",
+    "simetrija": "1",
+    "koordinate": [
+     "x,y,z"
+    ]
+   }
+  ],
+  "generatori": [
+   "t(1,0,0)",
+   "t(0,1,0)",
+   "t(0,0,1)"
+  ],
+  "uslovi_refleksije": {
+   "opsti": [],
+   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+  },
+  "stereogram": {
+   "klasa": "1",
+   "polovi": [
+    {
+     "x": 0.4892,
+     "y": 0.178,
+     "gore": true
+    }
+   ],
+   "ravni": [],
+   "ose": [],
+   "centar": false
+  },
+  "primer": {
+   "mineral": "kaolinit",
+   "ima": "Kaolinite",
+   "izvor": "HoM kaolinite.pdf"
+  },
+  "itc_strane": "112–113",
+  "provera": {
+   "biblioteke": [
+    "spglib 2.8.0",
+    "gemmi 0.7.5",
+    "pyxtal 1.1.5"
+   ],
+   "itc": true
+  }
+ },
+ "2": {
+  "br": 2,
+  "hm": "P-1",
+  "hm_pun": "P -1",
+  "senflis": "Ci^1",
+  "klasa": "-1",
+  "sistem": "triklinični",
+  "laue": "-1",
+  "centriranje": "P",
+  "patterson": "P-1",
+  "centrosim": true,
+  "hall": "-P 1",
+  "postavka": "standardna postavka",
+  "vektori_centriranja": [
+   "0,0,0"
+  ],
+  "operacije": [
+   {
+    "br": 1,
+    "koordinate": "x,y,z",
+    "simbol": "1",
+    "opis": "identitet"
+   },
+   {
+    "br": 2,
+    "koordinate": "-x,-y,-z",
+    "simbol": "-1 0,0,0",
+    "opis": "centar inverzije u 0,0,0"
+   }
+  ],
+  "elementi": [
+   {
+    "vrsta": "centar-inverzije",
+    "simbol": "-1",
+    "polozaj": "0,0,0",
+    "operacije": [
+     2
+    ]
+   }
+  ],
+  "vikof": [
+   {
+    "visestrukost": 2,
+    "slovo": "i",
+    "simetrija": "1",
+    "koordinate": [
+     "x,y,z",
+     "-x,-y,-z"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "h",
+    "simetrija": "-1",
+    "koordinate": [
+     "1/2,1/2,1/2"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "g",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,1/2,1/2"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "f",
+    "simetrija": "-1",
+    "koordinate": [
+     "1/2,0,1/2"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "e",
+    "simetrija": "-1",
+    "koordinate": [
+     "1/2,1/2,0"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "d",
+    "simetrija": "-1",
+    "koordinate": [
+     "1/2,0,0"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "c",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,1/2,0"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "b",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,0,1/2"
+    ]
+   },
+   {
+    "visestrukost": 1,
+    "slovo": "a",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,0,0"
+    ]
+   }
+  ],
+  "generatori": [
+   "t(1,0,0)",
+   "t(0,1,0)",
+   "t(0,0,1)",
+   "(2)"
+  ],
+  "uslovi_refleksije": {
+   "opsti": [],
+   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+  },
+  "stereogram": {
+   "klasa": "-1",
+   "polovi": [
+    {
+     "x": 0.4892,
+     "y": 0.178,
+     "gore": true
+    },
+    {
+     "x": -0.4892,
+     "y": -0.178,
+     "gore": false
+    }
+   ],
+   "ravni": [],
+   "ose": [],
+   "centar": true
+  },
+  "primer": {
+   "mineral": "albit (često u postavci C1̄)",
+   "ima": "Albite",
+   "izvor": "HoM albite.pdf"
+  },
+  "itc_strane": "114–115",
+  "provera": {
+   "biblioteke": [
+    "spglib 2.8.0",
+    "gemmi 0.7.5",
+    "pyxtal 1.1.5"
+   ],
+   "itc": true
+  }
+ },
+ "62": {
+  "br": 62,
+  "hm": "Pnma",
+  "hm_pun": "P 2_1/n 2_1/m 2_1/a",
+  "senflis": "D2h^16",
+  "klasa": "mmm",
+  "sistem": "rombični",
+  "laue": "mmm",
+  "centriranje": "P",
+  "patterson": "Pmmm",
+  "centrosim": true,
+  "hall": "-P 2ac 2n",
+  "postavka": "standardna postavka",
+  "vektori_centriranja": [
+   "0,0,0"
+  ],
+  "operacije": [
+   {
+    "br": 1,
+    "koordinate": "x,y,z",
+    "simbol": "1",
+    "opis": "identitet"
+   },
+   {
+    "br": 2,
+    "koordinate": "-x+1/2,-y,z+1/2",
+    "simbol": "2(0,0,1/2) 1/4,0,z",
+    "opis": "zavojna osa 2₁ ∥ [001] kroz 1/4,0,z, translacija 0,0,1/2"
+   },
+   {
+    "br": 3,
+    "koordinate": "-x,y+1/2,-z",
+    "simbol": "2(0,1/2,0) 0,y,0",
+    "opis": "zavojna osa 2₁ ∥ [010] kroz 0,y,0, translacija 0,1/2,0"
+   },
+   {
+    "br": 4,
+    "koordinate": "x+1/2,-y+1/2,-z+1/2",
+    "simbol": "2(1/2,0,0) x,1/4,1/4",
+    "opis": "zavojna osa 2₁ ∥ [100] kroz x,1/4,1/4, translacija 1/2,0,0"
+   },
+   {
+    "br": 5,
+    "koordinate": "-x,-y,-z",
+    "simbol": "-1 0,0,0",
+    "opis": "centar inverzije u 0,0,0"
+   },
+   {
+    "br": 6,
+    "koordinate": "x+1/2,y,-z+1/2",
+    "simbol": "a x,y,1/4",
+    "opis": "klizna ravan a x,y,1/4 (normala (001)), klizanje 1/2,0,0"
+   },
+   {
+    "br": 7,
+    "koordinate": "x,-y+1/2,z",
+    "simbol": "m x,1/4,z",
+    "opis": "ravan ogledanja x,1/4,z (normala (010))"
+   },
+   {
+    "br": 8,
+    "koordinate": "-x+1/2,y+1/2,z+1/2",
+    "simbol": "n(0,1/2,1/2) 1/4,y,z",
+    "opis": "klizna ravan n 1/4,y,z (normala (100)), klizanje 0,1/2,1/2"
+   }
+  ],
+  "elementi": [
+   {
+    "vrsta": "zavojna-osa",
+    "simbol": "2_1",
+    "smer": "[001]",
+    "polozaj": "1/4,0,z",
+    "translacija": "0,0,1/2",
+    "operacije": [
+     2
+    ]
+   },
+   {
+    "vrsta": "zavojna-osa",
+    "simbol": "2_1",
+    "smer": "[010]",
+    "polozaj": "0,y,0",
+    "translacija": "0,1/2,0",
+    "operacije": [
+     3
+    ]
+   },
+   {
+    "vrsta": "zavojna-osa",
+    "simbol": "2_1",
+    "smer": "[100]",
+    "polozaj": "x,1/4,1/4",
+    "translacija": "1/2,0,0",
+    "operacije": [
+     4
+    ]
+   },
+   {
+    "vrsta": "centar-inverzije",
+    "simbol": "-1",
+    "polozaj": "0,0,0",
+    "operacije": [
+     5
+    ]
+   },
+   {
+    "vrsta": "klizna-ravan",
+    "simbol": "a",
+    "smer": "(001)",
+    "polozaj": "x,y,1/4",
+    "translacija": "1/2,0,0",
+    "operacije": [
+     6
+    ]
+   },
+   {
+    "vrsta": "ravan-ogledanja",
+    "simbol": "m",
+    "smer": "(010)",
+    "polozaj": "x,1/4,z",
+    "operacije": [
+     7
+    ]
+   },
+   {
+    "vrsta": "klizna-ravan",
+    "simbol": "n",
+    "smer": "(100)",
+    "polozaj": "1/4,y,z",
+    "translacija": "0,1/2,1/2",
+    "operacije": [
+     8
+    ]
+   }
+  ],
+  "vikof": [
+   {
+    "visestrukost": 8,
+    "slovo": "d",
+    "simetrija": "1",
+    "koordinate": [
+     "x,y,z",
+     "-x+1/2,-y,z+1/2",
+     "-x,y+1/2,-z",
+     "x+1/2,-y+1/2,-z+1/2",
+     "-x,-y,-z",
+     "x+1/2,y,-z+1/2",
+     "x,-y+1/2,z",
+     "-x+1/2,y+1/2,z+1/2"
+    ]
+   },
+   {
+    "visestrukost": 4,
+    "slovo": "c",
+    "simetrija": ".m.",
+    "koordinate": [
+     "x,1/4,z",
+     "-x+1/2,3/4,z+1/2",
+     "-x,3/4,-z",
+     "x+1/2,1/4,-z+1/2"
+    ]
+   },
+   {
+    "visestrukost": 4,
+    "slovo": "b",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,0,1/2",
+     "1/2,0,0",
+     "0,1/2,1/2",
+     "1/2,1/2,0"
+    ]
+   },
+   {
+    "visestrukost": 4,
+    "slovo": "a",
+    "simetrija": "-1",
+    "koordinate": [
+     "0,0,0",
+     "1/2,0,1/2",
+     "0,1/2,0",
+     "1/2,1/2,1/2"
+    ]
+   }
+  ],
+  "generatori": [
+   "t(1,0,0)",
+   "t(0,1,0)",
+   "t(0,0,1)",
+   "(2)",
+   "(3)",
+   "(5)"
+  ],
+  "uslovi_refleksije": {
+   "opsti": [
+    {
+     "refleksije": "0kl",
+     "uslov": "k + l = 2n"
+    },
+    {
+     "refleksije": "hk0",
+     "uslov": "h = 2n"
+    },
+    {
+     "refleksije": "h00",
+     "uslov": "h = 2n"
+    },
+    {
+     "refleksije": "0k0",
+     "uslov": "k = 2n"
+    },
+    {
+     "refleksije": "00l",
+     "uslov": "l = 2n"
+    }
+   ],
+   "napomena": "Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+  },
+  "stereogram": {
+   "klasa": "mmm",
+   "polovi": [
+    {
+     "x": 0.4892,
+     "y": 0.178,
+     "gore": true
+    },
+    {
+     "x": -0.4892,
+     "y": -0.178,
+     "gore": true
+    },
+    {
+     "x": -0.4892,
+     "y": 0.178,
+     "gore": false
+    },
+    {
+     "x": 0.4892,
+     "y": -0.178,
+     "gore": false
+    },
+    {
+     "x": -0.4892,
+     "y": -0.178,
+     "gore": false
+    },
+    {
+     "x": 0.4892,
+     "y": 0.178,
+     "gore": false
+    },
+    {
+     "x": 0.4892,
+     "y": -0.178,
+     "gore": true
+    },
+    {
+     "x": -0.4892,
+     "y": 0.178,
+     "gore": true
+    }
+   ],
+   "ravni": [
+    {
+     "normala": [
+      0.0,
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "normala": [
+      0.0,
+      1.0,
+      0.0
+     ]
+    },
+    {
+     "normala": [
+      1.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "ose": [
+    {
+     "smer": [
+      1.0,
+      0.0,
+      0.0
+     ],
+     "red": 2,
+     "inverziona": false
+    },
+    {
+     "smer": [
+      0.0,
+      1.0,
+      0.0
+     ],
+     "red": 2,
+     "inverziona": false
+    },
+    {
+     "smer": [
+      0.0,
+      0.0,
+      1.0
+     ],
+     "red": 2,
+     "inverziona": false
+    }
+   ],
+   "centar": true
+  },
+  "primer": {
+   "mineral": "forsterit (često u postavci Pbnm)",
+   "ima": "Forsterite",
+   "izvor": "HoM forsterite.pdf"
+  },
+  "itc_strane": "298–299",
+  "provera": {
+   "biblioteke": [
+    "spglib 2.8.0",
+    "gemmi 0.7.5",
+    "pyxtal 1.1.5"
+   ],
+   "itc": true
+  }
+ }
+}

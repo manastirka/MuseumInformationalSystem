@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% from '_zaglavlje_strane.html' import zaglavlje %}
 {# Љуска читача: ИСТА за /udzbenik/<zbirka>, дубоки линк на лекцију и табеле
-   (/udzbenik/<zbirka>/tablice[/<slug>] → data-prikaz="tablice", data-tablica). Садржај
+   (/udzbenik/<zbirka>/tablice[/<slug>[/<kljuc>]] → data-prikaz="tablice", data-tablica,
+   data-detalj = кључ детаља реда, UGOVOR-TABLICE-2.md део 2). Садржај
    црта мотор из static/udzbenik/ (репо mis-udzbenik) — овде нема садржаја
    лекције ни JS-а осим data-* атрибута (бриф §3). Chunk-ови мотора носе хеш
    садржаја у имену (udzbenik-{jezgro,three,dijagrami}-<heš>.js), па их стари
@@ -26,6 +27,7 @@
          data-lekcija="{{ lekcija }}"
          data-tablica="{{ tablica or '' }}"
          data-prikaz="{{ prikaz or '' }}"
+         data-detalj="{{ detalj or '' }}"
          data-pismo="{{ pismo }}"
          data-moze-uredjuje="false"
          data-straza-ms="8000">
