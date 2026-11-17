@@ -3042,12 +3042,13 @@ class TabliceUvozTest(_TabliceOsnova):
         def dobro(p):
             k = p['tablice'][0]['sadrzaj']['kolone']
             k[0].update(kratko='Br.', podrazumevano=True, mobilno=True)
-            k[1].update(kratko='HM', podrazumevano=True)
+            k[1].update(kratko='HM', podrazumevano=True, grupa='Simboli')
         self._uvezi_sa_tablicama(izmeni=dobro)
         self._prijava()
         kolone = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe').get_json()['tablica']['kolone']
         self.assertEqual((kolone[0]['kratko'], kolone[0]['podrazumevano'], kolone[0]['mobilno']), ('Br.', True, True))
         self.assertEqual(kolone[1]['kratko'], 'HM')
+        self.assertEqual(kolone[1]['grupa'], 'Simboli')
         self.assertNotIn('mobilno', kolone[1])
 
         def lose(p):
@@ -3055,10 +3056,11 @@ class TabliceUvozTest(_TabliceOsnova):
             k[0]['kratko'] = 'K' * 17
             k[1]['mobilno'] = 'da'
             k[2]['podrazumevano'] = 1
+            k[3]['grupa'] = 'G' * 41
         kod, _, err = self._uvezi(self._fajl(izmeni=lose), '--dry-run')
         self.assertEqual(kod, 1)
         for deo in ('tablice[0].sadrzaj.kolone[0].kratko', 'tablice[0].sadrzaj.kolone[1].mobilno',
-                    'tablice[0].sadrzaj.kolone[2].podrazumevano'):
+                    'tablice[0].sadrzaj.kolone[2].podrazumevano', 'tablice[0].sadrzaj.kolone[3].grupa'):
             self.assertIn(deo, err)
 
 class TabliceApiTest(_TabliceOsnova):
