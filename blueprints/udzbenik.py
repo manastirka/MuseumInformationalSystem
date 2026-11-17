@@ -1,8 +1,9 @@
 """Интерактивни уџбеник — руте (udzbenik.py ради посао).
 
-HTML: листа уџбеника и ЈЕДНА љуска (``udzbenik.html``) за уџбеник и дубоки
-линк на лекцију — мотор из static/udzbenik/ црта садржај. API по брифу §4:
-структура, лекција са разрешеним блоковима, напредак (POST, CSRF), CIF
+HTML: листа уџбеника и ЈЕДНА љуска (``udzbenik.html``) за уџбеник, дубоки
+линк на лекцију и референтне табеле (списак и једна табела, UGOVOR-TABLICE.md
+§4) — мотор из static/udzbenik/ црта садржај. API по брифу §4: структура,
+лекција са разрешеним блоковима, табела, напредак (POST, CSRF), CIF
 структуре минерала, proxy слике из литературе (SciSearch, само интерно).
 Грешке API-ја су увек JSON ``{"greska": ...}`` са правим статусом
 (401/403/404/503), никад 200.
@@ -16,6 +17,7 @@ from rate_limit_ext import limiter
 
 udzbenik_bp = Blueprint('udzbenik', __name__)
 API_KOREN = '/api/udzbenik'
+PRIKAZ_TABLICE = 'tablice'
 
 
 def _pismo():
@@ -90,9 +92,28 @@ def ljuska_lekcije(zbirka, poglavlje, lekcija):
     return _ljuska(red, poglavlje, lekcija)
 
 
-def _ljuska(red, poglavlje, lekcija):
+@udzbenik_bp.route('/udzbenik/<zbirka>/tablice')
+def ljuska_tablica(zbirka):
+    red, odgovor = _udzbenik_za_html(zbirka)
+    if odgovor is not None:
+        return odgovor
+    return _ljuska(red, '', '', tablica='', prikaz=PRIKAZ_TABLICE)
+
+
+@udzbenik_bp.route('/udzbenik/<zbirka>/tablice/<slug>')
+def ljuska_tablice(zbirka, slug):
+    red, odgovor = _udzbenik_za_html(zbirka)
+    if odgovor is not None:
+        return odgovor
+    if not udzbenik.tablica_vidljiva(red, slug):
+        abort(404)
+    return _ljuska(red, '', '', tablica=slug, prikaz=PRIKAZ_TABLICE)
+
+
+def _ljuska(red, poglavlje, lekcija, tablica='', prikaz=''):
     return render_template(
         'udzbenik.html', udzbenik=red, poglavlje=poglavlje, lekcija=lekcija, pismo=_pismo(),
+        tablica=tablica, prikaz=prikaz,
         api=url_for('udzbenik.api_struktura', zbirka=red['zbirka']), api_koren=API_KOREN,
     )
 
@@ -122,6 +143,18 @@ def api_lekcija(zbirka, poglavlje, lekcija):
         if alias is not None:
             return redirect(url_for('udzbenik.api_lekcija', zbirka=zbirka, poglavlje=alias[0], lekcija=alias[1]), 301)
         return _greska(404, 'Лекција не постоји')
+    return jsonify(podaci)
+
+
+@udzbenik_bp.route(API_KOREN + '/<zbirka>/tablica/<slug>')
+@limiter.limit("120 per minute")
+def api_tablica(zbirka, slug):
+    red, odgovor = _udzbenik_za_api(zbirka)
+    if odgovor is not None:
+        return odgovor
+    podaci = udzbenik.tablica(red, slug)
+    if podaci is None:
+        return _greska(404, 'Табела не постоји')
     return jsonify(podaci)
 
 
