@@ -41,7 +41,7 @@
   ],
   "uslovi_refleksije": {
    "opsti": [],
-   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vajkofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
   },
   "stereogram": {
    "klasa": "1",
@@ -194,7 +194,7 @@
   ],
   "uslovi_refleksije": {
    "opsti": [],
-   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+   "napomena": "Nema opštih uslova refleksije. Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vajkofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
   },
   "stereogram": {
    "klasa": "-1",
@@ -445,7 +445,7 @@
      "uslov": "l = 2n"
     }
    ],
-   "napomena": "Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vikofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
+   "napomena": "Navedeni su samo opšti uslovi refleksije; posebni uslovi (za Vajkofove položaje) nisu navedeni. Uslovi su izvedeni iz sistematskih odsutnosti (gemmi) za |h|,|k|,|l| ≤ 12 i provereni na svim refleksijama u tom opsegu."
   },
   "stereogram": {
    "klasa": "mmm",
