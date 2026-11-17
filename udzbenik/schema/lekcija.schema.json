@@ -58,7 +58,8 @@
             "ishodi",
             "primer-koraci",
             "zabluda",
-            "sazetak"
+            "sazetak",
+            "tablica-link"
           ]
         }
       },
@@ -104,6 +105,9 @@
         },
         {
           "$ref": "#/$defs/sazetak"
+        },
+        {
+          "$ref": "#/$defs/tablica-link"
         }
       ]
     },
@@ -3385,6 +3389,51 @@
                 "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
               }
             }
+          }
+        }
+      }
+    },
+    "tablica-link": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "tablica"
+      ],
+      "additionalProperties": false,
+      "description": "Veza na referentnu tablicu udžbenika (UGOVOR-TABLICE.md §3): server pri čitanju dodaje `naslov_tablice` + `broj_redova`, ili `nedostupan: true` + `razlog` kad tablica nije vidljiva čitaocu. Autorova polja ostaju.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "tablica-link"
+        },
+        "tablica": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,59}$",
+          "description": "slug tablice iz `tablice` istog fajla ili već u bazi za taj udžbenik."
+        },
+        "tekst": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Markdown bez sirovog HTML-a."
+        },
+        "filter": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Početni filter tablice: ključ = kljuc kolone, vrednost string (motor ga stavlja u query).",
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "not": {
+              "const": "izvor"
+            }
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           }
         }
       }

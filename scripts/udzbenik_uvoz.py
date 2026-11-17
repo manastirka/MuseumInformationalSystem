@@ -11,14 +11,23 @@
   ``karta-lokaliteta`` са oblast=srbija има све тачке у оквиру Србије,
   ``paragenetska-sekvenca`` има ``od <= do < broj faza``, ``habitus`` са четири
   индекса има ``i = -(h+k)``, ``infografika`` највише једна по лекцији и
-  обавезно први блок, а свака њена ``<Slika>`` референца постоји); све
-  грешке се испишу одједном,
+  обавезно први блок, а свака њена ``<Slika>`` референца постоји);
+  референтне табеле (кључ ``tablice``, UGOVOR-TABLICE.md §1): ``sadrzaj`` по
+  udzbenik/schema/tablica.schema.json, јединствени slug/redosled, ``poglavlje``
+  постоји међу поглављима фајла, кључеви колона јединствени, кључеви реда ⊆
+  колоне ∪ {izvor}, вредност по типу колоне, ``izvor`` реда почиње неком
+  ``oznaka`` из ``izvori``; поглавље са slug-ом ``tablice`` је забрањено
+  (резервисан сегмент URL-а); блок ``tablica-link`` упућује на табелу из фајла
+  или већ у бази за тај уџбеник, а кључеви ``filter`` су колоне табеле (кад је
+  у фајлу); све грешке се испишу одједном,
   са путањом (``poglavlja[1].lekcije[0].blokovi[3]``), и ништа се не упише;
 - upsert по ``zbirka`` → ``slug`` поглавља → ``slug`` лекције; лекција чији се
   ``sadrzaj`` променио добија ``verzija + 1`` и нов ред у
   udzbenik_lekcija_verzija (``napomena = 'uvoz: <ime fajla>'``); непромењена
   лекција се не дира; поглавља/лекције којих има у бази а нема у фајлу се НЕ
-  бришу — испише се упозорење;
+  бришу — испише се упозорење; табеле исто: upsert по ``slug`` табеле,
+  промењен ``sadrzaj`` → ``verzija + 1`` и ред у udzbenik_tablica_verzija,
+  табела из базе које нема у фајлу остаје уз упозорење;
 - подразумевано је dry-run (испис плана, нула измена); ``--execute <ime baze>``
   (дословно име базе на коју је скрипта стварно повезана, ``current_database()``,
   као у udzbenik_ai_slike.py) ради све у ЈЕДНОЈ трансакцији;
@@ -45,6 +54,22 @@ from udzbenik import mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu  # 
 
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
+SEMA_TABLICE_PUTANJA = REPO / 'udzbenik' / 'schema' / 'tablica.schema.json'
+REZERVISAN_SLUG_POGLAVLJA = 'tablice'      # сегмент URL-а /udzbenik/<zbirka>/tablice
+KLJUC_IZVORA = 'izvor'
+NASLOV_TABLICE_NAJVISE = 200
+OPIS_TABLICE_NAJVISE = 2000
+POLJA_TABLICE = ('slug', 'redosled', 'naslov', 'opis', 'poglavlje', 'status', 'sadrzaj')
+# тип колоне → (провера вредности, опис); null је увек дозвољен (празно)
+TIPOVI_VREDNOSTI = {
+    'broj': (lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), 'број'),
+    'da-ne': (lambda v: isinstance(v, bool), 'true/false'),
+    'tekst': (lambda v: isinstance(v, str), 'текст'),
+    'simbol': (lambda v: isinstance(v, str), 'текст'),
+}
+# allOf[i] колоне у tablica.schema.json → јаснија порука од „'broj' is not one of …“
+PORUKE_USLOVA_KOLONE = ('format је дозвољен само уз tip simbol или tekst',
+                        'decimale је дозвољено само уз tip broj')
 # Оквир Србије (са Косовом и Метохијом) за karta-lokaliteta, oblast=srbija.
 SRBIJA_LAT = (41.8, 46.2)
 SRBIJA_LON = (18.8, 23.1)
@@ -164,6 +189,8 @@ def validiraj(podaci, cur):
 
     sema = ucitaj_semu()
     validatori = _validatori(sema)
+    kolone_tablica = validiraj_tablice(podaci.get('tablice'), poglavlja, greske)
+    zbirka = u.get('zbirka') if isinstance(u, dict) and isinstance(u.get('zbirka'), str) else None
     _jedinstveno(poglavlja, 'slug', 'poglavlja', greske, 'slug поглавља')
     _jedinstveno(poglavlja, 'redosled', 'poglavlja', greske, 'redosled поглавља')
     for i, p in enumerate(poglavlja):
@@ -172,6 +199,9 @@ def validiraj(podaci, cur):
             greske.append(f'{pp}: поглавље мора бити објекат')
             continue
         _slug(p.get('slug'), f'{pp}.slug', greske)
+        if p.get('slug') == REZERVISAN_SLUG_POGLAVLJA:
+            greske.append(f'{pp}.slug: slug поглавља {REZERVISAN_SLUG_POGLAVLJA!r} је забрањен '
+                          f'(резервисан сегмент URL-а /udzbenik/<zbirka>/{REZERVISAN_SLUG_POGLAVLJA})')
         _tekst(p.get('naslov'), f'{pp}.naslov', greske)
         _tekst(p.get('opis'), f'{pp}.opis', greske, obavezno=False)
         _redosled(p.get('redosled'), f'{pp}.redosled', greske)
@@ -202,7 +232,125 @@ def validiraj(podaci, cur):
                 _proveri_infografiku(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_pravila(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_reference(sadrzaj['blokovi'], f'{lp}.sadrzaj', cur, greske)
+                _proveri_tablica_linkove(sadrzaj['blokovi'], f'{lp}.sadrzaj', kolone_tablica, zbirka, cur, greske)
     return greske
+
+
+def ucitaj_semu_tablice():
+    with open(SEMA_TABLICE_PUTANJA, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def validiraj_tablice(tablice, poglavlja, greske):
+    """Кључ ``tablice`` (UGOVOR-TABLICE.md §1); враћа {slug: {кључ: тип}
+    колона, или None кад колоне нису исправне} за проверу блокова
+    ``tablica-link``. Све грешке одједном, отпорно на погрешан облик."""
+    import jsonschema
+
+    if tablice is None:
+        return {}
+    if not isinstance(tablice, list):
+        greske.append('tablice: мора бити листа')
+        return {}
+    slugovi_poglavlja = {p.get('slug') for p in poglavlja if isinstance(p, dict)}
+    validator = jsonschema.Draft202012Validator(ucitaj_semu_tablice())
+    _jedinstveno(tablice, 'slug', 'tablice', greske, 'slug табеле')
+    _jedinstveno(tablice, 'redosled', 'tablice', greske, 'redosled табеле')
+    kolone_tablica = {}
+    for i, t in enumerate(tablice):
+        tp = f'tablice[{i}]'
+        if not isinstance(t, dict):
+            greske.append(f'{tp}: табела мора бити објекат')
+            continue
+        _slug(t.get('slug'), f'{tp}.slug', greske)
+        _redosled(t.get('redosled'), f'{tp}.redosled', greske)
+        _tekst(t.get('naslov'), f'{tp}.naslov', greske, najvise=NASLOV_TABLICE_NAJVISE)
+        _tekst(t.get('opis'), f'{tp}.opis', greske, obavezno=False, najvise=OPIS_TABLICE_NAJVISE)
+        _status(t.get('status'), f'{tp}.status', greske)
+        if t.get('poglavlje') is not None and t['poglavlje'] not in slugovi_poglavlja:
+            greske.append(f'{tp}.poglavlje: поглавље {t["poglavlje"]!r} не постоји међу поглављима фајла')
+        for kljuc in sorted(set(t) - set(POLJA_TABLICE)):
+            greske.append(f'{tp}.{kljuc}: непознато поље табеле (дозвољено {list(POLJA_TABLICE)})')
+        sadrzaj = t.get('sadrzaj')
+        if not isinstance(sadrzaj, dict):
+            greske.append(f'{tp}.sadrzaj: обавезан објекат по tablica.schema.json')
+            continue
+        sp = f'{tp}.sadrzaj'
+        for g in sorted(validator.iter_errors(sadrzaj), key=lambda e: (str(e.json_path), e.message)):
+            putanja_seme = list(g.absolute_schema_path)
+            poruka = g.message
+            if 'allOf' in putanja_seme:
+                poruka = PORUKE_USLOVA_KOLONE[putanja_seme[putanja_seme.index('allOf') + 1]]
+            greske.append(f'{sp}{_json_putanja(g)}: {poruka}')
+        kolone = _proveri_sadrzaj_tablice(sadrzaj, sp, greske)
+        if isinstance(t.get('slug'), str):
+            kolone_tablica[t['slug']] = kolone
+    return kolone_tablica
+
+
+def _proveri_sadrzaj_tablice(sadrzaj, sp, greske):
+    """Правила која шема не изражава; враћа {кључ: тип} колона или None."""
+    kolone = sadrzaj.get('kolone')
+    if not isinstance(kolone, list) or not all(isinstance(k, dict) for k in kolone):
+        return None
+    _jedinstveno(kolone, 'kljuc', f'{sp}.kolone', greske, 'kljuc колоне')
+    tipovi = {k['kljuc']: k.get('tip') for k in kolone if isinstance(k.get('kljuc'), str)}
+    izvori = sadrzaj.get('izvori')
+    oznake = []
+    if isinstance(izvori, list):
+        _jedinstveno(izvori, 'oznaka', f'{sp}.izvori', greske, 'oznaka извора')
+        oznake = [z['oznaka'] for z in izvori
+                  if isinstance(z, dict) and isinstance(z.get('oznaka'), str) and z['oznaka']]
+    redovi = sadrzaj.get('redovi')
+    if not isinstance(redovi, list):
+        return tipovi
+    for r, red in enumerate(redovi):
+        if not isinstance(red, dict):
+            continue
+        rp = f'{sp}.redovi[{r}]'
+        for kljuc, vrednost in red.items():
+            if kljuc == KLJUC_IZVORA:
+                if isinstance(vrednost, str) and not any(vrednost.startswith(o) for o in oznake):
+                    greske.append(f'{rp}.{KLJUC_IZVORA}: {vrednost!r} не почиње ниједном oznaka из izvori {oznake}')
+                continue
+            if kljuc not in tipovi:
+                greske.append(f'{rp}.{kljuc}: кључ није колона табеле (дозвољено {sorted(tipovi)} и {KLJUC_IZVORA!r})')
+                continue
+            provera = TIPOVI_VREDNOSTI.get(tipovi[kljuc])
+            if vrednost is None or provera is None or isinstance(vrednost, (dict, list)):
+                continue        # празно; непознат тип или сложену вредност је шема већ пријавила
+            ispravno, opis = provera
+            if not ispravno(vrednost):
+                greske.append(f'{rp}.{kljuc}: колона типа {tipovi[kljuc]!r} тражи {opis} или null '
+                              f'(добијено {vrednost!r})')
+    return tipovi
+
+
+def _proveri_tablica_linkove(blokovi, putanja, kolone_tablica, zbirka, cur, greske):
+    """Блок ``tablica-link``: табела из фајла или већ у бази за тај уџбеник;
+    кључеви ``filter`` су колоне табеле кад је табела у фајлу."""
+    for i, blok in enumerate(blokovi):
+        if not isinstance(blok, dict) or blok.get('tip') != 'tablica-link' or not isinstance(blok.get('tablica'), str):
+            continue
+        p = f'{putanja}.blokovi[{i}]'
+        slug = blok['tablica']
+        if slug in kolone_tablica:
+            kolone = kolone_tablica[slug]
+            filter_ = blok.get('filter')
+            if kolone is not None and isinstance(filter_, dict):
+                for kljuc in filter_:
+                    if kljuc not in kolone:
+                        greske.append(f'{p}.filter.{kljuc}: табела {slug!r} нема колону {kljuc!r} '
+                                      f'(колоне {sorted(kolone)})')
+            continue
+        postoji = False
+        if zbirka is not None:
+            cur.execute("""SELECT 1 FROM udzbenik_tablica t JOIN udzbenik u ON u.id = t.udzbenik_id
+                           WHERE u.zbirka = %s AND t.slug = %s""", (zbirka, slug))
+            postoji = cur.fetchone() is not None
+        if not postoji:
+            greske.append(f'{p}.tablica: табела {slug!r} не постоји ни у tablice фајла ни у бази '
+                          f'за уџбеник {zbirka!r}')
 
 
 def _proveri_reference(blokovi, putanja, cur, greske):
@@ -505,7 +653,43 @@ def napravi_plan(cur, podaci):
         plan['poglavlja'].append(stavka)
     for slug in sorted(set(postojeca_poglavlja) - {p['slug'] for p in podaci['poglavlja']}):
         plan['upozorenja'].append(f'поглавље {slug} је у бази, а нема га у фајлу — остаје нетакнуто')
+    _planiraj_tablice(cur, podaci, plan, red[0] if red is not None else None)
     return plan
+
+
+def _planiraj_tablice(cur, podaci, plan, udzbenik_id):
+    """Upsert по slug-у табеле; промењен ``sadrzaj`` → нова верзија."""
+    tablice = podaci.get('tablice') or []
+    postojece = {}
+    if udzbenik_id is not None:
+        cur.execute("""SELECT id, slug, redosled, naslov, opis, poglavlje_slug, status, verzija, sadrzaj
+                       FROM udzbenik_tablica WHERE udzbenik_id = %s""", (udzbenik_id,))
+        postojece = {r[1]: {'id': r[0], 'redosled': r[2], 'naslov': r[3], 'opis': r[4], 'poglavlje': r[5],
+                            'status': r[6], 'verzija': r[7], 'sadrzaj': _json(r[8])} for r in cur.fetchall()}
+    slugovi = {t['slug'] for t in tablice}
+    zauzeti = {v['redosled']: slug for slug, v in postojece.items() if slug not in slugovi}
+    plan['tablice'] = []
+    for i, t in enumerate(tablice):
+        if t['redosled'] in zauzeti:
+            plan['greske'].append(
+                f'tablice[{i}].redosled: redosled {t["redosled"]} већ држи табела {zauzeti[t["redosled"]]!r} '
+                f'која је у бази, а нема је у фајлу — додај је у фајл са другим redosled-ом или промени '
+                f'redosled нове табеле')
+        stara = postojece.get(t['slug'])
+        stavka = {'slug': t['slug'], 'id': stara['id'] if stara else None, 'nova_verzija': None}
+        if stara is None:
+            stavka.update(akcija='dodaje', nova_verzija=1)
+        elif stara['sadrzaj'] != t['sadrzaj']:
+            stavka.update(akcija='menja sadrzaj', nova_verzija=stara['verzija'] + 1)
+        elif ((stara['redosled'], stara['naslov'], stara['opis'], stara['poglavlje'])
+              != (t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'))
+              or ('status' in t and stara['status'] != t['status'])):
+            stavka['akcija'] = 'menja podatke'
+        else:
+            stavka['akcija'] = 'isto'
+        plan['tablice'].append(stavka)
+    for slug in sorted(set(postojece) - slugovi):
+        plan['upozorenja'].append(f'табела {slug} је у бази, а нема је у фајлу — остаје нетакнута')
 
 
 # --------------------------------------------------------------------------
@@ -584,6 +768,45 @@ def primeni_plan(cur, podaci, plan, autor, napomena):
                                WHERE id = %s""",
                             (lek['redosled'], lek['naslov'], lek.get('sazetak'), lek.get('status'),
                              l_stavka['akcija'] == 'menja podatke', lekcija_id))
+    primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena)
+
+
+def primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena):
+    """Redosled је UNIQUE: постојеће табеле из фајла прво добијају привремен
+    негативан redosled (као поглавља), па размена места не удари у ограничење."""
+    postojece = [s['id'] for s in plan['tablice'] if s['id'] is not None]
+    if postojece:
+        cur.execute('UPDATE udzbenik_tablica SET redosled = -id WHERE id = ANY(%s)', (postojece,))
+    for t, stavka in zip(podaci.get('tablice') or [], plan['tablice']):
+        sadrzaj = json.dumps(t['sadrzaj'], ensure_ascii=False)
+        if stavka['akcija'] == 'dodaje':
+            cur.execute("""INSERT INTO udzbenik_tablica (udzbenik_id, slug, redosled, naslov, opis, poglavlje_slug,
+                               status, sadrzaj, verzija, azurirao_email)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, %s) RETURNING id""",
+                        (udzbenik_id, t['slug'], t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'),
+                         t.get('status', 'nacrt'), sadrzaj, autor))
+            _upisi_verziju_tablice(cur, cur.fetchone()[0], 1, sadrzaj, autor, napomena)
+        elif stavka['akcija'] == 'menja sadrzaj':
+            cur.execute("""UPDATE udzbenik_tablica SET redosled = %s, naslov = %s, opis = %s, poglavlje_slug = %s,
+                               status = COALESCE(%s, status), sadrzaj = %s, verzija = %s,
+                               azurirao_email = %s, updated_at = now()
+                           WHERE id = %s""",
+                        (t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'), t.get('status'),
+                         sadrzaj, stavka['nova_verzija'], autor, stavka['id']))
+            _upisi_verziju_tablice(cur, stavka['id'], stavka['nova_verzija'], sadrzaj, autor, napomena)
+        else:
+            # 'isto' такође пролази овде само да врати привремени redosled
+            cur.execute("""UPDATE udzbenik_tablica SET redosled = %s, naslov = %s, opis = %s, poglavlje_slug = %s,
+                               status = COALESCE(%s, status),
+                               updated_at = CASE WHEN %s THEN now() ELSE updated_at END
+                           WHERE id = %s""",
+                        (t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'), t.get('status'),
+                         stavka['akcija'] == 'menja podatke', stavka['id']))
+
+
+def _upisi_verziju_tablice(cur, tablica_id, verzija, sadrzaj, autor, napomena):
+    cur.execute("""INSERT INTO udzbenik_tablica_verzija (tablica_id, verzija, sadrzaj, autor_email, napomena)
+                   VALUES (%s, %s, %s, %s, %s)""", (tablica_id, verzija, sadrzaj, autor, napomena))
 
 
 def _upisi_verziju(cur, lekcija_id, verzija, sadrzaj, autor, napomena):
@@ -616,10 +839,18 @@ def ispisi_plan(plan, izvrsavanje):
             if lek['nova_verzija']:
                 brojac['nove_verzije'] += 1
             print(f'      {ZNAK[lek["akcija"]]} lekcija {p["slug"]}/{lek["slug"]} ({lek["akcija"]}{dodatak})')
+    brojac.update(tablice=0, nove_verzije_tablica=0)
+    for t in plan.get('tablice', []):
+        brojac['tablice'] += 1
+        dodatak = f' → verzija {t["nova_verzija"]}' if t['akcija'] == 'menja sadrzaj' else ''
+        if t['nova_verzija']:
+            brojac['nove_verzije_tablica'] += 1
+        print(f'  {ZNAK[t["akcija"]]} tablica {t["slug"]} ({t["akcija"]}{dodatak})')
     for u in plan['upozorenja']:
         print(f'  ! упозорење: {u}')
     print(f'Укупно: {brojac["poglavlja"]} поглавља, {brojac["lekcije"]} лекција, '
-          f'{brojac["nove_verzije"]} нових верзија, {len(plan["upozorenja"])} упозорења.')
+          f'{brojac["nove_verzije"]} нових верзија, {brojac["tablice"]} табела '
+          f'({brojac["nove_verzije_tablica"]} нових верзија табела), {len(plan["upozorenja"])} упозорења.')
     return brojac
 
 

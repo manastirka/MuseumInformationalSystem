@@ -21,7 +21,11 @@ static/udzbenik/) чита искључиво API описан у брифу (§
   (glavna, glavna.lupa, primeri[], mikroskop, proces, srbija.stavke[]) се
   разрешава истим правилима као ``slika`` / ``primerak`` / ``slika-literatura``;
   недоступна слика добија ``nedostupna`` + ``razlog`` НА ТОМ МЕСТУ, блок се
-  никад не обара; анонимном читаоцу се ``figura_id`` слике уклањају.
+  никад не обара; анонимном читаоцу се ``figura_id`` слике уклањају;
+- референтне табеле (UGOVOR-TABLICE.md §2–4, табела udzbenik_tablica): списак
+  у структури, једна табела кроз ``tablica``, блок ``tablica-link`` добија
+  ``naslov_tablice`` + ``broj_redova`` или ``nedostupan`` + ``razlog``; исто
+  право као лекције (анонимни виде само ``objavljen``).
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
@@ -57,6 +61,7 @@ RAZLOG_LITERATURA_PRAZNO = 'nema rezultata'
 RAZLOG_FIGURA_NE_POSTOJI = 'slika ne postoji u biblioteci'
 RAZLOG_PRIMERAK_BEZ_FOTOGRAFIJE = 'primerak nema fotografiju'
 RAZLOG_NEPOZNAT_OBLIK_SLIKE = 'nepoznat oblik slike'
+RAZLOG_TABLICA_NE_POSTOJI = 'tablica ne postoji'
 TAG_AI_ILUSTRACIJA = 'ai-ilustracija'
 POREKLO_AI = 'ai-ilustracija'
 
@@ -211,6 +216,7 @@ def struktura(udzbenik_red):
         with conn.cursor() as cur:
             poglavlja = _poglavlja(cur, udzbenik_red['id'])
             lekcije = _lekcije(cur, udzbenik_red['id'], email)
+            tablice = _tablice(cur, udzbenik_red['id'])
     po_poglavlju = {}
     for lek in lekcije:
         po_poglavlju.setdefault(lek['poglavlje_id'], []).append({
@@ -231,8 +237,60 @@ def struktura(udzbenik_red):
             'javno': bool(udzbenik_red['javno']), 'azurirano': _iso(udzbenik_red['updated_at']),
         },
         'poglavlja': izlaz_poglavlja,
+        'tablice': [{'slug': t['slug'], 'naslov': t['naslov'], 'opis': t['opis'], 'poglavlje': t['poglavlje_slug'],
+                     'redosled': t['redosled'], 'broj_redova': t['broj_redova']} for t in tablice],
         'korisnik': {'prijavljen': prijavljen(), 'moze_da_uredjuje': False},
     }
+
+
+def _tablice(cur, udzbenik_id, slug=None):
+    """Табеле уџбеника видљиве читаоцу (анонимни само ``objavljen``), по
+    redosled-у; са ``slug`` — највише једна. Без садржаја, само број редова."""
+    sql = """SELECT id, slug, naslov, opis, poglavlje_slug, redosled, status, verzija, updated_at,
+                    COALESCE(jsonb_array_length(sadrzaj->'redovi'), 0) AS broj_redova
+             FROM udzbenik_tablica WHERE udzbenik_id = %s"""
+    parametri = [udzbenik_id]
+    if samo_objavljeno():
+        sql += ' AND status = %s'
+        parametri.append(STATUS_OBJAVLJEN)
+    if slug is not None:
+        sql += ' AND slug = %s'
+        parametri.append(slug)
+    cur.execute(sql + ' ORDER BY redosled', parametri)
+    return _redovi(cur)
+
+
+def tablica_vidljiva(udzbenik_red, slug):
+    """Табела постоји и читалац је види (за HTML љуску — без садржаја)."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            return bool(_tablice(cur, udzbenik_red['id'], slug))
+
+
+def tablica(udzbenik_red, slug):
+    """Одговор за GET /api/udzbenik/<zbirka>/tablica/<slug> (UGOVOR-TABLICE.md
+    §4) или None кад табела не постоји / није видљива читаоцу."""
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            nadjene = _tablice(cur, udzbenik_red['id'], slug)
+            if not nadjene:
+                return None
+            t = nadjene[0]
+            cur.execute('SELECT sadrzaj FROM udzbenik_tablica WHERE id = %s', (t['id'],))
+            sadrzaj = _json(cur.fetchone()[0]) or {}
+            poglavlje = None
+            if t['poglavlje_slug']:
+                cur.execute('SELECT slug, naslov FROM udzbenik_poglavlje WHERE udzbenik_id = %s AND slug = %s',
+                            (udzbenik_red['id'], t['poglavlje_slug']))
+                red = cur.fetchone()
+                if red is not None:
+                    poglavlje = {'slug': red[0], 'naslov': red[1]}
+    return {'tablica': {
+        'slug': t['slug'], 'naslov': t['naslov'], 'opis': t['opis'], 'poglavlje': poglavlje,
+        'redosled': t['redosled'], 'verzija': t['verzija'], 'azurirano': _iso(t['updated_at']),
+        'kolone': sadrzaj.get('kolone') or [], 'redovi': sadrzaj.get('redovi') or [],
+        'izvori': sadrzaj.get('izvori') or [], 'napomene': sadrzaj.get('napomene') or [],
+    }}
 
 
 def nadji_lekciju(udzbenik_red, poglavlje_slug, lekcija_slug):
@@ -287,7 +345,7 @@ def lekcija(udzbenik_red, poglavlje_slug, lekcija_slug):
         with conn.cursor() as cur:
             cur.execute("SELECT sadrzaj FROM udzbenik_lekcija WHERE id = %s", (lek['id'],))
             sadrzaj = _json(cur.fetchone()[0]) or {}
-            blokovi = razresi_blokove(cur, sadrzaj.get('blokovi') or [])
+            blokovi = razresi_blokove(cur, sadrzaj.get('blokovi') or [], udzbenik_red['id'])
     return {'lekcija': {
         'slug': lek['slug'], 'naslov': lek['naslov'],
         'poglavlje': {'slug': lek['poglavlje_slug'], 'naslov': lek['poglavlje_naslov']},
@@ -301,7 +359,7 @@ def lekcija(udzbenik_red, poglavlje_slug, lekcija_slug):
 # Разрешавање блокова — сервер ДОПУЊУЈЕ, не мења ауторова поља
 # --------------------------------------------------------------------------
 
-def razresi_blokove(cur, blokovi):
+def razresi_blokove(cur, blokovi, udzbenik_id=None):
     izlaz = []
     for blok in blokovi:
         if not isinstance(blok, dict):
@@ -322,6 +380,8 @@ def razresi_blokove(cur, blokovi):
             izlaz.append(_razresi_infografiku(cur, blok))
         elif tip == 'dijagram' and blok.get('dijagram') == 'proces':
             izlaz.append(_razresi_proces(blok))
+        elif tip == 'tablica-link':
+            izlaz.append(_razresi_tablica_link(cur, blok, udzbenik_id))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -331,6 +391,16 @@ def razresi_blokove(cur, blokovi):
 
 def _nedostupan(blok, razlog):
     return dict(blok, nedostupan=True, razlog=razlog)
+
+
+def _razresi_tablica_link(cur, blok, udzbenik_id):
+    """Веза на табелу (UGOVOR-TABLICE.md §3): ``naslov_tablice`` +
+    ``broj_redova``, или ``nedostupan`` кад табела читаоцу није видљива."""
+    slug = blok.get('tablica')
+    nadjene = _tablice(cur, udzbenik_id, slug) if udzbenik_id is not None and isinstance(slug, str) else []
+    if not nadjene:
+        return _nedostupan(blok, RAZLOG_TABLICA_NE_POSTOJI)
+    return dict(blok, naslov_tablice=nadjene[0]['naslov'], broj_redova=nadjene[0]['broj_redova'])
 
 
 def _ime_autora(cur, email):

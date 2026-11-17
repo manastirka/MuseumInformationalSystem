@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mis.nhmbeo.rs/udzbenik/tablica.schema.json",
+  "title": "Sadržaj referentne tablice udžbenika (udzbenik_tablica.sadrzaj)",
+  "description": "Izvor istine za ovu šemu je repo MuseumInfoSystem (udzbenik/schema/tablica.schema.json), po UGOVOR-TABLICE.md §1. Repo mis-udzbenik nosi kopiju. Pravila koja šema ne izražava (ključevi reda ⊆ kolone ∪ {izvor}, vrednost po tipu kolone, izvor reda počinje oznakom iz izvori, jedinstveni kljuc/oznaka) proverava scripts/udzbenik_uvoz.py.",
+  "type": "object",
+  "required": [
+    "verzija",
+    "kolone",
+    "redovi",
+    "izvori"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verzija": {
+      "const": 1
+    },
+    "kolone": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "$ref": "#/$defs/kolona"
+      }
+    },
+    "redovi": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5000,
+      "items": {
+        "$ref": "#/$defs/red"
+      }
+    },
+    "izvori": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "$ref": "#/$defs/izvor"
+      }
+    },
+    "napomene": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000,
+        "description": "Markdown bez sirovog HTML-a."
+      }
+    }
+  },
+  "$defs": {
+    "kljuc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,39}$",
+      "not": {
+        "const": "izvor"
+      },
+      "description": "Ključ kolone u redovima; jedinstven u tablici; nije rezervisani 'izvor'."
+    },
+    "kolona": {
+      "type": "object",
+      "required": [
+        "kljuc",
+        "naziv",
+        "tip"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kljuc": {
+          "$ref": "#/$defs/kljuc"
+        },
+        "naziv": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "jedinica": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "tip": {
+          "enum": [
+            "broj",
+            "tekst",
+            "simbol",
+            "da-ne"
+          ]
+        },
+        "format": {
+          "enum": [
+            "hm",
+            "senflis",
+            "formula"
+          ],
+          "description": "Samo uz tip simbol ili tekst; motor formatira ASCII notaciju (UGOVOR-TABLICE.md §1)."
+        },
+        "filter": {
+          "type": "boolean",
+          "description": "Ponudi padajući filter po vrednostima kolone."
+        },
+        "decimale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6,
+          "description": "Samo uz tip broj: fiksan broj decimala u prikazu."
+        },
+        "opis": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Objašnjenje kolone (title na zaglavlju)."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tip": {
+                "enum": [
+                  "simbol",
+                  "tekst"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "decimale"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tip": {
+                "const": "broj"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "red": {
+      "type": "object",
+      "description": "Ključevi ⊆ kljuc kolona ∪ {izvor}; nedostajući ključ = null (prazno). broj → number|null, da-ne → boolean|null, tekst/simbol → string|null.",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,39}$"
+      },
+      "properties": {
+        "izvor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Izvor reda; MORA počinjati nekom oznakom iz izvori."
+        }
+      },
+      "additionalProperties": {
+        "type": [
+          "number",
+          "string",
+          "boolean",
+          "null"
+        ],
+        "maxLength": 500
+      }
+    },
+    "izvor": {
+      "type": "object",
+      "required": [
+        "oznaka",
+        "pun_navod"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "oznaka": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Jedinstvena u tablici."
+        },
+        "pun_navod": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "napomena": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        }
+      }
+    }
+  }
+}
