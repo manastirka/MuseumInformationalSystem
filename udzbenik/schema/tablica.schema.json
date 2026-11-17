@@ -127,6 +127,12 @@
         "mobilno": {
           "type": "boolean",
           "description": "Kolona je vidljiva na uskom ekranu (< 600 px) bez izbora korisnika (cilj 3–4)."
+        },
+        "grupa": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Naziv grupe polja u panelu reda (UGOVOR-TABLICE-2 §1 dopuna); kolone iste grupe prikazuju se zajedno, redosledom prve pojave; bez grupa — jedna grupa."
         }
       },
       "allOf": [
