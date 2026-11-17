@@ -3033,6 +3033,30 @@ class TabliceUvozTest(_TabliceOsnova):
             self.assertIn(deo, err)
 
 
+    def test_kolone_za_preglednost_kratko_podrazumevano_mobilno(self):
+        """UGOVOR-TABLICE-2 §1: kratko (1–16), podrazumevano i mobilno (bool) prolaze uvoz i stižu u API; loše vrednosti padaju."""
+        def dobro(p):
+            k = p['tablice'][0]['sadrzaj']['kolone']
+            k[0].update(kratko='Br.', podrazumevano=True, mobilno=True)
+            k[1].update(kratko='HM', podrazumevano=True)
+        self._uvezi_sa_tablicama(izmeni=dobro)
+        self._prijava()
+        kolone = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe').get_json()['tablica']['kolone']
+        self.assertEqual((kolone[0]['kratko'], kolone[0]['podrazumevano'], kolone[0]['mobilno']), ('Br.', True, True))
+        self.assertEqual(kolone[1]['kratko'], 'HM')
+        self.assertNotIn('mobilno', kolone[1])
+
+        def lose(p):
+            k = p['tablice'][0]['sadrzaj']['kolone']
+            k[0]['kratko'] = 'K' * 17
+            k[1]['mobilno'] = 'da'
+            k[2]['podrazumevano'] = 1
+        kod, _, err = self._uvezi(self._fajl(izmeni=lose), '--dry-run')
+        self.assertEqual(kod, 1)
+        for deo in ('tablice[0].sadrzaj.kolone[0].kratko', 'tablice[0].sadrzaj.kolone[1].mobilno',
+                    'tablice[0].sadrzaj.kolone[2].podrazumevano'):
+            self.assertIn(deo, err)
+
 class TabliceApiTest(_TabliceOsnova):
     def setUp(self):
         super().setUp()

@@ -113,6 +113,20 @@
           "minLength": 1,
           "maxLength": 300,
           "description": "Objašnjenje kolone (title na zaglavlju)."
+        },
+        "kratko": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16,
+          "description": "Kratak naziv za zaglavlje tablice; pun naziv ide u tooltip i legendu (UGOVOR-TABLICE-2 §1)."
+        },
+        "podrazumevano": {
+          "type": "boolean",
+          "description": "Kolona je vidljiva bez izbora korisnika; ako je nijedna kolona nema, motor prikazuje prvih 7."
+        },
+        "mobilno": {
+          "type": "boolean",
+          "description": "Kolona je vidljiva na uskom ekranu (< 600 px) bez izbora korisnika (cilj 3–4)."
         }
       },
       "allOf": [
