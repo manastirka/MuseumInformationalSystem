@@ -1,0 +1,626 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "detalj-prostorna-grupa.schema.json",
+ "title": "Detalj prostorne grupe (udžbenik, tablica prostornih grupa)",
+ "description": "Sadržaj stranice detalja jedne od 230 prostornih grupa (ugovor tablica v2, deo 2). Postavka: ITC standardna; monoklinične: jedinstvena osa b, izbor ćelije 1; izbor ishodišta 2 gde ITC daje dva; romboedarske u heksagonalnim osama. Svi simboli u ASCII notaciji ugovora v1 (-3 = 3̄, 2_1 = 2₁, razlomci \"1/2\"). Podaci su generisani programski (spglib, gemmi, pyxtal) i upoređeni sa tekstom ITC Vol. A (2006).",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "br",
+  "hm",
+  "hm_pun",
+  "senflis",
+  "klasa",
+  "sistem",
+  "laue",
+  "centriranje",
+  "patterson",
+  "centrosim",
+  "hall",
+  "postavka",
+  "vektori_centriranja",
+  "operacije",
+  "elementi",
+  "vikof",
+  "generatori",
+  "uslovi_refleksije",
+  "stereogram",
+  "primer",
+  "itc_strane",
+  "provera"
+ ],
+ "properties": {
+  "br": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 230
+  },
+  "hm": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 16,
+   "description": "Kratki Herman–Mogenov simbol (ASCII), npr. \"P2_1/c\"."
+  },
+  "hm_pun": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 32,
+   "description": "Pun HM simbol prema ITC, npr. \"P 1 2_1/c 1\"."
+  },
+  "senflis": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 8,
+   "description": "Šenflisov simbol, npr. \"C2h^5\"."
+  },
+  "klasa": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 6,
+   "description": "Kristalna (tačkasta) klasa, HM ASCII."
+  },
+  "sistem": {
+   "enum": [
+    "triklinični",
+    "monoklinični",
+    "rombični",
+    "tetragonalni",
+    "trigonalni",
+    "heksagonalni",
+    "teseralni"
+   ]
+  },
+  "laue": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 6,
+   "description": "Lauova klasa."
+  },
+  "centriranje": {
+   "enum": [
+    "P",
+    "A",
+    "B",
+    "C",
+    "I",
+    "F",
+    "R"
+   ]
+  },
+  "patterson": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 8,
+   "description": "Patersonova simetrija bez razmaka, npr. \"P2/m\", \"C2/m\", \"Pmmm\", \"P-3m1\", \"R-3m\", \"Fm-3m\"."
+  },
+  "centrosim": {
+   "type": "boolean"
+  },
+  "hall": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 20,
+   "description": "Holov simbol izabrane postavke (spglib; isti skup operacija kao gemmi)."
+  },
+  "postavka": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 80,
+   "description": "Opis postavke (jedinstvena osa, izbor ishodišta, heksagonalne ose)."
+  },
+  "vektori_centriranja": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "minLength": 1,
+    "maxLength": 24,
+    "description": "Vektor razlomcima: \"1/2,1/2,0\".",
+    "pattern": "^-?[0-9/]+,-?[0-9/]+,-?[0-9/]+$"
+   },
+   "minItems": 1,
+   "maxItems": 4,
+   "description": "Vektori centriranja uključujući \"0,0,0\"; koordinate Vikofovih položaja i operacije navode se samo za \"(0,0,0)+\" skup."
+  },
+  "operacije": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 48,
+   "description": "Predstavnici koseta (bez translacija centriranja) u ITC redosledu; broj = red tačkaste grupe.",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "br",
+     "koordinate",
+     "simbol",
+     "opis"
+    ],
+    "properties": {
+     "br": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 48
+     },
+     "koordinate": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "Koordinatni triplet u ITC stilu, ASCII: \"-x+1/2,y,-z+1/4\".",
+      "pattern": "^[-+0-9/xyz]+,[-+0-9/xyz]+,[-+0-9/xyz]+$"
+     },
+     "simbol": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "description": "Geometrijski simbol u ITC stilu: \"2(0,1/2,0) 0,y,1/4\", \"c x,1/4,z\", \"-1 0,0,0\", \"-4+ 0,0,z; 0,0,0\", \"n(1/2,1/2,0) x,y,1/4\". Vektor u zagradi = intrinsična translacija (zavojna/klizna); za a,b,c,m bez vektora."
+     },
+     "opis": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "description": "Opis na srpskom (latinica)."
+     }
+    }
+   }
+  },
+  "operacije_centriranja": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 3,
+   "description": "Samo za centrirane grupe: geometrijski simboli operacija (n) + vektor centriranja, svedeno po modulu 1 (ITC \"For (v)+ set\").",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "vektor",
+     "operacije"
+    ],
+    "properties": {
+     "vektor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "description": "Vektor razlomcima: \"1/2,1/2,0\".",
+      "pattern": "^-?[0-9/]+,-?[0-9/]+,-?[0-9/]+$"
+     },
+     "operacije": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 48,
+      "items": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "br",
+        "simbol"
+       ],
+       "properties": {
+        "br": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 48
+        },
+        "simbol": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 60
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "elementi": {
+   "type": "array",
+   "minItems": 0,
+   "maxItems": 200,
+   "description": "Različiti elementi simetrije čiji su položaji dati navedenim operacijama (uključujući skupove centriranja). Operacije su podeljene po geometrijskom lokusu: prave rotacije/zavojne rotacije na istoj pravoj = jedna osa (npr. 4+ i 4-, ili 4_1 i njen 2_1); rotoinverzije (-3,-4,-6) sa istom osom i tačkom = jedna inverziona osa; -1 = centar inverzije; refleksije u istoj ravni = jedna ravan (m ako sadrži čisto ogledanje, e ako sadrži dva klizanja a/b/c, inače slovo klizanja). Rotacije na pravoj inverzione ose navode se kao posebna osa.",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "vrsta",
+     "simbol",
+     "polozaj",
+     "operacije"
+    ],
+    "properties": {
+     "vrsta": {
+      "enum": [
+       "osa",
+       "zavojna-osa",
+       "inverziona-osa",
+       "ravan-ogledanja",
+       "klizna-ravan",
+       "centar-inverzije"
+      ]
+     },
+     "simbol": {
+      "enum": [
+       "2",
+       "3",
+       "4",
+       "6",
+       "2_1",
+       "3_1",
+       "3_2",
+       "4_1",
+       "4_2",
+       "4_3",
+       "6_1",
+       "6_2",
+       "6_3",
+       "6_4",
+       "6_5",
+       "-1",
+       "-3",
+       "-4",
+       "-6",
+       "m",
+       "a",
+       "b",
+       "c",
+       "n",
+       "d",
+       "e",
+       "g"
+      ],
+      "description": "Zavojni indeks se računa u odnosu na najkraći vektor rešetke (sa centriranjem) duž ose."
+     },
+     "smer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12,
+      "description": "Osa: pravac [uvw]; ravan: Milerovi indeksi normale (hkl). Nema ga za centar inverzije."
+     },
+     "polozaj": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "Lokus u ITC stilu (\"0,y,1/4\", \"x,x,z\", \"0,0,z; 0,0,0\" za inverzionu osu = osa; tačka)."
+     },
+     "translacija": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "description": "Intrinsična translacija (zavojna osa / klizna ravan a,b,c,n,d,g).",
+      "pattern": "^-?[0-9/]+,-?[0-9/]+,-?[0-9/]+$"
+     },
+     "operacije": {
+      "type": "array",
+      "items": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 48
+      },
+      "maxItems": 48,
+      "description": "Brojevi operacija iz (0,0,0)+ skupa koje pripadaju elementu (može biti prazno ako je element samo iz skupa centriranja)."
+     },
+     "operacije_centriranja": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "br",
+        "vektor"
+       ],
+       "properties": {
+        "br": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 48
+        },
+        "vektor": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 24,
+         "description": "Vektor razlomcima: \"1/2,1/2,0\".",
+         "pattern": "^-?[0-9/]+,-?[0-9/]+,-?[0-9/]+$"
+        }
+       }
+      },
+      "description": "Članovi elementa oblika (br) + vektor centriranja."
+     }
+    }
+   }
+  },
+  "vikof": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 27,
+   "description": "Vikofovi položaji od opšteg ka posebnim (ITC redosled); koordinate samo za (0,0,0)+ skup.",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "visestrukost",
+     "slovo",
+     "simetrija",
+     "koordinate"
+    ],
+    "properties": {
+     "visestrukost": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 192
+     },
+     "slovo": {
+      "type": "string",
+      "pattern": "^[a-zα]$"
+     },
+     "simetrija": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10,
+      "description": "Orijentisani simbol simetrije položaja (ITC), npr. \"..2\", \"-1\", \"4/mmm\"."
+     },
+     "koordinate": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 48,
+      "items": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 40,
+       "description": "Koordinatni triplet u ITC stilu, ASCII: \"-x+1/2,y,-z+1/4\".",
+       "pattern": "^[-+0-9/xyz]+,[-+0-9/xyz]+,[-+0-9/xyz]+$"
+      }
+     }
+    }
+   }
+  },
+  "generatori": {
+   "type": "array",
+   "minItems": 3,
+   "maxItems": 10,
+   "description": "Translacije t(1,0,0), t(0,1,0), t(0,0,1), minimalni skup translacija centriranja, zatim minimalni skup operacija \"(n)\" (programski; ITC izbor u \"napomena\" ako se razlikuje).",
+   "items": {
+    "type": "string",
+    "pattern": "^(t\\(-?[0-9/]+,-?[0-9/]+,-?[0-9/]+\\)|\\([0-9]{1,2}\\))$",
+    "maxLength": 24
+   }
+  },
+  "uslovi_refleksije": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "opsti",
+    "napomena"
+   ],
+   "properties": {
+    "opsti": {
+     "type": "array",
+     "maxItems": 10,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "refleksije",
+       "uslov"
+      ],
+      "properties": {
+       "refleksije": {
+        "enum": [
+         "hkl",
+         "0kl",
+         "h0l",
+         "hk0",
+         "h00",
+         "0k0",
+         "00l",
+         "hhl",
+         "h-h0",
+         "hkil",
+         "hki0",
+         "hh-2hl",
+         "h-h0l",
+         "000l",
+         "h-h00"
+        ]
+       },
+       "uslov": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48,
+        "description": "Npr. \"h + k = 2n\", \"k + l = 4n, k, l = 2n\", \"-h + k + l = 3n\"."
+       }
+      }
+     }
+    },
+    "napomena": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 600
+    }
+   }
+  },
+  "stereogram": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "klasa",
+    "polovi",
+    "ravni",
+    "ose",
+    "centar"
+   ],
+   "description": "Stereogram tačkaste grupe. Kartezijanski sistem: x ∥ a; za heksagonalne/trigonalne grupe b u xy ravni pod 120°, z ∥ c; za monoklinične (jedinstvena osa b) y ∥ b, z ∥ c (β = 90° za crtanje); ostali sistemi x,y,z ∥ a,b,c. Projekcija na ravan xy (pogled niz z): tačka v = (x,y,z) se preslikava u (x/(1+|z|), y/(1+|z|)); x desno, y gore, jedinični krug.",
+   "properties": {
+    "klasa": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 6
+    },
+    "polovi": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 48,
+     "description": "Polovi opšte forme (generički pravac θ=55°, φ=20°).",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "x",
+       "y",
+       "gore"
+      ],
+      "properties": {
+       "x": {
+        "type": "number",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "y": {
+        "type": "number",
+        "minimum": -1,
+        "maximum": 1
+       },
+       "gore": {
+        "type": "boolean",
+        "description": "true = gornja polulopta (•), false = donja (○)."
+       }
+      }
+     }
+    },
+    "ravni": {
+     "type": "array",
+     "maxItems": 9,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "normala"
+      ],
+      "properties": {
+       "normala": {
+        "type": "array",
+        "items": {
+         "type": "number",
+         "minimum": -1,
+         "maximum": 1
+        },
+        "minItems": 3,
+        "maxItems": 3,
+        "description": "Jedinična kartezijanska normala ravni ogledanja (z ≥ 0)."
+       }
+      }
+     }
+    },
+    "ose": {
+     "type": "array",
+     "maxItems": 13,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "smer",
+       "red",
+       "inverziona"
+      ],
+      "properties": {
+       "smer": {
+        "type": "array",
+        "items": {
+         "type": "number",
+         "minimum": -1,
+         "maximum": 1
+        },
+        "minItems": 3,
+        "maxItems": 3,
+        "description": "Jedinični kartezijanski pravac (kraj u gornjoj polulopti)."
+       },
+       "red": {
+        "enum": [
+         2,
+         3,
+         4,
+         6
+        ]
+       },
+       "inverziona": {
+        "type": "boolean",
+        "description": "true za -3, -4, -6 (rotoinverzija višeg reda od prave rotacije na toj osi, ili -3)."
+       }
+      }
+     }
+    },
+    "centar": {
+     "type": "boolean",
+     "description": "Tačkasta grupa sadrži -1."
+    }
+   }
+  },
+  "primer": {
+   "oneOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "mineral",
+      "ima",
+      "izvor"
+     ],
+     "properties": {
+      "mineral": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 60
+      },
+      "ima": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 40
+      },
+      "izvor": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 60
+      }
+     }
+    }
+   ]
+  },
+  "itc_strane": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 12,
+   "description": "Strane u ITC Vol. A (2006)."
+  },
+  "napomena": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 300,
+   "description": "Opšta napomena (npr. ITC izbor generatora kad se razlikuje od minimalnog)."
+  },
+  "provera": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "biblioteke",
+    "itc"
+   ],
+   "properties": {
+    "biblioteke": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+     },
+     "minItems": 1,
+     "maxItems": 6
+    },
+    "itc": {
+     "type": "boolean",
+     "description": "Podaci upoređeni sa tekstom ITC Vol. A (operacije, opšti položaj, Vikof, uslovi refleksije, Paterson)."
+    }
+   }
+  }
+ }
+}

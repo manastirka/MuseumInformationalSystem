@@ -19,7 +19,10 @@
   ``oznaka`` из ``izvori``; поглавље са slug-ом ``tablice`` је забрањено
   (резервисан сегмент URL-а); блок ``tablica-link`` упућује на табелу из фајла
   или већ у бази за тај уџбеник, а кључеви ``filter`` су колоне табеле (кад је
-  у фајлу); све грешке се испишу одједном,
+  у фајлу); табела може имати ``detalji`` {vrsta, kolona, stavke}
+  (UGOVOR-TABLICE-2.md, део 2): ``vrsta`` има шему детаља, ``kolona`` је
+  колона табеле, кључ сваке ставке је вредност те колоне (као текст) у неком
+  реду, свака ставка по шеми врсте; све грешке се испишу одједном,
   са путањом (``poglavlja[1].lekcije[0].blokovi[3]``), и ништа се не упише;
 - upsert по ``zbirka`` → ``slug`` поглавља → ``slug`` лекције; лекција чији се
   ``sadrzaj`` променио добија ``verzija + 1`` и нов ред у
@@ -27,7 +30,11 @@
   лекција се не дира; поглавља/лекције којих има у бази а нема у фајлу се НЕ
   бришу — испише се упозорење; табеле исто: upsert по ``slug`` табеле,
   промењен ``sadrzaj`` → ``verzija + 1`` и ред у udzbenik_tablica_verzija,
-  табела из базе које нема у фајлу остаје уз упозорење;
+  табела из базе које нема у фајлу остаје уз упозорење; детаљи редова:
+  ``sadrzaj`` табеле добија само {"detalji": {vrsta, kolona}}, ставке иду у
+  udzbenik_tablica_detalj (upsert промењених/нових, брисање оних којих нема
+  у фајлу); табела без ``detalji`` у фајлу а са ставкама у бази — детаљи
+  остају нетакнути уз упозорење;
 - подразумевано је dry-run (испис плана, нула измена); ``--execute <ime baze>``
   (дословно име базе на коју је скрипта стварно повезана, ``current_database()``,
   као у udzbenik_ai_slike.py) ради све у ЈЕДНОЈ трансакцији;
@@ -50,7 +57,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from udzbenik import mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
+from udzbenik import kljuc_reda, mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
 
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
@@ -59,7 +66,12 @@ REZERVISAN_SLUG_POGLAVLJA = 'tablice'      # сегмент URL-а /udzbenik/<zb
 KLJUC_IZVORA = 'izvor'
 NASLOV_TABLICE_NAJVISE = 200
 OPIS_TABLICE_NAJVISE = 2000
-POLJA_TABLICE = ('slug', 'redosled', 'naslov', 'opis', 'poglavlje', 'status', 'sadrzaj')
+POLJA_TABLICE = ('slug', 'redosled', 'naslov', 'opis', 'poglavlje', 'status', 'sadrzaj', 'detalji')
+# Детаљи редова (UGOVOR-TABLICE-2.md, део 2): врста → шема садржаја ставке.
+SEME_DETALJA = {'prostorna-grupa': REPO / 'udzbenik' / 'schema' / 'detalj-prostorna-grupa.schema.json'}
+POLJA_DETALJA = ('vrsta', 'kolona', 'stavke')
+KLJUC_DETALJA = 'detalji'                  # кључ мета-података у udzbenik_tablica.sadrzaj
+KLJUC_STAVKE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$')   # = CHECK у миграцији 064
 # тип колоне → (провера вредности, опис); null је увек дозвољен (празно)
 TIPOVI_VREDNOSTI = {
     'broj': (lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), 'број'),
@@ -283,6 +295,8 @@ def validiraj_tablice(tablice, poglavlja, greske):
                 poruka = PORUKE_USLOVA_KOLONE[putanja_seme[putanja_seme.index('allOf') + 1]]
             greske.append(f'{sp}{_json_putanja(g)}: {poruka}')
         kolone = _proveri_sadrzaj_tablice(sadrzaj, sp, greske)
+        if KLJUC_DETALJA in t:
+            _proveri_detalje(t[KLJUC_DETALJA], sadrzaj, kolone, f'{tp}.{KLJUC_DETALJA}', greske)
         if isinstance(t.get('slug'), str):
             kolone_tablica[t['slug']] = kolone
     return kolone_tablica
@@ -324,6 +338,48 @@ def _proveri_sadrzaj_tablice(sadrzaj, sp, greske):
                 greske.append(f'{rp}.{kljuc}: колона типа {tipovi[kljuc]!r} тражи {opis} или null '
                               f'(добијено {vrednost!r})')
     return tipovi
+
+
+def ucitaj_semu_detalja(vrsta):
+    with open(SEME_DETALJA[vrsta], encoding='utf-8') as f:
+        return json.load(f)
+
+
+def _proveri_detalje(detalji, sadrzaj, kolone, dp, greske):
+    """``detalji`` табеле: врста са шемом, колона табеле, кључ ставке =
+    вредност колоне у неком реду, свака ставка по шеми врсте."""
+    import jsonschema
+
+    if not isinstance(detalji, dict):
+        greske.append(f'{dp}: мора бити објекат {{vrsta, kolona, stavke}}')
+        return
+    for kljuc in sorted(set(detalji) - set(POLJA_DETALJA)):
+        greske.append(f'{dp}.{kljuc}: непознато поље детаља (дозвољено {list(POLJA_DETALJA)})')
+    vrsta = detalji.get('vrsta')
+    if not isinstance(vrsta, str) or vrsta not in SEME_DETALJA:
+        greske.append(f'{dp}.vrsta: врста детаља мора бити једна од {sorted(SEME_DETALJA)} (добијено {vrsta!r})')
+        vrsta = None
+    kolona = detalji.get('kolona')
+    vrednosti = None
+    if kolone is not None:
+        if not isinstance(kolona, str) or kolona not in kolone:
+            greske.append(f'{dp}.kolona: {kolona!r} није колона табеле (колоне {sorted(kolone)})')
+        elif isinstance(sadrzaj.get('redovi'), list):
+            vrednosti = {kljuc_reda(r.get(kolona)) for r in sadrzaj['redovi'] if isinstance(r, dict)}
+    stavke = detalji.get('stavke')
+    if not isinstance(stavke, dict):
+        greske.append(f'{dp}.stavke: обавезан објекат кључ → садржај ставке')
+        return
+    validator = jsonschema.Draft202012Validator(ucitaj_semu_detalja(vrsta)) if vrsta else None
+    for kljuc, stavka in stavke.items():
+        sp = f'{dp}.stavke[{json.dumps(kljuc, ensure_ascii=False)}]'
+        if not KLJUC_STAVKE_RE.match(kljuc):
+            greske.append(f'{sp}: кључ ставке мора бити по обрасцу {KLJUC_STAVKE_RE.pattern}')
+        elif vrednosti is not None and kljuc not in vrednosti:
+            greske.append(f'{sp}: ниједан ред табеле нема {kolona} = {kljuc!r}')
+        if validator is not None:
+            for g in sorted(validator.iter_errors(stavka), key=lambda e: (str(e.json_path), e.message)):
+                greske.append(f'{sp}{_json_putanja(g)}: {g.message}')
 
 
 def _proveri_tablica_linkove(blokovi, putanja, kolone_tablica, zbirka, cur, greske):
@@ -658,7 +714,8 @@ def napravi_plan(cur, podaci):
 
 
 def _planiraj_tablice(cur, podaci, plan, udzbenik_id):
-    """Upsert по slug-у табеле; промењен ``sadrzaj`` → нова верзија."""
+    """Upsert по slug-у табеле; промењен ``sadrzaj`` → нова верзија; ставке
+    детаља се пореде посебно (+ нове, ~ промењене, - којих нема у фајлу)."""
     tablice = podaci.get('tablice') or []
     postojece = {}
     if udzbenik_id is not None:
@@ -676,20 +733,59 @@ def _planiraj_tablice(cur, podaci, plan, udzbenik_id):
                 f'која је у бази, а нема је у фајлу — додај је у фајл са другим redosled-ом или промени '
                 f'redosled нове табеле')
         stara = postojece.get(t['slug'])
-        stavka = {'slug': t['slug'], 'id': stara['id'] if stara else None, 'nova_verzija': None}
+        sadrzaj = _sadrzaj_za_upis(t, stara, i, plan)
+        stavka = {'slug': t['slug'], 'id': stara['id'] if stara else None, 'nova_verzija': None,
+                  'sadrzaj': sadrzaj, 'detalji': _planiraj_detalje(cur, t, stara),
+                  'broj_detalja': len(t[KLJUC_DETALJA]['stavke']) if KLJUC_DETALJA in t else 0}
         if stara is None:
             stavka.update(akcija='dodaje', nova_verzija=1)
-        elif stara['sadrzaj'] != t['sadrzaj']:
+        elif stara['sadrzaj'] != sadrzaj:
             stavka.update(akcija='menja sadrzaj', nova_verzija=stara['verzija'] + 1)
         elif ((stara['redosled'], stara['naslov'], stara['opis'], stara['poglavlje'])
               != (t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'))
               or ('status' in t and stara['status'] != t['status'])):
             stavka['akcija'] = 'menja podatke'
+        elif stavka['detalji'] is not None and any(stavka['detalji'].values()):
+            stavka['akcija'] = 'menja detalje'
         else:
             stavka['akcija'] = 'isto'
         plan['tablice'].append(stavka)
     for slug in sorted(set(postojece) - slugovi):
         plan['upozorenja'].append(f'табела {slug} је у бази, а нема је у фајлу — остаје нетакнута')
+
+
+def _sadrzaj_za_upis(t, stara, i, plan):
+    """``sadrzaj`` табеле какав иде у базу: из фајла + {"detalji": {vrsta,
+    kolona}} (без ставки). Табела без ``detalji`` у фајлу задржава мета-податке
+    детаља из базе (ставке остају нетакнуте, као лекције којих нема у фајлу)."""
+    sadrzaj = dict(t['sadrzaj'])
+    if KLJUC_DETALJA in t:
+        sadrzaj[KLJUC_DETALJA] = {'vrsta': t[KLJUC_DETALJA]['vrsta'], 'kolona': t[KLJUC_DETALJA]['kolona']}
+    elif stara is not None and isinstance(stara['sadrzaj'], dict) and KLJUC_DETALJA in stara['sadrzaj']:
+        meta = stara['sadrzaj'][KLJUC_DETALJA]
+        sadrzaj[KLJUC_DETALJA] = meta
+        plan['upozorenja'].append(f'табела {t["slug"]}: детаљи редова ({meta.get("vrsta")}) су у бази, а нема их '
+                                  f'у фајлу — остају нетакнути')
+        kolone = {k.get('kljuc') for k in t['sadrzaj'].get('kolone', [])}
+        if meta.get('kolona') not in kolone:
+            plan['greske'].append(f'tablice[{i}].sadrzaj.kolone: колона детаља {meta.get("kolona")!r} из базе '
+                                  f'више није колона табеле — додај ``detalji`` у фајл')
+    return sadrzaj
+
+
+def _planiraj_detalje(cur, t, stara):
+    """{'dodaje': [...], 'menja': [...], 'brise': [...]} кључева ставки, или
+    None кад фајл не наводи ``detalji`` за табелу."""
+    if KLJUC_DETALJA not in t:
+        return None
+    u_bazi = {}
+    if stara is not None:
+        cur.execute('SELECT kljuc, sadrzaj FROM udzbenik_tablica_detalj WHERE tablica_id = %s', (stara['id'],))
+        u_bazi = {r[0]: _json(r[1]) for r in cur.fetchall()}
+    stavke = t[KLJUC_DETALJA]['stavke']
+    return {'dodaje': [k for k in stavke if k not in u_bazi],
+            'menja': [k for k in stavke if k in u_bazi and u_bazi[k] != stavke[k]],
+            'brise': sorted(set(u_bazi) - set(stavke))}
 
 
 # --------------------------------------------------------------------------
@@ -778,14 +874,16 @@ def primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena):
     if postojece:
         cur.execute('UPDATE udzbenik_tablica SET redosled = -id WHERE id = ANY(%s)', (postojece,))
     for t, stavka in zip(podaci.get('tablice') or [], plan['tablice']):
-        sadrzaj = json.dumps(t['sadrzaj'], ensure_ascii=False)
+        sadrzaj = json.dumps(stavka['sadrzaj'], ensure_ascii=False)
+        tablica_id = stavka['id']
         if stavka['akcija'] == 'dodaje':
             cur.execute("""INSERT INTO udzbenik_tablica (udzbenik_id, slug, redosled, naslov, opis, poglavlje_slug,
                                status, sadrzaj, verzija, azurirao_email)
                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, %s) RETURNING id""",
                         (udzbenik_id, t['slug'], t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'),
                          t.get('status', 'nacrt'), sadrzaj, autor))
-            _upisi_verziju_tablice(cur, cur.fetchone()[0], 1, sadrzaj, autor, napomena)
+            tablica_id = cur.fetchone()[0]
+            _upisi_verziju_tablice(cur, tablica_id, 1, sadrzaj, autor, napomena)
         elif stavka['akcija'] == 'menja sadrzaj':
             cur.execute("""UPDATE udzbenik_tablica SET redosled = %s, naslov = %s, opis = %s, poglavlje_slug = %s,
                                status = COALESCE(%s, status), sadrzaj = %s, verzija = %s,
@@ -801,7 +899,20 @@ def primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena):
                                updated_at = CASE WHEN %s THEN now() ELSE updated_at END
                            WHERE id = %s""",
                         (t['redosled'], t['naslov'], t.get('opis'), t.get('poglavlje'), t.get('status'),
-                         stavka['akcija'] == 'menja podatke', stavka['id']))
+                         stavka['akcija'] in ('menja podatke', 'menja detalje'), stavka['id']))
+        if stavka['detalji'] is not None:
+            _primeni_detalje(cur, tablica_id, t[KLJUC_DETALJA]['stavke'], stavka['detalji'])
+
+
+def _primeni_detalje(cur, tablica_id, stavke, plan_detalja):
+    """Upsert нових/промењених ставки, брисање ставки којих нема у фајлу."""
+    for kljuc in plan_detalja['dodaje'] + plan_detalja['menja']:
+        cur.execute("""INSERT INTO udzbenik_tablica_detalj (tablica_id, kljuc, sadrzaj) VALUES (%s, %s, %s)
+                       ON CONFLICT (tablica_id, kljuc) DO UPDATE SET sadrzaj = EXCLUDED.sadrzaj, azurirano = now()""",
+                    (tablica_id, kljuc, json.dumps(stavke[kljuc], ensure_ascii=False)))
+    if plan_detalja['brise']:
+        cur.execute('DELETE FROM udzbenik_tablica_detalj WHERE tablica_id = %s AND kljuc = ANY(%s)',
+                    (tablica_id, plan_detalja['brise']))
 
 
 def _upisi_verziju_tablice(cur, tablica_id, verzija, sadrzaj, autor, napomena):
@@ -818,7 +929,7 @@ def _upisi_verziju(cur, lekcija_id, verzija, sadrzaj, autor, napomena):
 # Испис
 # --------------------------------------------------------------------------
 
-ZNAK = {'dodaje': '+', 'menja': '~', 'menja sadrzaj': '~', 'menja podatke': '~', 'isto': '='}
+ZNAK = {'dodaje': '+', 'menja': '~', 'menja sadrzaj': '~', 'menja podatke': '~', 'menja detalje': '~', 'isto': '='}
 
 
 def ispisi_plan(plan, izvrsavanje):
@@ -839,18 +950,30 @@ def ispisi_plan(plan, izvrsavanje):
             if lek['nova_verzija']:
                 brojac['nove_verzije'] += 1
             print(f'      {ZNAK[lek["akcija"]]} lekcija {p["slug"]}/{lek["slug"]} ({lek["akcija"]}{dodatak})')
-    brojac.update(tablice=0, nove_verzije_tablica=0)
+    brojac.update(tablice=0, nove_verzije_tablica=0, detalji=0, detalji_dodaje=0, detalji_menja=0, detalji_brise=0)
     for t in plan.get('tablice', []):
         brojac['tablice'] += 1
         dodatak = f' → verzija {t["nova_verzija"]}' if t['akcija'] == 'menja sadrzaj' else ''
         if t['nova_verzija']:
             brojac['nove_verzije_tablica'] += 1
+        d = t.get('detalji')
+        if d is not None:
+            promene = f'+{len(d["dodaje"])} ~{len(d["menja"])} -{len(d["brise"])}'
+            brojac['detalji'] += t['broj_detalja']
+            for vrsta in ('dodaje', 'menja', 'brise'):
+                brojac[f'detalji_{vrsta}'] += len(d[vrsta])
+            if t['akcija'] == 'menja detalje':
+                dodatak = f': {promene}'
+            elif any(d.values()):
+                dodatak += f'; detalji: {promene}'
         print(f'  {ZNAK[t["akcija"]]} tablica {t["slug"]} ({t["akcija"]}{dodatak})')
     for u in plan['upozorenja']:
         print(f'  ! упозорење: {u}')
     print(f'Укупно: {brojac["poglavlja"]} поглавља, {brojac["lekcije"]} лекција, '
           f'{brojac["nove_verzije"]} нових верзија, {brojac["tablice"]} табела '
-          f'({brojac["nove_verzije_tablica"]} нових верзија табела), {len(plan["upozorenja"])} упозорења.')
+          f'({brojac["nove_verzije_tablica"]} нових верзија табела), {brojac["detalji"]} детаља редова '
+          f'(+{brojac["detalji_dodaje"]} ~{brojac["detalji_menja"]} -{brojac["detalji_brise"]}), '
+          f'{len(plan["upozorenja"])} упозорења.')
     return brojac
 
 

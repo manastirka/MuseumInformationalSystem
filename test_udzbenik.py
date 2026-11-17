@@ -6,6 +6,7 @@ test_foto_veza_mineral_fk.py); тест брише само своје редо�
 'minerali' из примера и 'udztest-*', минерал UDZTEST-*, фотографије
 udztest-*).
 """
+import copy
 import importlib.util
 import io
 import json
@@ -49,7 +50,7 @@ if not PRIMER.exists():
 BAZA = 'https://localhost'
 EMAIL = 'udztest@example.invalid'
 TABELE = ('udzbenik', 'udzbenik_poglavlje', 'udzbenik_lekcija', 'udzbenik_lekcija_verzija', 'udzbenik_napredak',
-          'udzbenik_tablica', 'udzbenik_tablica_verzija')
+          'udzbenik_tablica', 'udzbenik_tablica_verzija', 'udzbenik_tablica_detalj')
 
 
 def _ucitaj_uvoz():
@@ -99,6 +100,9 @@ def _osiguraj_semu():
             cur.execute("SELECT to_regclass('public.udzbenik_tablica')")
             if cur.fetchone()[0] is None:
                 cur.execute((KOREN / 'migration' / '063_udzbenik_tablica.sql').read_text(encoding='utf-8'))
+            cur.execute("SELECT to_regclass('public.udzbenik_tablica_detalj')")
+            if cur.fetchone()[0] is None:
+                cur.execute((KOREN / 'migration' / '064_udzbenik_tablica_detalj.sql').read_text(encoding='utf-8'))
         conn.commit()
 
 
@@ -3190,6 +3194,301 @@ class TabliceLjuskaTest(_TabliceOsnova):
         self.assertEqual(adapter.match('/udzbenik/minerali/kristalografija/kristalni-sistemi')[0],
                          'udzbenik.ljuska_lekcije')
         self.assertEqual(adapter.match('/api/udzbenik/minerali/tablica/x')[0], 'udzbenik.api_tablica')
+
+
+# ---------------------------------------------------------------------------
+# Детаљи редова табела (UGOVOR-TABLICE-2.md, део 2, миграција 064)
+# ---------------------------------------------------------------------------
+
+FIKSTURE_DETALJA = KOREN / 'tests' / 'fixtures' / 'udzbenik' / 'prostorne-grupe-detalji.json'
+
+
+def _stavka_grupe(br, hm=None, **izmene):
+    """Права ставка врсте prostorna-grupa (генерисани подаци за 1, 2 и 62 — tests/fixtures/udzbenik)."""
+    s = copy.deepcopy(json.loads(FIKSTURE_DETALJA.read_text(encoding='utf-8'))[str(br)])
+    s.update(izmene)
+    return s
+
+
+def _stavka_pnma():
+    return _stavka_grupe(62)
+
+
+def _detalji(stavke=None, **izmene):
+    d = {'vrsta': 'prostorna-grupa', 'kolona': 'br',
+         'stavke': stavke if stavke is not None else
+         {'1': _stavka_grupe(1), '2': _stavka_grupe(2), '62': _stavka_pnma()}}
+    d.update(izmene)
+    return d
+
+
+class _DetaljiOsnova(_TabliceOsnova):
+    def _fajl_detalja(self, detalji=None, izmeni=None):
+        return self._fajl(tablice=[_tablica_grupe(detalji=detalji if detalji is not None else _detalji()),
+                                   _tablica_druga()], izmeni=izmeni)
+
+    def _uvezi_detalje(self, detalji=None, izmeni=None):
+        kod, out, err = self._uvezi(self._fajl_detalja(detalji, izmeni))
+        self.assertEqual(kod, 0, err + out)
+        return out
+
+    def _kljucevi(self):
+        return [r[0] for r in _upit("""SELECT d.kljuc FROM udzbenik_tablica_detalj d
+                                        JOIN udzbenik_tablica t ON t.id = d.tablica_id
+                                        WHERE t.slug = 'prostorne-grupe' ORDER BY d.kljuc""")]
+
+
+class DetaljiMigracijaTest(_DetaljiOsnova):
+    def test_kolone_ogranicenja_i_cascade(self):
+        kolone = dict(_upit("""SELECT column_name, is_nullable FROM information_schema.columns
+                               WHERE table_name = 'udzbenik_tablica_detalj'"""))
+        self.assertEqual(kolone, {'tablica_id': 'NO', 'kljuc': 'NO', 'sadrzaj': 'NO', 'azurirano': 'NO'})
+        uid = _upit("INSERT INTO udzbenik (zbirka, naslov) VALUES ('udztest-det', 'T') RETURNING id")[0][0]
+        tid = _upit("""INSERT INTO udzbenik_tablica (udzbenik_id, slug, redosled, naslov, sadrzaj)
+                        VALUES (%s, 'tab-d', 1, 'T', '{}') RETURNING id""", (uid,))[0][0]
+        sql = "INSERT INTO udzbenik_tablica_detalj (tablica_id, kljuc, sadrzaj) VALUES (%s, %s, '{}')"
+        for los in ('', '-1', 'a b', 'š', 'x' * 41):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=los):
+                _izvrsi(sql, (tid, los))
+        for dobar in ('14', 'P2_1.c-x', 'A' * 40):
+            _izvrsi(sql, (tid, dobar))
+        with self.assertRaises(psycopg.errors.UniqueViolation):
+            _izvrsi(sql, (tid, '14'))
+        with self.assertRaises(psycopg.errors.ForeignKeyViolation):
+            _izvrsi(sql, (-1, '15'))
+        self.assertIsNotNone(_upit("SELECT azurirano FROM udzbenik_tablica_detalj WHERE tablica_id = %s AND kljuc = '14'",
+                                   (tid,))[0][0])
+        _izvrsi("DELETE FROM udzbenik WHERE id = %s", (uid,))
+        self.assertEqual(_upit("SELECT COUNT(*) FROM udzbenik_tablica_detalj WHERE tablica_id = %s", (tid,))[0][0], 0)
+
+    def test_migracija_bez_sopstvene_transakcije(self):
+        sql = (KOREN / 'migration' / '064_udzbenik_tablica_detalj.sql').read_text(encoding='utf-8')
+        spec = importlib.util.spec_from_file_location('run_migrations', KOREN / 'deploy' / 'run_migrations.py')
+        rm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rm)
+        self.assertEqual(rm.problemi_za_transakciju(sql), [])
+
+    def test_sema_detalja_ispravna_a_tablica_bez_stavki(self):
+        import jsonschema
+        for vrsta, putanja in uvoz.SEME_DETALJA.items():
+            sema = json.loads(putanja.read_text(encoding='utf-8'))
+            jsonschema.Draft202012Validator.check_schema(sema)
+            for stavka in _detalji()['stavke'].values():
+                jsonschema.Draft202012Validator(sema).validate(stavka)
+        tekst = (KOREN / 'udzbenik' / 'schema' / 'tablica.schema.json').read_text(encoding='utf-8')
+        self.assertNotIn('stavke', tekst)
+
+
+class DetaljiUvozTest(_DetaljiOsnova):
+    def test_dry_run_nista_ne_menja(self):
+        pre = _brojevi()
+        kod, out, err = self._uvezi(self._fajl_detalja(), '--dry-run')
+        self.assertEqual(kod, 0, err + out)
+        self.assertEqual(_brojevi(), pre)
+        self.assertIn('+ tablica prostorne-grupe (dodaje; detalji: +3 ~0 -0)', out)
+        self.assertIn('+ tablica mohsova-skala (dodaje)', out)
+        self.assertIn('3 детаља редова (+3 ~0 -0)', out)
+
+    def test_execute_idempotentno_i_promene(self):
+        pre = _brojevi()
+        self._uvezi_detalje()
+        posle = _brojevi()
+        self.assertEqual(posle['udzbenik_tablica_detalj'] - pre['udzbenik_tablica_detalj'], 3)
+        self.assertEqual(self._kljucevi(), ['1', '2', '62'])
+        sadrzaj = _upit("SELECT sadrzaj FROM udzbenik_tablica WHERE slug = 'prostorne-grupe'")[0][0]
+        self.assertEqual(sadrzaj['detalji'], {'vrsta': 'prostorna-grupa', 'kolona': 'br'})
+        self.assertNotIn('stavke', json.dumps(sadrzaj))
+        self.assertEqual(_upit("""SELECT d.sadrzaj FROM udzbenik_tablica_detalj d JOIN udzbenik_tablica t
+                                  ON t.id = d.tablica_id WHERE t.slug = 'prostorne-grupe' AND d.kljuc = '62'""")[0][0],
+                         _stavka_pnma())
+        verzija = _upit("SELECT v.sadrzaj->'detalji' FROM udzbenik_tablica_verzija v JOIN udzbenik_tablica t "
+                        "ON t.id = v.tablica_id WHERE t.slug = 'prostorne-grupe'")
+        self.assertEqual(verzija, [({'vrsta': 'prostorna-grupa', 'kolona': 'br'},)], 'верзија види мета детаља')
+
+        out = self._uvezi_detalje()
+        self.assertEqual(_brojevi(), posle, 'поновни увоз је идемпотентан')
+        self.assertIn('= tablica prostorne-grupe (isto)', out)
+        self.assertIn('3 детаља редова (+0 ~0 -0)', out)
+
+        # ~ 2 промењена, - 1 обрисана, 62 иста; dry-run прво ништа не мења
+        stavke = {'2': _stavka_grupe(2, postavka='izmenjena postavka'), '62': _stavka_pnma()}
+        kod, out, err = self._uvezi(self._fajl_detalja(_detalji(stavke)), '--dry-run')
+        self.assertEqual(kod, 0, err + out)
+        self.assertIn('~ tablica prostorne-grupe (menja detalje: +0 ~1 -1)', out)
+        self.assertEqual(self._kljucevi(), ['1', '2', '62'])
+        out = self._uvezi_detalje(_detalji(stavke))
+        self.assertIn('~ tablica prostorne-grupe (menja detalje: +0 ~1 -1)', out)
+        self.assertEqual(self._kljucevi(), ['2', '62'])
+        self.assertEqual(_upit("SELECT verzija FROM udzbenik_tablica WHERE slug = 'prostorne-grupe'"), [(1,)],
+                         'само ставке → без нове верзије табеле')
+        self.assertEqual(_upit("SELECT sadrzaj->>'hall' FROM udzbenik_tablica_detalj WHERE kljuc = '2'"), [('-P 1',)])
+
+        # + нова ставка
+        stavke['1'] = _stavka_grupe(1)
+        out = self._uvezi_detalje(_detalji(stavke))
+        self.assertIn('~ tablica prostorne-grupe (menja detalje: +1 ~0 -0)', out)
+        self.assertEqual(self._kljucevi(), ['1', '2', '62'])
+
+        # промена колоне → нова верзија табеле; кључеви по hm
+        nove = {'P1': _stavka_grupe(1)}
+        out = self._uvezi_detalje(_detalji(nove, kolona='hm'))
+        self.assertIn('~ tablica prostorne-grupe (menja sadrzaj → verzija 2; detalji: +1 ~0 -3)', out)
+        self.assertEqual(self._kljucevi(), ['P1'])
+        self.assertEqual(_upit("SELECT verzija, sadrzaj->'detalji'->>'kolona' FROM udzbenik_tablica "
+                               "WHERE slug = 'prostorne-grupe'"), [(2, 'hm')])
+
+    def test_tablica_bez_detalja_u_fajlu_ostavlja_stavke(self):
+        self._uvezi_detalje()
+        pre = _brojevi()
+        out = self._uvezi_sa_tablicama()        # исте табеле, без detalji
+        self.assertEqual(_brojevi(), pre)
+        self.assertIn('= tablica prostorne-grupe (isto)', out)
+        self.assertIn('упозорење: табела prostorne-grupe: детаљи редова (prostorna-grupa) су у бази, а нема их у фајлу',
+                      out)
+        self.assertEqual(self._kljucevi(), ['1', '2', '62'])
+        self._prijava()
+        self.assertEqual(self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62').status_code, 200)
+
+    def test_greske_odjednom_sa_putanjama_i_nista_ne_upisuje(self):
+        lose = _stavka_pnma()
+        lose['vikof'][0]['slovo'] = 'ab'
+        del lose['hm']
+        lose['visak'] = 1
+        stavke = {'1': _stavka_grupe(1), '62': lose, '999': _stavka_grupe(1), 'a b': _stavka_grupe(2)}
+
+        def izmeni(p):
+            p['tablice'][1]['detalji'] = {'vrsta': 'nepoznata', 'kolona': 'nema', 'stavke': {'1': {}}, 'x': 1}
+        pre = _brojevi()
+        for rezim in (('--dry-run',), ('--execute', _ime_baze())):
+            kod, out, err = self._uvezi(self._fajl_detalja(_detalji(stavke), izmeni=izmeni), *rezim)
+            self.assertEqual(kod, 1, rezim)
+            self.assertEqual(_brojevi(), pre, rezim)
+            for deo in ('tablice[0].detalji.stavke["62"].vikof[0].slovo: ',
+                        'tablice[0].detalji.stavke["62"]: \'hm\' is a required property',
+                        'tablice[0].detalji.stavke["62"]: Additional properties',
+                        'tablice[0].detalji.stavke["999"]: ниједан ред табеле нема br = \'999\'',
+                        'tablice[0].detalji.stavke["a b"]: кључ ставке мора бити по обрасцу',
+                        "tablice[1].detalji.vrsta: врста детаља мора бити једна од ['prostorna-grupa'] "
+                        "(добијено 'nepoznata')",
+                        "tablice[1].detalji.kolona: 'nema' није колона табеле",
+                        'tablice[1].detalji.x: непознато поље детаља'):
+                self.assertIn(deo, err, rezim)
+            self.assertNotIn('stavke["1"]', err, 'исправна ставка нема грешку')
+
+
+class DetaljiApiTest(_DetaljiOsnova):
+    def setUp(self):
+        super().setUp()
+        self._uvezi_detalje(_detalji({'1': _stavka_grupe(1), '62': _stavka_pnma()}))
+        self._prijava()
+
+    def test_tablica_ima_meta_bez_stavki(self):
+        t = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe').get_json()['tablica']
+        self.assertEqual(t['detalji'], {'vrsta': 'prostorna-grupa', 'kolona': 'br'})
+        self.assertNotIn('stavke', json.dumps(t))
+        self.assertNotIn('detalji', self.get('/api/udzbenik/minerali/tablica/mohsova-skala').get_json()['tablica'])
+
+    def test_detalj_200_prethodni_sledeci_po_redovima(self):
+        r = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json(), {'detalj': {
+            'tablica': {'slug': 'prostorne-grupe', 'naslov': '230 prostornih grupa'}, 'kljuc': '62',
+            'vrsta': 'prostorna-grupa', 'sadrzaj': _stavka_pnma(), 'prethodni': '1', 'sledeci': None}})
+        d = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/1').get_json()['detalj']
+        self.assertEqual((d['prethodni'], d['sledeci']), (None, '62'), 'ред 2 нема ставку — прескаче се')
+        # редослед редова, не абецедни/нумерички редослед кључева
+        _izvrsi("""UPDATE udzbenik_tablica SET sadrzaj = jsonb_set(sadrzaj, '{redovi}',
+                       (SELECT jsonb_agg(r ORDER BY (r->>'br')::int DESC) FROM jsonb_array_elements(sadrzaj->'redovi') r))
+                   WHERE slug = 'prostorne-grupe'""")
+        d = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/1').get_json()['detalj']
+        self.assertEqual((d['prethodni'], d['sledeci']), ('62', None))
+
+    def test_detalj_404(self):
+        for url in ('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/2',      # ред без ставке
+                    '/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/999',
+                    '/api/udzbenik/minerali/tablica/mohsova-skala/detalj/1',         # табела без детаља
+                    '/api/udzbenik/minerali/tablica/nema/detalj/1',
+                    '/api/udzbenik/nema-zbirke/tablica/prostorne-grupe/detalj/1'):
+            r = self.get(url)
+            self.assertEqual(r.status_code, 404, url)
+            self.assertIn('greska', r.get_json(), url)
+
+
+class DetaljiPravaTest(_DetaljiOsnova):
+    def setUp(self):
+        super().setUp()
+        self._uvezi_detalje()      # prostorne-grupe objavljena
+
+    def test_anonimni_neobjavljen_udzbenik_401_i_prijava(self):
+        self._anonimni()
+        r = self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62')
+        self.assertEqual(r.status_code, 401)
+        r = self.get('/udzbenik/minerali/tablice/prostorne-grupe/62')
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/login', r.headers['Location'])
+
+    def test_vidljivost_kao_tablica(self):
+        self._objavi()
+        self._anonimni()
+        self.assertEqual(self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62').status_code, 200)
+        self.assertEqual(self.get('/udzbenik/minerali/tablice/prostorne-grupe/62').status_code, 200)
+        _izvrsi("UPDATE udzbenik_tablica SET status = 'nacrt' WHERE slug = 'prostorne-grupe'")
+        self.assertEqual(self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62').status_code, 404,
+                         'нацрт табеле анониман не види ни детаље')
+        self.assertEqual(self.get('/udzbenik/minerali/tablice/prostorne-grupe/62').status_code, 404)
+        self._prijava()
+        self.assertEqual(self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62').status_code, 200)
+        self.assertEqual(self.get('/udzbenik/minerali/tablice/prostorne-grupe/62').status_code, 200)
+
+    def test_prijavljen_bez_modula_403(self):
+        self._prijava('user')
+        with mock.patch.dict(museum_app.MODULE_ACCESS['udzbenik'], {'default_access': False}), \
+                mock.patch.dict(museum_app.MODULE_ACCESS_DEFAULTS['udzbenik'], {'default_access': False}):
+            self.assertEqual(self.get('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62').status_code, 403)
+            self.assertEqual(self.get('/udzbenik/minerali/tablice/prostorne-grupe/62').status_code, 403)
+
+
+class DetaljiLjuskaTest(_DetaljiOsnova):
+    def setUp(self):
+        super().setUp()
+        self._uvezi_detalje()
+        self._prijava()
+
+    _app_deo = TabliceLjuskaTest._app_deo
+
+    def test_ljuska_detalja_200_i_404(self):
+        r = self.get('/udzbenik/minerali/tablice/prostorne-grupe/62')
+        self.assertEqual(r.status_code, 200)
+        deo = self._app_deo(r)
+        for atribut in ('data-prikaz="tablice"', 'data-tablica="prostorne-grupe"', 'data-detalj="62"',
+                        'data-poglavlje=""', 'data-lekcija=""'):
+            self.assertIn(atribut, deo)
+        for url in ('/udzbenik/minerali/tablice/prostorne-grupe/999', '/udzbenik/minerali/tablice/mohsova-skala/1',
+                    '/udzbenik/minerali/tablice/nema/1', '/udzbenik/nema-zbirke/tablice/prostorne-grupe/62'):
+            self.assertEqual(self.get(url).status_code, 404, url)
+
+    def test_ostale_strane_prazan_detalj_i_lekcija_radi(self):
+        for url in ('/udzbenik/minerali', '/udzbenik/minerali/tablice', '/udzbenik/minerali/tablice/prostorne-grupe',
+                    '/udzbenik/minerali/kristalografija/kristalni-sistemi'):
+            r = self.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            self.assertIn('data-detalj=""', self._app_deo(r), url)
+        self.assertIn('data-lekcija="kristalni-sistemi"',
+                      self._app_deo(self.get('/udzbenik/minerali/kristalografija/kristalni-sistemi')))
+        self.assertEqual(self.get('/udzbenik/minerali/kristalografija/kristalni-sistemi/62').status_code, 404,
+                         'четири сегмента испод поглавља нису рута')
+
+    def test_ruta_detalja_ne_sudara_se_sa_lekcijom(self):
+        adapter = museum_app.app.url_map.bind('localhost')
+        self.assertEqual(adapter.match('/udzbenik/minerali/tablice/prostorne-grupe/62'),
+                         ('udzbenik.ljuska_detalja', {'zbirka': 'minerali', 'slug': 'prostorne-grupe', 'kljuc': '62'}))
+        self.assertEqual(adapter.match('/udzbenik/minerali/tablice/prostorne-grupe')[0], 'udzbenik.ljuska_tablice')
+        self.assertEqual(adapter.match('/udzbenik/minerali/kristalografija/kristalni-sistemi')[0],
+                         'udzbenik.ljuska_lekcije')
+        self.assertEqual(adapter.match('/api/udzbenik/minerali/tablica/prostorne-grupe/detalj/62')[0],
+                         'udzbenik.api_detalj_tablice')
+        self.assertEqual(adapter.match('/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi')[0],
+                         'udzbenik.api_lekcija')
 
 
 if __name__ == '__main__':
