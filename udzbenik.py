@@ -30,7 +30,8 @@ static/udzbenik/) чита искључиво API описан у брифу (§
   само ``detalji: {vrsta, kolona}``, једна ставка кроз ``detalj_tablice`` са
   претходном/следећом по редоследу редова табеле, исто право као табела;
 - везе између уџбеника: ``tablica-link`` са ``zbirka`` разрешава табелу тог
-  уџбеника, а ``uputi_na`` питања са ``zbirka`` добија ``poglavlje`` +
+  уџбеника, а ``uputi_na`` (и ``iz_lekcije`` у облику објекта) питања са
+  ``zbirka`` добија ``poglavlje`` +
   ``naslov`` циљне лекције (за путању /udzbenik/<zbirka>/<poglavlje>/<lekcija>)
   или ``nedostupan`` + ``razlog`` — циљни уџбеник мора бити видљив читаоцу
   (``sme_da_cita``), лекција/табела по истом праву као у њему самом.
@@ -456,8 +457,9 @@ def razresi_blokove(cur, blokovi, udzbenik_id=None):
             izlaz.append(_razresi_proces(blok))
         elif tip == 'tablica-link':
             izlaz.append(_razresi_tablica_link(cur, blok, udzbenik_id))
-        elif tip == 'pitanje' and isinstance(blok.get('uputi_na'), dict) and blok['uputi_na'].get('zbirka'):
-            izlaz.append(dict(blok, uputi_na=_razresi_uputnicu(cur, blok['uputi_na'])))
+        elif tip == 'pitanje' and any(_sa_zbirkom(blok.get(k)) for k in UPUTNICE_PITANJA):
+            izlaz.append(dict(blok, **{k: _razresi_uputnicu(cur, blok[k])
+                                       for k in UPUTNICE_PITANJA if _sa_zbirkom(blok.get(k))}))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -489,6 +491,13 @@ def _razresi_tablica_link(cur, blok, udzbenik_id):
     if not nadjene:
         return _nedostupan(blok, RAZLOG_TABLICA_NE_POSTOJI)
     return dict(blok, naslov_tablice=nadjene[0]['naslov'], broj_redova=nadjene[0]['broj_redova'])
+
+
+UPUTNICE_PITANJA = ('uputi_na', 'iz_lekcije')
+
+
+def _sa_zbirkom(uputnica):
+    return isinstance(uputnica, dict) and bool(uputnica.get('zbirka'))
 
 
 def _razresi_uputnicu(cur, uputi_na):

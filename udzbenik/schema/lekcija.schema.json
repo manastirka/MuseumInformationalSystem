@@ -1008,8 +1008,36 @@
           }
         },
         "iz_lekcije": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          "description": "Lekcija iz koje pitanje za ponavljanje potiče. String = slug lekcije tekućeg udžbenika; objekat sa `zbirka` = lekcija drugog udžbenika (npr. ponavljanje iz Mineralogije u Petrologiji): uvoz proverava da udžbenik i lekcija postoje u bazi, a server pri čitanju dodaje `poglavlje` + `naslov` ili `nedostupan: true` + `razlog` (kao uputi_na).",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            {
+              "type": "object",
+              "required": [
+                "zbirka",
+                "lekcija"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "zbirka": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                  "description": "zbirka drugog udžbenika (npr. minerali)."
+                },
+                "lekcija": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "tekst": {
+                  "type": "string",
+                  "maxLength": 120
+                }
+              }
+            }
+          ]
         }
       }
     },
@@ -1095,7 +1123,16 @@
             "smektit",
             "zeolit-izmena",
             "pokrivna-moc",
-            "keramicka-masa"
+            "keramicka-masa",
+            "qapf",
+            "tas",
+            "afm",
+            "harker",
+            "wentworth",
+            "folk-pescari",
+            "folk-karbonati",
+            "dunham",
+            "acf-akf"
           ]
         },
         "parametri": {
@@ -1269,17 +1306,29 @@
                     "maxItems": 20
                   },
                   "putanja": {
-                    "type": "array",
-                    "maxItems": 20,
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "type": "number"
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "maxItems": 20,
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        "description": "P–T putanja kao [[T_C, P_GPa], ...]."
                       },
-                      "minItems": 2,
-                      "maxItems": 2
-                    },
-                    "description": "P–T putanja kao [[T_C, P_GPa], ...]."
+                      {
+                        "enum": [
+                          "satna",
+                          "protivsatna",
+                          "subdukcija"
+                        ],
+                        "description": "Šematska P–T–t putanja po obliku: u smeru kazaljke (kolizija, Barrow), suprotno (magmatsko podgrevanje, ekstenzija), hladna subdukcija (England & Thompson 1984; Spear 1993)."
+                      }
+                    ]
                   },
                   "prikazi_al2sio5": {
                     "type": "boolean",
@@ -2632,6 +2681,437 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "qapf"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "prikaz"
+                ],
+                "properties": {
+                  "prikaz": {
+                    "enum": [
+                      "plutonske",
+                      "vulkanske"
+                    ],
+                    "description": "Dvostruki trougao Q–A–P / F–A–P po Le Maitre (2002), sl. 2.4 (plutonske) ili 2.11 (vulkanske)."
+                  },
+                  "istaknuti": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 30,
+                    "items": {
+                      "enum": [
+                        "kvarcolit",
+                        "granitoid-bogat-kvarcom",
+                        "alkalnofeldspatski-granit",
+                        "granit",
+                        "granodiorit",
+                        "tonalit",
+                        "kvarc-alkalnofeldspatski-sijenit",
+                        "kvarcsijenit",
+                        "kvarcmonconit",
+                        "kvarcmoncodiorit-kvarcmoncogabro",
+                        "kvarcdiorit-kvarcgabro",
+                        "alkalnofeldspatski-sijenit",
+                        "sijenit",
+                        "monconit",
+                        "moncodiorit-moncogabro",
+                        "diorit-gabro",
+                        "foidonosni-alkalnofeldspatski-sijenit",
+                        "foidonosni-sijenit",
+                        "foidonosni-monconit",
+                        "foidonosni-moncodiorit-moncogabro",
+                        "foidonosni-diorit-gabro",
+                        "foidski-sijenit",
+                        "foidski-moncosijenit",
+                        "foidski-moncodiorit-moncogabro",
+                        "foidski-diorit-gabro",
+                        "foidolit",
+                        "sijenogranit",
+                        "moncogranit",
+                        "alkalnofeldspatski-riolit",
+                        "riolit",
+                        "dacit",
+                        "kvarc-alkalnofeldspatski-trahit",
+                        "kvarctrahit",
+                        "kvarclatit",
+                        "bazalt-andezit",
+                        "alkalnofeldspatski-trahit",
+                        "trahit",
+                        "latit",
+                        "foidonosni-alkalnofeldspatski-trahit",
+                        "foidonosni-trahit",
+                        "foidonosni-latit",
+                        "fonolit",
+                        "tefritski-fonolit",
+                        "fonolitski-bazanit-tefrit",
+                        "bazanit-tefrit",
+                        "fonolitski-foidit",
+                        "tefritski-foidit",
+                        "foidit"
+                      ]
+                    },
+                    "description": "Ključevi polja (vidi podaci/qapf.ts u motoru); ključ koji ne postoji u izabranom prikazu se zanemaruje."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "tas"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 15,
+                    "items": {
+                      "enum": [
+                        "pikrobazalt",
+                        "bazalt",
+                        "bazaltni-andezit",
+                        "andezit",
+                        "dacit",
+                        "riolit",
+                        "trahibazalt",
+                        "bazaltni-trahiandezit",
+                        "trahiandezit",
+                        "trahit-trahidacit",
+                        "tefrit-bazanit",
+                        "fonotefrit",
+                        "tefrifonolit",
+                        "fonolit",
+                        "foidit"
+                      ]
+                    }
+                  },
+                  "tacke": {
+                    "type": "array",
+                    "maxItems": 30,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "oznaka",
+                        "sio2",
+                        "alkalije"
+                      ],
+                      "properties": {
+                        "oznaka": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20
+                        },
+                        "sio2": {
+                          "type": "number",
+                          "minimum": 35,
+                          "maximum": 79
+                        },
+                        "alkalije": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 16
+                        }
+                      }
+                    },
+                    "description": "Analize u mas. % preračunate na 100 % bez H2O i CO2."
+                  },
+                  "granica_serija": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Granica alkalne i subalkalne serije (Irvine & Baragar 1971)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "afm"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tacke": {
+                    "type": "array",
+                    "maxItems": 30,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "oznaka",
+                        "alkalije",
+                        "feot",
+                        "mgo"
+                      ],
+                      "properties": {
+                        "oznaka": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20
+                        },
+                        "alkalije": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "feot": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "mgo": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        }
+                      }
+                    },
+                    "description": "Na2O + K2O, FeO ukupno i MgO u mas. %; motor ih preračunava na A + F + M = 100."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "harker"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "oksidi"
+                ],
+                "properties": {
+                  "oksidi": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "items": {
+                      "enum": [
+                        "MgO",
+                        "CaO",
+                        "FeOt",
+                        "Al2O3",
+                        "Na2O",
+                        "K2O",
+                        "TiO2"
+                      ]
+                    }
+                  },
+                  "serija": {
+                    "enum": [
+                      "havaji",
+                      "tuolumne"
+                    ],
+                    "default": "havaji",
+                    "description": "„havaji“ — postštitna alkalna serija Havaja (Best 2003, tab. 13.2); „tuolumne“ — intruzivna serija Tuolumne, Sijera Nevada (Best 2003, tab. 13.8)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "wentworth"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "blokovi",
+                        "valuci",
+                        "oblutci",
+                        "granule",
+                        "pesak-vrlo-krupnozrni",
+                        "pesak-krupnozrni",
+                        "pesak-srednjezrni",
+                        "pesak-sitnozrni",
+                        "pesak-vrlo-sitnozrni",
+                        "alevrit",
+                        "glina"
+                      ]
+                    },
+                    "uniqueItems": true,
+                    "description": "Istaknute klase Udden–Wentworthove skale (Wentworth 1922; φ po Krumbein 1934)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "folk-pescari"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "istaknuti": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "kvarcni-arenit",
+                        "subarkoza",
+                        "sublitarenit",
+                        "arkoza",
+                        "liticna-arkoza",
+                        "feldspatski-litarenit",
+                        "litarenit"
+                      ]
+                    },
+                    "uniqueItems": true,
+                    "description": "Istaknuta polja Folkove (1980) klasifikacije peščara u trouglu Q–F–R."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "folk-karbonati"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "prikaz": {
+                    "enum": [
+                      "tabela",
+                      "spektar"
+                    ],
+                    "default": "tabela",
+                    "description": "„tabela“ — alohemi × mikrit/sparit (Folk 1959); „spektar“ — teksturni spektar (Folk 1962)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "dunham"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "prosireno": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Dodaje proširenje Embry & Klovan (1971): floutston, radston, bafflestone, bindstone, framestone."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "acf-akf"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "prikaz"
+                ],
+                "properties": {
+                  "prikaz": {
+                    "enum": [
+                      "ACF",
+                      "AKF"
+                    ]
+                  },
+                  "facija": {
+                    "enum": [
+                      "zelenih-skriljaca",
+                      "amfibolitska",
+                      "granulitska",
+                      "eklogitska"
+                    ],
+                    "description": "Ističe minerale asocijacije mafičnih stena date facije (samo ACF; Bucher 2005)."
+                  }
+                }
               }
             }
           }
