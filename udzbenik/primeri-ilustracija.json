@@ -937,6 +937,122 @@
       "dijagram": "keramicka-masa",
       "parametri": {},
       "opis_za_citac": "Trougao glina – feldspat – kvarc sa šematskim poljima tvrdog i mekog porcelana, kamenine i fajansa i sa tačkama stvarnih masa porcelana i porculanske kamenine."
+    },
+    {
+      "id": "d-qapf",
+      "tip": "dijagram",
+      "dijagram": "qapf",
+      "parametri": {
+        "prikaz": "plutonske",
+        "istaknuti": [
+          "granodiorit"
+        ]
+      },
+      "opis_za_citac": "QAPF dvostruki trougao plutonskih stena po Le Maitre (2002): temena Q, A, P i F, istaknuto polje granodiorita."
+    },
+    {
+      "id": "d-tas",
+      "tip": "dijagram",
+      "dijagram": "tas",
+      "parametri": {
+        "tacke": [
+          {
+            "oznaka": "bazalt",
+            "sio2": 49.97,
+            "alkalije": 4.08
+          }
+        ],
+        "granica_serija": true
+      },
+      "opis_za_citac": "TAS dijagram: ukupne alkalije prema SiO₂ sa poljima vulkanskih stena, granicom alkalnih i subalkalnih serija i tačkom prosečnog bazalta."
+    },
+    {
+      "id": "d-afm",
+      "tip": "dijagram",
+      "dijagram": "afm",
+      "parametri": {
+        "tacke": [
+          {
+            "oznaka": "bazalt",
+            "alkalije": 4.08,
+            "feot": 10.9,
+            "mgo": 7.6
+          }
+        ]
+      },
+      "opis_za_citac": "AFM trougao sa temenima alkalije, gvožđe i magnezijum i granicom toleitske i kalkalkalne serije; jedna tačka bazalta."
+    },
+    {
+      "id": "d-harker",
+      "tip": "dijagram",
+      "dijagram": "harker",
+      "parametri": {
+        "oksidi": [
+          "MgO",
+          "CaO"
+        ],
+        "serija": "havaji"
+      },
+      "opis_za_citac": "Harkerovi dijagrami MgO i CaO prema SiO₂ za objavljenu havajsku seriju; oba oksida opadaju sa porastom SiO₂."
+    },
+    {
+      "id": "d-wentworth",
+      "tip": "dijagram",
+      "dijagram": "wentworth",
+      "parametri": {
+        "istaknuti": [
+          "pesak-srednjezrni"
+        ]
+      },
+      "opis_za_citac": "Udden–Wentworthova skala veličine zrna sa φ skalom, od blokova do gline; istaknut srednjezrni pesak."
+    },
+    {
+      "id": "d-folk-pescari",
+      "tip": "dijagram",
+      "dijagram": "folk-pescari",
+      "parametri": {
+        "istaknuti": [
+          "subarkoza"
+        ]
+      },
+      "opis_za_citac": "Folkov trougao peščara Q–F–R sa sedam polja od kvarcnog arenita do litarenita; istaknuta subarkoza."
+    },
+    {
+      "id": "d-folk-karbonati",
+      "tip": "dijagram",
+      "dijagram": "folk-karbonati",
+      "parametri": {
+        "prikaz": "tabela"
+      },
+      "opis_za_citac": "Folkova tabela krečnjaka: vezivo sparit ili mikrit i prefiks po preovlađujućim alohemima."
+    },
+    {
+      "id": "d-dunham",
+      "tip": "dijagram",
+      "dijagram": "dunham",
+      "parametri": {
+        "prosireno": true
+      },
+      "opis_za_citac": "Dunhamova klasifikacija karbonatnih stena po depozicionoj teksturi, sa proširenjem Embrija i Klovana."
+    },
+    {
+      "id": "d-acf",
+      "tip": "dijagram",
+      "dijagram": "acf-akf",
+      "parametri": {
+        "prikaz": "ACF",
+        "facija": "amfibolitska"
+      },
+      "opis_za_citac": "ACF trougao sa položajima čestih metamorfnih minerala; istaknuta asocijacija amfibolitske facije."
+    },
+    {
+      "id": "d-facije-satna",
+      "tip": "dijagram",
+      "dijagram": "metamorfne-facije",
+      "parametri": {
+        "putanja": "satna"
+      },
+      "opis_za_citac": "Dijagram metamorfnih facija sa šematskom P–T–t putanjom u smeru kazaljke na satu."
     }
   ]
 }

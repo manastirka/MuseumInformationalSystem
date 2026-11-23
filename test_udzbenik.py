@@ -1170,7 +1170,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 56)
+        self.assertEqual(len(sadrzaj['blokovi']), 66)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1178,7 +1178,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 56)
+        self.assertEqual(len(blokovi), 66)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
         dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}
@@ -3161,6 +3161,12 @@ def _uputi_pitanje(**uputi):
             'objasnjenje': 'Liskun ima jedan pravac savršene cepljivosti.', 'uputi_na': uputi}
 
 
+def _ponavljanje_pitanje(iz_lekcije, id='pit-pon'):
+    return {'id': id, 'tip': 'pitanje', 'uloga': 'ponavljanje', 'pitanje': 'Koji sistem ima tri jednake ose?',
+            'odgovori': [{'tekst': 'teseralni', 'tacan': True}, {'tekst': 'heksagonalni', 'tacan': False}],
+            'objasnjenje': 'Teseralni: a = b = c.', 'iz_lekcije': iz_lekcije}
+
+
 def _petro_fajl(blokovi):
     """Drugi udžbenik (udztest-petro) čija lekcija upućuje na udžbenik minerali."""
     podaci = {
@@ -3284,6 +3290,67 @@ class VezeIzmedjuUdzbenikaTest(_TabliceOsnova):
         blokovi = self._blokovi_petro()
         self.assertEqual(blokovi[1]['razlog'], 'tablica ne postoji')
         self.assertEqual(blokovi[2]['uputi_na']['razlog'], 'lekcija ne postoji')
+
+    def test_iz_lekcije_sa_zbirkom_uvoz_i_api(self):
+        """Ponavljanje iz Mineralogije: iz_lekcije {zbirka, lekcija} — uvoz proverava cilj, API dopunjuje."""
+        dobar = _ponavljanje_pitanje({'zbirka': 'minerali', 'lekcija': 'kristalni-oblici'})
+        kod, out, err = self._petro([dobar])
+        self.assertEqual(kod, 0, err + out)
+        self._prijava()
+        self.assertEqual(self._blokovi_petro()[1]['iz_lekcije'], {
+            'zbirka': 'minerali', 'lekcija': 'kristalni-oblici',
+            'poglavlje': 'kristalografija', 'naslov': 'Kristalni oblici i habitus'})
+        _izvrsi("UPDATE udzbenik_lekcija SET slug = 'premestena' WHERE slug = 'kristalni-oblici'")
+        iz = self._blokovi_petro()[1]['iz_lekcije']
+        self.assertEqual((iz['nedostupan'], iz['razlog']), (True, 'lekcija ne postoji'))
+
+    def test_iz_lekcije_sa_zbirkom_odbija_nepostojece_i_los_oblik(self):
+        blokovi = [_ponavljanje_pitanje({'zbirka': 'nema-udzbenika', 'lekcija': 'kristalni-oblici'}),
+                   _ponavljanje_pitanje({'zbirka': 'minerali', 'lekcija': 'nema-lekcije'}, id='pit-pon-2')]
+        kod, out, err = self._petro(blokovi)
+        self.assertEqual(kod, 1, out)
+        b = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        self.assertIn(f"{b}[1].iz_lekcije.zbirka: уџбеник 'nema-udzbenika' не постоји у бази", err)
+        self.assertIn(f"{b}[2].iz_lekcije.lekcija: лекција 'nema-lekcije' не постоји у уџбенику 'minerali'", err)
+        kod, _, err = self._petro([_ponavljanje_pitanje({'lekcija': 'kristalni-oblici'}),
+                                   _ponavljanje_pitanje({'zbirka': 'minerali', 'lekcija': 'x', 'blok': 'y'},
+                                                        id='pit-pon-2')], '--dry-run')
+        self.assertEqual(kod, 1)
+        self.assertIn('blokovi[1].iz_lekcije', err)
+        self.assertIn('blokovi[2].iz_lekcije', err)
+
+    def test_sema_zna_dijagrame_petrologije(self):
+        dij = [('qapf', {'prikaz': 'plutonske', 'istaknuti': ['granodiorit']}),
+               ('tas', {'tacke': [{'oznaka': 'B', 'sio2': 48, 'alkalije': 3}], 'granica_serija': True}),
+               ('afm', {'tacke': [{'oznaka': 'B', 'alkalije': 3, 'feot': 11, 'mgo': 7}]}),
+               ('harker', {'oksidi': ['MgO', 'CaO']}),
+               ('wentworth', {'istaknuti': ['alevrit']}),
+               ('folk-pescari', {'istaknuti': ['subarkoza']}),
+               ('folk-karbonati', {'prikaz': 'spektar'}),
+               ('dunham', {'prosireno': True}),
+               ('acf-akf', {'prikaz': 'ACF', 'facija': 'amfibolitska'}),
+               ('metamorfne-facije', {'putanja': 'satna'}),
+               ('metamorfne-facije', {'putanja': [[400, 0.4], [600, 0.8]]})]
+        blokovi = [{'id': f'd{i}', 'tip': 'dijagram', 'dijagram': d, 'parametri': par, 'opis_za_citac': 'Petrološki klasifikacioni dijagram za proveru šeme.'}
+                   for i, (d, par) in enumerate(dij)]
+        kod, out, err = self._petro(blokovi, '--dry-run')
+        self.assertEqual(kod, 0, err + out)
+        losi = [{'id': 'l1', 'tip': 'dijagram', 'dijagram': 'acf-akf', 'parametri': {}, 'opis_za_citac': 'Petrološki dijagram sa pogrešnim parametrima.'},
+                {'id': 'l2', 'tip': 'dijagram', 'dijagram': 'qapf', 'parametri': {'prikaz': 'plutonske',
+                                                                                    'istaknuti': ['nema']}, 'opis_za_citac': 'Petrološki dijagram sa pogrešnim parametrima.'},
+                {'id': 'l3', 'tip': 'dijagram', 'dijagram': 'metamorfne-facije', 'parametri': {'putanja': 'cik-cak'}, 'opis_za_citac': 'Petrološki dijagram sa pogrešnim parametrima.'}]
+        kod, _, err = self._petro(losi, '--dry-run')
+        self.assertEqual(kod, 1)
+        for i in (1, 2, 3):
+            self.assertIn(f'blokovi[{i}]', err)
+        self.assertNotIn('opis_za_citac', err)
+
+    def test_iz_lekcije_string_staro_ponasanje(self):
+        pon = _ponavljanje_pitanje('stene')
+        kod, out, err = self._petro([pon])
+        self.assertEqual(kod, 0, err + out)
+        self._prijava()
+        self.assertEqual(self._blokovi_petro()[1], pon)
 
 
 class TabliceLjuskaTest(_TabliceOsnova):
