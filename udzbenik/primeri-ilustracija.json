@@ -962,7 +962,17 @@
             "alkalije": 4.08
           }
         ],
-        "granica_serija": true
+        "granica_serija": true,
+        "analize": {
+          "sredine": [
+            "mor",
+            "oib",
+            "luk",
+            "rift",
+            "lip"
+          ],
+          "unos": true
+        }
       },
       "opis_za_citac": "TAS dijagram: ukupne alkalije prema SiO₂ sa poljima vulkanskih stena, granicom alkalnih i subalkalnih serija i tačkom prosečnog bazalta."
     },
@@ -994,6 +1004,23 @@
         "serija": "havaji"
       },
       "opis_za_citac": "Harkerovi dijagrami MgO i CaO prema SiO₂ za objavljenu havajsku seriju; oba oksida opadaju sa porastom SiO₂."
+    },
+    {
+      "id": "d-ree-pauk",
+      "tip": "dijagram",
+      "dijagram": "ree-pauk",
+      "parametri": {
+        "normalizacija": "hondrit-sm89",
+        "analize": {
+          "sredine": [
+            "mor",
+            "oib",
+            "luk"
+          ]
+        },
+        "unos": true
+      },
+      "opis_za_citac": "REE dijagram: lantan do lutecijum normalizovani na hondrit CI (Sun i McDonough 1989), logaritamska osa; linije stvarnih analiza srednjeokeanskih grebena, okeanskih ostrva i vulkanskih lukova i forma za unos sopstvene analize."
     },
     {
       "id": "d-wentworth",

@@ -1170,7 +1170,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 66)
+        self.assertEqual(len(sadrzaj['blokovi']), 67)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1178,7 +1178,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 66)
+        self.assertEqual(len(blokovi), 67)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
         dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}
@@ -3097,6 +3097,22 @@ class TabliceApiTest(_TabliceOsnova):
         self.assertEqual(r.status_code, 404)
         self.assertIn('greska', r.get_json())
         self.assertEqual(self.get('/api/udzbenik/nema-zbirke/tablica/prostorne-grupe').status_code, 404)
+
+    def test_tablica_gzip_kad_klijent_prihvata(self):
+        import gzip
+        from blueprints import udzbenik as bp_udzbenik
+        url = '/api/udzbenik/minerali/tablica/prostorne-grupe'
+        obicno = self.get(url)
+        self.assertNotIn('Content-Encoding', obicno.headers)
+        self.assertIn('Accept-Encoding', obicno.headers.get('Vary', ''))
+        with mock.patch.object(bp_udzbenik, 'GZIP_PRAG', 0):
+            r = self.get(url, headers={'Accept-Encoding': 'br, gzip;q=0.8'})
+            self.assertEqual(r.headers.get('Content-Encoding'), 'gzip')
+            self.assertEqual(json.loads(gzip.decompress(r.get_data())), obicno.get_json())
+            self.assertNotIn('Content-Encoding', self.get(url, headers={'Accept-Encoding': 'gzip;q=0'}).headers)
+        # мала табела испод прага иде некомпресована
+        self.assertNotIn('Content-Encoding', self.get(url, headers={'Accept-Encoding': 'gzip'}).headers
+                         if len(obicno.get_data()) < bp_udzbenik.GZIP_PRAG else {})
 
     def test_tablica_link_razresen(self):
         lek = self.get('/api/udzbenik/minerali/lekcija/kristalografija/kristalni-sistemi').get_json()['lekcija']

@@ -1132,7 +1132,8 @@
             "folk-pescari",
             "folk-karbonati",
             "dunham",
-            "acf-akf"
+            "acf-akf",
+            "ree-pauk"
           ]
         },
         "parametri": {
@@ -2845,6 +2846,37 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Granica alkalne i subalkalne serije (Irvine & Baragar 1971)."
+                  },
+                  "analize": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "sredine"
+                    ],
+                    "properties": {
+                      "sredine": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                          "enum": [
+                            "mor",
+                            "oib",
+                            "luk",
+                            "rift",
+                            "lip"
+                          ]
+                        },
+                        "description": "Tektonske sredine: tablice geohemija-<sredina> tekuće zbirke (mor — srednjeokeanski grebeni, oib — okeanska ostrva, luk — vulkanski lukovi, rift — kontinentalni riftovi, lip — velike magmatske provincije)."
+                      },
+                      "unos": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forma „Unesi svoju analizu“ (oksidi → normalizacija bez volatila → tačka i naziv po TAS)."
+                      }
+                    },
+                    "description": "Sloj stvarnih analiza (oblak tačaka na canvas-u, filter po sredini, hover sa nazivom stene, lokacijom i referencom; izvori i licenca ispod crteža)."
                   }
                 }
               }
@@ -2901,6 +2933,37 @@
                       }
                     },
                     "description": "Na2O + K2O, FeO ukupno i MgO u mas. %; motor ih preračunava na A + F + M = 100."
+                  },
+                  "analize": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "sredine"
+                    ],
+                    "properties": {
+                      "sredine": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                          "enum": [
+                            "mor",
+                            "oib",
+                            "luk",
+                            "rift",
+                            "lip"
+                          ]
+                        },
+                        "description": "Tektonske sredine: tablice geohemija-<sredina> tekuće zbirke (mor — srednjeokeanski grebeni, oib — okeanska ostrva, luk — vulkanski lukovi, rift — kontinentalni riftovi, lip — velike magmatske provincije)."
+                      },
+                      "unos": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forma „Unesi svoju analizu“ (oksidi → normalizacija bez volatila → tačka i naziv po TAS)."
+                      }
+                    },
+                    "description": "Sloj stvarnih analiza (oblak tačaka na canvas-u, filter po sredini, hover sa nazivom stene, lokacijom i referencom; izvori i licenca ispod crteža)."
                   }
                 }
               }
@@ -2948,6 +3011,37 @@
                     ],
                     "default": "havaji",
                     "description": "„havaji“ — postštitna alkalna serija Havaja (Best 2003, tab. 13.2); „tuolumne“ — intruzivna serija Tuolumne, Sijera Nevada (Best 2003, tab. 13.8)."
+                  },
+                  "analize": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "sredine"
+                    ],
+                    "properties": {
+                      "sredine": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                          "enum": [
+                            "mor",
+                            "oib",
+                            "luk",
+                            "rift",
+                            "lip"
+                          ]
+                        },
+                        "description": "Tektonske sredine: tablice geohemija-<sredina> tekuće zbirke (mor — srednjeokeanski grebeni, oib — okeanska ostrva, luk — vulkanski lukovi, rift — kontinentalni riftovi, lip — velike magmatske provincije)."
+                      },
+                      "unos": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forma „Unesi svoju analizu“ (oksidi → normalizacija bez volatila → tačka i naziv po TAS)."
+                      }
+                    },
+                    "description": "Sloj stvarnih analiza (oblak tačaka na canvas-u, filter po sredini, hover sa nazivom stene, lokacijom i referencom; izvori i licenca ispod crteža)."
                   }
                 }
               }
@@ -3110,6 +3204,70 @@
                       "eklogitska"
                     ],
                     "description": "Ističe minerale asocijacije mafičnih stena date facije (samo ACF; Bucher 2005)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "ree-pauk"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "normalizacija"
+                ],
+                "properties": {
+                  "normalizacija": {
+                    "enum": [
+                      "hondrit-sm89"
+                    ],
+                    "description": "Hondrit CI po Sun & McDonough (1989), doi:10.1144/GSL.SP.1989.042.01.19."
+                  },
+                  "analize": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "sredine"
+                    ],
+                    "properties": {
+                      "sredine": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                          "enum": [
+                            "mor",
+                            "oib",
+                            "luk",
+                            "rift",
+                            "lip"
+                          ]
+                        },
+                        "description": "Tektonske sredine: tablice geohemija-<sredina> tekuće zbirke (mor — srednjeokeanski grebeni, oib — okeanska ostrva, luk — vulkanski lukovi, rift — kontinentalni riftovi, lip — velike magmatske provincije)."
+                      },
+                      "unos": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Forma „Unesi svoju analizu“ (oksidi → normalizacija bez volatila → tačka i naziv po TAS)."
+                      }
+                    },
+                    "description": "Sloj stvarnih analiza (oblak tačaka na canvas-u, filter po sredini, hover sa nazivom stene, lokacijom i referencom; izvori i licenca ispod crteža)."
+                  },
+                  "unos": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Forma za unos sopstvene analize REE (ppm) → linija normalizovana na hondrit."
                   }
                 }
               }

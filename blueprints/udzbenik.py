@@ -9,6 +9,8 @@ static/udzbenik/ црта садржај. API по брифу §4: структ�
 Грешке API-ја су увек JSON ``{"greska": ...}`` са правим статусом
 (401/403/404/503), никад 200.
 """
+import gzip
+
 from flask import (Blueprint, Response, abort, flash, jsonify, redirect, render_template,
                    request, session, url_for)
 
@@ -33,6 +35,29 @@ def _na_prijavu():
 
 def _greska(status, poruka):
     return jsonify({'greska': poruka}), status
+
+
+GZIP_PRAG = 1024
+
+
+def _prihvata_gzip():
+    for deo in request.headers.get('Accept-Encoding', '').lower().split(','):
+        ime, _, param = deo.strip().partition(';')
+        if ime.strip() == 'gzip':
+            return param.replace(' ', '') not in ('q=0', 'q=0.0', 'q=0.00', 'q=0.000')
+    return False
+
+
+def _json_kompresovan(podaci):
+    """JSON табеле компресован gzip-ом кад клијент то прихвата: геохемијске табеле
+    имају до 2000 редова (~1 MB), а ни nginx ни Flask иначе не компресују JSON."""
+    odgovor = jsonify(podaci)
+    odgovor.vary.add('Accept-Encoding')
+    telo = odgovor.get_data()
+    if len(telo) >= GZIP_PRAG and _prihvata_gzip():
+        odgovor.set_data(gzip.compress(telo, compresslevel=6))
+        odgovor.headers['Content-Encoding'] = 'gzip'
+    return odgovor
 
 
 def _udzbenik_za_html(zbirka):
@@ -166,7 +191,7 @@ def api_tablica(zbirka, slug):
     podaci = udzbenik.tablica(red, slug)
     if podaci is None:
         return _greska(404, 'Табела не постоји')
-    return jsonify(podaci)
+    return _json_kompresovan(podaci)
 
 
 @udzbenik_bp.route(API_KOREN + '/<zbirka>/tablica/<slug>/detalj/<kljuc>')
