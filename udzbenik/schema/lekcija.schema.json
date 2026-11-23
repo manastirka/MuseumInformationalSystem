@@ -987,7 +987,13 @@
             "lekcija"
           ],
           "additionalProperties": false,
+          "description": "Uputnica na lekciju. Bez `zbirka` = lekcija tekućeg udžbenika; sa `zbirka` = lekcija drugog udžbenika (uvoz proverava da udžbenik i lekcija, i `blok` ako je dat, postoje u bazi), a server pri čitanju u `uputi_na` dodaje `poglavlje` + `naslov` ili `nedostupan: true` + `razlog`.",
           "properties": {
+            "zbirka": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "description": "zbirka drugog udžbenika (npr. minerali); bez polja = tekući udžbenik."
+            },
             "lekcija": {
               "type": "string",
               "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
@@ -3412,7 +3418,12 @@
         "tablica": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]{1,59}$",
-          "description": "slug tablice iz `tablice` istog fajla ili već u bazi za taj udžbenik."
+          "description": "slug tablice iz `tablice` istog fajla ili već u bazi za taj udžbenik (sa `zbirka`: tablica tog udžbenika u bazi)."
+        },
+        "zbirka": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "zbirka udžbenika kome tablica pripada (npr. minerali); bez polja = tekući udžbenik."
         },
         "tekst": {
           "type": "string",

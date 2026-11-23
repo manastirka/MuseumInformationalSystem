@@ -19,7 +19,10 @@
   ``oznaka`` из ``izvori``; поглавље са slug-ом ``tablice`` је забрањено
   (резервисан сегмент URL-а); блок ``tablica-link`` упућује на табелу из фајла
   или већ у бази за тај уџбеник, а кључеви ``filter`` су колоне табеле (кад је
-  у фајлу); табела може имати ``detalji`` {vrsta, kolona, stavke}
+  у фајлу); са ``zbirka`` другог уџбеника табела мора бити у бази за тај
+  уџбеник, а ``uputi_na`` питања са ``zbirka`` другог уџбеника — тај
+  уџбеник, лекција (и ``blok`` ако је дат) морају постојати у бази;
+  табела може имати ``detalji`` {vrsta, kolona, stavke}
   (UGOVOR-TABLICE-2.md, део 2): ``vrsta`` има шему детаља, ``kolona`` је
   колона табеле, кључ сваке ставке је вредност те колоне (као текст) у неком
   реду, свака ставка по шеми врсте; све грешке се испишу одједном,
@@ -245,6 +248,7 @@ def validiraj(podaci, cur):
                 _proveri_pravila(sadrzaj['blokovi'], f'{lp}.sadrzaj', greske)
                 _proveri_reference(sadrzaj['blokovi'], f'{lp}.sadrzaj', cur, greske)
                 _proveri_tablica_linkove(sadrzaj['blokovi'], f'{lp}.sadrzaj', kolone_tablica, zbirka, cur, greske)
+                _proveri_uputnice(sadrzaj['blokovi'], f'{lp}.sadrzaj', zbirka, cur, greske)
     return greske
 
 
@@ -384,12 +388,20 @@ def _proveri_detalje(detalji, sadrzaj, kolone, dp, greske):
 
 def _proveri_tablica_linkove(blokovi, putanja, kolone_tablica, zbirka, cur, greske):
     """Блок ``tablica-link``: табела из фајла или већ у бази за тај уџбеник;
-    кључеви ``filter`` су колоне табеле кад је табела у фајлу."""
+    кључеви ``filter`` су колоне табеле кад је табела у фајлу. Са ``zbirka``
+    другог уџбеника — само табела у бази за тај уџбеник."""
     for i, blok in enumerate(blokovi):
         if not isinstance(blok, dict) or blok.get('tip') != 'tablica-link' or not isinstance(blok.get('tablica'), str):
             continue
         p = f'{putanja}.blokovi[{i}]'
         slug = blok['tablica']
+        cilj = blok.get('zbirka') if isinstance(blok.get('zbirka'), str) else zbirka
+        if cilj != zbirka:
+            cur.execute("""SELECT 1 FROM udzbenik_tablica t JOIN udzbenik u ON u.id = t.udzbenik_id
+                           WHERE u.zbirka = %s AND t.slug = %s""", (cilj, slug))
+            if cur.fetchone() is None:
+                greske.append(f'{p}.tablica: табела {slug!r} не постоји у бази за уџбеник {cilj!r}')
+            continue
         if slug in kolone_tablica:
             kolone = kolone_tablica[slug]
             filter_ = blok.get('filter')
@@ -407,6 +419,36 @@ def _proveri_tablica_linkove(blokovi, putanja, kolone_tablica, zbirka, cur, gres
         if not postoji:
             greske.append(f'{p}.tablica: табела {slug!r} не постоји ни у tablice фајла ни у бази '
                           f'за уџбеник {zbirka!r}')
+
+
+def _proveri_uputnice(blokovi, putanja, zbirka, cur, greske):
+    """``uputi_na`` питања са ``zbirka`` другог уџбеника: уџбеник, лекција и
+    (ако је дат) ``blok`` у њој постоје у бази. Без ``zbirka`` (или са
+    сопственом) — као и до сада, без провере."""
+    for i, blok in enumerate(blokovi):
+        if not isinstance(blok, dict) or blok.get('tip') != 'pitanje' or not isinstance(blok.get('uputi_na'), dict):
+            continue
+        uputi = blok['uputi_na']
+        cilj, lekcija = uputi.get('zbirka'), uputi.get('lekcija')
+        if not isinstance(cilj, str) or cilj == zbirka or not isinstance(lekcija, str):
+            continue
+        p = f'{putanja}.blokovi[{i}].uputi_na'
+        cur.execute('SELECT id FROM udzbenik WHERE zbirka = %s', (cilj,))
+        red = cur.fetchone()
+        if red is None:
+            greske.append(f'{p}.zbirka: уџбеник {cilj!r} не постоји у бази')
+            continue
+        cur.execute("""SELECT l.sadrzaj FROM udzbenik_lekcija l JOIN udzbenik_poglavlje p ON p.id = l.poglavlje_id
+                       WHERE p.udzbenik_id = %s AND l.slug = %s""", (red[0], lekcija))
+        lekcije = cur.fetchall()
+        if not lekcije:
+            greske.append(f'{p}.lekcija: лекција {lekcija!r} не постоји у уџбенику {cilj!r}')
+            continue
+        id_bloka = uputi.get('blok')
+        if isinstance(id_bloka, str) and not any(
+                isinstance(b, dict) and b.get('id') == id_bloka
+                for (sadrzaj,) in lekcije for b in ((_json(sadrzaj) or {}).get('blokovi') or [])):
+            greske.append(f'{p}.blok: блок {id_bloka!r} не постоји у лекцији {cilj}/{lekcija}')
 
 
 def _proveri_reference(blokovi, putanja, cur, greske):

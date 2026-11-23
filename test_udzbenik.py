@@ -3152,6 +3152,140 @@ class TablicePravaTest(_TabliceOsnova):
             self.assertEqual(self.get('/udzbenik/minerali/tablice/prostorne-grupe').status_code, 403)
 
 
+ZBIRKA_PETRO = 'udztest-petro'
+
+
+def _uputi_pitanje(**uputi):
+    return {'id': 'pit-veza', 'tip': 'pitanje', 'pitanje': 'Koji mineral ima savršenu cepljivost?',
+            'odgovori': [{'tekst': 'kvarc', 'tacan': False}, {'tekst': 'liskun', 'tacan': True}],
+            'objasnjenje': 'Liskun ima jedan pravac savršene cepljivosti.', 'uputi_na': uputi}
+
+
+def _petro_fajl(blokovi):
+    """Drugi udžbenik (udztest-petro) čija lekcija upućuje na udžbenik minerali."""
+    podaci = {
+        'udzbenik': {'zbirka': ZBIRKA_PETRO, 'naslov': 'Petrologija', 'status': 'nacrt', 'javno': False},
+        'poglavlja': [{'slug': 'uvod', 'naslov': 'Uvod', 'redosled': 1, 'lekcije': [{
+            'slug': 'stene', 'naslov': 'Stene', 'redosled': 1, 'status': 'objavljen',
+            'sadrzaj': {'verzija': 1, 'blokovi': [{'id': 'uvod', 'tip': 'tekst', 'markdown': 'Stene su agregati minerala.'}]
+                        + blokovi}}]}],
+    }
+    f = tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8')
+    json.dump(podaci, f, ensure_ascii=False)
+    f.close()
+    return f.name
+
+
+class VezeIzmedjuUdzbenikaTest(_TabliceOsnova):
+    """tablica-link i uputi_na sa ``zbirka`` (petrologija → minerali)."""
+
+    def setUp(self):
+        super().setUp()
+        self._uvezi_sa_tablicama()     # minerali: prostorne-grupe objavljena, mohsova-skala nacrt
+
+    def _petro(self, blokovi, *rezim):
+        putanja = _petro_fajl(blokovi)
+        self.addCleanup(os.unlink, putanja)
+        return self._uvezi(putanja, *rezim)
+
+    def _veze(self):
+        return [_link(zbirka='minerali'),
+                _uputi_pitanje(zbirka='minerali', lekcija='kristalni-oblici', blok='pitanje-1', tekst='Kristalni oblici')]
+
+    def _blokovi_petro(self):
+        return self.get('/api/udzbenik/udztest-petro/lekcija/uvod/stene').get_json()['lekcija']['blokovi']
+
+    def test_uvoz_prolazi_kad_cilj_postoji(self):
+        kod, out, err = self._petro(self._veze())
+        self.assertEqual(kod, 0, err + out)
+
+    def test_uvoz_odbija_nepostojece_ciljeve(self):
+        blokovi = [
+            _link(id='tab-1', zbirka='minerali', tablica='nema-je'),
+            _link(id='tab-2', zbirka='nema-udzbenika'),
+            _link(id='tab-3', zbirka=ZBIRKA_PETRO),          # sopstvena zbirka, tablice nema ni u fajlu ni u bazi
+            _uputi_pitanje(zbirka='nema-udzbenika', lekcija='kristalni-oblici'),
+            dict(_uputi_pitanje(zbirka='minerali', lekcija='nema-lekcije'), id='pit-2'),
+            dict(_uputi_pitanje(zbirka='minerali', lekcija='kristalni-oblici', blok='nema-bloka'), id='pit-3'),
+        ]
+        pre = _brojevi()
+        kod, out, err = self._petro(blokovi)
+        self.assertEqual(kod, 1, out)
+        self.assertEqual(_brojevi(), pre)
+        b = 'poglavlja[0].lekcije[0].sadrzaj.blokovi'
+        for deo in (f"{b}[1].tablica: табела 'nema-je' не постоји у бази за уџбеник 'minerali'",
+                    f"{b}[2].tablica: табела 'prostorne-grupe' не постоји у бази за уџбеник 'nema-udzbenika'",
+                    f"{b}[3].tablica: табела 'prostorne-grupe' не постоји ни у tablice фајла ни у бази",
+                    f"{b}[4].uputi_na.zbirka: уџбеник 'nema-udzbenika' не постоји у бази",
+                    f"{b}[5].uputi_na.lekcija: лекција 'nema-lekcije' не постоји у уџбенику 'minerali'",
+                    f"{b}[6].uputi_na.blok: блок 'nema-bloka' не постоји у лекцији minerali/kristalni-oblici"):
+            self.assertIn(deo, err)
+
+    def test_sema_odbija_los_slug_zbirke(self):
+        kod, _, err = self._petro([_link(zbirka='Minerali'), _uputi_pitanje(zbirka='min erali', lekcija='x')],
+                                  '--dry-run')
+        self.assertEqual(kod, 1)
+        self.assertIn('blokovi[1].zbirka', err)
+        self.assertIn('blokovi[2].uputi_na.zbirka', err)
+
+    def test_api_razresava_preko_udzbenika(self):
+        self._petro(self._veze())
+        self._prijava()
+        blokovi = self._blokovi_petro()
+        self.assertEqual(blokovi[1], dict(_link(zbirka='minerali'), naslov_tablice='230 prostornih grupa',
+                                          broj_redova=3))
+        self.assertEqual(blokovi[2]['uputi_na'], {
+            'zbirka': 'minerali', 'lekcija': 'kristalni-oblici', 'blok': 'pitanje-1', 'tekst': 'Kristalni oblici',
+            'poglavlje': 'kristalografija', 'naslov': 'Kristalni oblici i habitus'})
+        # cilj → /udzbenik/minerali/kristalografija/kristalni-oblici postoji
+        self.assertEqual(self.get('/udzbenik/minerali/kristalografija/kristalni-oblici').status_code, 200)
+
+    def test_bez_zbirke_staro_ponasanje(self):
+        """Bez polja ``zbirka`` tablica-link gleda tekući udžbenik, uputi_na se ne dira."""
+        uputi = _uputi_pitanje(lekcija='stene')
+        kod, out, err = self._petro([_link(), uputi])
+        self.assertEqual(kod, 1, 'prostorne-grupe nije tablica udztest-petro')
+        self.assertIn("blokovi[1].tablica: табела 'prostorne-grupe' не постоји ни у tablice фајла ни у бази", err)
+        self.assertNotIn('uputi_na', err)
+        kod, out, err = self._petro([uputi])
+        self.assertEqual(kod, 0, err + out)
+        self._prijava()
+        self.assertEqual(self._blokovi_petro()[1], uputi)
+
+    def test_nedostupan_cilj(self):
+        self._petro(self._veze())
+        self._prijava()
+        _izvrsi("DELETE FROM udzbenik_tablica WHERE slug = 'prostorne-grupe'")
+        _izvrsi("""UPDATE udzbenik_lekcija SET slug = 'premestena' WHERE slug = 'kristalni-oblici'
+                   AND poglavlje_id IN (SELECT p.id FROM udzbenik_poglavlje p JOIN udzbenik u ON u.id = p.udzbenik_id
+                                        WHERE u.zbirka = 'minerali')""")
+        blokovi = self._blokovi_petro()
+        self.assertEqual((blokovi[1]['nedostupan'], blokovi[1]['razlog']), (True, 'tablica ne postoji'))
+        self.assertEqual((blokovi[2]['uputi_na']['nedostupan'], blokovi[2]['uputi_na']['razlog']),
+                         (True, 'lekcija ne postoji'))
+        self.assertNotIn('nedostupan', blokovi[2], 'pitanje samo ostaje')
+
+    def test_anonimni_ne_vidi_neobjavljen_ciljni_udzbenik(self):
+        self._petro(self._veze())
+        _izvrsi("UPDATE udzbenik SET javno = TRUE, status = 'objavljen' WHERE zbirka = %s", (ZBIRKA_PETRO,))
+        self._anonimni()
+        blokovi = self._blokovi_petro()
+        self.assertEqual(blokovi[1]['razlog'], 'udzbenik nije dostupan')
+        self.assertNotIn('naslov_tablice', blokovi[1])
+        self.assertEqual(blokovi[2]['uputi_na']['razlog'], 'udzbenik nije dostupan')
+        self.assertNotIn('poglavlje', blokovi[2]['uputi_na'])
+        # javni minerali: anonimni vidi samo objavljeno
+        self._objavi()
+        blokovi = self._blokovi_petro()
+        self.assertEqual(blokovi[1]['naslov_tablice'], '230 prostornih grupa')
+        self.assertEqual(blokovi[2]['uputi_na']['poglavlje'], 'kristalografija')
+        _izvrsi("UPDATE udzbenik_lekcija SET status = 'nacrt' WHERE slug = 'kristalni-oblici'")
+        _izvrsi("UPDATE udzbenik_tablica SET status = 'nacrt' WHERE slug = 'prostorne-grupe'")
+        blokovi = self._blokovi_petro()
+        self.assertEqual(blokovi[1]['razlog'], 'tablica ne postoji')
+        self.assertEqual(blokovi[2]['uputi_na']['razlog'], 'lekcija ne postoji')
+
+
 class TabliceLjuskaTest(_TabliceOsnova):
     def setUp(self):
         super().setUp()
