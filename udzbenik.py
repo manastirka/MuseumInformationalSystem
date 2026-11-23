@@ -28,7 +28,12 @@ static/udzbenik/) чита искључиво API описан у брифу (§
   право као лекције (анонимни виде само ``objavljen``); детаљи редова
   (UGOVOR-TABLICE-2.md, део 2, табела udzbenik_tablica_detalj): табела носи
   само ``detalji: {vrsta, kolona}``, једна ставка кроз ``detalj_tablice`` са
-  претходном/следећом по редоследу редова табеле, исто право као табела.
+  претходном/следећом по редоследу редова табеле, исто право као табела;
+- везе између уџбеника: ``tablica-link`` са ``zbirka`` разрешава табелу тог
+  уџбеника, а ``uputi_na`` питања са ``zbirka`` добија ``poglavlje`` +
+  ``naslov`` циљне лекције (за путању /udzbenik/<zbirka>/<poglavlje>/<lekcija>)
+  или ``nedostupan`` + ``razlog`` — циљни уџбеник мора бити видљив читаоцу
+  (``sme_da_cita``), лекција/табела по истом праву као у њему самом.
 
 База је једини извор истине; при читању се садржај НЕ валидира по шеми
 (валидација је на упису — scripts/udzbenik_uvoz.py), али блок непознатог
@@ -65,6 +70,8 @@ RAZLOG_FIGURA_NE_POSTOJI = 'slika ne postoji u biblioteci'
 RAZLOG_PRIMERAK_BEZ_FOTOGRAFIJE = 'primerak nema fotografiju'
 RAZLOG_NEPOZNAT_OBLIK_SLIKE = 'nepoznat oblik slike'
 RAZLOG_TABLICA_NE_POSTOJI = 'tablica ne postoji'
+RAZLOG_UDZBENIK_NEDOSTUPAN = 'udzbenik nije dostupan'
+RAZLOG_LEKCIJA_NE_POSTOJI = 'lekcija ne postoji'
 TAG_AI_ILUSTRACIJA = 'ai-ilustracija'
 POREKLO_AI = 'ai-ilustracija'
 
@@ -449,6 +456,8 @@ def razresi_blokove(cur, blokovi, udzbenik_id=None):
             izlaz.append(_razresi_proces(blok))
         elif tip == 'tablica-link':
             izlaz.append(_razresi_tablica_link(cur, blok, udzbenik_id))
+        elif tip == 'pitanje' and isinstance(blok.get('uputi_na'), dict) and blok['uputi_na'].get('zbirka'):
+            izlaz.append(dict(blok, uputi_na=_razresi_uputnicu(cur, blok['uputi_na'])))
         elif tip in POZNATI_TIPOVI:
             izlaz.append(dict(blok))
         else:
@@ -460,14 +469,39 @@ def _nedostupan(blok, razlog):
     return dict(blok, nedostupan=True, razlog=razlog)
 
 
+def _vidljiv_udzbenik(cur, zbirka):
+    """Ред уџбеника по збирци кад га читалац сме да чита, иначе None."""
+    red = dohvati_udzbenik(zbirka, cur) if isinstance(zbirka, str) else None
+    return red if sme_da_cita(red) else None
+
+
 def _razresi_tablica_link(cur, blok, udzbenik_id):
     """Веза на табелу (UGOVOR-TABLICE.md §3): ``naslov_tablice`` +
-    ``broj_redova``, или ``nedostupan`` кад табела читаоцу није видљива."""
+    ``broj_redova``, или ``nedostupan`` кад табела читаоцу није видљива.
+    Са ``zbirka`` табела је из тог уџбеника (који читалац мора да види)."""
+    if blok.get('zbirka'):
+        cilj = _vidljiv_udzbenik(cur, blok['zbirka'])
+        if cilj is None:
+            return _nedostupan(blok, RAZLOG_UDZBENIK_NEDOSTUPAN)
+        udzbenik_id = cilj['id']
     slug = blok.get('tablica')
     nadjene = _tablice(cur, udzbenik_id, slug) if udzbenik_id is not None and isinstance(slug, str) else []
     if not nadjene:
         return _nedostupan(blok, RAZLOG_TABLICA_NE_POSTOJI)
     return dict(blok, naslov_tablice=nadjene[0]['naslov'], broj_redova=nadjene[0]['broj_redova'])
+
+
+def _razresi_uputnicu(cur, uputi_na):
+    """``uputi_na`` са ``zbirka``: лекција другог уџбеника по slug-у (прва по
+    редоследу, као у мотору за текући уџбеник) → ``poglavlje`` + ``naslov``,
+    или ``nedostupan`` + ``razlog``; питање само остаје нетакнуто."""
+    cilj = _vidljiv_udzbenik(cur, uputi_na.get('zbirka'))
+    if cilj is None:
+        return _nedostupan(uputi_na, RAZLOG_UDZBENIK_NEDOSTUPAN)
+    for lek in _lekcije(cur, cilj['id'], korisnik_email()):
+        if lek['slug'] == uputi_na.get('lekcija'):
+            return dict(uputi_na, poglavlje=lek['poglavlje_slug'], naslov=lek['naslov'])
+    return _nedostupan(uputi_na, RAZLOG_LEKCIJA_NE_POSTOJI)
 
 
 def _ime_autora(cur, email):
