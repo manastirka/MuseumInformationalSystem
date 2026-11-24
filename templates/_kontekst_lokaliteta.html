@@ -1,0 +1,40 @@
+{# Контекст локалитета из Google Earth Engine (миграција 066). Улаз: kontekst из lokalitet_kontekst.kontekst_za_mineral. #}
+{% if kontekst %}
+<div class="card mb-4" id="kontekstLokaliteta">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="bi bi-globe-europe-africa me-2"></i>Контекст локалитета (даљинска процена)</h5>
+    </div>
+    <div class="card-body">
+        {% if kontekst.vrsta == 'lokalitet' %}
+        <p class="small text-muted mb-2">Подаци важе за локалитет „{{ mineral.lokalitet }}“ из шифарника, не за сам примерак.</p>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Тачка (WGS84):</strong> {{ '%.5f'|format(kontekst.lat) }}, {{ '%.5f'|format(kontekst.lon) }}</p>
+                {% if kontekst.nadmorska_visina_m is not none %}<p class="mb-1"><strong>Надморска висина:</strong> {{ '%.0f'|format(kontekst.nadmorska_visina_m) }} m</p>{% endif %}
+                {% if kontekst.nagib_stepeni is not none %}<p class="mb-1"><strong>Нагиб терена:</strong> {{ '%.1f'|format(kontekst.nagib_stepeni) }}°</p>{% endif %}
+                {% if kontekst.pokrivac_naziv %}<p class="mb-1"><strong>Покривач земљишта{% if kontekst.pokrivac_godina %} ({{ kontekst.pokrivac_godina }}){% endif %}:</strong> {{ kontekst.pokrivac_naziv }}</p>{% endif %}
+                {% if kontekst.ogk_list %}<p class="mb-1"><strong>Лист OGK 1:100 000:</strong> {{ kontekst.ogk_list }}{% if kontekst.ogk_naziv %} {{ kontekst.ogk_naziv }}{% endif %} <span class="small text-muted">(уз ивицу листа приближно)</span></p>{% endif %}
+            </div>
+            <div class="col-md-6">
+                {% if kontekst.suma_2000_pct is not none %}<p class="mb-1"><strong>Шума 2000. у кругу 1 km:</strong> {{ '%.1f'|format(kontekst.suma_2000_pct) }} %</p>{% endif %}
+                {% if kontekst.gubitak_sume_ha is not none %}<p class="mb-1"><strong>Губитак шуме{% if kontekst.gubitak_od and kontekst.gubitak_do %} {{ kontekst.gubitak_od }}–{{ kontekst.gubitak_do }}{% endif %}:</strong> {{ '%.2f'|format(kontekst.gubitak_sume_ha) }} ha{% if kontekst.gubitak_sume_pct is not none %} ({{ '%.1f'|format(kontekst.gubitak_sume_pct) }} % шуме 2000.){% endif %}</p>{% endif %}
+                {% if kontekst.dw_udeli_prikaz %}
+                <p class="mb-1"><strong>Покривач у кругу 1 km{% if kontekst.dw_godina %} ({{ kontekst.dw_godina }}){% endif %}:</strong></p>
+                <ul class="small mb-1">
+                    {% for naziv, udeo in kontekst.dw_udeli_prikaz %}<li>{{ naziv }}: {{ '%.1f'|format(udeo) }} %</li>{% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+        <p class="small text-muted mb-0">
+            Процена из сателитских скупова (Google Earth Engine), није теренско мерење.
+            {% if kontekst.izvor %}Извор: {{ kontekst.izvor }}{% if kontekst.datum_izracuna %}, израчунато {{ kontekst.datum_izracuna.strftime('%d.%m.%Y.') }}{% endif %}.{% endif %}
+            {% if kontekst.bio_izvor %}Шума и покривач у кругу: {{ kontekst.bio_izvor }}{% if kontekst.bio_datum_izracuna %}, израчунато {{ kontekst.bio_datum_izracuna.strftime('%d.%m.%Y.') }}{% endif %}.{% endif %}
+            {% if kontekst.nadmorska_visina_m is not none or kontekst.nagib_stepeni is not none %}Copernicus DEM GLO-30 © DLR e.V. 2010–2014 и © Airbus Defence and Space GmbH 2014–2018, у оквиру програма Copernicus (EU, ESA).{% endif %}
+            {% if kontekst.pokrivac_klasa is not none or kontekst.dw_udeli_prikaz %}Dynamic World V1, Google и World Resources Institute (CC BY 4.0).{% endif %}
+            {% if kontekst.suma_2000_pct is not none or kontekst.gubitak_sume_ha is not none %}Hansen/UMD/Google/USGS/NASA Global Forest Change (CC BY 4.0).{% endif %}
+        </p>
+    </div>
+</div>
+{% endif %}

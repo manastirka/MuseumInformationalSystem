@@ -301,6 +301,21 @@
                                         Геолошка идентификација
                                     </label>
                                 </div>
+                                {% for sloj in mis_slojevi or [] %}
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" id="toggle-mis-sloj-{{ sloj.kljuc }}" data-map-layer="1"
+                                           data-mis-sloj="{{ sloj.kljuc }}" data-min-zoom="{{ sloj.min_zoom }}" data-max-zoom="{{ sloj.max_zoom }}"
+                                           data-providnost="{{ sloj.providnost }}" data-atribucija="{{ sloj.atribucija }}">
+                                    <label class="form-check-label" for="toggle-mis-sloj-{{ sloj.kljuc }}" style="font-size:0.85rem;">
+                                        {{ sloj.naziv }}
+                                    </label>
+                                </div>
+                                {% if sloj.legenda %}
+                                <ul class="mis-sloj-legenda" data-mis-sloj-legenda="{{ sloj.kljuc }}" hidden>
+                                    {% for naziv, boja in sloj.legenda %}<li><span class="mis-sloj-swatch" data-boja="{{ boja }}"></span>{{ naziv }}</li>{% endfor %}
+                                </ul>
+                                {% endif %}
+                                {% endfor %}
                                 {% if is_admin() %}
                                 <div class="form-check form-switch mb-1" id="calibration-mode-wrap" style="display:none;">
                                     <input class="form-check-input" type="checkbox" id="toggle-calibration">
@@ -9046,6 +9061,36 @@
         } else {
             console.error('Дугме „Угаси све слојеве“ није пронађено.');
         }
+    })();
+
+    // ==================== GEE РАСТЕРСКИ СЛОЈЕВИ (свеска 11-mis-slojevi) ====================
+    // Плочице из MIS_SLOJEVI_PATH (/api/map/slojevi/<слој>/{z}/{x}/{y}.png); прекидач
+    // постоји само за слој који је на диску. Слој се прави тек при првом укључењу.
+    (function() {
+        var misSlojevi = {};
+        Array.prototype.forEach.call(document.querySelectorAll('.mis-sloj-swatch[data-boja]'), function(uzorak) {
+            uzorak.style.background = uzorak.getAttribute('data-boja');
+        });
+        Array.prototype.forEach.call(document.querySelectorAll('input[data-mis-sloj]'), function(prekidac) {
+            prekidac.addEventListener('change', function() {
+                var kljuc = prekidac.getAttribute('data-mis-sloj');
+                var legenda = document.querySelector('[data-mis-sloj-legenda="' + kljuc + '"]');
+                if (prekidac.checked) {
+                    if (!misSlojevi[kljuc]) {
+                        misSlojevi[kljuc] = L.tileLayer('/api/map/slojevi/' + encodeURIComponent(kljuc) + '/{z}/{x}/{y}.png', {
+                            minNativeZoom: parseInt(prekidac.getAttribute('data-min-zoom'), 10),
+                            maxNativeZoom: parseInt(prekidac.getAttribute('data-max-zoom'), 10),
+                            opacity: parseFloat(prekidac.getAttribute('data-providnost')),
+                            attribution: prekidac.getAttribute('data-atribucija')
+                        });
+                    }
+                    misSlojevi[kljuc].addTo(map);
+                } else if (misSlojevi[kljuc]) {
+                    map.removeLayer(misSlojevi[kljuc]);
+                }
+                if (legenda) legenda.hidden = !prekidac.checked;
+            });
+        });
     })();
 
     // ---- Initial load: only geological overlay + OSM are shown by default ----

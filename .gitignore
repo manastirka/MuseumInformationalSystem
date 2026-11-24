@@ -114,6 +114,7 @@ data/geo_zones/
 data/nhm_datasets/
 data/space_planner_backups/
 data/migrations/
+data/mis_slojevi/
 localSQLtesting/
 
 # --- Static assets ---
