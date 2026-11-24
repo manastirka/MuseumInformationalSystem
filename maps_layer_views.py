@@ -7,6 +7,8 @@ import re
 
 from flask import current_app, jsonify, render_template, request, send_file
 
+import maps_slojevi
+
 logger = logging.getLogger(__name__)
 
 _ore_deposits_cache = None
@@ -71,7 +73,8 @@ def render_admin_maps():
     """Render the interactive geological map page."""
     return render_template('admin_maps.html',
                            ogk_grupe=_ogk_group_counts(),
-                           ogk_sa_radovima=_ogk_broj_sa_radovima())
+                           ogk_sa_radovima=_ogk_broj_sa_radovima(),
+                           mis_slojevi=maps_slojevi.dostupni())
 
 
 def render_admin_geological_timeline():

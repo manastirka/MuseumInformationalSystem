@@ -131,6 +131,23 @@
         border-radius: 50%;
         background: var(--text-muted);
     }
+    /* Легенда GEE растерског слоја (свеска 11): боје узорака су податак
+       плочица (палета Dynamic World), поставља их JS из data-boja. */
+    .mis-sloj-legenda {
+        list-style: none;
+        margin: 0 0 4px;
+        padding-left: 1.6rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    .mis-sloj-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 4px;
+        border: 1px solid var(--border-color);
+        border-radius: 2px;
+    }
     /* Списак радова у поповеру OGK тачке. Поповер не сме да буде дужи од
        екрана, а боје иду искључиво кроз токене теме (парови --text-muted /
        --text-secondary на --bg-card се већ мере у test_kontrast_hardkod.py). */

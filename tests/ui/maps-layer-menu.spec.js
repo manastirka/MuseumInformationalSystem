@@ -52,8 +52,21 @@ function izmedju(tekst, pocetak, kraj, ukljuciKraj) {
   return tekst.slice(i, ukljuciKraj ? j + kraj.length : j);
 }
 
-function razresiJinju(html) {
-  return html
+// GEE растерски слојеви (maps_slojevi.dostupni): петља се рендерује за задат
+// списак (подразумевано празан — сервер без плочица не нуди прекидач).
+const MIS_SLOJEVI_PETLJA = /\{% for sloj in mis_slojevi or \[\] %\}([\s\S]*?\{% endif %\}\s*)\{% endfor %\}/;
+
+function razresiMisSlojeve(html, slojevi) {
+  return html.replace(MIS_SLOJEVI_PETLJA, (_, telo) => slojevi.map((sloj) => telo
+    .replace(/\{% if sloj\.legenda %\}([\s\S]*?)\{% endif %\}/, (__, legenda) => (sloj.legenda.length
+      ? legenda.replace(/\{% for naziv, boja in sloj\.legenda %\}([\s\S]*?)\{% endfor %\}/, (___, stavka) => sloj.legenda
+        .map(([naziv, boja]) => stavka.replace('{{ naziv }}', naziv).replace('{{ boja }}', boja)).join(''))
+      : ''))
+    .replace(/\{\{ sloj\.(\w+) \}\}/g, (__, polje) => String(sloj[polje]))).join(''));
+}
+
+function razresiJinju(html, misSlojevi = []) {
+  return razresiMisSlojeve(html, misSlojevi)
     .replace(/\{\{\s*\(ogk_grupe or \{\}\)\.get\('(\w+)',\s*0\)\s*\}\}/g,
       (_, kljuc) => String(OGK_JSON.grupe[kljuc] ?? 0))
     .replace(/\{\{\s*ogk_sa_radovima or 0\s*\}\}/g, String(SA_POTVRDOM))
@@ -62,9 +75,8 @@ function razresiJinju(html) {
 }
 
 const STIL = izmedju(SABLON, '<style>', '</style>').replace('<style>', '');
-const MENI = razresiJinju(
-  izmedju(SABLON, '<div class="map-controls">', '</div><!-- end map-controls -->', true),
-);
+const MENI_SABLON = izmedju(SABLON, '<div class="map-controls">', '</div><!-- end map-controls -->', true);
+const MENI = razresiJinju(MENI_SABLON);
 const SKRIPTA = izmedju(
   SABLON,
   '    // ==================== OGK ТАЧКЕ 1:100 000 (Део 3) ====================',
@@ -255,14 +267,15 @@ const STUBOVI = `
 const HARNES_URL = 'http://mis.harness.test/maps-menu';
 
 async function ucitajMeni(page, {
-  tacke = null, localStorageStanje = null, radoviIzvor = 'ok', radovi = null,
+  tacke = null, localStorageStanje = null, radoviIzvor = 'ok', radovi = null, misSlojevi = null,
 } = {}) {
+  const meni = misSlojevi ? razresiJinju(MENI_SABLON, misSlojevi) : MENI;
   await page.route(HARNES_URL, (route) => route.fulfill({
     status: 200,
     contentType: 'text/html; charset=utf-8',
     body:
       `<!doctype html><html><head><meta charset="utf-8"><style>${TOKENI}${STIL}</style></head>` +
-      `<body><div id="map-right-col">${MENI}</div></body></html>`,
+      `<body><div id="map-right-col">${meni}</div></body></html>`,
   }));
   await page.goto(HARNES_URL);
   await page.evaluate(([izabrane, stanje, izvor, spisak]) => {
@@ -734,4 +747,78 @@ test('ниједан затечени прекидач слоја није не�
   for (const id of postojeci) {
     await expect(page.locator(`#${id}`)).toHaveCount(1);
   }
+});
+
+// Исти садржај као maps_slojevi.SLOJEVI на серверу (слој постоји на диску, зум 6–12).
+const MIS_SLOJEVI = [
+  {
+    kljuc: 'reljef', naziv: 'Рељеф (сенчење)', providnost: 0.5, min_zoom: 6, max_zoom: 12, legenda: [],
+    atribucija: 'Рељеф: Copernicus DEM GLO-30 © DLR e.V. 2010–2014 и © Airbus Defence and Space GmbH 2014–2018, Copernicus (EU, ESA)',
+  },
+  {
+    kljuc: 'pokrivac-2024', naziv: 'Покривач земљишта 2024', providnost: 0.7, min_zoom: 6, max_zoom: 12,
+    atribucija: 'Покривач: Dynamic World V1 2024, Google и World Resources Institute (CC BY 4.0)',
+    legenda: [['Вода', '#419bdf'], ['Дрвеће', '#397d49'], ['Изграђено', '#c4281b']],
+  },
+];
+
+const TILE_STUB = `
+  window.__tilePozivi = [];
+  window.L.tileLayer = function (url, opcije) {
+    var sloj = { url: url, opcije: opcije, addTo: function (m) { if (m.__dodati.indexOf(this) < 0) m.__dodati.push(this); return this; } };
+    window.__tilePozivi.push(sloj);
+    return sloj;
+  };
+`;
+
+async function ucitajSaSlojevima(page, misSlojevi) {
+  await ucitajMeni(page, { misSlojevi });
+  await page.addScriptTag({ content: TILE_STUB });
+  // Блок GEE слојева је у SKRIPTA и већ је везао слушаоце; L.tileLayer се
+  // зове тек при првом укључењу, па стуб стиже на време.
+}
+
+test('без плочица на диску нема прекидача GEE слојева', async ({ page }) => {
+  await ucitajMeni(page);
+  await expect(page.locator('input[data-mis-sloj]')).toHaveCount(0);
+  await expect(page.locator('[data-mis-sloj-legenda]')).toHaveCount(0);
+});
+
+test('GEE слој се прави при првом укључењу, са атрибуцијом и легендом', async ({ page }) => {
+  await ucitajSaSlojevima(page, MIS_SLOJEVI);
+  const prekidac = page.locator('#toggle-mis-sloj-pokrivac-2024');
+  const legenda = page.locator('[data-mis-sloj-legenda="pokrivac-2024"]');
+  await expect(page.locator('input[data-mis-sloj]')).toHaveCount(2);
+  await expect(legenda).toBeHidden();
+  // Боја узорка је податак плочица (палета Dynamic World), не тема.
+  await expect(legenda.locator('.mis-sloj-swatch').first()).toHaveCSS('background-color', 'rgb(65, 155, 223)');
+  expect(await page.evaluate(() => window.__tilePozivi.length)).toBe(0);
+
+  await prekidac.check();
+  const poziv = await page.evaluate(() => {
+    const sloj = window.__tilePozivi[0];
+    return { url: sloj.url, opcije: sloj.opcije, naMapi: window.map.hasLayer(sloj) };
+  });
+  expect(poziv.url).toBe('/api/map/slojevi/pokrivac-2024/{z}/{x}/{y}.png');
+  expect(poziv.opcije).toEqual({
+    minNativeZoom: 6, maxNativeZoom: 12, opacity: 0.7, attribution: MIS_SLOJEVI[1].atribucija,
+  });
+  expect(poziv.naMapi).toBe(true);
+  await expect(legenda).toBeVisible();
+  await expect(legenda).toContainText('Изграђено');
+  await expect(page.locator('[data-map-group-badge="podloga"]')).toHaveText('3');
+
+  // „Угаси све слојеве“ гаси и GEE слој; поновно укључење не прави нов слој.
+  await page.locator('#btn-ugasi-sve-slojeve').click();
+  await expect(prekidac).not.toBeChecked();
+  await expect(legenda).toBeHidden();
+  expect(await page.evaluate(() => window.map.hasLayer(window.__tilePozivi[0]))).toBe(false);
+  await prekidac.check();
+  expect(await page.evaluate(() => window.__tilePozivi.length)).toBe(1);
+  expect(await page.evaluate(() => window.map.hasLayer(window.__tilePozivi[0]))).toBe(true);
+
+  // Рељеф нема легенду.
+  await page.locator('#toggle-mis-sloj-reljef').check();
+  await expect(page.locator('[data-mis-sloj-legenda="reljef"]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__tilePozivi[1].opcije.opacity)).toBe(0.5);
 });

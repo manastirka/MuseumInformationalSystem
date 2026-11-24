@@ -931,8 +931,12 @@ def render_mineral_detail(mineral_id, *, get_mineral_database):
         logger.warning("QR ознака за минерал %s није прочитана: %s", mineral_id, exc)
         qr_oznaka = None
 
+    # Контекст локалитета из GEE (миграција 066); без реда или табеле — None.
+    import lokalitet_kontekst
+    kontekst = lokalitet_kontekst.kontekst_za_mineral(mineral_id, mineral.get('lokalitet'))
+
     return render_template('admin_mineral_detail.html', mineral=mineral, rruff_data=rruff_data,
-                           qr_oznaka=qr_oznaka)
+                           qr_oznaka=qr_oznaka, kontekst=kontekst)
 
 
 def redirect_rruff_minerals():

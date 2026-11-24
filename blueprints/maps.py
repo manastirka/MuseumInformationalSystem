@@ -10,6 +10,7 @@ import maps_field_data_views
 import maps_geo_zone_views
 import maps_layer_views
 import maps_profile_views
+import maps_slojevi
 import maps_terrain_views
 from security_utils import admin_required, login_required, module_access_required
 
@@ -162,6 +163,13 @@ def api_ogk_points():
 def api_ogk_point_radovi(ogk_id):
     """Serve the harvested papers of a single OGK point (lazy popup content)."""
     return maps_layer_views.api_ogk_point_radovi(_app_root(), ogk_id)
+
+
+@maps_bp.route('/api/map/slojevi/<kljuc>/<int:z>/<int:x>/<int:y>.png')
+@login_required
+def api_mis_sloj_plocica(kljuc, z, x, y):
+    """Serve one XYZ tile of a GEE raster layer from MIS_SLOJEVI_PATH."""
+    return maps_slojevi.posluzi_plocicu(kljuc, z, x, y)
 
 
 @maps_bp.route('/api/map/stratigraphy')

@@ -147,6 +147,9 @@ class Config:
     # Samba share mount that the import screen scans (admin enters a subpath
     # under this root; the app never reads outside it).
     FOTOTEKA_IMPORT_PATH: str = os.environ.get('FOTOTEKA_IMPORT_PATH', './data/fototeka_import')
+    # Rasterski slojevi karte iz GEE-a (XYZ pločice, NISU u git-u; rsync,
+    # docs/mis-slojevi.md). Produkcija: /data/mis/slojevi.
+    MIS_SLOJEVI_PATH: str = os.environ.get('MIS_SLOJEVI_PATH', './data/mis_slojevi')
     # Redis
     REDIS_URL: str = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     CACHE_TYPE: str = os.environ.get('CACHE_TYPE', 'simple')
