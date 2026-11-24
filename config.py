@@ -21,7 +21,13 @@ class Config:
 
     # Security Settings
     WTF_CSRF_ENABLED: bool = os.environ.get('WTF_CSRF_ENABLED', 'True').lower() == 'true'
-    WTF_CSRF_TIME_LIMIT: int = int(os.environ.get('WTF_CSRF_TIME_LIMIT', '3600'))
+    # None = token važi koliko i sesija (stranica otvorena satima ne pada na
+    # „token has expired“); broj sekundi se i dalje može zadati kroz .env.
+    WTF_CSRF_TIME_LIMIT: Optional[int] = (
+        int(os.environ['WTF_CSRF_TIME_LIMIT'].split('#')[0].strip())
+        if os.environ.get('WTF_CSRF_TIME_LIMIT', '').split('#')[0].strip()
+        else None
+    )
 
     # Session Configuration
     SESSION_TYPE: str = os.environ.get('SESSION_TYPE', 'filesystem')

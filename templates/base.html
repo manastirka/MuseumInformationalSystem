@@ -29,6 +29,7 @@
     <meta name="keywords" content="музеј, запослени, радна листа, минерали, Београд">
     <meta name="author" content="Природњачки музеј у Београду">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='js/csrf_obnova.js') }}?v={{ v_statike('js/csrf_obnova.js') }}"></script>
 
     <title>{% block title %}Информациони систем Природњачког музеја{% endblock %}</title>
 
@@ -562,7 +563,7 @@
     <!-- Global Security Utilities -->
     <script>
         // CSRF token for all AJAX requests
-        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        let CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const CURRENT_USER_EMAIL = {{ (session.get('user_email') or '') | tojson }};
 
         // CSRF-aware fetch wrapper - use this instead of raw fetch() for POST/PUT/DELETE
