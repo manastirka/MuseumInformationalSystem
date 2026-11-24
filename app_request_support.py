@@ -6,7 +6,10 @@ import sys
 import time
 from pathlib import Path
 
-from flask import current_app, render_template, request, session
+from urllib.parse import urlsplit
+
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_wtf.csrf import CSRFError, generate_csrf
 
 import museum_baze_stanje
 from statika import verzija_statike
@@ -29,6 +32,26 @@ def register_error_handlers(flask_app) -> None:
             ),
             503,
         )
+
+    @flask_app.errorhandler(CSRFError)
+    def csrf_error(error):
+        # Истекао/неважећи CSRF токен: AJAX добија нови токен (JS понавља захтев
+        # једном), обичан образац се враћа на исту страну — сесија остаје.
+        istekao = 'expired' in (error.description or '')
+        current_app.logger.warning("CSRF: %s (%s %s)", error.description, request.method, request.path)
+        if _ocekuje_json():
+            return jsonify({
+                'ok': False,
+                'error': 'csrf_expired' if istekao else 'csrf_invalid',
+                'csrf_token': generate_csrf(),
+            }), 400
+        flash(
+            'Страница је била предуго отворена, освежена је – пошаљите поново.'
+            if istekao else
+            'Сигурносни токен обрасца није важећи, страница је освежена – пошаљите поново.',
+            'warning',
+        )
+        return redirect(_bezbedan_povratak())
 
     @flask_app.errorhandler(404)
     def not_found_error(error):
@@ -53,6 +76,27 @@ def register_error_handlers(flask_app) -> None:
             ),
             500,
         )
+
+
+def _ocekuje_json() -> bool:
+    """AJAX/fetch захтев (заглавље токена, JSON тело, /api/) или клијент који
+    не тражи изричито HTML (fetch шаље Accept: */*)."""
+    if request.headers.get('X-CSRFToken') or request.headers.get('X-CSRF-Token'):
+        return True
+    if request.is_json or request.path.startswith('/api/'):
+        return True
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return True
+    return 'text/html' not in request.accept_mimetypes.values()
+
+
+def _bezbedan_povratak() -> str:
+    """Referrer само са истог хоста (без open redirect-а), иначе почетна."""
+    ref = request.referrer or ''
+    delovi = urlsplit(ref)
+    if ref and delovi.netloc == request.host and delovi.scheme in ('http', 'https'):
+        return ref
+    return url_for('dashboard') if 'dashboard' in current_app.view_functions else '/'
 
 
 def register_template_context(

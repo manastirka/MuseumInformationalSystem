@@ -15,6 +15,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='js/csrf_obnova.js') }}?v={{ v_statike('js/csrf_obnova.js') }}"></script>
 
     <title>{% block title %}Систем — Природњачки музеј{% endblock %}</title>
 
@@ -107,7 +108,7 @@
 
     <!-- Global Security Utilities (иста дефиниција као base.html) -->
     <script>
-        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        let CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const CURRENT_USER_EMAIL = {{ (session.get('user_email') or '') | tojson }};
 
         function secureFetch(url, options = {}) {
