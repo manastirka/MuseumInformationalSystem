@@ -60,7 +60,8 @@
             "zabluda",
             "sazetak",
             "tablica-link",
-            "video"
+            "video",
+            "colab"
           ]
         }
       },
@@ -112,6 +113,9 @@
         },
         {
           "$ref": "#/$defs/video"
+        },
+        {
+          "$ref": "#/$defs/colab"
         }
       ]
     },
@@ -4122,6 +4126,45 @@
           "type": "boolean",
           "default": false,
           "description": "Понављање у петљи; мотор га искључује кад читалац тражи мање покрета (prefers-reduced-motion)."
+        }
+      }
+    },
+    "colab": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "url",
+        "naslov"
+      ],
+      "additionalProperties": false,
+      "description": "Veza ka Jupyter svesci u Google Colab-u (UGOVOR-COLAB.md); prazan url = blok se ne prikazuje.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "colab"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^(|https://colab\\.research\\.google\\.com/.+)$",
+          "maxLength": 500,
+          "description": "Prazan string ili Colab link; popunjava se kasnije."
+        },
+        "naslov": {
+          "type": "string",
+          "description": "Naslov kartice."
+        },
+        "opis": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Jedna rečenica: šta učenik radi u svesci."
+        },
+        "sveska": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+\\.ipynb$",
+          "description": "Ime .ipynb fajla sveske."
         }
       }
     }
