@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mis.nhmbeo.rs/udzbenik/schema/video.schema.json",
+  "title": "Видео клип уџбеника (ставка кључа videi у фајлу увоза)",
+  "description": "Ставка се уписује у udzbenik_video (миграција 065); фајлови ``fajl`` и ``poster`` су релативни у --video-dir и морају имати наведени sha256. Блок ``video`` у лекцији упућује на ``kljuc``.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kljuc", "fajl", "sha256", "poster", "poster_sha256", "mime", "trajanje_s", "sirina_px",
+               "visina_px", "opis", "ai"],
+  "properties": {
+    "kljuc": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 80},
+    "fajl": {"type": "string", "pattern": "^[A-Za-z0-9._-]+\\.(mp4|webm)$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "poster": {"type": "string", "pattern": "^([A-Za-z0-9._-]+/)?[A-Za-z0-9._-]+\\.jpg$"},
+    "poster_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mime": {"enum": ["video/mp4", "video/webm"]},
+    "trajanje_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+    "sirina_px": {"type": "integer", "minimum": 1},
+    "visina_px": {"type": "integer", "minimum": 1},
+    "zvuk": {"type": "boolean", "default": false},
+    "opis": {"type": "string", "minLength": 1, "maxLength": 500},
+    "ai": {"type": "boolean"},
+    "oznaka": {"type": "string", "minLength": 1, "maxLength": 200},
+    "autor": {"type": ["string", "null"], "maxLength": 300},
+    "licenca": {"type": ["string", "null"], "maxLength": 200}
+  },
+  "if": {"properties": {"ai": {"const": true}}},
+  "then": {"required": ["oznaka"]}
+}

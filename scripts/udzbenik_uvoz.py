@@ -39,6 +39,13 @@
   udzbenik_tablica_detalj (upsert промењених/нових, брисање оних којих нема
   у фајлу); табела без ``detalji`` у фајлу а са ставкама у бази — детаљи
   остају нетакнути уз упозорење;
+- видео клипови (кључ ``videi``, UGOVOR-VIDEO.md): ставка по
+  udzbenik/schema/video.schema.json, јединствен ``kljuc``, ``fajl`` и
+  ``poster`` постоје у ``--video-dir`` са наведеним sha256; блок ``video``
+  упућује на клип из фајла или већ у бази за тај уџбеник; upsert по
+  ``kljuc`` у udzbenik_video, а фајлови се при ``--execute`` копирају у
+  FOTOTEKA_MEDIA_PATH/udzbenik-video/ (адресирано садржајем); клип из базе
+  којег нема у фајлу остаје уз упозорење;
 - подразумевано је dry-run (испис плана, нула измена); ``--execute <ime baze>``
   (дословно име базе на коју је скрипта стварно повезана, ``current_database()``,
   као у udzbenik_ai_slike.py) ради све у ЈЕДНОЈ трансакцији;
@@ -51,9 +58,11 @@
   не упише.
 """
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -61,11 +70,15 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from udzbenik import kljuc_reda, mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu  # noqa: E402
+from udzbenik import (kljuc_reda, mesta_procesa, mesta_slika, tipovi_blokova, ucitaj_semu,  # noqa: E402
+                      video_putanja)
 
 SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{1,59}$')
 STATUSI = ('nacrt', 'objavljen')
 SEMA_TABLICE_PUTANJA = REPO / 'udzbenik' / 'schema' / 'tablica.schema.json'
+SEMA_VIDEA_PUTANJA = REPO / 'udzbenik' / 'schema' / 'video.schema.json'
+POLJA_VIDEA = ('sha256', 'velicina_b', 'mime', 'trajanje_s', 'sirina_px', 'visina_px', 'zvuk',
+               'poster_sha256', 'opis', 'ai', 'oznaka', 'autor', 'licenca')
 REZERVISAN_SLUG_POGLAVLJA = 'tablice'      # сегмент URL-а /udzbenik/<zbirka>/tablice
 KLJUC_IZVORA = 'izvor'
 NASLOV_TABLICE_NAJVISE = 200
@@ -182,9 +195,10 @@ def _validatori(sema):
             for tip in tipovi_blokova(sema)}
 
 
-def validiraj(podaci, cur):
+def validiraj(podaci, cur, video_dir=None):
     """Листа грешака (празна = фајл исправан). Провере постојања у бази иду
-    кроз ``cur`` (фотографије) и museum_qr (примерци)."""
+    кроз ``cur`` (фотографије) и museum_qr (примерци); фајлови клипова кроз
+    ``video_dir``."""
     greske = []
     if not isinstance(podaci, dict):
         return ['(корен): фајл мора бити JSON објекат']
@@ -207,6 +221,7 @@ def validiraj(podaci, cur):
     validatori = _validatori(sema)
     kolone_tablica = validiraj_tablice(podaci.get('tablice'), poglavlja, greske)
     zbirka = u.get('zbirka') if isinstance(u, dict) and isinstance(u.get('zbirka'), str) else None
+    kljucevi_videa = validiraj_videe(podaci.get('videi'), video_dir, greske)
     _jedinstveno(poglavlja, 'slug', 'poglavlja', greske, 'slug поглавља')
     _jedinstveno(poglavlja, 'redosled', 'poglavlja', greske, 'redosled поглавља')
     for i, p in enumerate(poglavlja):
@@ -250,7 +265,65 @@ def validiraj(podaci, cur):
                 _proveri_reference(sadrzaj['blokovi'], f'{lp}.sadrzaj', cur, greske)
                 _proveri_tablica_linkove(sadrzaj['blokovi'], f'{lp}.sadrzaj', kolone_tablica, zbirka, cur, greske)
                 _proveri_uputnice(sadrzaj['blokovi'], f'{lp}.sadrzaj', zbirka, cur, greske)
+                _proveri_video_blokove(sadrzaj['blokovi'], f'{lp}.sadrzaj', kljucevi_videa, zbirka, cur, greske)
     return greske
+
+
+def sha256_fajla(putanja):
+    h = hashlib.sha256()
+    with open(putanja, 'rb') as f:
+        for komad in iter(lambda: f.read(1 << 20), b''):
+            h.update(komad)
+    return h.hexdigest()
+
+
+def validiraj_videe(videi, video_dir, greske):
+    """Кључ ``videi`` (UGOVOR-VIDEO.md): ставке по video.schema.json, јединствен
+    ``kljuc``, фајл и постер у ``video_dir`` са наведеним sha256; враћа скуп кључева."""
+    import jsonschema
+
+    if videi is None:
+        return set()
+    if not isinstance(videi, list):
+        greske.append('videi: мора бити листа')
+        return set()
+    with open(SEMA_VIDEA_PUTANJA, encoding='utf-8') as f:
+        validator = jsonschema.Draft202012Validator(json.load(f))
+    _jedinstveno(videi, 'kljuc', 'videi', greske, 'kljuc видеа')
+    if videi and video_dir is None:
+        greske.append('videi: фајл има клипове — потребан је --video-dir са фајловима клипова и постера')
+    kljucevi = set()
+    for i, v in enumerate(videi):
+        vp = f'videi[{i}]'
+        pre = len(greske)
+        for g in sorted(validator.iter_errors(v), key=lambda e: list(e.absolute_path)):
+            greske.append(f'{vp}{_json_putanja(g)}: {g.message}')
+        if len(greske) > pre or not isinstance(v, dict):
+            continue
+        kljucevi.add(v['kljuc'])
+        if video_dir is None:
+            continue
+        for polje, sha_polje in (('fajl', 'sha256'), ('poster', 'poster_sha256')):
+            putanja = Path(video_dir) / v[polje]
+            if not putanja.is_file():
+                greske.append(f'{vp}.{polje}: фајл {putanja} не постоји')
+            elif sha256_fajla(putanja) != v[sha_polje]:
+                greske.append(f'{vp}.{sha_polje}: sha256 фајла {putanja} се не поклапа')
+    return kljucevi
+
+
+def _proveri_video_blokove(blokovi, putanja, kljucevi_videa, zbirka, cur, greske):
+    """Блок ``video`` упућује на клип из ``videi`` или већ у бази за тај уџбеник."""
+    for i, b in enumerate(blokovi):
+        if not isinstance(b, dict) or b.get('tip') != 'video' or not isinstance(b.get('video'), str):
+            continue
+        if b['video'] in kljucevi_videa:
+            continue
+        cur.execute("""SELECT 1 FROM udzbenik_video v JOIN udzbenik u ON u.id = v.udzbenik_id
+                       WHERE v.kljuc = %s AND u.zbirka = %s""", (b['video'], zbirka))
+        if cur.fetchone() is None:
+            greske.append(f'{putanja}.blokovi[{i}].video: клип {b["video"]!r} не постоји ни у videi фајла '
+                          f'ни у бази за уџбеник {zbirka!r}')
 
 
 def ucitaj_semu_tablice():
@@ -757,7 +830,41 @@ def napravi_plan(cur, podaci):
     for slug in sorted(set(postojeca_poglavlja) - {p['slug'] for p in podaci['poglavlja']}):
         plan['upozorenja'].append(f'поглавље {slug} је у бази, а нема га у фајлу — остаје нетакнуто')
     _planiraj_tablice(cur, podaci, plan, red[0] if red is not None else None)
+    _planiraj_videe(cur, podaci, plan, red[0] if red is not None else None)
     return plan
+
+
+def _planiraj_videe(cur, podaci, plan, udzbenik_id):
+    """Upsert по ``kljuc``; кључ који већ држи други уџбеник је грешка."""
+    plan['videi'] = []
+    for i, v in enumerate(podaci.get('videi') or []):
+        cur.execute(f"SELECT id, udzbenik_id, {', '.join(POLJA_VIDEA)} FROM udzbenik_video WHERE kljuc = %s",
+                    (v['kljuc'],))
+        red = cur.fetchone()
+        stavka = {'kljuc': v['kljuc'], 'id': red[0] if red else None}
+        if red is None:
+            stavka['akcija'] = 'dodaje'
+        elif red[1] != udzbenik_id:
+            plan['greske'].append(f'videi[{i}].kljuc: клип {v["kljuc"]!r} већ припада другом уџбенику')
+            stavka['akcija'] = 'isto'
+        else:
+            stara = dict(zip(POLJA_VIDEA, red[2:]))
+            stara['trajanje_s'] = float(stara['trajanje_s'])
+            stavka['akcija'] = 'isto' if stara == _polja_videa(v, stara['velicina_b']) else 'menja'
+        plan['videi'].append(stavka)
+    if udzbenik_id is not None:
+        cur.execute('SELECT kljuc FROM udzbenik_video WHERE udzbenik_id = %s', (udzbenik_id,))
+        u_fajlu = {v['kljuc'] for v in podaci.get('videi') or []}
+        for (kljuc,) in sorted(cur.fetchall()):
+            if kljuc not in u_fajlu:
+                plan['upozorenja'].append(f'видео {kljuc} је у бази, а нема га у фајлу — остаје нетакнут')
+
+
+def _polja_videa(v, velicina_b):
+    return {'sha256': v['sha256'], 'velicina_b': velicina_b, 'mime': v['mime'],
+            'trajanje_s': float(v['trajanje_s']), 'sirina_px': v['sirina_px'], 'visina_px': v['visina_px'],
+            'zvuk': v.get('zvuk', False), 'poster_sha256': v['poster_sha256'], 'opis': v['opis'],
+            'ai': v['ai'], 'oznaka': v.get('oznaka'), 'autor': v.get('autor'), 'licenca': v.get('licenca')}
 
 
 def _planiraj_tablice(cur, podaci, plan, udzbenik_id):
@@ -839,7 +946,7 @@ def _planiraj_detalje(cur, t, stara):
 # Примена (само уз --execute, у трансакцији позиваоца)
 # --------------------------------------------------------------------------
 
-def primeni_plan(cur, podaci, plan, autor, napomena):
+def primeni_plan(cur, podaci, plan, autor, napomena, video_dir=None):
     u = podaci['udzbenik']
     if plan['udzbenik']['akcija'] == 'dodaje':
         cur.execute("""INSERT INTO udzbenik (zbirka, naslov, opis, status, javno, autor_email)
@@ -912,6 +1019,42 @@ def primeni_plan(cur, podaci, plan, autor, napomena):
                             (lek['redosled'], lek['naslov'], lek.get('sazetak'), lek.get('status'),
                              l_stavka['akcija'] == 'menja podatke', lekcija_id))
     primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena)
+    primeni_videe(cur, podaci, plan, udzbenik_id, autor, video_dir)
+
+
+def media_koren():
+    """FOTOTEKA_MEDIA_PATH као у апликацији; релативна путања је од корена репоа."""
+    koren = Path(os.environ.get('FOTOTEKA_MEDIA_PATH', './data/fototeka_media'))
+    return koren if koren.is_absolute() else REPO / koren
+
+
+def _smesti(izvor, relativna):
+    """Копија у media корен (атомски: привремени фајл па rename); исти садржај
+    је већ ту ако постоји фајл исте величине (путања је sha256)."""
+    cilj = media_koren() / relativna
+    if cilj.is_file() and cilj.stat().st_size == izvor.stat().st_size:
+        return
+    cilj.parent.mkdir(parents=True, exist_ok=True)
+    privremeni = cilj.with_name(cilj.name + '.uvoz')
+    shutil.copyfile(izvor, privremeni)
+    os.replace(privremeni, cilj)
+
+
+def primeni_videe(cur, podaci, plan, udzbenik_id, autor, video_dir):
+    for v, stavka in zip(podaci.get('videi') or [], plan.get('videi', [])):
+        if stavka['akcija'] == 'isto':
+            continue
+        fajl, poster = Path(video_dir) / v['fajl'], Path(video_dir) / v['poster']
+        nastavak = 'webm' if v['mime'] == 'video/webm' else 'mp4'
+        putanja, poster_putanja = video_putanja(v['sha256'], nastavak), video_putanja(v['poster_sha256'], 'jpg')
+        _smesti(fajl, putanja)
+        _smesti(poster, poster_putanja)
+        polja = _polja_videa(v, fajl.stat().st_size)
+        kolone = ['udzbenik_id', 'kljuc', 'putanja', 'poster_putanja', 'uvezao_email', *POLJA_VIDEA]
+        vrednosti = [udzbenik_id, v['kljuc'], putanja, poster_putanja, autor, *(polja[k] for k in POLJA_VIDEA)]
+        izmene = ', '.join(f'{k} = EXCLUDED.{k}' for k in kolone if k not in ('udzbenik_id', 'kljuc'))
+        cur.execute(f"""INSERT INTO udzbenik_video ({', '.join(kolone)}) VALUES ({', '.join(['%s'] * len(kolone))})
+                        ON CONFLICT (kljuc) DO UPDATE SET {izmene}, updated_at = now()""", vrednosti)
 
 
 def primeni_tablice(cur, podaci, plan, udzbenik_id, autor, napomena):
@@ -1014,8 +1157,14 @@ def ispisi_plan(plan, izvrsavanje):
             elif any(d.values()):
                 dodatak += f'; detalji: {promene}'
         print(f'  {ZNAK[t["akcija"]]} tablica {t["slug"]} ({t["akcija"]}{dodatak})')
+    for v in plan.get('videi', []):
+        print(f'  {ZNAK[v["akcija"]]} video {v["kljuc"]} ({v["akcija"]})')
     for u in plan['upozorenja']:
         print(f'  ! упозорење: {u}')
+    if plan.get('videi'):
+        akcije = [v['akcija'] for v in plan['videi']]
+        print(f'Видео: {len(akcije)} клипова (+{akcije.count("dodaje")} ~{akcije.count("menja")} '
+              f'={akcije.count("isto")}).')
     print(f'Укупно: {brojac["poglavlja"]} поглавља, {brojac["lekcije"]} лекција, '
           f'{brojac["nove_verzije"]} нових верзија, {brojac["tablice"]} табела '
           f'({brojac["nove_verzije_tablica"]} нових верзија табела), {brojac["detalji"]} детаља редова '
@@ -1034,6 +1183,8 @@ def _argumenti(argv):
     p.add_argument('--dry-run', action='store_true', help='само испиши шта би било урађено (подразумевано)')
     p.add_argument('--execute', metavar='IME_BAZE', help='стварно упиши; потврда = име базе на коју је повезано')
     p.add_argument('--autor', default=None, help='e-mail аутора за udzbenik.autor_email / verzija.autor_email')
+    p.add_argument('--video-dir', default=None,
+                   help='директоријум са фајловима клипова и постера из кључа videi (путање су релативне)')
     p.add_argument('--proveri-literaturu', action='store_true',
                    help='за сваки блок literatura питај SciSearch (0 резултата = упозорење); '
                         'за slika-literatura провери да figura_id постоји')
@@ -1064,7 +1215,7 @@ def main(argv=None):
                           file=sys.stderr)
                     conn.rollback()
                     return 2
-                greske = validiraj(podaci, cur)
+                greske = validiraj(podaci, cur, arg.video_dir)
                 if greske:
                     print(f'ГРЕШКЕ У ФАЈЛУ ({len(greske)}) — ништа није уписано:', file=sys.stderr)
                     for g in greske:
@@ -1089,7 +1240,7 @@ def main(argv=None):
                     conn.rollback()
                     return 1
                 if izvrsavanje:
-                    primeni_plan(cur, podaci, plan, arg.autor, napomena)
+                    primeni_plan(cur, podaci, plan, arg.autor, napomena, arg.video_dir)
             if izvrsavanje:
                 conn.commit()
             else:

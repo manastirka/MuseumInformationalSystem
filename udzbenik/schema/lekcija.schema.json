@@ -59,7 +59,8 @@
             "primer-koraci",
             "zabluda",
             "sazetak",
-            "tablica-link"
+            "tablica-link",
+            "video"
           ]
         }
       },
@@ -108,6 +109,9 @@
         },
         {
           "$ref": "#/$defs/tablica-link"
+        },
+        {
+          "$ref": "#/$defs/video"
         }
       ]
     },
@@ -4084,6 +4088,40 @@
             "minLength": 1,
             "maxLength": 500
           }
+        }
+      }
+    },
+    "video": {
+      "type": "object",
+      "required": [
+        "id",
+        "tip",
+        "video"
+      ],
+      "additionalProperties": false,
+      "description": "Видео клип (UGOVOR-VIDEO.md). Блок носи само кључ записа у бази (udzbenik_video); опис, ознаку AI, аутора, лиценцу, трајање и URL-ове клипа и постера сервер додаје при читању (`src`, `poster`, `mime`, `trajanje_s`, `sirina_px`, `visina_px`, `zvuk`, `opis`, `ai`, `oznaka`, `autor`, `licenca`) или `nedostupan: true` + `razlog`. Мотор никад не пушта аутоматски; звук је подразумевано утишан.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "tip": {
+          "const": "video"
+        },
+        "video": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 80,
+          "description": "Кључ клипа (udzbenik_video.kljuc, кључ ``videi[].kljuc`` у фајлу увоза)."
+        },
+        "napomena": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Зашто је клип овде — шта у њему да се гледа."
+        },
+        "petlja": {
+          "type": "boolean",
+          "default": false,
+          "description": "Понављање у петљи; мотор га искључује кад читалац тражи мање покрета (prefers-reduced-motion)."
         }
       }
     }

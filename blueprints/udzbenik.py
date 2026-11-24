@@ -11,8 +11,13 @@ static/udzbenik/ црта садржај. API по брифу §4: структ�
 """
 import gzip
 
+import os
+
 from flask import (Blueprint, Response, abort, flash, jsonify, redirect, render_template,
-                   request, session, url_for)
+                   request, send_file, session, url_for)
+
+import fototeka_jobs
+import fototeka_views
 
 import scisearch_klijent
 import udzbenik
@@ -270,4 +275,43 @@ def _literatura_slika(figura_id, mala):
     odgovor = Response(bajtovi, mimetype=tip)
     odgovor.headers['Cache-Control'] = 'private, max-age=604800'
     odgovor.headers['Content-Length'] = str(len(bajtovi))
+    return odgovor
+
+
+@udzbenik_bp.route(API_KOREN + '/video/<kljuc>')
+@limiter.limit("300 per minute")
+def api_video(kljuc):
+    return _video_fajl(kljuc, poster=False)
+
+
+@udzbenik_bp.route(API_KOREN + '/video/<kljuc>/poster')
+@limiter.limit("300 per minute")
+def api_video_poster(kljuc):
+    return _video_fajl(kljuc, poster=True)
+
+
+def _video_fajl(kljuc, poster):
+    """Клип или постер блока ``video`` (UGOVOR-VIDEO.md): исто право као за
+    уџбеник коме клип припада; фајл из FOTOTEKA_MEDIA_PATH истим путем као
+    деривати Фототеке — send_file (Range за премотавање) или X-Accel."""
+    video = udzbenik.dohvati_video(kljuc)
+    if not udzbenik.video_vidljiv(video):
+        if not udzbenik.prijavljen():
+            return _greska(404, 'Не постоји')
+        if video is None:
+            return _greska(404, 'Видео не постоји')
+        return _greska(403, 'Немате дозволу за овај уџбеник')
+    relativna = video['poster_putanja'] if poster else video['putanja']
+    tip = 'image/jpeg' if poster else video['mime']
+    koren = fototeka_jobs.get_media_path().resolve()
+    puna = (koren / relativna).resolve()
+    if not str(puna).startswith(str(koren) + os.sep) or not puna.is_file():
+        udzbenik.logger.warning('Уџбеник: фајл видеа %s недостаје: %s', kljuc, relativna)
+        return _greska(404, 'Фајл видеа не постоји')
+    if fototeka_views._xaccel_enabled():
+        odgovor = fototeka_views._xaccel_response(
+            fototeka_views._xaccel_uri(fototeka_views.XACCEL_DERIVAT_PREFIX, puna, koren), mimetype=tip)
+    else:
+        odgovor = send_file(puna, mimetype=tip, conditional=True, etag=video['sha256'] + ('-p' if poster else ''))
+    odgovor.headers['Cache-Control'] = 'private, max-age=86400'
     return odgovor

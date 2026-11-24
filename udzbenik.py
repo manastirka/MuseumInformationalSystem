@@ -73,6 +73,8 @@ RAZLOG_NEPOZNAT_OBLIK_SLIKE = 'nepoznat oblik slike'
 RAZLOG_TABLICA_NE_POSTOJI = 'tablica ne postoji'
 RAZLOG_UDZBENIK_NEDOSTUPAN = 'udzbenik nije dostupan'
 RAZLOG_LEKCIJA_NE_POSTOJI = 'lekcija ne postoji'
+RAZLOG_VIDEO_NE_POSTOJI = 'video ne postoji'
+VIDEO_DIREKTORIJUM = 'udzbenik-video'
 TAG_AI_ILUSTRACIJA = 'ai-ilustracija'
 POREKLO_AI = 'ai-ilustracija'
 
@@ -457,6 +459,8 @@ def razresi_blokove(cur, blokovi, udzbenik_id=None):
             izlaz.append(_razresi_proces(blok))
         elif tip == 'tablica-link':
             izlaz.append(_razresi_tablica_link(cur, blok, udzbenik_id))
+        elif tip == 'video':
+            izlaz.append(_razresi_video(cur, blok))
         elif tip == 'pitanje' and any(_sa_zbirkom(blok.get(k)) for k in UPUTNICE_PITANJA):
             izlaz.append(dict(blok, **{k: _razresi_uputnicu(cur, blok[k])
                                        for k in UPUTNICE_PITANJA if _sa_zbirkom(blok.get(k))}))
@@ -491,6 +495,52 @@ def _razresi_tablica_link(cur, blok, udzbenik_id):
     if not nadjene:
         return _nedostupan(blok, RAZLOG_TABLICA_NE_POSTOJI)
     return dict(blok, naslov_tablice=nadjene[0]['naslov'], broj_redova=nadjene[0]['broj_redova'])
+
+
+VIDEO_KOLONE = ('id', 'udzbenik_id', 'kljuc', 'putanja', 'sha256', 'velicina_b', 'mime', 'trajanje_s',
+                'sirina_px', 'visina_px', 'zvuk', 'poster_putanja', 'opis', 'ai', 'oznaka', 'autor', 'licenca')
+
+
+def video_putanja(sha256, nastavak):
+    """Релативна путања клипа/постера у FOTOTEKA_MEDIA_PATH (адресирано садржајем)."""
+    return f'{VIDEO_DIREKTORIJUM}/{sha256[:2]}/{sha256}.{nastavak}'
+
+
+def dohvati_video(kljuc, cur=None):
+    """Ред udzbenik_video по кључу или None."""
+    if cur is None:
+        with get_postgres_connection() as conn:
+            with conn.cursor() as c:
+                return dohvati_video(kljuc, c)
+    cur.execute(f"SELECT {', '.join(VIDEO_KOLONE)} FROM udzbenik_video WHERE kljuc = %s", (kljuc,))
+    return _red(cur)
+
+
+def video_vidljiv(video_red):
+    """Клип види онај ко сме да чита уџбеник коме клип припада."""
+    if video_red is None:
+        return False
+    with get_postgres_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT zbirka FROM udzbenik WHERE id = %s', (video_red['udzbenik_id'],))
+            red = cur.fetchone()
+    return red is not None and sme_da_cita(dohvati_udzbenik(red[0]))
+
+
+def _razresi_video(cur, blok):
+    """Блок ``video``: метаподаци и URL-ови из udzbenik_video (UGOVOR-VIDEO.md)."""
+    video = dohvati_video(blok.get('video'), cur) if isinstance(blok.get('video'), str) else None
+    if video is None:
+        return _nedostupan(blok, RAZLOG_VIDEO_NE_POSTOJI)
+    return dict(
+        blok,
+        src=url_for('udzbenik.api_video', kljuc=video['kljuc']),
+        poster=url_for('udzbenik.api_video_poster', kljuc=video['kljuc']),
+        mime=video['mime'], trajanje_s=float(video['trajanje_s']),
+        sirina_px=video['sirina_px'], visina_px=video['visina_px'], zvuk=video['zvuk'],
+        opis=video['opis'], ai=video['ai'], oznaka=video['oznaka'],
+        autor=video['autor'], licenca=video['licenca'],
+    )
 
 
 UPUTNICE_PITANJA = ('uputi_na', 'iz_lekcije')
