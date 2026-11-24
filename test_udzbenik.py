@@ -424,7 +424,7 @@ class UvozTest(_Osnova):
             blokovi[1]['id'] = blokovi[0]['id']                       # дупликат id
             blokovi.append({'id': 'slika-x', 'tip': 'slika', 'fotografija_id': 999999999})
             blokovi.append({'id': 'prim-x', 'tip': 'primerak', 'zbirka': 'minerali', 'objekat_id': 999999999})
-            blokovi.append({'id': 'bez-tipa', 'tip': 'video'})
+            blokovi.append({'id': 'bez-tipa', 'tip': 'zvuk'})
         putanja = _primer_sa_izmenom(izmeni)
         self.addCleanup(os.unlink, putanja)
         kod, _, err = _pokreni_uvoz('--fajl', putanja, '--dry-run')
@@ -520,7 +520,7 @@ class ApiTest(_Osnova):
         sadrzaj = {'verzija': 1, 'blokovi': [
             {'id': 'slika-1', 'tip': 'slika', 'fotografija_id': foto_id, 'potpis': 'Пирит', 'alt': 'Пирит'},
             {'id': 'prim-1', 'tip': 'primerak', 'zbirka': 'minerali', 'objekat_id': mineral_id, 'napomena': 'Коцке'},
-            {'id': 'cudan', 'tip': 'video', 'url': 'x'},
+            {'id': 'cudan', 'tip': 'zvuk', 'url': 'x'},
         ]}
         _izvrsi("UPDATE udzbenik_lekcija SET sadrzaj = %s WHERE id = %s", (json.dumps(sadrzaj), lekcija_id))
 
