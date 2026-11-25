@@ -1141,7 +1141,9 @@
             "folk-karbonati",
             "dunham",
             "acf-akf",
-            "ree-pauk"
+            "ree-pauk",
+            "izotopi-kiseonika",
+            "gvozdeni-grupe"
           ]
         },
         "parametri": {
@@ -3276,6 +3278,119 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Forma za unos sopstvene analize REE (ppm) → linija normalizovana na hondrit."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "izotopi-kiseonika"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "prikaz": {
+                    "enum": [
+                      "sve",
+                      "hondriti",
+                      "ahondriti"
+                    ],
+                    "default": "sve",
+                    "description": "Trostruki dijagram kiseonika δ17O–δ18O (‰, SMOW); linije TFL i CCAM uvek. „sve“ i „hondriti“: δ18O −6 do 19 ‰; „ahondriti“: uvećano δ18O 1,5–9 ‰ sa tačkama analiza."
+                  },
+                  "istaknuti": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 21,
+                    "items": {
+                      "enum": [
+                        "H",
+                        "L",
+                        "LL",
+                        "R",
+                        "EH-EL",
+                        "CI",
+                        "CM",
+                        "CO-CK",
+                        "CV",
+                        "CR-CH-CB",
+                        "HED",
+                        "lunarni",
+                        "SNC",
+                        "aubriti",
+                        "angriti",
+                        "brahiniti",
+                        "ureiliti",
+                        "akapulkoiti-lodraniti",
+                        "vinonaiti-IAB",
+                        "palasiti",
+                        "mezosideriti"
+                      ]
+                    },
+                    "description": "Ključevi grupa (podaci/izotopi-kiseonika.ts u motoru): hondriti H, L, LL, R, EH-EL, CI, CM, CO-CK, CV, CR-CH-CB (šematski, Clayton 2005, sl. 5); ahondriti HED, lunarni, SNC, aubriti, angriti, brahiniti, ureiliti, akapulkoiti-lodraniti, vinonaiti-IAB, palasiti, mezosideriti. Ključ koji nije u izabranom prikazu se zanemaruje."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dijagram": {
+                "const": "gvozdeni-grupe"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parametri": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "element"
+                ],
+                "properties": {
+                  "element": {
+                    "enum": [
+                      "Ga",
+                      "Ge",
+                      "Ir"
+                    ],
+                    "description": "Element na y-osi (ppm), prema Ni (mas. %), obe ose logaritamske. Ge i Ir: polja grupa očitana sa sl. 2 Goldstein i dr. (2009); Ga: opseg Ni (Goldstein i dr. 2009, tabl. 1) pri srednjem Ga (Mittlefehldt i dr. 1998, tabl. 3)."
+                  },
+                  "istaknuti": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 14,
+                    "items": {
+                      "enum": [
+                        "IAB",
+                        "IC",
+                        "IIAB",
+                        "IIC",
+                        "IID",
+                        "IIE",
+                        "IIF",
+                        "IIG",
+                        "IIIAB",
+                        "IIICD",
+                        "IIIE",
+                        "IIIF",
+                        "IVA",
+                        "IVB"
+                      ]
+                    },
+                    "description": "Hemijske grupe gvozdenih meteorita; za Ga ne postoje IIG i IIICD (zanemaruju se)."
                   }
                 }
               }

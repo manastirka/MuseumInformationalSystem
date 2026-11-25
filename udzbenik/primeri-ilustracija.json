@@ -1023,6 +1023,33 @@
       "opis_za_citac": "REE dijagram: lantan do lutecijum normalizovani na hondrit CI (Sun i McDonough 1989), logaritamska osa; linije stvarnih analiza srednjeokeanskih grebena, okeanskih ostrva i vulkanskih lukova i forma za unos sopstvene analize."
     },
     {
+      "id": "d-izotopi-kiseonika",
+      "tip": "dijagram",
+      "dijagram": "izotopi-kiseonika",
+      "parametri": {
+        "prikaz": "hondriti",
+        "istaknuti": [
+          "CI",
+          "CM"
+        ]
+      },
+      "opis_za_citac": "Trostruki dijagram izotopa kiseonika δ¹⁷O prema δ¹⁸O sa linijom zemaljskog frakcionisanja (TFL) i linijom CCAM; šematska polja grupa hondrita po Claytonu (2005), istaknuti CI i CM hondriti."
+    },
+    {
+      "id": "d-gvozdeni-grupe",
+      "tip": "dijagram",
+      "dijagram": "gvozdeni-grupe",
+      "parametri": {
+        "element": "Ge",
+        "istaknuti": [
+          "IIAB",
+          "IIIAB",
+          "IVA"
+        ]
+      },
+      "opis_za_citac": "Ge prema Ni (logaritamske ose) za hemijske grupe gvozdenih meteorita, polja očitana sa sl. 2 Goldsteina i dr. (2009); istaknute grupe IIAB, IIIAB i IVA."
+    },
+    {
       "id": "d-wentworth",
       "tip": "dijagram",
       "dijagram": "wentworth",

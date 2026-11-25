@@ -1170,7 +1170,7 @@ class IlustracijeTest(_Osnova):
     def test_primeri_prolaze_uvoz_i_api_vraca_sve_blokove(self):
         putanja, sadrzaj = _lekcija_ilustracija()
         self.addCleanup(os.unlink, putanja)
-        self.assertEqual(len(sadrzaj['blokovi']), 67)
+        self.assertEqual(len(sadrzaj['blokovi']), 69)
         kod, out, err = _pokreni_uvoz('--fajl', putanja, '--execute', _ime_baze(), '--autor', EMAIL)
         self.assertEqual(kod, 0, err + out)
 
@@ -1178,7 +1178,7 @@ class IlustracijeTest(_Osnova):
         r = self.get(f'/api/udzbenik/{ZBIRKA_ILUSTRACIJE}/lekcija/ilustracije/sve')
         self.assertEqual(r.status_code, 200)
         blokovi = r.get_json()['lekcija']['blokovi']
-        self.assertEqual(len(blokovi), 67)
+        self.assertEqual(len(blokovi), 69)
         self.assertEqual([b for b in blokovi if 'nepoznat' in b], [])
         # места дијаграма „proces“ са figura_id сервер допуњује (слика или nedostupan) — ауторова поља остају
         dopuna = {'izvor', 'slika', 'sicicka', 'nedostupan', 'razlog'}
@@ -3360,6 +3360,23 @@ class VezeIzmedjuUdzbenikaTest(_TabliceOsnova):
         for i in (1, 2, 3):
             self.assertIn(f'blokovi[{i}]', err)
         self.assertNotIn('opis_za_citac', err)
+
+    def test_sema_zna_dijagrame_meteoritike(self):
+        dij = [('izotopi-kiseonika', {}),
+               ('izotopi-kiseonika', {'prikaz': 'ahondriti', 'istaknuti': ['HED', 'SNC']}),
+               ('gvozdeni-grupe', {'element': 'Ir', 'istaknuti': ['IIIAB', 'IVB']}),
+               ('gvozdeni-grupe', {'element': 'Ga'})]
+        blokovi = [{'id': f'd{i}', 'tip': 'dijagram', 'dijagram': d, 'parametri': par, 'opis_za_citac': 'Meteoritski dijagram za proveru šeme.'}
+                   for i, (d, par) in enumerate(dij)]
+        kod, out, err = self._petro(blokovi, '--dry-run')
+        self.assertEqual(kod, 0, err + out)
+        losi = [{'id': 'l1', 'tip': 'dijagram', 'dijagram': 'gvozdeni-grupe', 'parametri': {}, 'opis_za_citac': 'Meteoritski dijagram sa pogrešnim parametrima.'},
+                {'id': 'l2', 'tip': 'dijagram', 'dijagram': 'gvozdeni-grupe', 'parametri': {'element': 'Ni'}, 'opis_za_citac': 'Meteoritski dijagram sa pogrešnim parametrima.'},
+                {'id': 'l3', 'tip': 'dijagram', 'dijagram': 'izotopi-kiseonika', 'parametri': {'istaknuti': ['IAB']}, 'opis_za_citac': 'Meteoritski dijagram sa pogrešnim parametrima.'}]
+        kod, _, err = self._petro(losi, '--dry-run')
+        self.assertEqual(kod, 1)
+        for i in (1, 2, 3):
+            self.assertIn(f'blokovi[{i}]', err)
 
     def test_iz_lekcije_string_staro_ponasanje(self):
         pon = _ponavljanje_pitanje('stene')
